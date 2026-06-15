@@ -7,6 +7,7 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { adminApi } from "@/src/roleApi";
 import { api } from "@/src/api";
 import { COLORS, RADIUS, SPACING } from "@/src/theme";
+import ImageUploader from "@/src/components/ImageUploader";
 
 export default function AdminProducts() {
   const router = useRouter();
@@ -103,7 +104,7 @@ function ProductModal({ visible, onClose, onSaved, edit, categories }: any) {
               <View style={{ flex: 1 }}><Field ph="Stock" v={f.stock} oc={(v: string) => setF({ ...f, stock: v })} kt="numeric" testID="pf-stock" /></View>
               <View style={{ flex: 1 }}><Field ph="Unit (e.g. 1 kg)" v={f.unit} oc={(v: string) => setF({ ...f, unit: v })} testID="pf-unit" /></View>
             </View>
-            <Field ph="Image URL" v={f.image} oc={(v: string) => setF({ ...f, image: v })} testID="pf-image" />
+            <ImageUploader value={f.image} onChange={(uri) => setF({ ...f, image: uri })} label="Product Image" aspect={[1, 1]} testID="pf-image" />
             <Field ph="Description" v={f.description} oc={(v: string) => setF({ ...f, description: v })} multiline testID="pf-desc" />
             <Text style={ms.label}>Category</Text>
             <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6, marginBottom: 8 }}>

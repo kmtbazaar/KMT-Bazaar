@@ -8,6 +8,7 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { adminApi } from "@/src/roleApi";
 import { api } from "@/src/api";
 import { COLORS, RADIUS, SPACING } from "@/src/theme";
+import ImageUploader from "@/src/components/ImageUploader";
 
 export default function AdminBanners() {
   const router = useRouter();
@@ -62,7 +63,7 @@ export default function AdminBanners() {
             <Input ph="Title" v={f.title} oc={(v: string) => setF({ ...f, title: v })} testID="bf-title" />
             <Input ph="Subtitle" v={f.subtitle} oc={(v: string) => setF({ ...f, subtitle: v })} testID="bf-sub" />
             <Input ph="CTA text" v={f.cta} oc={(v: string) => setF({ ...f, cta: v })} testID="bf-cta" />
-            <Input ph="Image URL" v={f.image} oc={(v: string) => setF({ ...f, image: v })} testID="bf-image" />
+            <ImageUploader value={f.image} onChange={(uri) => setF({ ...f, image: uri })} label="Banner Image" aspect={[16, 9]} testID="bf-image" />
             <View style={{ flexDirection: "row", gap: 8 }}>
               <View style={{ flex: 1 }}><Input ph="Color #" v={f.color} oc={(v: string) => setF({ ...f, color: v })} testID="bf-color" /></View>
               <View style={{ flex: 1 }}><Input ph="Order" v={f.order} oc={(v: string) => setF({ ...f, order: v })} testID="bf-order" /></View>

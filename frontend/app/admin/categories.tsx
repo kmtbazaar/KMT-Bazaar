@@ -7,6 +7,7 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { adminApi } from "@/src/roleApi";
 import { api } from "@/src/api";
 import { COLORS, RADIUS, SPACING } from "@/src/theme";
+import ImageUploader from "@/src/components/ImageUploader";
 
 export default function AdminCategories() {
   const router = useRouter();
@@ -58,7 +59,7 @@ export default function AdminCategories() {
             <Input ph="Name" v={f.name} oc={(v: string) => setF({ ...f, name: v })} testID="cf-name" />
             <Input ph="Icon (MaterialCommunityIcons name)" v={f.icon} oc={(v: string) => setF({ ...f, icon: v })} testID="cf-icon" />
             <Input ph="Color (#RRGGBB)" v={f.color} oc={(v: string) => setF({ ...f, color: v })} testID="cf-color" />
-            <Input ph="Image URL" v={f.image} oc={(v: string) => setF({ ...f, image: v })} testID="cf-image" />
+            <ImageUploader value={f.image} onChange={(uri) => setF({ ...f, image: uri })} label="Category Image" aspect={[1, 1]} testID="cf-image" />
             <View style={{ flexDirection: "row", gap: 8, marginTop: 8 }}>
               <Pressable onPress={() => setModal(false)} style={[ms.btn, ms.btnGhost]}><Text style={ms.btnGhostText}>Cancel</Text></Pressable>
               <Pressable testID="cf-save" onPress={save} style={[ms.btn, ms.btnPrimary]}><Text style={ms.btnText}>Create</Text></Pressable>

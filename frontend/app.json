@@ -9,14 +9,20 @@
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSPhotoLibraryUsageDescription": "Pick product photos from your gallery",
+        "NSCameraUsageDescription": "Take photos of products to list",
+        "NSPhotoLibraryAddUsageDescription": "Save downloaded images to your gallery"
+      }
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#000"
       },
-      "edgeToEdgeEnabled": true
+      "edgeToEdgeEnabled": true,
+      "permissions": ["CAMERA", "READ_MEDIA_IMAGES"]
     },
     "web": {
       "bundler": "metro",
@@ -34,7 +40,14 @@
           "backgroundColor": "#000"
         }
       ],
-      "expo-font"
+      "expo-font",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Pick product photos from your gallery",
+          "cameraPermission": "Take photos of products to list"
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true

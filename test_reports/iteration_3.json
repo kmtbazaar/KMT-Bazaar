@@ -1,0 +1,52 @@
+{
+  "summary": "Iteration 3 — Image upload (base64) regression for Admin panel (Products/Categories/Banners). BACKEND (17/17 pytest in test_image_upload.py PASSED): all 4 role logins (admin/vendor/delivery/customer) succeed; non-admin tokens get 403 and missing token gets 401 on /admin/* writes; admin POST/PUT /admin/products|/admin/categories|/admin/banners ACCEPT a real data URI 'data:image/jpeg;base64,...' up to 5 MB raw (~6.7 MB base64) WITHOUT 413 Payload Too Large — assertion `r.status_code != 413` held in every case; image is persisted byte-for-byte and returned in GET /api/products, /api/categories, /api/banners (length-equal check + prefix check); PUT swaps the image and GET reflects the change; DELETE round-trips to 404 cleanup. FRONTEND (390x844 mobile viewport, Expo web preview): admin login → routes to /admin → opening Add Product / Add Category / Add Banner modals all render the new ImageUploader with `*-image-gallery`, `*-image-camera`, `*-image-preview` testIDs and NO legacy `pf-image-url`/`cf-image-url`/`bf-image-url` field (all counts == 0, gallery/camera counts == 1). Customer login regression: /home loads cleanly with banners, categories, stores, trending products — 0 console errors during customer flow. Regression of full Phase 1 + Phase 2 suite: 39/41 passing — 2 failures are stale-data count assertions (categories now 6 instead of 5, products 16 instead of 15) due to a manual 'Two wheller' category + 1 extra product seeded by an earlier human UI session that was never cleaned; UNRELATED to image upload changes. 10 console warnings detected from admin modals: 'Unexpected text node: . A text node cannot be a child of a <View>' — should be investigated. Deprecated packages detected: none new (expo-image-picker is current; ImageUploader uses expo-image and MaterialCommunityIcons correctly). Pre-existing shadow* deprecation warnings still present (carried over from prior iterations).",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "GET /api/categories & /api/products", "issue": "Stale test data from prior manual UI run is still in DB ('Two wheller' category id=cat-e6a190 with empty image + 1 dangling product id=p-3db21ffb). Phase 1 count tests now fail (6 cats / 16 products vs. expected 5 / 15). Not a code bug; data hygiene only."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "Admin modals (ProductModal / CategoryModal / BannerModal)", "issue": "Console error (x10 across the 3 modals): 'Unexpected text node: . A text node cannot be a child of a <View>.' Likely a stray whitespace/string literal between JSX siblings inside one of admin/products.tsx, admin/categories.tsx or admin/banners.tsx (or in ImageUploader.tsx). Does not break rendering but pollutes the console and indicates an RN-Web violation.", "testID": "pf-image-* / cf-image-* / bf-image-*", "priority": "MEDIUM"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "/admin/categories", "issues": ["Stale category card 'Two wheller' (icon name as a raw string, no image, color '#rrbgd' which is not a valid hex) is rendered — visible in screenshot. Confirms backend allows arbitrary icon/color strings (no validation). Recommend tightening CategoryIn schema (icon enum, hex color regex) and deleting the orphan entry."]}
+    ],
+    "react_native_issues": [
+      {"component": "Admin modals (Product/Category/Banner) and/or ImageUploader", "issue": "RN-Web error 'Unexpected text node: . A text node cannot be a child of a <View>' fires repeatedly when these modals mount. Reference: /app/frontend/app/admin/products.tsx, /app/frontend/app/admin/categories.tsx, /app/frontend/app/admin/banners.tsx, /app/frontend/src/components/ImageUploader.tsx — look for stray spaces / template literal `' '` between JSX tags."},
+      {"component": "Carry-over from earlier iterations", "issue": "shadow* style props deprecation warnings still emitted ('shadow* style props are deprecated. Use boxShadow.'). Reference: theme/style files used by gradient/card components across admin/vendor/delivery panels."},
+      {"component": "expo-image", "issue": "Warning 'Image: style.resizeMode is deprecated. Please use props.resizeMode.' surfaced — check Image usages that pass resizeMode via style; switch to the prop. Reference: any <Image style={{resizeMode: ...}}> across the app."}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_image_upload.py (NEW — 17 tests; 17/17 pass)",
+    "/app/test_reports/pytest/image_upload.xml",
+    "/app/backend/tests/test_kmt_bazaar.py (Phase 1 regression)",
+    "/app/backend/tests/test_phase2_panels.py (Phase 2 regression)"
+  ],
+  "action_items": [
+    "Fix RN-Web 'Unexpected text node' warning that fires on opening any of the 3 admin modals. Most likely a stray whitespace/template-string between JSX siblings in admin/products.tsx, admin/categories.tsx, admin/banners.tsx, or ImageUploader.tsx. Use React DevTools / search for '{` `}' or stray text outside <Text>.",
+    "Clean stale demo data: delete category id 'cat-e6a190' (name 'Two wheller', color '#rrbgd', empty image) and product id 'p-3db21ffb' that were left by a prior manual UI test. After deletion, the Phase 1 count tests (5 categories / 15 products) will pass again — or relax those tests to `>=` if test-created entries are expected to persist.",
+    "(Optional hardening) Tighten CategoryIn (BannerIn / ProductIn) schema: validate `color` as a hex-color regex (e.g. ^#[0-9A-Fa-f]{6}$), and validate `icon` against an allowed icon set. Currently '#rrbgd' is accepted as a color.",
+    "(Optional) Add a server-side max-size guard / clearer 4xx for image fields > 5MB so a 50MB cap doesn't accidentally allow >10MB images that bloat MongoDB docs.",
+    "(Carry-over) Migrate shadow* → boxShadow and Image style.resizeMode → resizeMode prop to silence RN-Web warnings."
+  ],
+  "critical_code_review_comments": [
+    "server.py is now 1114 lines AND the image fields are unbounded strings (str). For a 50MB ingress cap, recommend adding a Pydantic Field(max_length=14_000_000) on ProductIn.image / CategoryIn.image / BannerIn.image to enforce a hard ceiling and return a clean 422 instead of MongoDB doc bloat.",
+    "Storing base64 image bytes directly in product/category/banner documents will pump the document size up close to MongoDB's 16MB BSON limit if a vendor uploads multiple 5MB images. Consider moving to GridFS or static file storage (saving only the URL in the doc) once volumes grow.",
+    "GET /api/products / /categories / /banners now serializes the full base64 in every list response — for 15 products with 2MB images each that's 30MB per home-screen call. Consider a lightweight list projection that omits `image` (or returns a thumbnail) and only loads full image on detail.",
+    "ImageUploader.tsx uses MediaTypeOptions.Images which is deprecated in expo-image-picker SDK 51+. Replace with `mediaTypes: ['images']` (string-array API) when upgrading SDK.",
+    "ImageUploader sets `quality: 0.7` but does not cap dimensions — a 12MP phone photo at 0.7 quality is often 3-4MB which is fine, but consider `allowsMultipleSelection: false` (already default) and an optional resize step (manipulator) before base64 to keep payload predictable."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_image_upload.py (NEW)"
+  ],
+  "success_rate": {"backend": "100% (17/17 new image-upload tests + 39/41 prior regression; the 2 prior failures are stale-data assertion mismatches unrelated to image upload)", "frontend": "100% on the image-uploader admin smoke flow (3/3 modals render correct testIDs, legacy URL TextInput gone). 10 console warnings observed but no red screen / no crash."},
+  "seed_data_creation": "All test-created data was cleaned up: 1 product, 1 category, 1 banner created and deleted in tests; 1 additional 5MB product created and deleted. No residual data added by this iteration. Note: leftover from a prior manual session — category 'Two wheller' (cat-e6a190) and product 'p-3db21ffb' — still present and visible in admin lists.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Admin add-button testIDs are `add-product-btn`, `add-cat-btn`, `add-banner-btn` (NOT 'admin-product-add'). Edit/Delete use `edit-{id}`/`del-{id}` (products) and `del-cat-{id}` (categories), `del-banner-{id}` (banners). Modal field testIDs: products use pf-{name|price|mrp|stock|unit|desc|trending|cancel|save} + pf-image-{preview|gallery|camera}; categories use cf-{name|icon|color|save} + cf-image-*; banners use bf-{title|subtitle|cta|color|order|save} + bf-image-*. Backend accepts base64 data URIs up to ~5MB without 413 (verified). Login screen testIDs: login-email-input, login-password-input, login-submit-button (note: NOT login-email/login-password as some scripts assumed). Auth landing is `/`; after login admin routes to `/admin`, customer to `/home`.",
+  "rca_of_issue": "No bug found in image-upload flow. The only new issue surfaced is a low-priority RN-Web warning ('Unexpected text node: . A text node cannot be a child of a <View>') that fires when any of the 3 admin modals mount — likely a stray whitespace/string between JSX siblings in the modal files or in ImageUploader.tsx. Repro: log in as admin, navigate to /admin/products (or /categories or /banners), tap '+' (testID add-product-btn / add-cat-btn / add-banner-btn). Open browser console and observe the error. Mitigation: search for `>{' '}<` or stray whitespace-only text nodes between JSX children in admin/products.tsx, admin/categories.tsx, admin/banners.tsx, and ImageUploader.tsx; wrap any literal text in <Text>."
+}
