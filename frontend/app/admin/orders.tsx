@@ -87,7 +87,7 @@ export default function AdminOrders() {
               </View>
               {NEXT[item.status] && (
                 <Pressable testID={`advance-${item.id}`} onPress={() => advance(item)} style={s.actionBtn}>
-                  <Text style={s.actionText}>Mark as {NEXT[item.status].replace("_", " ").toUpperCase()}</Text>
+                  <Text style={s.actionText}>Mark as {NEXT[item.status].replace(/_/g, " ").toUpperCase()}</Text>
                   <MaterialCommunityIcons name="arrow-right" color="#fff" size={16} />
                 </Pressable>
               )}
