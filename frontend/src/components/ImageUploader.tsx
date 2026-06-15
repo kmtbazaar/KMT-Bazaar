@@ -36,7 +36,7 @@ export default function ImageUploader({ value, onChange, label = "Photo", aspect
       }
       setBusy(true);
       const opts: ImagePicker.ImagePickerOptions = {
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        mediaTypes: ["images"],
         allowsEditing: true,
         aspect,
         quality: 0.7,
