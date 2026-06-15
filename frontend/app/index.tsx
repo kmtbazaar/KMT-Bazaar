@@ -43,9 +43,9 @@ export default function Index() {
     const t = setTimeout(() => {
       if (user) {
         if (user.role === "customer") router.replace("/(tabs)/home");
-        else if (user.role === "vendor") router.replace("/role/vendor");
-        else if (user.role === "delivery") router.replace("/role/delivery");
-        else if (user.role === "admin") router.replace("/role/admin");
+        else if (user.role === "vendor") router.replace("/vendor");
+        else if (user.role === "delivery") router.replace("/delivery");
+        else if (user.role === "admin") router.replace("/admin");
       } else {
         router.replace("/auth/login");
       }

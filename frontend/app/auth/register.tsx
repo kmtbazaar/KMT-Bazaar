@@ -28,7 +28,7 @@ export default function Register() {
     setError(null); setLoading(true);
     try {
       const user = await register({ name, email, phone, password, role });
-      router.replace(user.role === "customer" ? "/(tabs)/home" : (`/role/${user.role}` as any));
+      router.replace(user.role === "customer" ? "/(tabs)/home" : (`/${user.role}` as any));
     } catch (e: any) {
       setError(e.message || "Registration failed");
     } finally { setLoading(false); }

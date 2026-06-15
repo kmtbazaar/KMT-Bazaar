@@ -454,6 +454,402 @@ async def unread_count(current=Depends(get_current_user)):
     return {"count": c}
 
 
+# ------------------ ROLE GUARDS ------------------
+def require_roles(*roles):
+    async def _dep(current=Depends(get_current_user)):
+        if current.get("role") not in roles:
+            raise HTTPException(status_code=403, detail="Forbidden")
+        return current
+    return _dep
+
+
+# ------------------ ADMIN ------------------
+class ProductIn(BaseModel):
+    name: str
+    category_id: str
+    store_id: Optional[str] = None
+    price: float
+    mrp: Optional[float] = None
+    unit: str = ""
+    stock: int = 0
+    image: str = ""
+    description: str = ""
+    trending: bool = False
+
+
+class CategoryIn(BaseModel):
+    name: str
+    icon: str = "tag"
+    color: str = "#2563EB"
+    image: str = ""
+
+
+class BannerIn(BaseModel):
+    title: str
+    subtitle: str = ""
+    cta: str = "Shop Now"
+    image: str
+    color: str = "#2563EB"
+    order: int = 99
+    category_id: Optional[str] = None
+
+
+class OrderStatusIn(BaseModel):
+    status: str  # accepted | out_for_delivery | delivered | cancelled
+
+
+class CommissionIn(BaseModel):
+    percent: float
+
+
+@api.get("/admin/stats")
+async def admin_stats(_=Depends(require_roles("admin"))):
+    users_count = await db.users.count_documents({"role": "customer"})
+    vendors_count = await db.users.count_documents({"role": "vendor"})
+    delivery_count = await db.users.count_documents({"role": "delivery"})
+    products_count = await db.products.count_documents({})
+    orders_count = await db.orders.count_documents({})
+    pending_count = await db.orders.count_documents({"status": "pending"})
+    delivered_count = await db.orders.count_documents({"status": "delivered"})
+
+    revenue_cursor = db.orders.aggregate([
+        {"$group": {"_id": None, "total": {"$sum": "$total"}}}
+    ])
+    rev = 0.0
+    async for d in revenue_cursor:
+        rev = round(d.get("total", 0) or 0, 2)
+
+    settings = await db.settings.find_one({"id": "global"}, {"_id": 0}) or {"commission_percent": 10.0}
+    commission = settings.get("commission_percent", 10.0)
+    platform_earnings = round(rev * commission / 100, 2)
+
+    # last 7 days
+    from datetime import timedelta as _td
+    today = datetime.now(timezone.utc).date()
+    chart = []
+    for i in range(6, -1, -1):
+        d = today - _td(days=i)
+        start = datetime(d.year, d.month, d.day, tzinfo=timezone.utc).isoformat()
+        end = (datetime(d.year, d.month, d.day, tzinfo=timezone.utc) + _td(days=1)).isoformat()
+        c = await db.orders.count_documents({"created_at": {"$gte": start, "$lt": end}})
+        chart.append({"day": d.strftime("%a"), "orders": c})
+
+    return {
+        "users": users_count, "vendors": vendors_count, "delivery": delivery_count,
+        "products": products_count, "orders": orders_count,
+        "pending_orders": pending_count, "delivered_orders": delivered_count,
+        "revenue": rev, "platform_earnings": platform_earnings, "commission_percent": commission,
+        "chart": chart,
+    }
+
+
+@api.get("/admin/users")
+async def admin_users(role: Optional[str] = None, _=Depends(require_roles("admin"))):
+    q = {}
+    if role: q["role"] = role
+    users = await db.users.find(q, {"_id": 0, "password": 0}).sort("created_at", -1).to_list(500)
+    return users
+
+
+@api.post("/admin/users/{user_id}/toggle")
+async def admin_toggle_user(user_id: str, _=Depends(require_roles("admin"))):
+    user = await db.users.find_one({"id": user_id}, {"_id": 0})
+    if not user: raise HTTPException(404, "Not found")
+    new_state = not user.get("active", True)
+    await db.users.update_one({"id": user_id}, {"$set": {"active": new_state}})
+    return {"ok": True, "active": new_state}
+
+
+@api.get("/admin/orders")
+async def admin_orders(status: Optional[str] = None, _=Depends(require_roles("admin"))):
+    q = {}
+    if status: q["status"] = status
+    orders = await db.orders.find(q, {"_id": 0}).sort("created_at", -1).to_list(500)
+    # attach customer name
+    for o in orders:
+        u = await db.users.find_one({"id": o.get("user_id")}, {"_id": 0, "name": 1, "email": 1, "phone": 1})
+        o["customer"] = u or {}
+    return orders
+
+
+@api.post("/admin/orders/{order_id}/status")
+async def admin_update_order(order_id: str, data: OrderStatusIn, _=Depends(require_roles("admin"))):
+    o = await db.orders.find_one({"id": order_id}, {"_id": 0})
+    if not o: raise HTTPException(404, "Order not found")
+    timeline = o.get("timeline", [])
+    timeline.append({"status": data.status, "at": now_iso(), "label": data.status.replace("_", " ").title()})
+    await db.orders.update_one({"id": order_id}, {"$set": {"status": data.status, "timeline": timeline}})
+    # notify customer
+    await db.notifications.insert_one({
+        "id": str(uuid.uuid4()), "user_id": o["user_id"],
+        "title": f"Order {data.status.replace('_',' ').title()}",
+        "body": f"Order {o['order_no']} is now {data.status.replace('_',' ')}",
+        "type": "order", "read": False, "created_at": now_iso(),
+    })
+    return {"ok": True}
+
+
+@api.post("/admin/products")
+async def admin_create_product(data: ProductIn, _=Depends(require_roles("admin"))):
+    pid = "p-" + uuid.uuid4().hex[:8]
+    doc = {"id": pid, **data.dict(), "vendor_id": None}
+    if doc.get("mrp") is None: doc["mrp"] = doc["price"]
+    await db.products.insert_one(dict(doc))
+    doc.pop("_id", None)
+    return doc
+
+
+@api.put("/admin/products/{pid}")
+async def admin_update_product(pid: str, data: ProductIn, _=Depends(require_roles("admin"))):
+    upd = data.dict()
+    if upd.get("mrp") is None: upd["mrp"] = upd["price"]
+    res = await db.products.update_one({"id": pid}, {"$set": upd})
+    if res.matched_count == 0: raise HTTPException(404, "Not found")
+    return await db.products.find_one({"id": pid}, {"_id": 0})
+
+
+@api.delete("/admin/products/{pid}")
+async def admin_delete_product(pid: str, _=Depends(require_roles("admin"))):
+    await db.products.delete_one({"id": pid})
+    return {"ok": True}
+
+
+@api.post("/admin/categories")
+async def admin_create_cat(data: CategoryIn, _=Depends(require_roles("admin"))):
+    cid = "cat-" + uuid.uuid4().hex[:6]
+    doc = {"id": cid, **data.dict()}
+    await db.categories.insert_one(dict(doc))
+    doc.pop("_id", None)
+    return doc
+
+
+@api.delete("/admin/categories/{cid}")
+async def admin_delete_cat(cid: str, _=Depends(require_roles("admin"))):
+    await db.categories.delete_one({"id": cid})
+    return {"ok": True}
+
+
+@api.post("/admin/banners")
+async def admin_create_banner(data: BannerIn, _=Depends(require_roles("admin"))):
+    bid = "ban-" + uuid.uuid4().hex[:6]
+    doc = {"id": bid, **data.dict()}
+    await db.banners.insert_one(dict(doc))
+    doc.pop("_id", None)
+    return doc
+
+
+@api.delete("/admin/banners/{bid}")
+async def admin_delete_banner(bid: str, _=Depends(require_roles("admin"))):
+    await db.banners.delete_one({"id": bid})
+    return {"ok": True}
+
+
+@api.get("/admin/commission")
+async def admin_get_commission(_=Depends(require_roles("admin"))):
+    s = await db.settings.find_one({"id": "global"}, {"_id": 0})
+    return s or {"id": "global", "commission_percent": 10.0}
+
+
+@api.post("/admin/commission")
+async def admin_set_commission(data: CommissionIn, _=Depends(require_roles("admin"))):
+    await db.settings.update_one({"id": "global"}, {"$set": {"commission_percent": data.percent}}, upsert=True)
+    return {"ok": True, "commission_percent": data.percent}
+
+
+# ------------------ VENDOR ------------------
+async def _vendor_store_ids(vendor_id: str):
+    stores = await db.stores.find({"vendor_id": vendor_id}, {"_id": 0}).to_list(50)
+    return [s["id"] for s in stores], stores
+
+
+@api.get("/vendor/stats")
+async def vendor_stats(current=Depends(require_roles("vendor"))):
+    store_ids, stores = await _vendor_store_ids(current["id"])
+    products_count = await db.products.count_documents({"store_id": {"$in": store_ids}}) if store_ids else 0
+    # orders that contain at least one of my products
+    if store_ids:
+        product_ids = [p["id"] async for p in db.products.find({"store_id": {"$in": store_ids}}, {"id": 1})]
+    else:
+        product_ids = []
+    orders = await db.orders.find({"items.product_id": {"$in": product_ids}}, {"_id": 0}).to_list(500) if product_ids else []
+    revenue = 0.0; pending = 0; delivered = 0
+    for o in orders:
+        for it in o.get("items", []):
+            if it["product_id"] in product_ids:
+                revenue += it.get("line_total", 0)
+        if o.get("status") == "pending": pending += 1
+        if o.get("status") == "delivered": delivered += 1
+    settings = await db.settings.find_one({"id": "global"}, {"_id": 0}) or {}
+    commission = settings.get("commission_percent", 10.0)
+    payout = round(revenue * (1 - commission / 100), 2)
+    return {
+        "stores": stores, "products": products_count,
+        "orders": len(orders), "pending": pending, "delivered": delivered,
+        "revenue": round(revenue, 2), "commission_percent": commission, "payout": payout,
+    }
+
+
+@api.get("/vendor/products")
+async def vendor_products(current=Depends(require_roles("vendor"))):
+    store_ids, _ = await _vendor_store_ids(current["id"])
+    if not store_ids: return []
+    return await db.products.find({"store_id": {"$in": store_ids}}, {"_id": 0}).to_list(500)
+
+
+@api.post("/vendor/products")
+async def vendor_create_product(data: ProductIn, current=Depends(require_roles("vendor"))):
+    store_ids, stores = await _vendor_store_ids(current["id"])
+    sid = data.store_id or (store_ids[0] if store_ids else None)
+    if sid not in store_ids:
+        raise HTTPException(400, "Invalid store for vendor")
+    pid = "p-" + uuid.uuid4().hex[:8]
+    doc = data.dict(); doc["store_id"] = sid
+    if doc.get("mrp") is None: doc["mrp"] = doc["price"]
+    doc.update({"id": pid, "vendor_id": current["id"]})
+    await db.products.insert_one(dict(doc))
+    doc.pop("_id", None)
+    return doc
+
+
+@api.put("/vendor/products/{pid}")
+async def vendor_update_product(pid: str, data: ProductIn, current=Depends(require_roles("vendor"))):
+    store_ids, _ = await _vendor_store_ids(current["id"])
+    p = await db.products.find_one({"id": pid}, {"_id": 0})
+    if not p or p.get("store_id") not in store_ids:
+        raise HTTPException(404, "Not your product")
+    upd = data.dict()
+    if upd.get("mrp") is None: upd["mrp"] = upd["price"]
+    await db.products.update_one({"id": pid}, {"$set": upd})
+    return await db.products.find_one({"id": pid}, {"_id": 0})
+
+
+@api.delete("/vendor/products/{pid}")
+async def vendor_delete_product(pid: str, current=Depends(require_roles("vendor"))):
+    store_ids, _ = await _vendor_store_ids(current["id"])
+    p = await db.products.find_one({"id": pid}, {"_id": 0})
+    if not p or p.get("store_id") not in store_ids:
+        raise HTTPException(404, "Not your product")
+    await db.products.delete_one({"id": pid})
+    return {"ok": True}
+
+
+@api.get("/vendor/orders")
+async def vendor_orders(current=Depends(require_roles("vendor"))):
+    store_ids, _ = await _vendor_store_ids(current["id"])
+    if not store_ids: return []
+    product_ids = [p["id"] async for p in db.products.find({"store_id": {"$in": store_ids}}, {"id": 1})]
+    orders = await db.orders.find({"items.product_id": {"$in": product_ids}}, {"_id": 0}).sort("created_at", -1).to_list(200)
+    # attach customer
+    for o in orders:
+        u = await db.users.find_one({"id": o.get("user_id")}, {"_id": 0, "name": 1, "phone": 1})
+        o["customer"] = u or {}
+        # only include vendor's items + their subtotal
+        o["my_items"] = [it for it in o.get("items", []) if it["product_id"] in product_ids]
+        o["my_revenue"] = round(sum(it["line_total"] for it in o["my_items"]), 2)
+    return orders
+
+
+# ------------------ DELIVERY ------------------
+class OnlineIn(BaseModel):
+    online: bool
+
+
+@api.post("/delivery/online")
+async def delivery_online(data: OnlineIn, current=Depends(require_roles("delivery"))):
+    await db.users.update_one({"id": current["id"]}, {"$set": {"online": data.online}})
+    return {"online": data.online}
+
+
+@api.get("/delivery/me")
+async def delivery_me(current=Depends(require_roles("delivery"))):
+    u = await db.users.find_one({"id": current["id"]}, {"_id": 0, "password": 0})
+    return {"online": u.get("online", False) if u else False}
+
+
+@api.get("/delivery/available")
+async def delivery_available(current=Depends(require_roles("delivery"))):
+    """Orders ready for pickup: status=accepted and no delivery partner assigned."""
+    orders = await db.orders.find({"status": "accepted", "delivery_id": {"$in": [None, ""]}},
+                                  {"_id": 0}).sort("created_at", -1).to_list(50)
+    for o in orders:
+        u = await db.users.find_one({"id": o.get("user_id")}, {"_id": 0, "name": 1, "phone": 1})
+        o["customer"] = u or {}
+    return orders
+
+
+@api.post("/delivery/orders/{order_id}/claim")
+async def delivery_claim(order_id: str, current=Depends(require_roles("delivery"))):
+    o = await db.orders.find_one({"id": order_id}, {"_id": 0})
+    if not o: raise HTTPException(404, "Not found")
+    if o.get("delivery_id"): raise HTTPException(400, "Already claimed")
+    timeline = o.get("timeline", [])
+    timeline.append({"status": "out_for_delivery", "at": now_iso(), "label": "Out for Delivery"})
+    await db.orders.update_one({"id": order_id}, {"$set": {
+        "delivery_id": current["id"], "status": "out_for_delivery", "timeline": timeline,
+    }})
+    await db.notifications.insert_one({
+        "id": str(uuid.uuid4()), "user_id": o["user_id"], "title": "Out for delivery",
+        "body": f"Your order {o['order_no']} is on the way!", "type": "delivery", "read": False, "created_at": now_iso(),
+    })
+    return {"ok": True}
+
+
+@api.post("/delivery/orders/{order_id}/delivered")
+async def delivery_mark_delivered(order_id: str, current=Depends(require_roles("delivery"))):
+    o = await db.orders.find_one({"id": order_id, "delivery_id": current["id"]}, {"_id": 0})
+    if not o: raise HTTPException(404, "Not assigned to you")
+    timeline = o.get("timeline", [])
+    timeline.append({"status": "delivered", "at": now_iso(), "label": "Delivered"})
+    await db.orders.update_one({"id": order_id}, {"$set": {"status": "delivered", "timeline": timeline}})
+    await db.notifications.insert_one({
+        "id": str(uuid.uuid4()), "user_id": o["user_id"], "title": "Order delivered",
+        "body": f"Your order {o['order_no']} has been delivered. Enjoy!", "type": "delivery", "read": False, "created_at": now_iso(),
+    })
+    return {"ok": True}
+
+
+@api.get("/delivery/my")
+async def delivery_my(current=Depends(require_roles("delivery"))):
+    orders = await db.orders.find({"delivery_id": current["id"]}, {"_id": 0}).sort("created_at", -1).to_list(200)
+    for o in orders:
+        u = await db.users.find_one({"id": o.get("user_id")}, {"_id": 0, "name": 1, "phone": 1})
+        o["customer"] = u or {}
+    return orders
+
+
+@api.get("/delivery/stats")
+async def delivery_stats(current=Depends(require_roles("delivery"))):
+    orders = await db.orders.find({"delivery_id": current["id"]}, {"_id": 0}).to_list(500)
+    total = len(orders)
+    delivered = sum(1 for o in orders if o.get("status") == "delivered")
+    # ₹30 per delivery (flat payout)
+    earnings = delivered * 30
+    today = datetime.now(timezone.utc).date().isoformat()
+    today_orders = [o for o in orders if (o.get("created_at") or "")[:10] == today]
+    return {
+        "total": total, "delivered": delivered, "active": total - delivered,
+        "earnings": earnings, "today_orders": len(today_orders),
+    }
+
+
+# Auto-accept pending orders (admin/vendor would do this; for demo we expose vendor endpoint)
+@api.post("/vendor/orders/{order_id}/accept")
+async def vendor_accept(order_id: str, current=Depends(require_roles("vendor"))):
+    o = await db.orders.find_one({"id": order_id}, {"_id": 0})
+    if not o: raise HTTPException(404, "Not found")
+    timeline = o.get("timeline", [])
+    timeline.append({"status": "accepted", "at": now_iso(), "label": "Accepted by vendor"})
+    await db.orders.update_one({"id": order_id}, {"$set": {"status": "accepted", "timeline": timeline}})
+    await db.notifications.insert_one({
+        "id": str(uuid.uuid4()), "user_id": o["user_id"], "title": "Order accepted",
+        "body": f"Your order {o['order_no']} has been accepted by the vendor.", "type": "order",
+        "read": False, "created_at": now_iso(),
+    })
+    return {"ok": True}
+
+
+
+
 # ------------------ SEED ------------------
 SEED_CATEGORIES = [
     {"id": "cat-grocery", "name": "Grocery", "icon": "cart-outline", "color": "#16A34A",
@@ -596,6 +992,12 @@ async def seed_db():
             "phone": "9000000002", "password": hash_password("Vendor@123"),
             "role": Role.VENDOR.value, "avatar": None, "created_at": now_iso(),
         })
+    if not await db.users.find_one({"email": "vendor2@kmtbazaar.com"}):
+        await db.users.insert_one({
+            "id": str(uuid.uuid4()), "name": "TechWorld Owner", "email": "vendor2@kmtbazaar.com",
+            "phone": "9000000004", "password": hash_password("Vendor@123"),
+            "role": Role.VENDOR.value, "avatar": None, "created_at": now_iso(),
+        })
     if not await db.users.find_one({"email": "delivery@kmtbazaar.com"}):
         await db.users.insert_one({
             "id": str(uuid.uuid4()), "name": "Demo Delivery", "email": "delivery@kmtbazaar.com",
@@ -615,6 +1017,71 @@ async def seed_db():
     # Products
     if await db.products.count_documents({}) == 0:
         await db.products.insert_many([dict(p) for p in SEED_PRODUCTS])
+
+    # Link demo vendors to stores (idempotent)
+    vendor1 = await db.users.find_one({"email": "vendor@kmtbazaar.com"})
+    vendor2 = await db.users.find_one({"email": "vendor2@kmtbazaar.com"})
+    if vendor1:
+        # Demo Vendor owns Fresh Mart (st-1) + Tasty Bites (st-4)
+        await db.stores.update_many({"id": {"$in": ["st-1", "st-4"]}}, {"$set": {"vendor_id": vendor1["id"]}})
+        await db.products.update_many({"store_id": {"$in": ["st-1", "st-4"]}}, {"$set": {"vendor_id": vendor1["id"]}})
+    if vendor2:
+        await db.stores.update_many({"id": {"$in": ["st-2", "st-3"]}}, {"$set": {"vendor_id": vendor2["id"]}})
+        await db.products.update_many({"store_id": {"$in": ["st-2", "st-3"]}}, {"$set": {"vendor_id": vendor2["id"]}})
+
+    # Default settings
+    if not await db.settings.find_one({"id": "global"}):
+        await db.settings.insert_one({"id": "global", "commission_percent": 10.0})
+
+    # Seed a few demo orders if none for showcase
+    if await db.orders.count_documents({}) == 0:
+        cust = await db.users.find_one({"email": "customer@kmtbazaar.com"})
+        if cust:
+            addr = {
+                "id": str(uuid.uuid4()), "user_id": cust["id"], "label": "Home",
+                "full_name": "Demo Customer", "phone": "9000000001",
+                "line1": "Flat 302, Skyline Apartments", "line2": "Sector 62",
+                "city": "Noida", "state": "UP", "pincode": "201301", "is_default": True,
+                "created_at": now_iso(),
+            }
+            if not await db.addresses.find_one({"user_id": cust["id"]}):
+                await db.addresses.insert_one(dict(addr))
+
+            demo_orders = [
+                ("delivered", [("p-1", 2), ("p-3", 1)], "cod"),
+                ("accepted", [("p-10", 1)], "online"),
+                ("pending", [("p-5", 1), ("p-7", 2)], "cod"),
+            ]
+            from datetime import timedelta as _td2
+            base_dt = datetime.now(timezone.utc)
+            for i, (st, items_in, pm) in enumerate(demo_orders):
+                items = []
+                subtotal = 0.0
+                for pid, qty in items_in:
+                    p = await db.products.find_one({"id": pid}, {"_id": 0})
+                    if not p: continue
+                    lt = p["price"] * qty
+                    subtotal += lt
+                    items.append({
+                        "product_id": p["id"], "name": p["name"], "image": p.get("image"),
+                        "price": p["price"], "mrp": p.get("mrp", p["price"]), "quantity": qty,
+                        "variant": None, "unit": p.get("unit", ""), "line_total": round(lt, 2),
+                    })
+                delivery_fee = 0 if subtotal >= 199 else 25
+                tax = round(subtotal * 0.05, 2)
+                total = round(subtotal + delivery_fee + tax, 2)
+                oid = str(uuid.uuid4())
+                ono = "KMT" + (base_dt - _td2(days=i)).strftime("%y%m%d") + oid[:4].upper()
+                await db.orders.insert_one({
+                    "id": oid, "order_no": ono, "user_id": cust["id"], "items": items,
+                    "subtotal": round(subtotal, 2), "delivery_fee": delivery_fee, "tax": tax, "total": total,
+                    "address": addr, "payment_method": pm,
+                    "payment_status": "paid" if pm == "online" or st == "delivered" else "pending",
+                    "status": st, "notes": "",
+                    "delivery_id": None,
+                    "timeline": [{"status": "pending", "at": now_iso(), "label": "Order placed"}],
+                    "created_at": (base_dt - _td2(days=i)).isoformat(),
+                })
 
 
 @app.on_event("startup")

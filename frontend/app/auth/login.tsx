@@ -30,7 +30,7 @@ export default function Login() {
       await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       const user = await login(email.trim(), password);
       if (user.role === "customer") router.replace("/(tabs)/home");
-      else router.replace(`/role/${user.role}` as any);
+      else router.replace(`/${user.role}` as any);
     } catch (e: any) {
       setError(e.message || "Login failed");
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
@@ -49,7 +49,7 @@ export default function Login() {
     setError(null); setLoading(true);
     try {
       const user = await loginOtp(phone, otp);
-      router.replace(user.role === "customer" ? "/(tabs)/home" : `/role/${user.role}` as any);
+      router.replace(user.role === "customer" ? "/(tabs)/home" : `/${user.role}` as any);
     } catch (e: any) {
       setError(e.message || "Invalid OTP");
     } finally { setLoading(false); }
