@@ -1,0 +1,179 @@
+{
+  "app_name": "KMT Bazaar",
+  "personality": "2 Material You / Expressive adapted for premium dense e-commerce",
+  "personality_one_liner": "A fast, premium, and trustworthy marketplace blending Material 3 adaptive surfaces with high-density e-commerce clarity.",
+  "color": {
+    "surface": { "light": "#FFFFFF", "dark": "#0A0A0A" },
+    "onSurface": { "light": "#171717", "dark": "#F5F5F5" },
+    "surfaceSecondary": { "light": "#F8FAFC", "dark": "#171717" },
+    "onSurfaceSecondary": { "light": "#334155", "dark": "#D4D4D8" },
+    "surfaceTertiary": { "light": "#F1F5F9", "dark": "#262626" },
+    "onSurfaceTertiary": { "light": "#475569", "dark": "#A1A1AA" },
+    "surfaceInverse": { "light": "#0A0A0A", "dark": "#FFFFFF" },
+    "onSurfaceInverse": { "light": "#FFFFFF", "dark": "#0A0A0A" },
+    "brand": { "light": "#2563EB", "dark": "#3B82F6" },
+    "brandPrimary": { "light": "#2563EB", "dark": "#3B82F6" },
+    "onBrandPrimary": { "light": "#FFFFFF", "dark": "#FFFFFF" },
+    "brandSecondary": { "light": "#F97316", "dark": "#FF8A3D" },
+    "onBrandSecondary": { "light": "#FFFFFF", "dark": "#000000" },
+    "brandTertiary": { "light": "#EFF6FF", "dark": "#1E3A8A" },
+    "onBrandTertiary": { "light": "#1E40AF", "dark": "#DBEAFE" },
+    "success": { "light": "#16A34A", "dark": "#22C55E" },
+    "onSuccess": { "light": "#FFFFFF", "dark": "#000000" },
+    "warning": { "light": "#EAB308", "dark": "#FACC15" },
+    "onWarning": { "light": "#000000", "dark": "#000000" },
+    "error": { "light": "#DC2626", "dark": "#EF4444" },
+    "onError": { "light": "#FFFFFF", "dark": "#FFFFFF" },
+    "info": { "light": "#0284C7", "dark": "#38BDF8" },
+    "onInfo": { "light": "#FFFFFF", "dark": "#000000" },
+    "border": { "light": "#E2E8F0", "dark": "#27272A" },
+    "borderStrong": { "light": "#CBD5E1", "dark": "#3F3F46" },
+    "divider": { "light": "#F1F5F9", "dark": "#1F1F22" }
+  },
+  "typography": {
+    "displayFontFamily": "Plus Jakarta Sans",
+    "textFontFamily": "Geist",
+    "scale": {
+      "sm": 12,
+      "base": 14,
+      "lg": 16,
+      "xl": 20,
+      "2xl": 24
+    }
+  },
+  "spacing": {
+    "rule": "Intentional padding around content. Dense list items but readable. Sticky CTAs at bottom with safe-area padding.",
+    "xs": 4,
+    "sm": 8,
+    "md": 12,
+    "lg": 16,
+    "xl": 24,
+    "2xl": 32,
+    "3xl": 48
+  },
+  "radius_tokens": {
+    "sm": 6,
+    "md": 12,
+    "lg": 20,
+    "pill": 999
+  },
+  "shadow_tier": "0",
+  "navigation": "bottom_tabs",
+  "icon_set": "MaterialCommunityIcons",
+  "glassmorphism": {
+    "enabled": "true",
+    "do's": [
+      "Bottom tab bar",
+      "Sticky top header over scrolling content",
+      "Floating cart badge overlay",
+      "Bottom sheet handles"
+    ],
+    "dont's": [
+      "Product cards",
+      "Form inputs",
+      "List rows",
+      "Body content"
+    ]
+  },
+  "platform_libraries": {
+    "glass": {
+      "ios": "expo-glass-effect",
+      "android": "expo-blur",
+      "low_end_android_fallback": "solid surfaceSecondary"
+    },
+    "image": "expo-image",
+    "blur": "expo-blur",
+    "bottom_sheet": "@gorhom/bottom-sheet",
+    "animation": "react-native-reanimated",
+    "gesture": "react-native-gesture-handler"
+  },
+  "screens": [
+    {
+      "name": "Splash",
+      "purpose": "Animated brand logo reveal",
+      "states": {
+        "loading": "Logo centered with animated scaling and fade",
+        "empty": "",
+        "error": ""
+      },
+      "layout": "Full-screen surface. Logo placed at center. Uses Reanimated for logo reveal and typography fade-in."
+    },
+    {
+      "name": "Home",
+      "purpose": "High-density storefront for discovery and quick access",
+      "states": {
+        "loading": "Shimmer effect on banner, category circles, and product cards",
+        "empty": "",
+        "error": "Full screen retry state"
+      },
+      "layout": "Top bar: Location selector & Delivery ETA. Search bar (voice-enabled UI). Swipeable hero banner carousel. Category grid (2 rows of 4 circular/rounded icons). Horizontal scrolling lists for 'Trending Products' and 'Daily Essentials'. Bottom tabs. Sticky cart summary if items in cart."
+    },
+    {
+      "name": "Product Detail Page",
+      "purpose": "Conversion-focused detailed view of a single item",
+      "states": {
+        "loading": "Skeleton image carousel and text lines",
+        "empty": "",
+        "error": "Error message with back button"
+      },
+      "layout": "Hero image carousel with swipe & dots. Title, rating, pricing block. Material 3 variant chips for size/color. Delivery promise block. Collapsible description. Sticky bottom container: 'Add to Cart' (brandSecondary Orange) alongside quantity stepper."
+    },
+    {
+      "name": "Cart",
+      "purpose": "Review items, update quantities, and proceed to checkout",
+      "states": {
+        "loading": "Skeleton list items",
+        "empty": "Empty cart illustration, 'Start Shopping' CTA",
+        "error": "Failed to load cart"
+      },
+      "layout": "List of cart items with integrated quantity steppers. Bill details/summary breakdown card. Delivery instruction card. Sticky bottom checkout CTA with total price clearly displayed."
+    }
+  ],
+  "images": {
+    "brand_logo": {
+      "url": "https://customer-assets.emergentagent.com/job_1ae74cf0-8aee-427c-ac11-8ee2e0303df6/artifacts/xvwo5fui_file_00000000af4c720b99befeb2888762a7.png",
+      "alt": "KMT Bazaar Logo"
+    },
+    "hero_banner_grocery": {
+      "url": "https://images.unsplash.com/photo-1516594798947-e65505dbb29d?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1NzR8MHwxfHNlYXJjaHwxfHxncm9jZXJ5JTIwZnJlc2glMjBmb29kJTIwZGVsaXZlcnklMjBiYW5uZXJ8ZW58MHx8fHwxNzgxNTQ0NTU1fDA&ixlib=rb-4.1.0&q=85",
+      "alt": "Fresh Grocery Delivery Banner"
+    },
+    "category_fashion": {
+      "url": "https://images.unsplash.com/photo-1483985988355-763728e1935b?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1Mjh8MHwxfHNlYXJjaHwxfHxmYXNoaW9uJTIwY2xvdGhpbmclMjBzaG9wcGluZ3xlbnwwfHx8fDE3ODE1NDQ1NTV8MA&ixlib=rb-4.1.0&q=85",
+      "alt": "Fashion Category"
+    },
+    "category_grocery": {
+      "url": "https://images.unsplash.com/photo-1542838132-92c53300491e?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjAzMzN8MHwxfHNlYXJjaHwxfHxmcmVzaCUyMHZlZ2V0YWJsZXMlMjBncm9jZXJ5fGVufDB8fHx8MTc4MTU0NDU1NXww&ixlib=rb-4.1.0&q=85",
+      "alt": "Grocery Category"
+    },
+    "product_headphones": {
+      "url": "https://images.unsplash.com/photo-1618366712010-f4ae9c647dcb?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjAzNTl8MHwxfHNlYXJjaHwxfHx3aXJlbGVzcyUyMGhlYWRwaG9uZXMlMjBwcmVtaXVtfGVufDB8fHx8MTc4MTU0NDU1NXww&ixlib=rb-4.1.0&q=85",
+      "alt": "Premium Wireless Headphones"
+    },
+    "empty_cart": {
+      "url": "https://images.unsplash.com/photo-1557821552-17105176677c?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2OTF8MHwxfHNlYXJjaHwxfHxlbXB0eSUyMHNob3BwaW5nJTIwY2FydCUyMGJhc2tldHxlbnwwfHx8fDE3ODE1NDQ1NTV8MA&ixlib=rb-4.1.0&q=85",
+      "alt": "Empty Shopping Cart"
+    },
+    "category_medicine": {
+      "url": "https://images.unsplash.com/photo-1631549916768-4119b2e5f926?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDQ2Mzl8MHwxfHNlYXJjaHwxfHxtZWRpY2luZSUyMHBoYXJtYWN5JTIwcGlsbHN8ZW58MHx8fHwxNzgxNTQ0NTU1fDA&ixlib=rb-4.1.0&q=85",
+      "alt": "Medicine Pharmacy"
+    }
+  },
+  "haptics": {
+    "button_press": "impactLight",
+    "add_to_cart": "impactMedium",
+    "tab_switch": "selection",
+    "pull_to_refresh": "impactMedium",
+    "fly_to_cart_success": "notificationSuccess"
+  },
+  "instructions_to_main_agent": [
+    "Strictly follow the color palette derived from the provided logo: Royal Blue (#2563EB) for primary branding/headers and Vibrant Orange (#F97316) for primary conversion CTAs (Add to Cart, Checkout).",
+    "Material 3 compliance: Use tonal layering for components (elevation 0). Use Pill shapes (radius 999) for primary buttons and chips. Use large rounded corners (md/lg) for cards.",
+    "Implement a fast, dense 'Amazon/Blinkit' inspired layout for the Home Screen. Prioritize search bar, location, and swipeable banners. Use sticky Add-to-cart patterns.",
+    "Ensure 'fly-to-cart' animation is implemented using `react-native-reanimated`. When user clicks 'Add to Cart', an animated element flies to the cart tab icon, followed by a haptic `notificationSuccess` and an animated badge increment.",
+    "Use Skeleton loaders (`expo-linear-gradient` with reanimated) for Home and PDP loading states. Do not use generic spinners for content feeds.",
+    "The notification bell in the header must have an animated badge (subtle pulse or bounce on new notification).",
+    "All interactive elements (buttons, quantity steppers, cart icons) must have `hitSlop` of at least 44x44 and trigger defined haptics.",
+    "Ensure bottom tabs have a glassmorphism effect using `expo-blur` / `expo-glass-effect` for a premium feel as requested."
+  ]
+}
