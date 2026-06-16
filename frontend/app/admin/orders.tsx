@@ -69,7 +69,11 @@ export default function AdminOrders() {
         renderItem={({ item }) => {
           const st = STATUSES.find((x) => x.key === item.status);
           return (
-            <View style={s.card} testID={`order-row-${item.id}`}>
+            <Pressable
+              style={s.card}
+              testID={`order-row-${item.id}`}
+              onPress={() => router.push(`/admin/orders/${item.id}` as any)}
+            >
               <View style={s.cardHead}>
                 <Text style={s.orderNo}>#{item.order_no}</Text>
                 <View style={[s.statusPill, { borderColor: st?.color || COLORS.brand, backgroundColor: (st?.color || COLORS.brand) + "22" }]}>
@@ -78,20 +82,21 @@ export default function AdminOrders() {
               </View>
               <Text style={s.cust}>{item.customer?.name || "Customer"} · {item.customer?.phone || ""}</Text>
               <View style={s.row}>
-                {item.items[0] && <Image source={{ uri: item.items[0].image }} style={s.img} contentFit="cover" />}
+                {item.items?.[0] && <Image source={{ uri: item.items[0].image }} style={s.img} contentFit="cover" />}
                 <View style={{ flex: 1 }}>
-                  <Text style={s.itemName} numberOfLines={1}>{item.items[0]?.name}{item.items.length > 1 ? ` + ${item.items.length - 1}` : ""}</Text>
+                  <Text style={s.itemName} numberOfLines={1}>{item.items?.[0]?.name}{(item.items?.length ?? 0) > 1 ? ` + ${item.items.length - 1}` : ""}</Text>
                   <Text style={s.meta}>{new Date(item.created_at).toLocaleString()}</Text>
-                  <Text style={s.total}>₹{item.total} · {item.payment_method?.toUpperCase()}</Text>
+                  <Text style={s.total}>₹{item.final_amount ?? item.total} · {item.payment_method?.toUpperCase()}</Text>
                 </View>
+                <MaterialCommunityIcons name="chevron-right" size={22} color={COLORS.textMuted} />
               </View>
               {NEXT[item.status] && (
-                <Pressable testID={`advance-${item.id}`} onPress={() => advance(item)} style={s.actionBtn}>
+                <Pressable testID={`advance-${item.id}`} onPress={(e) => { e.stopPropagation?.(); advance(item); }} style={s.actionBtn}>
                   <Text style={s.actionText}>Mark as {NEXT[item.status].replace(/_/g, " ").toUpperCase()}</Text>
                   <MaterialCommunityIcons name="arrow-right" color="#fff" size={16} />
                 </Pressable>
               )}
-            </View>
+            </Pressable>
           );
         }}
       />

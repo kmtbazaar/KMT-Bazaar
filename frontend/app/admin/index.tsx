@@ -13,13 +13,15 @@ import { COLORS, LOGO_URL, RADIUS, SPACING, shadow } from "@/src/theme";
 const { width } = Dimensions.get("window");
 
 const ACTIONS = [
+  { icon: "shield-check-outline", label: "Vendor Approvals", path: "/admin/vendor-approvals", color: "#DC2626" },
+  { icon: "package-check", label: "Product Approvals", path: "/admin/product-approvals", color: "#7C3AED" },
+  { icon: "clipboard-list-outline", label: "All Orders", path: "/admin/orders", color: "#DC2626" },
   { icon: "account-group-outline", label: "Customers", path: "/admin/users?role=customer", color: "#2563EB" },
   { icon: "store-outline", label: "Vendors", path: "/admin/users?role=vendor", color: "#F97316" },
-  { icon: "moped-outline", label: "Delivery Partners", path: "/admin/users?role=delivery", color: "#16A34A" },
+  { icon: "moped-outline", label: "Delivery", path: "/admin/users?role=delivery", color: "#16A34A" },
   { icon: "package-variant", label: "Products", path: "/admin/products", color: "#9333EA" },
   { icon: "tag-multiple-outline", label: "Categories", path: "/admin/categories", color: "#DB2777" },
   { icon: "image-multiple-outline", label: "Banners", path: "/admin/banners", color: "#0891B2" },
-  { icon: "clipboard-list-outline", label: "All Orders", path: "/admin/orders", color: "#DC2626" },
   { icon: "currency-inr", label: "Commission", path: "/admin/commission", color: "#CA8A04" },
 ];
 
