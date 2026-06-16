@@ -12,6 +12,7 @@ import { api } from "@/src/api";
 import { useAuth } from "@/src/AuthContext";
 import { COLORS, LOGO_URL, RADIUS, SPACING, shadow } from "@/src/theme";
 import ProductCard from "@/src/components/ProductCard";
+import CheckoutBar from "@/src/components/CheckoutBar";
 
 const { width } = Dimensions.get("window");
 const BANNER_W = width - 32;
@@ -169,6 +170,7 @@ export default function Home() {
           </View>
         </View>
       </ScrollView>
+      <CheckoutBar />
     </View>
   );
 }
