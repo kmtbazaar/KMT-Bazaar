@@ -867,8 +867,8 @@ async def admin_create_product(data: ProductIn, _=Depends(require_roles("admin")
 
 @api.put("/admin/products/{pid}")
 async def admin_update_product(pid: str, data: ProductIn, _=Depends(require_roles("admin"))):
-    upd = data.dict()
-    if upd.get("mrp") is None: upd["mrp"] = upd["price"]
+    upd = {k: v for k, v in data.dict().items() if v is not None}
+    if upd.get("mrp") is None: upd["mrp"] = upd.get("price")
     upd["updated_at"] = now_iso()
     res = await db.products.update_one({"id": pid}, {"$set": upd})
     if res.matched_count == 0: raise HTTPException(404, "Not found")
@@ -1061,8 +1061,8 @@ async def vendor_update_product(pid: str, data: ProductIn, current=Depends(requi
     p = await db.products.find_one({"id": pid, "vendor_id": current["id"]}, {"_id": 0})
     if not p:
         raise HTTPException(404, "Not your product")
-    upd = data.dict()
-    if upd.get("mrp") is None: upd["mrp"] = upd["price"]
+    upd = {k: v for k, v in data.dict().items() if v is not None}
+    if upd.get("mrp") is None: upd["mrp"] = upd.get("price")
     # Edits force re-approval
     upd["status"] = ProductStatus.PENDING.value
     upd["updated_at"] = now_iso()
@@ -1441,6 +1441,13 @@ async def seed_db():
     # Products
     if await db.products.count_documents({}) == 0:
         await db.products.insert_many([dict(p) for p in SEED_PRODUCTS])
+
+    # Self-heal: restore store_id on seed products if it got nulled by prior admin edits
+    for sp in SEED_PRODUCTS:
+        await db.products.update_one(
+            {"id": sp["id"], "$or": [{"store_id": None}, {"store_id": {"$exists": False}}]},
+            {"$set": {"store_id": sp["store_id"]}}
+        )
 
     # Link demo vendors to stores (idempotent)
     vendor1 = await db.users.find_one({"email": "vendor@kmtbazaar.com"})
