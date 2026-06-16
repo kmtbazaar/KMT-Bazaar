@@ -40,6 +40,31 @@ class Role(str, Enum):
     ADMIN = "admin"
 
 
+class VendorStatus(str, Enum):
+    PENDING = "pending"
+    APPROVED = "approved"
+    REJECTED = "rejected"
+    SUSPENDED = "suspended"
+
+
+class ProductStatus(str, Enum):
+    DRAFT = "draft"
+    PENDING = "pending"
+    APPROVED = "approved"
+    REJECTED = "rejected"
+
+
+class OrderItemStatus(str, Enum):
+    PENDING = "pending"
+    ACCEPTED = "accepted"
+    REJECTED = "rejected"
+    PREPARING = "preparing"
+    PACKED = "packed"
+    OUT_FOR_DELIVERY = "out_for_delivery"
+    DELIVERED = "delivered"
+    CANCELLED = "cancelled"
+
+
 def now_iso():
     return datetime.now(timezone.utc).isoformat()
 
@@ -74,6 +99,7 @@ class UserOut(BaseModel):
     phone: Optional[str] = None
     role: Role
     avatar: Optional[str] = None
+    vendor_status: Optional[str] = None
 
 
 class AuthOut(BaseModel):
@@ -145,6 +171,21 @@ async def get_current_user(creds: Optional[HTTPAuthorizationCredentials] = Depen
     return user
 
 
+def require_approved_vendor():
+    """Vendor must be approved to access selling features."""
+    async def _dep(current=Depends(get_current_user)):
+        if current.get("role") != "vendor":
+            raise HTTPException(status_code=403, detail="Vendor access required")
+        vs = current.get("vendor_status", "pending")
+        if vs != "approved":
+            raise HTTPException(
+                status_code=403,
+                detail=f"Your vendor account is {vs}. Please wait for admin approval."
+            )
+        return current
+    return _dep
+
+
 def user_to_out(u: dict) -> dict:
     return {
         "id": u["id"],
@@ -153,6 +194,7 @@ def user_to_out(u: dict) -> dict:
         "phone": u.get("phone"),
         "role": u.get("role", "customer"),
         "avatar": u.get("avatar"),
+        "vendor_status": u.get("vendor_status") if u.get("role") == "vendor" else None,
     }
 
 
@@ -173,8 +215,22 @@ async def register(data: RegisterIn):
         "avatar": None,
         "created_at": now_iso(),
     }
-    await db.users.insert_one(user_doc)
+    # New vendors must be approved by admin before they can sell
+    if data.role == Role.VENDOR:
+        user_doc["vendor_status"] = VendorStatus.PENDING.value
+        user_doc["vendor_applied_at"] = now_iso()
     token = create_token(uid, data.role.value)
+    await db.users.insert_one(user_doc)
+    # Notify admins of new vendor signup
+    if data.role == Role.VENDOR:
+        admins = await db.users.find({"role": "admin"}, {"_id": 0, "id": 1}).to_list(50)
+        for a in admins:
+            await db.notifications.insert_one({
+                "id": str(uuid.uuid4()), "user_id": a["id"],
+                "title": "New vendor signup",
+                "body": f"{data.name} has applied to become a vendor. Review and approve.",
+                "type": "vendor_signup", "read": False, "created_at": now_iso(),
+            })
     return {"token": token, "user": user_to_out(user_doc)}
 
 
@@ -241,7 +297,8 @@ async def list_stores():
 
 @api.get("/products")
 async def list_products(category: Optional[str] = None, q: Optional[str] = None, trending: Optional[bool] = None, limit: int = 50):
-    query = {}
+    # Customer-facing: only show approved products
+    query: Dict[str, Any] = {"status": "approved"}
     if category:
         query["category_id"] = category
     if trending:
@@ -254,7 +311,7 @@ async def list_products(category: Optional[str] = None, q: Optional[str] = None,
 
 @api.get("/products/{product_id}")
 async def get_product(product_id: str):
-    p = await db.products.find_one({"id": product_id}, {"_id": 0})
+    p = await db.products.find_one({"id": product_id, "status": "approved"}, {"_id": 0})
     if not p:
         raise HTTPException(404, "Product not found")
     return p
@@ -383,40 +440,127 @@ async def checkout(data: CheckoutIn, current=Depends(get_current_user)):
     addr = await db.addresses.find_one({"id": data.address_id, "user_id": current["id"]}, {"_id": 0})
     if not addr:
         raise HTTPException(400, "Invalid address")
+
     order_id = str(uuid.uuid4())
     order_no = "KMT" + datetime.now().strftime("%y%m%d") + order_id[:4].upper()
+    created_at = now_iso()
+
+    # Build order_items collection — each item has full snapshot + vendor_id
+    order_items: List[Dict[str, Any]] = []
+    vendor_ids = set()
+    vendor_cache: Dict[str, Dict[str, Any]] = {}
+    for it in expanded["items"]:
+        p = await db.products.find_one({"id": it["product_id"]}, {"_id": 0})
+        if not p:
+            continue
+        vendor_id = p.get("vendor_id")
+        vendor_name = None
+        store_name = None
+        if vendor_id:
+            v = vendor_cache.get(vendor_id) or await db.users.find_one(
+                {"id": vendor_id}, {"_id": 0, "name": 1, "phone": 1}
+            )
+            vendor_cache[vendor_id] = v or {}
+            vendor_name = (v or {}).get("name")
+            vendor_ids.add(vendor_id)
+        store = await db.stores.find_one({"id": p.get("store_id")}, {"_id": 0, "name": 1}) if p.get("store_id") else None
+        store_name = (store or {}).get("name")
+
+        item_id = "oi-" + uuid.uuid4().hex[:10]
+        order_items.append({
+            "id": item_id,
+            "order_id": order_id,
+            "product_id": p["id"],
+            "vendor_id": vendor_id,
+            "vendor_name": vendor_name,
+            "store_id": p.get("store_id"),
+            "store_name": store_name,
+            "product_name": p["name"],
+            "product_image": p.get("image"),
+            "product_unit": p.get("unit", ""),
+            "quantity": it["quantity"],
+            "unit_price": p["price"],
+            "mrp": p.get("mrp", p["price"]),
+            "total_price": round(p["price"] * it["quantity"], 2),
+            "status": OrderItemStatus.PENDING.value,
+            "status_history": [{"status": "pending", "at": created_at, "label": "Order placed"}],
+            "created_at": created_at,
+        })
+
+    # Customer snapshot
+    customer_snap = {
+        "id": current["id"],
+        "name": current.get("name") or addr.get("full_name"),
+        "phone": current.get("phone") or addr.get("phone"),
+        "email": current.get("email"),
+    }
+
     order = {
         "id": order_id,
         "order_no": order_no,
         "user_id": current["id"],
-        "items": expanded["items"],
+        "customer": customer_snap,
+        "items": expanded["items"],  # keep denormalized list for backward compat
         "subtotal": expanded["subtotal"],
         "delivery_fee": expanded["delivery_fee"],
+        "discount": 0.0,
         "tax": expanded["tax"],
         "total": expanded["total"],
+        "final_amount": expanded["total"],
         "address": addr,
         "payment_method": data.payment_method,
         "payment_status": "paid" if data.payment_method == "online" else "pending",
-        "status": "pending",  # pending | accepted | out_for_delivery | delivered | cancelled
+        "status": "pending",
+        "vendor_ids": list(vendor_ids),
         "notes": data.notes,
-        "timeline": [
-            {"status": "pending", "at": now_iso(), "label": "Order placed"},
-        ],
-        "created_at": now_iso(),
+        "timeline": [{"status": "pending", "at": created_at, "label": "Order placed"}],
+        "delivery_id": None,
+        "created_at": created_at,
     }
     await db.orders.insert_one(dict(order))
+    if order_items:
+        await db.order_items.insert_many([dict(oi) for oi in order_items])
+
     # clear cart
     await db.carts.update_one({"user_id": current["id"]}, {"$set": {"items": [], "updated_at": now_iso()}})
-    # create notification
+
+    # Notify customer
     await db.notifications.insert_one({
         "id": str(uuid.uuid4()),
         "user_id": current["id"],
         "title": "Order placed",
         "body": f"Your order {order_no} has been placed successfully.",
         "type": "order",
+        "order_id": order_id,
         "read": False,
-        "created_at": now_iso(),
+        "created_at": created_at,
     })
+    # Notify each vendor
+    for vid in vendor_ids:
+        await db.notifications.insert_one({
+            "id": str(uuid.uuid4()),
+            "user_id": vid,
+            "title": "New order received",
+            "body": f"You have new items in order {order_no}.",
+            "type": "order",
+            "order_id": order_id,
+            "read": False,
+            "created_at": created_at,
+        })
+    # Notify all admins
+    admins = await db.users.find({"role": "admin"}, {"_id": 0, "id": 1}).to_list(50)
+    for a in admins:
+        await db.notifications.insert_one({
+            "id": str(uuid.uuid4()),
+            "user_id": a["id"],
+            "title": "New customer order",
+            "body": f"Order {order_no} for ₹{order['final_amount']} placed.",
+            "type": "order",
+            "order_id": order_id,
+            "read": False,
+            "created_at": created_at,
+        })
+
     order.pop("_id", None)
     return order
 
@@ -502,6 +646,10 @@ class CommissionIn(BaseModel):
     percent: float
 
 
+class RejectIn(BaseModel):
+    reason: str = ""
+
+
 @api.get("/admin/stats")
 async def admin_stats(_=Depends(require_roles("admin"))):
     users_count = await db.users.count_documents({"role": "customer"})
@@ -560,16 +708,130 @@ async def admin_toggle_user(user_id: str, _=Depends(require_roles("admin"))):
     return {"ok": True, "active": new_state}
 
 
+# ----- Vendor Approval Queue -----
+@api.get("/admin/vendors")
+async def admin_vendors(status: Optional[str] = None, _=Depends(require_roles("admin"))):
+    q: Dict[str, Any] = {"role": "vendor"}
+    if status:
+        q["vendor_status"] = status
+    vendors = await db.users.find(q, {"_id": 0, "password": 0}).sort("created_at", -1).to_list(500)
+    # Enrich with store + product count
+    for v in vendors:
+        v["stores"] = await db.stores.find({"vendor_id": v["id"]}, {"_id": 0}).to_list(20)
+        v["products_count"] = await db.products.count_documents({"vendor_id": v["id"]})
+        v["orders_count"] = len({oi["order_id"] async for oi in db.order_items.find({"vendor_id": v["id"]}, {"order_id": 1})})
+    return vendors
+
+
+@api.post("/admin/vendors/{vid}/approve")
+async def admin_approve_vendor(vid: str, _=Depends(require_roles("admin"))):
+    v = await db.users.find_one({"id": vid, "role": "vendor"}, {"_id": 0})
+    if not v: raise HTTPException(404, "Vendor not found")
+    await db.users.update_one(
+        {"id": vid},
+        {"$set": {
+            "vendor_status": VendorStatus.APPROVED.value,
+            "vendor_approved_at": now_iso(),
+            "vendor_rejection_reason": None,
+        }}
+    )
+    await db.notifications.insert_one({
+        "id": str(uuid.uuid4()), "user_id": vid,
+        "title": "Vendor account approved",
+        "body": "Congratulations! Your vendor account has been approved. You can now start selling.",
+        "type": "vendor_status", "read": False, "created_at": now_iso(),
+    })
+    return {"ok": True}
+
+
+@api.post("/admin/vendors/{vid}/reject")
+async def admin_reject_vendor(vid: str, data: RejectIn, _=Depends(require_roles("admin"))):
+    v = await db.users.find_one({"id": vid, "role": "vendor"}, {"_id": 0})
+    if not v: raise HTTPException(404, "Vendor not found")
+    await db.users.update_one(
+        {"id": vid},
+        {"$set": {
+            "vendor_status": VendorStatus.REJECTED.value,
+            "vendor_rejection_reason": data.reason or "Application did not meet criteria.",
+            "vendor_rejected_at": now_iso(),
+        }}
+    )
+    await db.notifications.insert_one({
+        "id": str(uuid.uuid4()), "user_id": vid,
+        "title": "Vendor application rejected",
+        "body": f"Your application was rejected. Reason: {data.reason or 'Did not meet criteria'}",
+        "type": "vendor_status", "read": False, "created_at": now_iso(),
+    })
+    return {"ok": True}
+
+
+@api.post("/admin/vendors/{vid}/suspend")
+async def admin_suspend_vendor(vid: str, data: RejectIn, _=Depends(require_roles("admin"))):
+    v = await db.users.find_one({"id": vid, "role": "vendor"}, {"_id": 0})
+    if not v: raise HTTPException(404, "Vendor not found")
+    await db.users.update_one(
+        {"id": vid},
+        {"$set": {
+            "vendor_status": VendorStatus.SUSPENDED.value,
+            "vendor_rejection_reason": data.reason or "Account suspended by admin.",
+            "vendor_suspended_at": now_iso(),
+        }}
+    )
+    await db.notifications.insert_one({
+        "id": str(uuid.uuid4()), "user_id": vid,
+        "title": "Vendor account suspended",
+        "body": f"Your account has been suspended. Reason: {data.reason or 'Admin action'}. Contact support.",
+        "type": "vendor_status", "read": False, "created_at": now_iso(),
+    })
+    return {"ok": True}
+
+
+@api.post("/admin/vendors/{vid}/reactivate")
+async def admin_reactivate_vendor(vid: str, _=Depends(require_roles("admin"))):
+    v = await db.users.find_one({"id": vid, "role": "vendor"}, {"_id": 0})
+    if not v: raise HTTPException(404, "Vendor not found")
+    await db.users.update_one(
+        {"id": vid},
+        {"$set": {
+            "vendor_status": VendorStatus.APPROVED.value,
+            "vendor_rejection_reason": None,
+            "vendor_reactivated_at": now_iso(),
+        }}
+    )
+    await db.notifications.insert_one({
+        "id": str(uuid.uuid4()), "user_id": vid,
+        "title": "Vendor account reactivated",
+        "body": "Your vendor account has been reactivated. You can resume selling.",
+        "type": "vendor_status", "read": False, "created_at": now_iso(),
+    })
+    return {"ok": True}
+
+
 @api.get("/admin/orders")
 async def admin_orders(status: Optional[str] = None, _=Depends(require_roles("admin"))):
     q = {}
     if status: q["status"] = status
     orders = await db.orders.find(q, {"_id": 0}).sort("created_at", -1).to_list(500)
-    # attach customer name
     for o in orders:
+        # attach order_items (with vendor info)
+        oi = await db.order_items.find({"order_id": o["id"]}, {"_id": 0}).to_list(500)
+        o["order_items"] = oi
+        # attach customer (fresh if snapshot missing)
+        if not o.get("customer"):
+            u = await db.users.find_one({"id": o.get("user_id")}, {"_id": 0, "name": 1, "email": 1, "phone": 1})
+            o["customer"] = u or {}
+    return orders
+
+
+@api.get("/admin/orders/{order_id}")
+async def admin_order_detail(order_id: str, _=Depends(require_roles("admin"))):
+    o = await db.orders.find_one({"id": order_id}, {"_id": 0})
+    if not o: raise HTTPException(404, "Order not found")
+    o["order_items"] = await db.order_items.find({"order_id": order_id}, {"_id": 0}).to_list(500)
+    if not o.get("customer"):
         u = await db.users.find_one({"id": o.get("user_id")}, {"_id": 0, "name": 1, "email": 1, "phone": 1})
         o["customer"] = u or {}
-    return orders
+    return o
 
 
 @api.post("/admin/orders/{order_id}/status")
@@ -594,6 +856,10 @@ async def admin_create_product(data: ProductIn, _=Depends(require_roles("admin")
     pid = "p-" + uuid.uuid4().hex[:8]
     doc = {"id": pid, **data.dict(), "vendor_id": None}
     if doc.get("mrp") is None: doc["mrp"] = doc["price"]
+    # Admin-created products are auto-approved
+    doc["status"] = ProductStatus.APPROVED.value
+    doc["approved_at"] = now_iso()
+    doc["created_at"] = now_iso()
     await db.products.insert_one(dict(doc))
     doc.pop("_id", None)
     return doc
@@ -603,6 +869,7 @@ async def admin_create_product(data: ProductIn, _=Depends(require_roles("admin")
 async def admin_update_product(pid: str, data: ProductIn, _=Depends(require_roles("admin"))):
     upd = data.dict()
     if upd.get("mrp") is None: upd["mrp"] = upd["price"]
+    upd["updated_at"] = now_iso()
     res = await db.products.update_one({"id": pid}, {"$set": upd})
     if res.matched_count == 0: raise HTTPException(404, "Not found")
     return await db.products.find_one({"id": pid}, {"_id": 0})
@@ -612,6 +879,60 @@ async def admin_update_product(pid: str, data: ProductIn, _=Depends(require_role
 async def admin_delete_product(pid: str, _=Depends(require_roles("admin"))):
     await db.products.delete_one({"id": pid})
     return {"ok": True}
+
+
+@api.get("/admin/products")
+async def admin_list_products(status: Optional[str] = None, _=Depends(require_roles("admin"))):
+    q: Dict[str, Any] = {}
+    if status: q["status"] = status
+    products = await db.products.find(q, {"_id": 0}).sort("created_at", -1).to_list(500)
+    # attach vendor info
+    for p in products:
+        if p.get("vendor_id"):
+            v = await db.users.find_one({"id": p["vendor_id"]}, {"_id": 0, "name": 1, "email": 1})
+            p["vendor"] = v or {}
+    return products
+
+
+@api.post("/admin/products/{pid}/approve")
+async def admin_approve_product(pid: str, _=Depends(require_roles("admin"))):
+    res = await db.products.update_one(
+        {"id": pid},
+        {"$set": {"status": ProductStatus.APPROVED.value, "approved_at": now_iso(), "rejection_reason": None}}
+    )
+    if res.matched_count == 0: raise HTTPException(404, "Not found")
+    p = await db.products.find_one({"id": pid}, {"_id": 0})
+    # notify vendor
+    if p and p.get("vendor_id"):
+        await db.notifications.insert_one({
+            "id": str(uuid.uuid4()), "user_id": p["vendor_id"],
+            "title": "Product approved",
+            "body": f"Your product '{p['name']}' has been approved and is now live.",
+            "type": "product", "product_id": pid, "read": False, "created_at": now_iso(),
+        })
+    return {"ok": True, "product": p}
+
+
+@api.post("/admin/products/{pid}/reject")
+async def admin_reject_product(pid: str, data: RejectIn, _=Depends(require_roles("admin"))):
+    res = await db.products.update_one(
+        {"id": pid},
+        {"$set": {
+            "status": ProductStatus.REJECTED.value,
+            "rejection_reason": data.reason or "Did not meet marketplace guidelines.",
+            "rejected_at": now_iso(),
+        }}
+    )
+    if res.matched_count == 0: raise HTTPException(404, "Not found")
+    p = await db.products.find_one({"id": pid}, {"_id": 0})
+    if p and p.get("vendor_id"):
+        await db.notifications.insert_one({
+            "id": str(uuid.uuid4()), "user_id": p["vendor_id"],
+            "title": "Product rejected",
+            "body": f"Your product '{p['name']}' was rejected. Reason: {data.reason or 'Did not meet guidelines'}",
+            "type": "product", "product_id": pid, "read": False, "created_at": now_iso(),
+        })
+    return {"ok": True, "product": p}
 
 
 @api.post("/admin/categories")
@@ -662,91 +983,180 @@ async def _vendor_store_ids(vendor_id: str):
     return [s["id"] for s in stores], stores
 
 
+@api.get("/vendor/me")
+async def vendor_me(current=Depends(require_roles("vendor"))):
+    """Get vendor's profile + approval status."""
+    return {
+        "id": current["id"],
+        "name": current.get("name"),
+        "email": current.get("email"),
+        "phone": current.get("phone"),
+        "vendor_status": current.get("vendor_status", "pending"),
+        "rejection_reason": current.get("vendor_rejection_reason"),
+        "applied_at": current.get("vendor_applied_at"),
+        "approved_at": current.get("vendor_approved_at"),
+    }
+
+
 @api.get("/vendor/stats")
-async def vendor_stats(current=Depends(require_roles("vendor"))):
+async def vendor_stats(current=Depends(require_approved_vendor())):
     store_ids, stores = await _vendor_store_ids(current["id"])
-    products_count = await db.products.count_documents({"store_id": {"$in": store_ids}}) if store_ids else 0
-    # orders that contain at least one of my products
-    if store_ids:
-        product_ids = [p["id"] async for p in db.products.find({"store_id": {"$in": store_ids}}, {"id": 1})]
-    else:
-        product_ids = []
-    orders = await db.orders.find({"items.product_id": {"$in": product_ids}}, {"_id": 0}).to_list(500) if product_ids else []
-    revenue = 0.0; pending = 0; delivered = 0
-    for o in orders:
-        for it in o.get("items", []):
-            if it["product_id"] in product_ids:
-                revenue += it.get("line_total", 0)
-        if o.get("status") == "pending": pending += 1
-        if o.get("status") == "delivered": delivered += 1
+    products_count = await db.products.count_documents({"vendor_id": current["id"]})
+    # query order_items belonging to this vendor
+    items = await db.order_items.find({"vendor_id": current["id"]}, {"_id": 0}).to_list(2000)
+    order_ids = {it["order_id"] for it in items}
+    revenue = sum(it.get("total_price", 0) for it in items if it.get("status") not in ("rejected", "cancelled"))
+    pending = sum(1 for it in items if it.get("status") == "pending")
+    delivered = sum(1 for it in items if it.get("status") == "delivered")
     settings = await db.settings.find_one({"id": "global"}, {"_id": 0}) or {}
     commission = settings.get("commission_percent", 10.0)
     payout = round(revenue * (1 - commission / 100), 2)
     return {
         "stores": stores, "products": products_count,
-        "orders": len(orders), "pending": pending, "delivered": delivered,
+        "orders": len(order_ids), "pending": pending, "delivered": delivered,
         "revenue": round(revenue, 2), "commission_percent": commission, "payout": payout,
     }
 
 
 @api.get("/vendor/products")
-async def vendor_products(current=Depends(require_roles("vendor"))):
-    store_ids, _ = await _vendor_store_ids(current["id"])
-    if not store_ids: return []
-    return await db.products.find({"store_id": {"$in": store_ids}}, {"_id": 0}).to_list(500)
+async def vendor_products(status: Optional[str] = None, current=Depends(require_roles("vendor"))):
+    """Vendor sees all THEIR products (any status) so they can manage them."""
+    q: Dict[str, Any] = {"vendor_id": current["id"]}
+    if status:
+        q["status"] = status
+    return await db.products.find(q, {"_id": 0}).sort("created_at", -1).to_list(500)
 
 
 @api.post("/vendor/products")
-async def vendor_create_product(data: ProductIn, current=Depends(require_roles("vendor"))):
-    store_ids, stores = await _vendor_store_ids(current["id"])
+async def vendor_create_product(data: ProductIn, current=Depends(require_approved_vendor())):
+    store_ids, _ = await _vendor_store_ids(current["id"])
     sid = data.store_id or (store_ids[0] if store_ids else None)
     if sid not in store_ids:
         raise HTTPException(400, "Invalid store for vendor")
     pid = "p-" + uuid.uuid4().hex[:8]
     doc = data.dict(); doc["store_id"] = sid
     if doc.get("mrp") is None: doc["mrp"] = doc["price"]
-    doc.update({"id": pid, "vendor_id": current["id"]})
+    doc.update({
+        "id": pid,
+        "vendor_id": current["id"],
+        "status": ProductStatus.PENDING.value,
+        "created_at": now_iso(),
+    })
     await db.products.insert_one(dict(doc))
+    # notify admins
+    admins = await db.users.find({"role": "admin"}, {"_id": 0, "id": 1}).to_list(50)
+    for a in admins:
+        await db.notifications.insert_one({
+            "id": str(uuid.uuid4()), "user_id": a["id"],
+            "title": "New product needs approval",
+            "body": f"'{doc['name']}' by {current.get('name')} is pending approval.",
+            "type": "product", "product_id": pid, "read": False, "created_at": now_iso(),
+        })
     doc.pop("_id", None)
     return doc
 
 
 @api.put("/vendor/products/{pid}")
-async def vendor_update_product(pid: str, data: ProductIn, current=Depends(require_roles("vendor"))):
-    store_ids, _ = await _vendor_store_ids(current["id"])
-    p = await db.products.find_one({"id": pid}, {"_id": 0})
-    if not p or p.get("store_id") not in store_ids:
+async def vendor_update_product(pid: str, data: ProductIn, current=Depends(require_approved_vendor())):
+    p = await db.products.find_one({"id": pid, "vendor_id": current["id"]}, {"_id": 0})
+    if not p:
         raise HTTPException(404, "Not your product")
     upd = data.dict()
     if upd.get("mrp") is None: upd["mrp"] = upd["price"]
+    # Edits force re-approval
+    upd["status"] = ProductStatus.PENDING.value
+    upd["updated_at"] = now_iso()
+    upd["rejection_reason"] = None
     await db.products.update_one({"id": pid}, {"$set": upd})
     return await db.products.find_one({"id": pid}, {"_id": 0})
 
 
 @api.delete("/vendor/products/{pid}")
-async def vendor_delete_product(pid: str, current=Depends(require_roles("vendor"))):
-    store_ids, _ = await _vendor_store_ids(current["id"])
-    p = await db.products.find_one({"id": pid}, {"_id": 0})
-    if not p or p.get("store_id") not in store_ids:
+async def vendor_delete_product(pid: str, current=Depends(require_approved_vendor())):
+    p = await db.products.find_one({"id": pid, "vendor_id": current["id"]}, {"_id": 0})
+    if not p:
         raise HTTPException(404, "Not your product")
     await db.products.delete_one({"id": pid})
     return {"ok": True}
 
 
 @api.get("/vendor/orders")
-async def vendor_orders(current=Depends(require_roles("vendor"))):
-    store_ids, _ = await _vendor_store_ids(current["id"])
-    if not store_ids: return []
-    product_ids = [p["id"] async for p in db.products.find({"store_id": {"$in": store_ids}}, {"id": 1})]
-    orders = await db.orders.find({"items.product_id": {"$in": product_ids}}, {"_id": 0}).sort("created_at", -1).to_list(200)
-    # attach customer
-    for o in orders:
-        u = await db.users.find_one({"id": o.get("user_id")}, {"_id": 0, "name": 1, "phone": 1})
-        o["customer"] = u or {}
-        # only include vendor's items + their subtotal
-        o["my_items"] = [it for it in o.get("items", []) if it["product_id"] in product_ids]
-        o["my_revenue"] = round(sum(it["line_total"] for it in o["my_items"]), 2)
-    return orders
+async def vendor_orders(current=Depends(require_approved_vendor())):
+    """List all orders containing items from this vendor — with only this vendor's items."""
+    items = await db.order_items.find({"vendor_id": current["id"]}, {"_id": 0}).sort("created_at", -1).to_list(2000)
+    by_order: Dict[str, List[Dict[str, Any]]] = {}
+    for it in items:
+        by_order.setdefault(it["order_id"], []).append(it)
+    out = []
+    for oid, oi in by_order.items():
+        order = await db.orders.find_one({"id": oid}, {"_id": 0})
+        if not order:
+            continue
+        revenue = round(sum(i["total_price"] for i in oi if i.get("status") not in ("rejected", "cancelled")), 2)
+        out.append({
+            "order_id": oid,
+            "order_no": order.get("order_no"),
+            "status": order.get("status"),
+            "payment_method": order.get("payment_method"),
+            "payment_status": order.get("payment_status"),
+            "customer": order.get("customer") or {},
+            "address": order.get("address") or {},
+            "items": oi,
+            "my_revenue": revenue,
+            "created_at": order.get("created_at"),
+        })
+    out.sort(key=lambda x: x.get("created_at") or "", reverse=True)
+    return out
+
+
+class ItemStatusIn(BaseModel):
+    status: str  # accepted | rejected | preparing | packed
+
+
+@api.post("/vendor/order-items/{item_id}/status")
+async def vendor_update_item_status(item_id: str, data: ItemStatusIn, current=Depends(require_approved_vendor())):
+    """Vendor updates per-item status (accept/reject/preparing/packed)."""
+    valid = {"accepted", "rejected", "preparing", "packed"}
+    if data.status not in valid:
+        raise HTTPException(400, f"Invalid status. Allowed: {valid}")
+    item = await db.order_items.find_one({"id": item_id, "vendor_id": current["id"]}, {"_id": 0})
+    if not item:
+        raise HTTPException(404, "Item not found")
+    history = item.get("status_history", [])
+    history.append({"status": data.status, "at": now_iso(), "label": data.status.replace("_", " ").title()})
+    await db.order_items.update_one(
+        {"id": item_id},
+        {"$set": {"status": data.status, "status_history": history, "updated_at": now_iso()}}
+    )
+    # Check if ALL items in the order are packed → promote order to "ready_for_pickup"
+    order = await db.orders.find_one({"id": item["order_id"]}, {"_id": 0})
+    if order:
+        all_items = await db.order_items.find({"order_id": item["order_id"]}, {"_id": 0}).to_list(200)
+        statuses = {it.get("status") for it in all_items}
+        new_order_status = None
+        # If any item is accepted/preparing/packed → order = accepted (vendor has acknowledged)
+        if order.get("status") == "pending" and statuses & {"accepted", "preparing", "packed"}:
+            new_order_status = "accepted"
+        # If all items packed → ready for pickup
+        if all_items and all(s in ("packed", "rejected", "cancelled") for s in statuses):
+            non_rejected = [it for it in all_items if it.get("status") == "packed"]
+            if non_rejected:
+                new_order_status = "ready_for_pickup"
+        if new_order_status and new_order_status != order.get("status"):
+            tl = order.get("timeline", [])
+            tl.append({"status": new_order_status, "at": now_iso(), "label": new_order_status.replace("_", " ").title()})
+            await db.orders.update_one(
+                {"id": order["id"]},
+                {"$set": {"status": new_order_status, "timeline": tl}}
+            )
+            # notify customer
+            await db.notifications.insert_one({
+                "id": str(uuid.uuid4()), "user_id": order["user_id"],
+                "title": f"Order {new_order_status.replace('_',' ').title()}",
+                "body": f"Order {order['order_no']} is now {new_order_status.replace('_',' ')}.",
+                "type": "order", "order_id": order["id"], "read": False, "created_at": now_iso(),
+            })
+    return {"ok": True}
 
 
 # ------------------ DELIVERY ------------------
@@ -832,19 +1242,33 @@ async def delivery_stats(current=Depends(require_roles("delivery"))):
     }
 
 
-# Auto-accept pending orders (admin/vendor would do this; for demo we expose vendor endpoint)
+# Vendor bulk-accepts all their items in an order
 @api.post("/vendor/orders/{order_id}/accept")
-async def vendor_accept(order_id: str, current=Depends(require_roles("vendor"))):
-    o = await db.orders.find_one({"id": order_id}, {"_id": 0})
-    if not o: raise HTTPException(404, "Not found")
-    timeline = o.get("timeline", [])
-    timeline.append({"status": "accepted", "at": now_iso(), "label": "Accepted by vendor"})
-    await db.orders.update_one({"id": order_id}, {"$set": {"status": "accepted", "timeline": timeline}})
-    await db.notifications.insert_one({
-        "id": str(uuid.uuid4()), "user_id": o["user_id"], "title": "Order accepted",
-        "body": f"Your order {o['order_no']} has been accepted by the vendor.", "type": "order",
-        "read": False, "created_at": now_iso(),
-    })
+async def vendor_accept(order_id: str, current=Depends(require_approved_vendor())):
+    items = await db.order_items.find({"order_id": order_id, "vendor_id": current["id"]}, {"_id": 0}).to_list(100)
+    if not items:
+        raise HTTPException(404, "No items for you in this order")
+    for it in items:
+        if it.get("status") in ("rejected", "delivered", "cancelled"):
+            continue
+        hist = it.get("status_history", [])
+        hist.append({"status": "accepted", "at": now_iso(), "label": "Accepted by vendor"})
+        await db.order_items.update_one(
+            {"id": it["id"]},
+            {"$set": {"status": "accepted", "status_history": hist, "updated_at": now_iso()}}
+        )
+    # promote order to accepted if currently pending
+    order = await db.orders.find_one({"id": order_id}, {"_id": 0})
+    if order and order.get("status") == "pending":
+        tl = order.get("timeline", [])
+        tl.append({"status": "accepted", "at": now_iso(), "label": "Accepted"})
+        await db.orders.update_one({"id": order_id}, {"$set": {"status": "accepted", "timeline": tl}})
+        await db.notifications.insert_one({
+            "id": str(uuid.uuid4()), "user_id": order["user_id"],
+            "title": "Order accepted",
+            "body": f"Your order {order['order_no']} has been accepted by the vendor.",
+            "type": "order", "order_id": order_id, "read": False, "created_at": now_iso(),
+        })
     return {"ok": True}
 
 
@@ -1032,6 +1456,68 @@ async def seed_db():
     # Default settings
     if not await db.settings.find_one({"id": "global"}):
         await db.settings.insert_one({"id": "global", "commission_percent": 10.0})
+
+    # ---- Migration: ensure existing data has approval status set ----
+    # Mark all existing vendor users without vendor_status as approved
+    await db.users.update_many(
+        {"role": "vendor", "vendor_status": {"$exists": False}},
+        {"$set": {"vendor_status": VendorStatus.APPROVED.value, "vendor_approved_at": now_iso()}}
+    )
+    # Mark all existing products without status as approved
+    await db.products.update_many(
+        {"status": {"$exists": False}},
+        {"$set": {"status": ProductStatus.APPROVED.value, "approved_at": now_iso()}}
+    )
+    # Backfill order_items collection for legacy orders that don't have entries yet
+    legacy_orders = await db.orders.find({}, {"_id": 0}).to_list(1000)
+    for o in legacy_orders:
+        existing_count = await db.order_items.count_documents({"order_id": o["id"]})
+        if existing_count > 0:
+            continue
+        items_to_insert = []
+        for it in o.get("items", []):
+            p = await db.products.find_one({"id": it["product_id"]}, {"_id": 0})
+            vendor_id = p.get("vendor_id") if p else None
+            vendor_name = None
+            store_name = None
+            if vendor_id:
+                v = await db.users.find_one({"id": vendor_id}, {"_id": 0, "name": 1})
+                vendor_name = (v or {}).get("name")
+            if p and p.get("store_id"):
+                s = await db.stores.find_one({"id": p["store_id"]}, {"_id": 0, "name": 1})
+                store_name = (s or {}).get("name")
+            items_to_insert.append({
+                "id": "oi-" + uuid.uuid4().hex[:10],
+                "order_id": o["id"],
+                "product_id": it["product_id"],
+                "vendor_id": vendor_id,
+                "vendor_name": vendor_name,
+                "store_id": (p or {}).get("store_id"),
+                "store_name": store_name,
+                "product_name": it.get("name") or (p or {}).get("name"),
+                "product_image": it.get("image") or (p or {}).get("image"),
+                "product_unit": it.get("unit") or (p or {}).get("unit", ""),
+                "quantity": it.get("quantity", 1),
+                "unit_price": it.get("price") or (p or {}).get("price", 0),
+                "mrp": it.get("mrp") or (p or {}).get("mrp", 0),
+                "total_price": it.get("line_total", 0),
+                "status": "delivered" if o.get("status") == "delivered" else (
+                    "out_for_delivery" if o.get("status") == "out_for_delivery" else (
+                    "accepted" if o.get("status") == "accepted" else "pending")),
+                "status_history": [{"status": "pending", "at": o.get("created_at", now_iso()), "label": "Order placed"}],
+                "created_at": o.get("created_at", now_iso()),
+            })
+        if items_to_insert:
+            await db.order_items.insert_many(items_to_insert)
+        # also set vendor_ids on order
+        vids = list({i["vendor_id"] for i in items_to_insert if i.get("vendor_id")})
+        if vids and not o.get("vendor_ids"):
+            await db.orders.update_one({"id": o["id"]}, {"$set": {"vendor_ids": vids}})
+        # set customer snapshot if missing
+        if not o.get("customer"):
+            cust = await db.users.find_one({"id": o.get("user_id")}, {"_id": 0, "name": 1, "phone": 1, "email": 1, "id": 1})
+            if cust:
+                await db.orders.update_one({"id": o["id"]}, {"$set": {"customer": cust}})
 
     # Seed a few demo orders if none for showcase
     if await db.orders.count_documents({}) == 0:
