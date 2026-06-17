@@ -53,7 +53,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 };
 
 export const useAuth = () => {
-  const c = useContext(Ctx);
-  if (!c) throw new Error("useAuth outside provider");
+ const c = useContext(Ctx);
+if (!c) return {
+  user: null,
+  loading: true,
+  login: async () => { throw new Error("Auth not ready"); },
+  register: async () => { throw new Error("Auth not ready"); },
+  loginOtp: async () => { throw new Error("Auth not ready"); },
+  logout: async () => {},
+  refresh: async () => {},
+} as AuthCtx;
   return c;
 };

@@ -1,6 +1,6 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
-const BASE = process.env.EXPO_PUBLIC_BACKEND_URL || "";
+const BASE = process.env.EXPO_PUBLIC_BACKEND_URL || "http://localhost:8000";
 export const API = `${BASE}/api`;
 
 const TOKEN_KEY = "kmt_token";
@@ -28,9 +28,18 @@ export async function clearAuth() {
 export async function setUser(u: User) {
   await AsyncStorage.setItem(USER_KEY, JSON.stringify(u));
 }
-export async function getUser(): Promise<User | null> {
-  const v = await AsyncStorage.getItem(USER_KEY);
-  return v ? JSON.parse(v) : null;
+export async function getUser() {
+  try {
+    const v = await AsyncStorage.getItem(USER_KEY);
+
+    if (!v || v === "undefined" || v === "null") {
+      return null;
+    }
+
+    return JSON.parse(v);
+  } catch (e) {
+    return null;
+  }
 }
 
 export async function apiFetch<T = any>(

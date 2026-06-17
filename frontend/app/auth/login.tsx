@@ -29,6 +29,7 @@ export default function Login() {
     try {
       await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       const user = await login(email.trim(), password);
+      if (!user || !user.role) throw new Error("Login failed, no user role returned");
       if (user.role === "customer") router.replace("/(tabs)/home");
       else router.replace(`/${user.role}` as any);
     } catch (e: any) {
@@ -49,6 +50,7 @@ export default function Login() {
     setError(null); setLoading(true);
     try {
       const user = await loginOtp(phone, otp);
+      if (!user || !user.role) throw new Error("Login failed, no user role returned");
       router.replace(user.role === "customer" ? "/(tabs)/home" : `/${user.role}` as any);
     } catch (e: any) {
       setError(e.message || "Invalid OTP");
