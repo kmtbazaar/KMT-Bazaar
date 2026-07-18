@@ -3,7 +3,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const BASE =
   process.env.EXPO_PUBLIC_BACKEND_URL ||
-  "http://10.51.23.13:8000";
+  "http://localhost:8000";
 
 export const API = `${BASE}/api`;
 
@@ -21,10 +21,10 @@ export interface User {
   avatar?: string | null;
 }
 
-// 🔥 WEB & MOBILE OPTIMIZED STORAGE 🔥
+// 🔥 WEB & MOBILE OPTIMIZED STORAGE (localStorage ko sessionStorage kar diya) 🔥
 export async function setToken(token: string) {
   if (Platform.OS === 'web') {
-    localStorage.setItem(TOKEN_KEY, token);
+    sessionStorage.setItem(TOKEN_KEY, token);
   } else {
     await AsyncStorage.setItem(TOKEN_KEY, token);
   }
@@ -32,15 +32,15 @@ export async function setToken(token: string) {
 
 export async function getToken() {
   if (Platform.OS === 'web') {
-    return localStorage.getItem(TOKEN_KEY);
+    return sessionStorage.getItem(TOKEN_KEY);
   }
   return await AsyncStorage.getItem(TOKEN_KEY);
 }
 
 export async function clearAuth() {
   if (Platform.OS === 'web') {
-    localStorage.removeItem(TOKEN_KEY);
-    localStorage.removeItem(USER_KEY);
+    sessionStorage.removeItem(TOKEN_KEY);
+    sessionStorage.removeItem(USER_KEY);
   } else {
     await AsyncStorage.multiRemove([TOKEN_KEY, USER_KEY]);
   }
@@ -49,7 +49,7 @@ export async function clearAuth() {
 export async function setUser(u: User) {
   const data = JSON.stringify(u);
   if (Platform.OS === 'web') {
-    localStorage.setItem(USER_KEY, data);
+    sessionStorage.setItem(USER_KEY, data);
   } else {
     await AsyncStorage.setItem(USER_KEY, data);
   }
@@ -59,7 +59,7 @@ export async function getUser() {
   try {
     let v;
     if (Platform.OS === 'web') {
-      v = localStorage.getItem(USER_KEY);
+      v = sessionStorage.getItem(USER_KEY);
     } else {
       v = await AsyncStorage.getItem(USER_KEY);
     }
@@ -74,7 +74,7 @@ export async function getUser() {
   }
 }
 
-// 🔥 API FETCH LOGIC (No Changes) 🔥
+// 🔥 API FETCH LOGIC 🔥
 export async function apiFetch<T = any>(
   path: string,
   options: RequestInit = {}
@@ -136,8 +136,12 @@ export const api = {
   cartClear: () => apiFetch("/cart/clear", { method: "DELETE" }),
   addresses: () => apiFetch<any[]>("/addresses"),
   createAddress: (data: any) =>
-    
     apiFetch("/addresses", { method: "POST", body: JSON.stringify(data) }),
+    
+  // 👇 Yahan updateAddress add kar diya hai 👇
+  updateAddress: (id: string, data: any) =>
+    apiFetch(`/addresses/${id}`, { method: "PUT", body: JSON.stringify(data) }),
+    
   deleteAddress: (id: string) => apiFetch(`/addresses/${id}`, { method: "DELETE" }),
   checkout: (data: { address_id: string; payment_method: string; notes?: string }) =>
     apiFetch<any>("/orders/checkout", { method: "POST", body: JSON.stringify(data) }),

@@ -9,6 +9,7 @@ interface AuthCtx {
   loginOtp: (phone: string, otp: string, name?: string) => Promise<User>;
   logout: () => Promise<void>;
   refresh: () => Promise<void>;
+  updateAddress: (addressData: any) => Promise<void>; // <-- Naya add kiya hai
 }
 
 const Ctx = createContext<AuthCtx | null>(null);
@@ -45,8 +46,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
   const logout = async () => { await clearAuth(); setU(null); };
 
+  // <-- Naya function add kiya hai
+  const updateAddress = async (addressData: any) => {
+    try {
+      console.log("Updating address:", addressData);
+      // Agar future mein API lagana ho toh yahan call aayegi
+    } catch (error) {
+      console.error("Address update failed:", error);
+    }
+  };
+
   return (
-    <Ctx.Provider value={{ user, loading, login, register, loginOtp, logout, refresh: bootstrap }}>
+    // <-- updateAddress ko Provider mein add kiya hai
+    <Ctx.Provider value={{ user, loading, login, register, loginOtp, logout, refresh: bootstrap, updateAddress }}>
       {children}
     </Ctx.Provider>
   );
@@ -54,7 +66,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
 export const useAuth = () => {
  const c = useContext(Ctx);
-if (!c) return {
+ if (!c) return {
   user: null,
   loading: true,
   login: async () => { throw new Error("Auth not ready"); },
@@ -62,6 +74,7 @@ if (!c) return {
   loginOtp: async () => { throw new Error("Auth not ready"); },
   logout: async () => {},
   refresh: async () => {},
-} as AuthCtx;
+  updateAddress: async () => {}, // <-- Fallback mein add kiya hai
+ } as AuthCtx;
   return c;
 };
