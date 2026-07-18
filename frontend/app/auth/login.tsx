@@ -1,3 +1,4 @@
+import AIAssistant from "../../components/AIAssistant";
 import React, { useState } from "react";
 import {
   View, Text, TextInput, Pressable, StyleSheet, ScrollView,
@@ -134,6 +135,9 @@ export default function Login() {
           )}
         </ScrollView>
       </KeyboardAvoidingView>
+
+      <AIAssistant />
+
     </View>
   );
 }
