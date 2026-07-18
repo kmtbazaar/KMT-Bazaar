@@ -1,12 +1,17 @@
+import { Platform } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
-const BASE = process.env.EXPO_PUBLIC_BACKEND_URL || "http://localhost:8000";
+const BASE =
+  process.env.EXPO_PUBLIC_BACKEND_URL ||
+  "http://10.51.23.13:8000";
+
 export const API = `${BASE}/api`;
 
 const TOKEN_KEY = "kmt_token";
 const USER_KEY = "kmt_user";
 
 export type UserRole = "customer" | "vendor" | "delivery" | "admin";
+
 export interface User {
   id: string;
   name: string;
@@ -16,21 +21,48 @@ export interface User {
   avatar?: string | null;
 }
 
+// 🔥 WEB & MOBILE OPTIMIZED STORAGE 🔥
 export async function setToken(token: string) {
-  await AsyncStorage.setItem(TOKEN_KEY, token);
+  if (Platform.OS === 'web') {
+    localStorage.setItem(TOKEN_KEY, token);
+  } else {
+    await AsyncStorage.setItem(TOKEN_KEY, token);
+  }
 }
+
 export async function getToken() {
-  return AsyncStorage.getItem(TOKEN_KEY);
+  if (Platform.OS === 'web') {
+    return localStorage.getItem(TOKEN_KEY);
+  }
+  return await AsyncStorage.getItem(TOKEN_KEY);
 }
+
 export async function clearAuth() {
-  await AsyncStorage.multiRemove([TOKEN_KEY, USER_KEY]);
+  if (Platform.OS === 'web') {
+    localStorage.removeItem(TOKEN_KEY);
+    localStorage.removeItem(USER_KEY);
+  } else {
+    await AsyncStorage.multiRemove([TOKEN_KEY, USER_KEY]);
+  }
 }
+
 export async function setUser(u: User) {
-  await AsyncStorage.setItem(USER_KEY, JSON.stringify(u));
+  const data = JSON.stringify(u);
+  if (Platform.OS === 'web') {
+    localStorage.setItem(USER_KEY, data);
+  } else {
+    await AsyncStorage.setItem(USER_KEY, data);
+  }
 }
+
 export async function getUser() {
   try {
-    const v = await AsyncStorage.getItem(USER_KEY);
+    let v;
+    if (Platform.OS === 'web') {
+      v = localStorage.getItem(USER_KEY);
+    } else {
+      v = await AsyncStorage.getItem(USER_KEY);
+    }
 
     if (!v || v === "undefined" || v === "null") {
       return null;
@@ -42,6 +74,7 @@ export async function getUser() {
   }
 }
 
+// 🔥 API FETCH LOGIC (No Changes) 🔥
 export async function apiFetch<T = any>(
   path: string,
   options: RequestInit = {}
@@ -52,10 +85,13 @@ export async function apiFetch<T = any>(
     ...(options.headers || {}),
   };
   if (token) headers.Authorization = `Bearer ${token}`;
+  
   const res = await fetch(`${API}${path}`, { ...options, headers });
   const text = await res.text();
   let json: any = null;
+  
   try { json = text ? JSON.parse(text) : null; } catch { json = text; }
+  
   if (!res.ok) {
     const msg = (json && (json.detail || json.message)) || `HTTP ${res.status}`;
     throw new Error(typeof msg === "string" ? msg : JSON.stringify(msg));
@@ -100,6 +136,7 @@ export const api = {
   cartClear: () => apiFetch("/cart/clear", { method: "DELETE" }),
   addresses: () => apiFetch<any[]>("/addresses"),
   createAddress: (data: any) =>
+    
     apiFetch("/addresses", { method: "POST", body: JSON.stringify(data) }),
   deleteAddress: (id: string) => apiFetch(`/addresses/${id}`, { method: "DELETE" }),
   checkout: (data: { address_id: string; payment_method: string; notes?: string }) =>

@@ -43,8 +43,8 @@ export default function TabsLayout() {
           position: "absolute",
           borderTopColor: COLORS.border,
           backgroundColor: Platform.OS === "ios" ? "transparent" : "#FFFFFF",
-          height: 70,
-          paddingTop: 8,
+          height: 65,
+          paddingTop: 4,
           paddingBottom: 12,
         },
         tabBarBackground: () =>

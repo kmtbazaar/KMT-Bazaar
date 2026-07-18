@@ -8,11 +8,10 @@ import { COLORS, RADIUS, SPACING, shadow } from "@/src/theme";
 import { useCart } from "@/src/CartContext";
 import { useRouter } from "expo-router";
 
-// 2-col grid: (screenWidth - rail(88) - paddingHorizontal(8) - 2x card margin(12)) / 2
 const SCREEN_W = Dimensions.get("window").width;
 const RAIL = 88;
-const GRID_INNER_PAD = 8; // FlatList contentContainerStyle paddingHorizontal:4 each side
-const CARD_MARGIN = 12;  // 6px margin each side
+const GRID_INNER_PAD = 8;
+const CARD_MARGIN = 12;
 const GRID_W = SCREEN_W - RAIL - GRID_INNER_PAD;
 const COMPACT_CARD_W = Math.floor((GRID_W - CARD_MARGIN * 2) / 2);
 
@@ -115,18 +114,18 @@ export default function ProductCard({ p, compact = false }: { p: any; compact?: 
 }
 
 const s = StyleSheet.create({
-  card: { width: 160, backgroundColor: COLORS.surface, borderRadius: RADIUS.md, marginRight: SPACING.md, overflow: "hidden", borderWidth: 1, borderColor: COLORS.border },
+ card: { flex: 1, width: "100%", backgroundColor: COLORS.surface, borderRadius: RADIUS.md, overflow: "hidden", borderWidth: 1, borderColor: COLORS.border, paddingBottom: 8 },
   cardCompact: { width: COMPACT_CARD_W, backgroundColor: COLORS.surface, borderRadius: RADIUS.md, margin: 6, overflow: "hidden", borderWidth: 1, borderColor: COLORS.border },
-  imgWrap: { width: "100%", aspectRatio: 1, backgroundColor: COLORS.surfaceSecondary, overflow: "hidden", position: "relative" },
+ imgWrap: { width: "100%", height: 115, backgroundColor: COLORS.surfaceSecondary, overflow: "hidden", position: "relative" },
   badge: { position: "absolute", top: 8, left: 8, backgroundColor: COLORS.success, paddingHorizontal: 8, paddingVertical: 3, borderRadius: RADIUS.sm },
   badgeText: { color: "#fff", fontSize: 10, fontWeight: "800" },
   oosOverlay: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(255,255,255,0.7)", alignItems: "center", justifyContent: "center" },
   oosText: { color: COLORS.error, fontWeight: "800", fontSize: 11, letterSpacing: 0.5 },
-  body: { padding: 10, minHeight: 110, justifyContent: "space-between" },
-  name: { fontSize: 13, fontWeight: "600", color: COLORS.text, height: 34, lineHeight: 17 },
-  unit: { fontSize: 11, color: COLORS.textMuted, marginTop: 2, height: 14 },
-  priceRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: 6, gap: 6 },
-  priceCol: { flexShrink: 1, minHeight: 36, justifyContent: "center" },
+  body: { padding: 6, paddingTop: 6, flex: 1 },
+  name: { fontSize: 13, fontWeight: "600", color: COLORS.text, height: 16, lineHeight: 15 },
+  unit: { fontSize: 11, color: COLORS.textMuted, marginTop: 2, height: 12 },
+  priceRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-end", marginTop: "auto", width: "100%" },
+  priceCol: { flexDirection: "column", alignItems: "flex-start", gap: 0, flexShrink: 1 },
   price: { fontSize: 15, fontWeight: "800", color: COLORS.text },
   mrp: { fontSize: 11, color: COLORS.textMuted, textDecorationLine: "line-through", minHeight: 14 },
   addBtn: { flexDirection: "row", alignItems: "center", borderWidth: 1.5, borderColor: COLORS.accent, paddingHorizontal: 10, paddingVertical: 6, borderRadius: RADIUS.sm, backgroundColor: COLORS.accentLight, gap: 2, height: 32 },

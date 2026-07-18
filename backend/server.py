@@ -219,6 +219,15 @@ async def verify_otp(data: OtpVerifyIn):
 async def me(current=Depends(get_current_user)):
     return user_to_out(current)
 
+# --- NAYA AVATAR UPDATE CODE (Safe Block) ---
+class AvatarUpdateIn(BaseModel):
+    avatar: str
+
+@api.post("/auth/update-avatar")
+async def update_avatar(data: AvatarUpdateIn, current=Depends(get_current_user)):
+    await db.users.update_one({"id": current["id"]}, {"$set": {"avatar": data.avatar}})
+    return {"ok": True, "avatar": data.avatar}
+# --------------------------------------------
 
 # ------------------ CATALOG ------------------
 @api.get("/categories")
@@ -235,7 +244,7 @@ async def list_banners():
 
 @api.get("/stores")
 async def list_stores():
-    stores = await db.stores.find({}, {"_id": 0}).to_list(100)
+    stores = await db.stores.find({"is_approved": True}, {"_id": 0}).to_list(100)
     return stores
 
 
@@ -656,36 +665,101 @@ async def admin_set_commission(data: CommissionIn, _=Depends(require_roles("admi
     return {"ok": True, "commission_percent": data.percent}
 
 
+# --- ADMIN STORE APPROVALS ---
+
+@api.get("/admin/stores")
+async def admin_get_stores(status: Optional[str] = None, _=Depends(require_roles("admin"))):
+    query = {}
+    if status == "pending":
+        query["is_approved"] = False
+    elif status == "approved":
+        query["is_approved"] = True
+        
+    stores = await db.stores.find(query, {"_id": 0}).to_list(100)
+    return stores
+
+@api.post("/admin/stores/{store_id}/approve")
+async def admin_approve_store(store_id: str, _=Depends(require_roles("admin"))):
+    res = await db.stores.update_one({"id": store_id}, {"$set": {"is_approved": True}})
+    if res.matched_count == 0:
+        raise HTTPException(404, "Store not found")
+    return {"ok": True, "message": "Store Approved"}
+
+@api.post("/admin/stores/{store_id}/reject")
+async def admin_reject_store(store_id: str, _=Depends(require_roles("admin"))):
+    # Reject karne par hum dukaan ko database se hamesha ke liye delete kar rahe hain
+    res = await db.stores.delete_one({"id": store_id})
+    if res.deleted_count == 0:
+        raise HTTPException(404, "Store not found")
+    return {"ok": True, "message": "Store Rejected and Deleted"}
+
+
 # ------------------ VENDOR ------------------
 async def _vendor_store_ids(vendor_id: str):
     stores = await db.stores.find({"vendor_id": vendor_id}, {"_id": 0}).to_list(50)
     return [s["id"] for s in stores], stores
 
 
+class StoreIn(BaseModel):
+    name: str
+    address: str
+    category_id: str
+    delivery_min: int = 30
+    image: str = "https://images.unsplash.com/photo-1542838132-92c53300491e?w=400&q=80" # Default image
+
+# Yahan Vendor ke section ke aas paas hoga ye code
+@api.post("/vendor/stores")
+async def vendor_create_store(data: StoreIn, current=Depends(require_roles("vendor"))):
+    sid = "st-" + uuid.uuid4().hex[:6]
+    doc = data.dict()
+    doc.update({
+        "id": sid,
+        "vendor_id": current["id"],
+        "rating": 5.0,
+        "is_approved": False,
+        "is_online": True, # 🔥 NAYA: By default nayi dukaan online dikhegi (jab approve hogi)
+    })
+    # ... baaki code
+    await db.stores.insert_one(dict(doc))
+    doc.pop("_id", None)
+    return doc
+
+
 @api.get("/vendor/stats")
 async def vendor_stats(current=Depends(require_roles("vendor"))):
+    # 🔥 FIX: Database se live check karo ki Admin ne vendor ko suspend (active: false) toh nahi kiya
+    user_doc = await db.users.find_one({"id": current["id"]}, {"_id": 0, "active": 1})
+    is_active = user_doc.get("active", True) if user_doc else False
+
     store_ids, stores = await _vendor_store_ids(current["id"])
     products_count = await db.products.count_documents({"store_id": {"$in": store_ids}}) if store_ids else 0
+    
     # orders that contain at least one of my products
     if store_ids:
         product_ids = [p["id"] async for p in db.products.find({"store_id": {"$in": store_ids}}, {"id": 1})]
     else:
         product_ids = []
+        
     orders = await db.orders.find({"items.product_id": {"$in": product_ids}}, {"_id": 0}).to_list(500) if product_ids else []
     revenue = 0.0; pending = 0; delivered = 0
+    
     for o in orders:
         for it in o.get("items", []):
             if it["product_id"] in product_ids:
                 revenue += it.get("line_total", 0)
         if o.get("status") == "pending": pending += 1
         if o.get("status") == "delivered": delivered += 1
+        
     settings = await db.settings.find_one({"id": "global"}, {"_id": 0}) or {}
     commission = settings.get("commission_percent", 10.0)
     payout = round(revenue * (1 - commission / 100), 2)
+    
     return {
         "stores": stores, "products": products_count,
         "orders": len(orders), "pending": pending, "delivered": delivered,
         "revenue": round(revenue, 2), "commission_percent": commission, "payout": payout,
+        # 🔥 NAYA: Realtime suspension flag sent to frontend
+        "is_suspended": not is_active 
     }
 
 
@@ -747,6 +821,30 @@ async def vendor_orders(current=Depends(require_roles("vendor"))):
         o["my_items"] = [it for it in o.get("items", []) if it["product_id"] in product_ids]
         o["my_revenue"] = round(sum(it["line_total"] for it in o["my_items"]), 2)
     return orders
+
+
+@api.put("/vendor/stores/{store_id}")
+async def vendor_update_store(store_id: str, data: dict, current=Depends(require_roles("vendor"))):
+    update_data = {}
+    if "name" in data: update_data["name"] = data["name"]
+    if "is_online" in data: update_data["is_online"] = data["is_online"]
+    
+    await db.stores.update_one(
+        {"id": store_id, "vendor_id": current["id"]},
+        {"$set": update_data}
+    )
+    return {"ok": True}
+
+
+@api.delete("/vendor/stores/{store_id}")
+async def vendor_delete_store(store_id: str, current=Depends(require_roles("vendor"))):
+    # Database se store ko hamesha ke liye delete karna (Sirf wahi store jo is vendor ka ho)
+    res = await db.stores.delete_one({"id": store_id, "vendor_id": current["id"]})
+    
+    if res.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Store not found or access denied")
+        
+    return {"ok": True, "message": "Store permanently deleted"}
 
 
 # ------------------ DELIVERY ------------------
@@ -973,11 +1071,14 @@ async def seed_db():
             "avatar": None,
             "created_at": now_iso(),
         })
+    else:
+        await db.users.update_one({"email": "admin@kmtbazaar.com"}, {"$set": {"name": "KMT Admin", "role": Role.ADMIN.value}})
+
     # Seed sample customer
     if not await db.users.find_one({"email": "customer@kmtbazaar.com"}):
         await db.users.insert_one({
             "id": str(uuid.uuid4()),
-            "name": "Demo Customer",
+            "name": "KMT Customer",
             "email": "customer@kmtbazaar.com",
             "phone": "9000000001",
             "password": hash_password("Customer@123"),
@@ -985,25 +1086,36 @@ async def seed_db():
             "avatar": None,
             "created_at": now_iso(),
         })
+    else:
+        await db.users.update_one({"email": "customer@kmtbazaar.com"}, {"$set": {"name": "KMT Customer", "role": Role.CUSTOMER.value}})
+
     # Seed vendor & delivery
     if not await db.users.find_one({"email": "vendor@kmtbazaar.com"}):
         await db.users.insert_one({
-            "id": str(uuid.uuid4()), "name": "Demo Vendor", "email": "vendor@kmtbazaar.com",
+            "id": str(uuid.uuid4()), "name": "KMT Vendor", "email": "vendor@kmtbazaar.com",
             "phone": "9000000002", "password": hash_password("Vendor@123"),
             "role": Role.VENDOR.value, "avatar": None, "created_at": now_iso(),
         })
+    else:
+        await db.users.update_one({"email": "vendor@kmtbazaar.com"}, {"$set": {"name": "KMT Vendor", "role": Role.VENDOR.value}})
+
     if not await db.users.find_one({"email": "vendor2@kmtbazaar.com"}):
         await db.users.insert_one({
             "id": str(uuid.uuid4()), "name": "TechWorld Owner", "email": "vendor2@kmtbazaar.com",
             "phone": "9000000004", "password": hash_password("Vendor@123"),
             "role": Role.VENDOR.value, "avatar": None, "created_at": now_iso(),
         })
+    else:
+        await db.users.update_one({"email": "vendor2@kmtbazaar.com"}, {"$set": {"name": "TechWorld Owner", "role": Role.VENDOR.value}})
+
     if not await db.users.find_one({"email": "delivery@kmtbazaar.com"}):
         await db.users.insert_one({
-            "id": str(uuid.uuid4()), "name": "Demo Delivery", "email": "delivery@kmtbazaar.com",
+            "id": str(uuid.uuid4()), "name": "KMT Delivery", "email": "delivery@kmtbazaar.com",
             "phone": "9000000003", "password": hash_password("Delivery@123"),
             "role": Role.DELIVERY.value, "avatar": None, "created_at": now_iso(),
         })
+    else:
+        await db.users.update_one({"email": "delivery@kmtbazaar.com"}, {"$set": {"name": "KMT Delivery", "role": Role.DELIVERY.value}})
 
     # Categories
     if await db.categories.count_documents({}) == 0:
@@ -1111,3 +1223,4 @@ app.add_middleware(
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
+    

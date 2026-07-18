@@ -1,7 +1,5 @@
 import React, { useEffect, useState, useCallback } from "react";
-import {
-  View, Text, ScrollView, StyleSheet, Pressable, FlatList, Dimensions, RefreshControl, TextInput,
-} from "react-native";
+import { View, Text, ScrollView, StyleSheet, Pressable, FlatList, Dimensions, RefreshControl } from "react-native";
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
@@ -26,7 +24,6 @@ export default function Home() {
   const [trending, setTrending] = useState<any[]>([]);
   const [unread, setUnread] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
-  const [search, setSearch] = useState("");
 
   const load = useCallback(async () => {
     try {
@@ -61,19 +58,15 @@ export default function Home() {
             <Image source={{ uri: LOGO_URL }} style={s.logoSmall} contentFit="contain" />
           </View>
         </View>
-        <View style={s.searchWrap}>
+
+        <Pressable 
+          testID="home-search-trigger"
+          onPress={() => router.push("/search" as any)}
+          style={s.searchWrap}
+        >
           <MaterialCommunityIcons name="magnify" size={20} color={COLORS.textMuted} />
-          <TextInput
-            testID="home-search-input"
-            placeholder="Search for groceries, food, medicines..."
-            placeholderTextColor={COLORS.textMuted}
-            value={search}
-            onChangeText={setSearch}
-            onSubmitEditing={() => router.push(`/search?q=${search}` as any)}
-            style={s.search}
-          />
-          <MaterialCommunityIcons name="microphone-outline" size={20} color={COLORS.brand} />
-        </View>
+          <Text style={s.searchPlaceholderText}>Search for groceries, food, medicines...</Text>
+        </Pressable>
       </SafeAreaView>
 
       <ScrollView
@@ -114,7 +107,7 @@ export default function Home() {
             <Pressable
               key={c.id}
               testID={`category-${c.id}`}
-              onPress={() => router.push(`/category/${c.id}` as any)}
+              onPress={() => router.push({ pathname: `/category/${c.id}`, params: { name: c.name } } as any)}
               style={s.catItem}
             >
               <View style={[s.catCircle, { backgroundColor: c.color + "22" }]}>
@@ -133,40 +126,72 @@ export default function Home() {
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={{ paddingHorizontal: SPACING.lg, gap: SPACING.md }}
           keyExtractor={(it) => it.id}
-          renderItem={({ item }) => (
-            <Pressable testID={`store-${item.id}`} style={s.storeCard}>
-              <Image source={{ uri: item.image }} style={s.storeImg} contentFit="cover" />
-              <View style={{ padding: 10 }}>
-                <Text style={s.storeName} numberOfLines={1}>{item.name}</Text>
-                <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginTop: 2 }}>
-                  <View style={s.ratePill}>
-                    <MaterialCommunityIcons name="star" size={10} color="#fff" />
-                    <Text style={s.rateText}>{item.rating}</Text>
-                  </View>
-                  <Text style={s.storeMin}>{item.delivery_min} min</Text>
+          renderItem={({ item }) => {
+            // 🔥 NAYA: Check agar store available hai ya nahi
+            const isAvailable = item.is_online !== false;
+
+            return (
+              <Pressable 
+                testID={`store-${item.id}`} 
+                style={[s.storeCard, !isAvailable && { opacity: 0.55, backgroundColor: "#f9fafb" }]} // Grey effect
+                disabled={!isAvailable} // 🔥 Click disable karne ke liye
+                onPress={() => router.push({ pathname: `/store/${item.id}`, params: { name: item.name } } as any)}
+              >
+                <View style={{ position: "relative" }}>
+                  <Image source={{ uri: item.image }} style={s.storeImg} contentFit="cover" />
+                  
+                  {/* 🔥 NOT AVAILABLE ka badge */}
+                  {!isAvailable && (
+                    <View style={s.offlineOverlay}>
+                      <Text style={s.offlineText}>NOT AVAILABLE</Text>
+                    </View>
+                  )}
                 </View>
-              </View>
-            </Pressable>
-          )}
+
+                <View style={{ padding: 6 }}>
+                  <Text style={[s.storeName, !isAvailable && { color: COLORS.textMuted }]} numberOfLines={1}>{item.name}</Text>
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginTop: 2 }}>
+                    
+                    {isAvailable ? (
+                      <View style={s.ratePill}>
+                        <MaterialCommunityIcons name="star" size={10} color="#fff" />
+                        <Text style={s.rateText}>{item.rating}</Text>
+                      </View>
+                    ) : (
+                      <View style={[s.ratePill, { backgroundColor: COLORS.textMuted }]}>
+                        <MaterialCommunityIcons name="store-off-outline" size={10} color="#fff" />
+                        <Text style={s.rateText}>Closed</Text>
+                      </View>
+                    )}
+
+                    <Text style={s.storeMin}>{item.delivery_min} min</Text>
+                  </View>
+                </View>
+              </Pressable>
+            );
+          }}
         />
 
         {/* Trending */}
         <SectionTitle title="Trending Products" subtitle="Best sellers this week" />
         <FlatList
-          horizontal
           data={trending}
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={{ paddingHorizontal: SPACING.lg }}
+          scrollEnabled={false}
+          numColumns={width > 768 ? 4 : 2}
+          key={`trending-grid-${width > 768 ? 'web' : 'mobile'}`}
+          contentContainerStyle={{ paddingHorizontal: SPACING.lg, gap: 12 }}
+          columnWrapperStyle={{ justifyContent: "space-between", marginBottom: 12 }}
           keyExtractor={(it) => it.id}
-          renderItem={({ item }) => <ProductCard p={item} />}
+          renderItem={({ item }) => (<View style={{ width: width > 768 ? "22%" : "46%", marginHorizontal: "1%" }}><ProductCard p={item} /></View>)}
         />
-
+        
         <View style={{ height: 24 }} />
+        
         <View style={s.brandStrip}>
           <Image source={{ uri: LOGO_URL }} style={{ width: 60, height: 60 }} contentFit="contain" />
           <View style={{ flex: 1 }}>
             <Text style={s.brandStripTitle}>KMT Bazaar Promise</Text>
-            <Text style={s.brandStripSub}>Fast delivery · Trusted vendors · Easy returns</Text>
+            <Text style={s.brandStripSub}>Fast delivery · Trusted shops · Easy returns</Text>
           </View>
         </View>
       </ScrollView>
@@ -199,9 +224,8 @@ const s = StyleSheet.create({
   bellBadge: { position: "absolute", top: 4, right: 4, backgroundColor: COLORS.accent, minWidth: 16, height: 16, borderRadius: 8, paddingHorizontal: 3, alignItems: "center", justifyContent: "center" },
   bellBadgeText: { color: "#fff", fontSize: 9, fontWeight: "800" },
   logoSmall: { width: 36, height: 36 },
-  searchWrap: { flexDirection: "row", alignItems: "center", backgroundColor: "#fff", borderRadius: RADIUS.pill, paddingHorizontal: 14, gap: 8, marginTop: SPACING.md, ...shadow.card },
-  search: { flex: 1, paddingVertical: 12, fontSize: 14, color: COLORS.text },
-
+  searchWrap: { flexDirection: "row", alignItems: "center", backgroundColor: "#fff", borderRadius: RADIUS.pill, paddingHorizontal: 14, paddingVertical: 12, marginTop: SPACING.md, ...shadow.card, height: 46 },
+  searchPlaceholderText: { flex: 1, fontSize: 14, color: COLORS.textMuted, marginLeft: 8, fontWeight: "500" },
   banner: { width: BANNER_W, height: 160, borderRadius: RADIUS.lg, overflow: "hidden", backgroundColor: COLORS.surfaceTertiary },
   bannerImg: { width: "100%", height: "100%" },
   bannerText: { position: "absolute", left: 16, top: 20, right: 100 },
@@ -209,23 +233,25 @@ const s = StyleSheet.create({
   bannerTitle: { color: "#fff", fontSize: 22, fontWeight: "800", marginTop: 4 },
   bannerCta: { marginTop: 12, paddingHorizontal: 14, paddingVertical: 8, borderRadius: RADIUS.pill, alignSelf: "flex-start" },
   bannerCtaText: { color: "#fff", fontWeight: "700", fontSize: 13 },
-
   sectionHead: { paddingHorizontal: SPACING.lg, marginTop: SPACING.lg, marginBottom: SPACING.md },
   sectionTitle: { fontSize: 18, fontWeight: "800", color: COLORS.text },
   sectionSub: { fontSize: 12, color: COLORS.textMuted, marginTop: 2 },
-
   catsGrid: { flexDirection: "row", flexWrap: "wrap", paddingHorizontal: SPACING.md },
   catItem: { width: "20%", alignItems: "center", marginBottom: SPACING.md },
   catCircle: { width: 64, height: 64, borderRadius: 32, overflow: "hidden", alignItems: "center", justifyContent: "center", borderWidth: 2, borderColor: "#fff", ...shadow.soft },
   catImg: { width: "100%", height: "100%" },
   catName: { fontSize: 11, fontWeight: "700", color: COLORS.text, marginTop: 6, textAlign: "center" },
-
-  storeCard: { width: 200, backgroundColor: "#fff", borderRadius: RADIUS.md, overflow: "hidden", borderWidth: 1, borderColor: COLORS.border },
-  storeImg: { width: "100%", height: 100 },
+  
+  storeCard: { width: 170, backgroundColor: "#fff", borderRadius: RADIUS.md, overflow: "hidden", borderWidth: 1, borderColor: COLORS.border },
+  storeImg: { width: "100%", height: 80 },
   storeName: { fontWeight: "700", color: COLORS.text },
   ratePill: { flexDirection: "row", alignItems: "center", backgroundColor: COLORS.success, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, gap: 2 },
   rateText: { color: "#fff", fontSize: 11, fontWeight: "700" },
   storeMin: { fontSize: 11, color: COLORS.textSecondary },
+
+  // 🔥 NAYA: Offline stores ke styling
+  offlineOverlay: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "center", alignItems: "center" },
+  offlineText: { color: "#fff", backgroundColor: "#ef4444", paddingHorizontal: 6, paddingVertical: 3, borderRadius: 4, fontSize: 10, fontWeight: "900" },
 
   brandStrip: { flexDirection: "row", gap: SPACING.md, alignItems: "center", marginHorizontal: SPACING.lg, marginTop: SPACING.lg, padding: SPACING.md, borderRadius: RADIUS.md, backgroundColor: "#0A0A0A" },
   brandStripTitle: { color: "#fff", fontWeight: "800", fontSize: 14 },

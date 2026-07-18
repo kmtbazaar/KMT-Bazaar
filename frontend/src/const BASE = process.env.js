@@ -1,1 +1,1 @@
-const BASE = process.env.EXPO_PUBLIC_BACKEND_URL || "http://localhost:8000";
+dir app -Recurse | findstr "_layout"const BASE = process.env.EXPO_PUBLIC_BACKEND_URL || "http://localhost:8000";

@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from "react";
-import { View, Text, StyleSheet, FlatList, Pressable, Switch } from "react-native";
+import { View, Text, StyleSheet, FlatList, Pressable, Switch, Alert } from "react-native";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
@@ -15,13 +15,47 @@ export default function AdminUsers() {
   const [users, setUsers] = useState<any[]>([]);
 
   const load = useCallback(async () => {
-    try { setUsers(await adminApi.users(role as string)); } catch {}
+    try {
+      const allUsers = await adminApi.users(role as string);
+      const list = (allUsers || []) as any[];
+
+      if (role === "vendor") {
+        const filteredUsers = list.filter((u: any) => {
+          const name = (u.name || "").toLowerCase();
+          const email = (u.email || "").toLowerCase();
+          const isDemo = name.includes("demo") || email.includes("demo");
+          const hiddenSeedEmail = email === "vendor@kmtbazaar.com";
+          return !isDemo && !hiddenSeedEmail;
+        });
+        setUsers(filteredUsers);
+      } else {
+        setUsers(list);
+      }
+    } catch (e) {
+      console.log(e);
+    }
   }, [role]);
+
   useFocusEffect(useCallback(() => { load(); }, [load]));
 
-  const toggle = async (id: string) => {
-    await adminApi.toggleUser(id);
-    load();
+  // 🔥 Master Control Toggle (With Suspend/Unsuspend Confirmation)
+  const toggle = async (id: string, currentActive: boolean, userRole: string, name: string) => {
+    if (userRole === "vendor") {
+      if (currentActive !== false) {
+        Alert.alert("Suspend Vendor?", `Are you sure you want to SUSPEND '${name}'? All their stores will go offline immediately.`, [
+          { text: "Cancel", style: "cancel" },
+          { text: "Suspend", style: "destructive", onPress: async () => { await adminApi.toggleUser(id); load(); } }
+        ]);
+      } else {
+        Alert.alert("Unsuspend Vendor?", `Are you sure you want to UNSUSPEND '${name}' and make them active again?`, [
+          { text: "Cancel", style: "cancel" },
+          { text: "Unsuspend", style: "default", onPress: async () => { await adminApi.toggleUser(id); load(); } }
+        ]);
+      }
+    } else {
+      await adminApi.toggleUser(id);
+      load();
+    }
   };
 
   const title = role ? `${ROLE_LABEL[role as string] || "Users"}s` : "All Users";
@@ -54,7 +88,7 @@ export default function AdminUsers() {
             <Switch
               testID={`toggle-${item.id}`}
               value={item.active !== false}
-              onValueChange={() => toggle(item.id)}
+              onValueChange={() => toggle(item.id, item.active !== false, item.role, item.name)}
               trackColor={{ true: COLORS.success, false: COLORS.borderStrong }}
             />
           </View>

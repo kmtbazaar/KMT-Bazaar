@@ -1,6 +1,12 @@
 import { apiFetch } from "./api";
 
 export const adminApi = {
+
+
+  stores: (status?: string) => apiFetch<any[]>(`/admin/stores${status ? `?status=${status}` : ""}`),
+  approveStore: (id: string) => apiFetch(`/admin/stores/${id}/approve`, { method: "POST" }),
+
+  rejectStore: (id: string) => apiFetch("/admin/stores/" + id + "/reject", { method: "POST" }),
   stats: () => apiFetch<any>("/admin/stats"),
   users: (role?: string) => apiFetch<any[]>(`/admin/users${role ? `?role=${role}` : ""}`),
   toggleUser: (id: string) => apiFetch(`/admin/users/${id}/toggle`, { method: "POST" }),
@@ -19,13 +25,17 @@ export const adminApi = {
 };
 
 export const vendorApi = {
-  stats: () => apiFetch<any>("/vendor/stats"),
+  stats: () => apiFetch("/vendor/stats"),
+  createStore: (data: any) => apiFetch("/vendor/stores", { method: "POST", body: JSON.stringify(data) }),
+  updateStore: (id: string, data: any) => apiFetch("/vendor/stores/" + id, { method: "PUT", body: JSON.stringify(data) }),
+  deleteStore: (id: string) => apiFetch("/vendor/stores/" + id, { method: "DELETE" }),
   products: () => apiFetch<any[]>("/vendor/products"),
   createProduct: (data: any) => apiFetch("/vendor/products", { method: "POST", body: JSON.stringify(data) }),
-  updateProduct: (id: string, data: any) => apiFetch(`/vendor/products/${id}`, { method: "PUT", body: JSON.stringify(data) }),
-  deleteProduct: (id: string) => apiFetch(`/vendor/products/${id}`, { method: "DELETE" }),
+  updateProduct: (id: string, data: any) => apiFetch("/vendor/products/" + id, { method: "PUT", body: JSON.stringify(data) }),
+  deleteProduct: (id: string) => apiFetch("/vendor/products/" + id, { method: "DELETE" }),
   orders: () => apiFetch<any[]>("/vendor/orders"),
-  acceptOrder: (id: string) => apiFetch(`/vendor/orders/${id}/accept`, { method: "POST" }),
+  acceptOrder: (id: string) => apiFetch("/vendor/orders/" + id + "/accept", { method: "POST" }),
+  rejectOrder: (id: string) => apiFetch("/vendor/orders/" + id + "/reject", { method: "POST" })
 };
 
 export const deliveryApi = {
