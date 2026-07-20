@@ -1211,6 +1211,11 @@ async def on_shutdown():
 async def root():
     return {"app": "KMT Bazaar", "status": "ok"}
 
+@api.get("/test-db")
+async def test_db():
+    return {"users": await db.users.count_documents({}), "orders": await db.orders.count_documents({})}
+
+
 
 app.include_router(api)
 app.add_middleware(
