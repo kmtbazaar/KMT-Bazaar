@@ -1,42 +1,41 @@
-export type AIResponse = {
-  success: boolean;
-  message: string;
-};
+// services/ai.js ya services/ai.ts ke andar ka pura code isse replace kar dein:
 
-// Yahan maine aapka laptop wala IP daal diya hai jo Expo use kar raha hai
-const API_BASE = "http://10.102.73.13:8000/api";
-
-export async function askAI(prompt: string): Promise<AIResponse> {
+export const askAI = async (prompt) => {
   try {
-    const response = await fetch(`${API_BASE}/ai/chat`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        message: prompt,
-      }),
-    });
+    // Vercel aur Expo ke liye API key yahan se aayegi
+    const apiKey = process.env.EXPO_PUBLIC_GEMINI_API_KEY;
+
+    if (!apiKey) {
+      throw new Error("API Key missing hai!");
+    }
+
+    // Direct Gemini API call
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: prompt }] }],
+        }),
+      }
+    );
 
     const data = await response.json();
 
-    if (!response.ok) {
-      return {
-        success: false,
-        message: data.detail || "Server Error",
-      };
+    if (data.error) {
+      console.error("Gemini Error:", data.error.message);
+      throw new Error(data.error.message);
     }
 
+    // AI ka response
     return {
-      success: true,
-      message: data.message,
+      message: data.candidates[0].content.parts[0].text,
     };
   } catch (error) {
-    console.log("AI Error:", error);
-
-    return {
-      success: false,
-      message: "⚠ Unable to connect to AI Server.",
-    };
+    console.error("AI Service Error:", error);
+    throw error; 
   }
-}
+};
