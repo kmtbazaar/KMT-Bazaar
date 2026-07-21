@@ -1,4 +1,19 @@
+import os
+from dotenv import load_dotenv
 from fastapi import FastAPI, APIRouter, HTTPException, Depends, status
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+from google import genai
+from google.genai import types
+load_dotenv()
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+if GEMINI_API_KEY:
+   gemini_client = genai.Client(api_key=GEMINI_API_KEY)
+from google.genai import types
+from fastapi import FastAPI, APIRouter, HTTPException, Depends, status
+from google import genai
+from google.genai import types
+from pydantic import BaseModel
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
@@ -25,12 +40,25 @@ JWT_SECRET = os.environ.get("JWT_SECRET", "kmt-bazaar-super-secret-key-change-me
 JWT_ALGO = "HS256"
 JWT_EXPIRE_MIN = 60 * 24 * 30  # 30 days
 
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
+GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
+
+gemini_client = genai.Client(api_key=GEMINI_API_KEY)
+
+
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 security = HTTPBearer(auto_error=False)
 
 app = FastAPI(title="KMT Bazaar API")
 api = APIRouter(prefix="/api")
 
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # ------------------ MODELS ------------------
 class Role(str, Enum):
@@ -109,6 +137,10 @@ class CheckoutIn(BaseModel):
     address_id: str
     payment_method: str  # cod | online
     notes: Optional[str] = ""
+
+
+class AIChatRequest(BaseModel):
+    message: str
 
 
 # ------------------ HELPERS ------------------
@@ -267,6 +299,37 @@ async def get_product(product_id: str):
     if not p:
         raise HTTPException(404, "Product not found")
     return p
+
+
+class AIChatRequest(BaseModel):
+    message: str
+
+@app.post("/api/ai/chat")  # (Agar aapka /ai/chat hai toh wahi rehne dein)
+async def ai_chat(req: AIChatRequest):
+    try:
+        if not GEMINI_API_KEY:
+            raise HTTPException(status_code=500, detail="GEMINI_API_KEY not configured")
+
+        # Naya aur fast tarika (gemini_client ka use karke)
+        response = gemini_client.models.generate_content(
+          model='gemini-flash-latest',
+            contents=req.message,
+            config=types.GenerateContentConfig(
+                system_instruction=(
+                    "You are KMT Bazaar AI Assistant. "
+                    "Help customers with products, orders, sellers, "
+                    "delivery and general shopping questions."
+                )
+            )
+        )
+
+        return {
+            "message": response.text
+        }
+        
+    except Exception as e:
+        print("==== API ERROR ====", str(e))
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 # ------------------ CART ------------------
@@ -1210,6 +1273,44 @@ async def on_shutdown():
 @api.get("/")
 async def root():
     return {"app": "KMT Bazaar", "status": "ok"}
+
+@api.post("/ai/chat")
+async def ai_chat(req: AIChatRequest):
+    try:
+        print("==== BHEJA GAYA MODEL NAAM HAI: ====", GEMINI_MODEL)
+        if not GEMINI_API_KEY:
+            raise HTTPException(
+                status_code=500,
+                detail="GEMINI_API_KEY not configured"
+            )
+
+        response = gemini_client.chat.completions.create(
+            model="gemini-1.5-flash",
+            messages=[
+                {
+                    "role": "system",
+                    "content": (
+                        "You are KMT Bazaar AI Assistant. "
+                        "Help customers with products, orders, sellers, "
+                        "delivery and general shopping questions."
+                    ),
+                },
+                {
+                    "role": "user",
+                    "content": req.message,
+                },
+            ],
+        )
+
+        return {
+            "message": response.choices[0].message.content
+        }
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=str(e),
+        )
 
 
 app.include_router(api)

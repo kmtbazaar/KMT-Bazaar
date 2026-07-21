@@ -3,7 +3,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const BASE =
   process.env.EXPO_PUBLIC_BACKEND_URL ||
-  "http://localhost:8000";
+  "http://10.102.73.13:8000";
 
 export const API = `${BASE}/api`;
 

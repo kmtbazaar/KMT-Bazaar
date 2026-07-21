@@ -1,6 +1,0 @@
-{"_e":"root:init","_t":1781802029982,"format":"v0-jsonl","version":"56.1.16"}
-{"_e":"env:mode","_t":1781802029984,"nodeEnv":"development","babelEnv":"development","mode":"development"}
-{"_e":"env:load","_t":1781802029988,"mode":"development","files":["../..\\..\\.env"],"env":{"DB_NAME":"kmt_bazaar","JWT_SECRET":"kmt-bazaar-super-secret-key-change-me","MONGO_URL":"mongodb+srv://KMT-Bazaar:km65746@kmt-bazaar.utba8ol.mongodb.net/kmt_bazaar?retryWrites=true&w=majority&appName=kmt-bazaar"}}
-{"_e":"root:init","_t":1781802141416,"format":"v0-jsonl","version":"56.1.16"}
-{"_e":"env:mode","_t":1781802141416,"nodeEnv":"development","babelEnv":"development","mode":"development"}
-{"_e":"env:load","_t":1781802141419,"mode":"development","files":["../..\\..\\.env"],"env":{"DB_NAME":"kmt_bazaar","JWT_SECRET":"kmt-bazaar-super-secret-key-change-me","MONGO_URL":"mongodb+srv://KMT-Bazaar:km65746@kmt-bazaar.utba8ol.mongodb.net/kmt_bazaar?retryWrites=true&w=majority&appName=kmt-bazaar"}}

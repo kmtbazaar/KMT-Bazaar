@@ -1,9 +1,18 @@
 import React from "react";
-import { View, Text, Image, StyleSheet } from "react-native";
+import { View, Text, Image, StyleSheet, TouchableOpacity } from "react-native";
+import { router } from "expo-router";
+import { Ionicons } from "@expo/vector-icons";
 
 export default function BotHeader() {
   return (
     <View style={styles.container}>
+      <TouchableOpacity
+        onPress={() => router.back()}
+        style={styles.backButton}
+      >
+        <Ionicons name="arrow-back" size={24} color="#fff" />
+      </TouchableOpacity>
+
       <Image
         source={require("../assets/ai/kmt-bot.png")}
         style={styles.avatar}
@@ -30,6 +39,11 @@ const styles = StyleSheet.create({
     backgroundColor: "#101828",
     borderBottomWidth: 1,
     borderBottomColor: "#1f2937",
+  },
+
+  backButton: {
+    marginRight: 12,
+    padding: 4,
   },
 
   avatar: {

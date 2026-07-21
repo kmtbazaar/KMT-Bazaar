@@ -30,14 +30,17 @@ export default function Login() {
     if (!email || !password) {
       setError("Please fill in both email and password");
       return;
-    }
+  }
     setError(null); setLoading(true);
     try {
       await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       const user = await login(email.trim(), password);
       if (!user || !user.role) throw new Error("Login failed, no user role returned");
-      if (user.role === "customer") router.replace("/(tabs)/home");
+      
+      // 👇 Sirf is line mein as any miss ho gaya tha
+      if (user.role === "customer") router.replace("/(tabs)/home" as any);
       else router.replace(`/${user.role}` as any);
+      
     } catch (e: any) {
       setError(e.message || "Login failed");
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
@@ -102,7 +105,7 @@ export default function Login() {
                 </LinearGradient>
               </Pressable>
               
-              <Pressable onPress={() => router.push("/auth/register")} testID="goto-register">
+              <Pressable onPress={() => router.push("/auth/register" as any)} testID="goto-register">
                 <Text style={s.alt}>New to KMT Bazaar? <Text style={s.altLink}>Create account</Text></Text>
               </Pressable>
             </>
@@ -112,7 +115,7 @@ export default function Login() {
               
               {otpSent && (
                 <Animated.View entering={FadeInDown.duration(400)}>
-                  <Field icon="numeric-password" placeholder="Enter 6-digit OTP" value={otp} onChangeText={(v: string) => setOtp(v.replace(/[^0-9]/g, ''))} keyboardType="number-pad" maxLength={6} testID="otp-code-input" />
+                  <Field icon="" placeholder="Enter 6-digit OTP" value={otp} onChangeText={(v: string) => setOtp(v.replace(/[^0-9]/g, ''))} keyboardType="number-pad" maxLength={6} testID="otp-code-input" />
                 </Animated.View>
               )}
               
