@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from "react";
-import { View, Text, ScrollView, StyleSheet, Pressable, FlatList, Dimensions, RefreshControl } from "react-native";
+import { View, Text, ScrollView, StyleSheet, Pressable, FlatList, Dimensions, RefreshControl, Platform } from "react-native";
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
@@ -70,13 +70,15 @@ export default function Home() {
       </SafeAreaView>
 
       <ScrollView
-        contentContainerStyle={{ paddingBottom: 100 }}
+        style={[{ flex: 1 }, Platform.OS === 'web' && { overflowY: 'auto' }]}
+        contentContainerStyle={{ paddingBottom: 100, flexGrow: 1 }}
         refreshControl={<RefreshControl tintColor={COLORS.brand} refreshing={refreshing} onRefresh={onRefresh} />}
         showsVerticalScrollIndicator={false}
       >
         {/* Banner Carousel */}
         <FlatList
           horizontal
+          style={Platform.OS === 'web' ? { overflowX: 'auto' } : {}}
           data={banners}
           showsHorizontalScrollIndicator={false}
           snapToInterval={BANNER_W + 12}
