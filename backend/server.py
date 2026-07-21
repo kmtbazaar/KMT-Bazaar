@@ -1311,6 +1311,10 @@ async def ai_chat(req: AIChatRequest):
             status_code=500,
             detail=str(e),
         )
+@api.get("/test-db")
+async def test_db():
+    return {"users": await db.users.count_documents({}), "orders": await db.orders.count_documents({})}
+
 
 
 app.include_router(api)
