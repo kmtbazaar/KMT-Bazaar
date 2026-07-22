@@ -69,7 +69,8 @@ export default function Home() {
         </Pressable>
       </SafeAreaView>
 
-      <ScrollView 1 150, <ScrollView aur bounces="{false}" contentContainerStyle="{{" dhundo flex: flexGrow: hone ko opening overScrollMode="never" paddingBottom: pure se showsVerticalScrollIndicator="{false}" start style="{{" tag usko wale }}> se replace karke refresh karo.
+      <ScrollView && 'auto' 'web' 1 150, Platform.OS="==" contentContainerStyle="{{" flex: flexGrow: onRefresh="{onRefresh}" overflowY: paddingBottom: refreshControl="{<RefreshControl" refreshing="{refreshing}" style="{[{" tintColor="{COLORS.brand}" { }, }]} }}/>} showsVerticalScrollIndicator={false} bounces={false} overScrollMode="never">
+
         {/* Banner Carousel */}
         <FlatList
           horizontal
