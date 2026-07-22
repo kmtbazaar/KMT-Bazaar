@@ -51,7 +51,7 @@ export default function Index() {
         {/* Header Text */}
         <View style={styles.headerText}>
           <Text style={styles.title}>KMT Bazaar Assistant</Text>
-          <Text style={styles.subtitle}>Swipe me left or right to see 3D effect</Text>
+          <Text style={styles.subtitle}>[ KMT-Bazaar ] गाॅव को शहर बनाते हैं </Text>
         </View>
 
         {/* Swipe Area with the Animated GIF */}
