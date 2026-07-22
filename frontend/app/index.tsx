@@ -2,25 +2,24 @@ import { useEffect, useState, useRef } from "react";
 import { View, Image, Animated, PanResponder, TouchableOpacity, Text, StyleSheet, SafeAreaView } from "react-native";
 import { router } from "expo-router";
 
-// 1. Apni nayi transparent 3D image yahan import karein
-// Dhyaan rahe ki path sahi ho (../assets/images/apki-file-ka-naam.png)
-import AssistantImage from "../assets/images/assistant-char.png"; 
+// 1. PNG ki jagah ab hum apni GIF file import kar rahe hain
+import AssistantGif from "../assets/images/assistant.gif"; 
 
 export default function Index() {
-  // Yeh state tay karegi ki kab logo dikhana hai aur kab assistant
+  // State to manage splash vs assistant view
   const [showAssistant, setShowAssistant] = useState(false);
 
-  // --- Swiping & Animation Logic ---
+  // --- Swiping & Animation Logic (Same as before) ---
   const pan = useRef(new Animated.ValueXY()).current;
   const panResponder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
       onPanResponderMove: Animated.event(
-        [null, { dx: pan.x }], // Sirf Left/Right move track hoga
+        [null, { dx: pan.x }], 
         { useNativeDriver: false }
       ),
       onPanResponderRelease: () => {
-        // Ungli chhodne par wapas center mein aayega
+        // Smoothly bring back to center
         Animated.spring(pan, {
           toValue: { x: 0, y: 0 },
           useNativeDriver: false,
@@ -30,16 +29,15 @@ export default function Index() {
     })
   ).current;
 
-  // 3D Rotation effect (Y-axis par ghumana)
+  // 3D Rotation effect based on swipe
   const rotateY = pan.x.interpolate({
     inputRange: [-200, 200],
     outputRange: ["-45deg", "45deg"],
   });
 
   useEffect(() => {
-    // Original timer logic: 3 second baad splash screen hatega
+    // 3 second timer for the initial black splash screen
     const timer = setTimeout(() => {
-      // Ab seedha login nahi, pehle assistant dikhao
       setShowAssistant(true);
     }, 3000);
 
@@ -50,37 +48,38 @@ export default function Index() {
   if (showAssistant) {
     return (
       <SafeAreaView style={styles.assistantContainer}>
-        {/* Top Text Area */}
+        {/* Header Text */}
         <View style={styles.headerText}>
           <Text style={styles.title}>KMT Bazaar Assistant</Text>
           <Text style={styles.subtitle}>Swipe me left or right to see 3D effect</Text>
         </View>
 
-        {/* Swipe Area with your 3D Image */}
+        {/* Swipe Area with the Animated GIF */}
         <View style={styles.characterSwipeArea} {...panResponder.panHandlers}>
           <Animated.View
             style={[
               styles.characterWrapper,
               {
                 transform: [
-                  { translateX: pan.x }, // Left/Right movement
-                  { rotateY: rotateY }, // 3D Rotation
+                  { translateX: pan.x }, // Horizontal movement
+                  { rotateY: rotateY }, // 3D Rotate
                 ],
               },
             ]}
           >
+            {/* Using the same Image component, React Native handles GIFs automatically */}
             <Image
-              source={AssistantImage} // Aapki generated image yahan load hogi
+              source={AssistantGif} // Your animated GIF
               style={styles.imageSize}
-              resizeMode="contain" // Image stretch na ho
+              resizeMode="contain" 
             />
           </Animated.View>
         </View>
 
-        {/* Go to Login Button at Bottom */}
+        {/* Action Button */}
         <TouchableOpacity 
           style={styles.loginButton} 
-          onPress={() => router.replace("/auth/login")} // Login par bhejo
+          onPress={() => router.replace("/auth/login")}
         >
           <Text style={styles.loginButtonText}>Let's Go to Login</Text>
         </TouchableOpacity>
@@ -88,7 +87,7 @@ export default function Index() {
     );
   }
 
-  // --- VIEW 1: AAPKA ORIGINAL SPLASH SCREEN CODE (First 3 seconds) ---
+  // --- VIEW 1: AAPKA ORIGINAL BLACK SPLASH SCREEN (First 3 seconds, untouched) ---
   return (
     <View
       style={{
@@ -107,11 +106,11 @@ export default function Index() {
   );
 }
 
-// Styling for the new Assistant Screen
+// Custom Styles for the Assistant Screen
 const styles = StyleSheet.create({
   assistantContainer: { 
     flex: 1, 
-    backgroundColor: "#ffffff", // White background for assistant screen
+    backgroundColor: "#ffffff", // Clean white background
     justifyContent: "space-between", 
     alignItems: "center", 
     paddingVertical: 30 
@@ -140,8 +139,8 @@ const styles = StyleSheet.create({
     width: "100%",
   },
   characterWrapper: { 
-    width: 280, // Character ki width thodi badi rakhi hai 
-    height: 350, // Height thodi badi
+    width: 280, // Size of the GIF container
+    height: 350, 
     justifyContent: "center", 
     alignItems: "center" 
   },
@@ -150,17 +149,15 @@ const styles = StyleSheet.create({
     height: "100%" 
   },
   loginButton: { 
-    backgroundColor: "#000000", // Black button for clean look
+    backgroundColor: "#000000", // Clean black button
     paddingVertical: 16, 
     paddingHorizontal: 60, 
     borderRadius: 30, 
     marginBottom: 40,
-    // Button shadow (iOS)
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 5,
-    // Button shadow (Android)
     elevation: 8,
   },
   loginButtonText: { 
