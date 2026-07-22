@@ -1,14 +1,12 @@
-export type AIResponse = {
-  success: boolean;
-  message: string;
-};
-
-// Yahan maine aapka laptop wala IP daal diya hai jo Expo use kar raha hai
-const API_BASE = "http://10.102.73.13:8000/api";
-
-export async function askAI(prompt: string): Promise<AIResponse> {
+export const askAI = async (prompt: string) => {
   try {
-    const response = await fetch(`${API_BASE}/ai/chat`, {
+    const backendUrl = process.env.EXPO_PUBLIC_BACKEND_URL;
+
+    if (!backendUrl) {
+      throw new Error("Backend URL missing hai!");
+    }
+
+    const response = await fetch(`${backendUrl}/api/ai/chat`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -21,22 +19,15 @@ export async function askAI(prompt: string): Promise<AIResponse> {
     const data = await response.json();
 
     if (!response.ok) {
-      return {
-        success: false,
-        message: data.detail || "Server Error",
-      };
+      throw new Error(data.detail || "AI request failed");
     }
 
     return {
-      success: true,
       message: data.message,
     };
-  } catch (error) {
-    console.log("AI Error:", error);
 
-    return {
-      success: false,
-      message: "⚠ Unable to connect to AI Server.",
-    };
+  } catch (error) {
+    console.error("AI Service Error:", error);
+    throw error;
   }
-}
+};
