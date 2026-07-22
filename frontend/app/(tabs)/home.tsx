@@ -69,7 +69,7 @@ export default function Home() {
         </Pressable>
       </SafeAreaView>
 
-      <ScrollView && 'auto' 'web' 1 100, Platform.OS="==" contentContainerStyle="{{" flex: flexGrow: onRefresh="{onRefresh}" overflowY: paddingBottom: refreshControl="{<RefreshControl" refreshing="{refreshing}" style="{[{" tintColor="{COLORS.brand}" { }, }]} }}/>} showsVerticalScrollIndicator={false} nestedScrollEnabled={true} keyboardShouldPersistTaps="handled" removeClippedSubviews={true}>
+      <ScrollView showsVerticalScrollIndicator="{false}" lekar se> tak dhundo aur is se replace karke batao: <ScrollView 1 150, contentContainerStyle="{{" flex: flexGrow: onRefresh="{onRefresh}" paddingBottom: refreshControl="{<RefreshControl" refreshing="{refreshing}" style="{{" tintColor="{COLORS.brand}" }}/>} showsVerticalScrollIndicator={false} nestedScrollEnabled={true} scrollEventThrottle={16}>
         {/* Banner Carousel */}
         <FlatList
           horizontal
