@@ -1,42 +1,33 @@
-// services/ai.js ya services/ai.ts ke andar ka pura code isse replace kar dein:
-
-export const askAI = async (prompt) => {
+export const askAI = async (prompt: string) => {
   try {
-    // Vercel aur Expo ke liye API key yahan se aayegi
-    const apiKey = process.env.EXPO_PUBLIC_GEMINI_API_KEY;
+    const backendUrl = process.env.EXPO_PUBLIC_BACKEND_URL;
 
-    if (!apiKey) {
-      throw new Error("API Key missing hai!");
+    if (!backendUrl) {
+      throw new Error("Backend URL missing hai!");
     }
 
-    // Direct Gemini API call
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }],
-        }),
-      }
-    );
+    const response = await fetch(`${backendUrl}/api/ai/chat`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        message: prompt,
+      }),
+    });
 
     const data = await response.json();
 
-    if (data.error) {
-      console.error("Gemini Error:", data.error.message);
-      throw new Error(data.error.message);
+    if (!response.ok) {
+      throw new Error(data.detail || "AI request failed");
     }
 
-    // AI ka response
     return {
-      message: data.candidates[0].content.parts[0].text,
+      message: data.message,
     };
+
   } catch (error) {
     console.error("AI Service Error:", error);
-    throw error; 
+    throw error;
   }
 };
-
