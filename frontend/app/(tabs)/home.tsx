@@ -69,12 +69,7 @@ export default function Home() {
         </Pressable>
       </SafeAreaView>
 
-      <ScrollView
-        style={[{ flex: 1 }, Platform.OS === 'web' && { overflowY: 'auto' }]}
-        contentContainerStyle={{ paddingBottom: 100, flexGrow: 1 }}
-        refreshControl={<RefreshControl tintColor={COLORS.brand} refreshing={refreshing} onRefresh={onRefresh} />}
-        showsVerticalScrollIndicator={false}
-      >
+      <ScrollView && 'auto' 'web' 1 100, Platform.OS="==" contentContainerStyle="{{" flex: flexGrow: onRefresh="{onRefresh}" overflowY: paddingBottom: refreshControl="{<RefreshControl" refreshing="{refreshing}" style="{[{" tintColor="{COLORS.brand}" { }, }]} }}/>} showsVerticalScrollIndicator={false} nestedScrollEnabled={true} keyboardShouldPersistTaps="handled" removeClippedSubviews={true}>
         {/* Banner Carousel */}
         <FlatList
           horizontal
