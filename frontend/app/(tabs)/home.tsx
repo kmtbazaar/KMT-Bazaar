@@ -70,7 +70,7 @@ export default function Home() {
       </SafeAreaView>
 
       <ScrollView
-  style={[{ flex: 1 }, Platform.OS === 'web' && { overflowY: 'auto' }]}
+  style={{ flex: 1 }}
   contentContainerStyle={{ flexGrow: 1, paddingBottom: 150 }}
   refreshControl={
     <RefreshControl
@@ -79,6 +79,10 @@ export default function Home() {
       tintColor={COLORS.brand}
     />
   }
+  showsVerticalScrollIndicator={false}
+  bounces={false}
+  overScrollMode="never"
+>
   showsVerticalScrollIndicator={false}
   bounces={false}
   overScrollMode="never"
