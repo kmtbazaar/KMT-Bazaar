@@ -129,14 +129,14 @@ export default function Index() {
               </View>
             </View>
 
-            {/* Navigation Actions (Gradient Style Buttons) */}
+            {/* Navigation Actions (Using replace so back button won't return here) */}
             <View style={styles.actionContainer}>
               
               {/* Primary Gradient Style Button */}
               <TouchableOpacity
                 activeOpacity={0.85}
                 style={styles.primaryBtnWrapper}
-                onPress={() => router.push("/auth/login")}
+                onPress={() => router.replace("/auth/login")}
               >
                 <View style={styles.primaryGradientBtn}>
                   <Text style={styles.primaryBtnText}>Login</Text>
@@ -147,7 +147,7 @@ export default function Index() {
               <TouchableOpacity
                 activeOpacity={0.8}
                 style={styles.secondaryBtn}
-                onPress={() => router.push("/auth/register")}
+                onPress={() => router.replace("/auth/register")}
               >
                 <Text style={styles.secondaryBtnText}>Create Account</Text>
               </TouchableOpacity>
@@ -175,7 +175,7 @@ export default function Index() {
 const styles = StyleSheet.create({
   lightBackground: {
     flex: 1,
-    backgroundColor: "#F8F9FA", // Matching Image Soft Light Background
+    backgroundColor: "#F8F9FA", // <-- LINE 181: BACKGROUND COLOR HERE
   },
   safeArea: {
     flex: 1,
@@ -199,7 +199,7 @@ const styles = StyleSheet.create({
     marginTop: 10,
   },
   badgeText: {
-    color: "#E63946", // Modern Red Accent
+    color: "#E63946",
     fontSize: 12,
     fontWeight: "bold",
     letterSpacing: 1.5,
@@ -292,7 +292,7 @@ const styles = StyleSheet.create({
     elevation: 5,
   },
   primaryGradientBtn: {
-    backgroundColor: "#E63946", // Vibrant Red Theme Gradient feel
+    backgroundColor: "#E63946",
     paddingVertical: 16,
     borderRadius: 16,
     alignItems: "center",
