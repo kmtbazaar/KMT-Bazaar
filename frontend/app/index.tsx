@@ -48,9 +48,9 @@ export default function Index() {
             
             {/* Header Text Inside Blue Gradient Tile */}
             <View style={styles.blueGradientTile}>
-              <Text style={styles.tileTitle}>गाँव को शहर बनाते हैं</Text>
+              <Text style={styles.tileTitle}>KMT Bazaar Assistant</Text>
               <Text style={styles.tileSubtitle}>
-                Aapke bazaar ka smart digital saathi! Aapki zaroorat, humara hal.
+              [ Aapka live Assistant ]
               </Text>
             </View>
 
