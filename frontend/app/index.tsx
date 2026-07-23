@@ -12,7 +12,9 @@ import {
 } from "react-native";
 import { router } from "expo-router";
 
+// --- GIF IMPORTS (Sirf Assistant aur Voice GIF) ---
 import AssistantGif from "../assets/images/assistant.gif";
+import VoiceGif from "../assets/images/voice.gif"; 
 
 const { width } = Dimensions.get("window");
 
@@ -22,34 +24,7 @@ export default function Index() {
   // Smooth Fade-In Animation for Screen Load
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
-  // Continuous Floating Animations for Elements (Cart, Delivery, Gifts)
-  const floatAnim1 = useRef(new Animated.Value(0)).current;
-  const floatAnim2 = useRef(new Animated.Value(0)).current;
-  const floatAnim3 = useRef(new Animated.Value(0)).current;
-
   useEffect(() => {
-    // Floating loop animations
-    const createFloatingAnimation = (animValue: Animated.Value, duration: number) => {
-      return Animated.loop(
-        Animated.sequence([
-          Animated.timing(animValue, {
-            toValue: -12,
-            duration: duration,
-            useNativeDriver: true,
-          }),
-          Animated.timing(animValue, {
-            toValue: 0,
-            duration: duration,
-            useNativeDriver: true,
-          }),
-        ])
-      );
-    };
-
-    createFloatingAnimation(floatAnim1, 1800).start();
-    createFloatingAnimation(floatAnim2, 2200).start();
-    createFloatingAnimation(floatAnim3, 2000).start();
-
     // 2.5 second Splash Timer
     const timer = setTimeout(() => {
       setShowAssistant(true);
@@ -71,68 +46,43 @@ export default function Index() {
         <SafeAreaView style={styles.safeArea}>
           <Animated.View style={[styles.mainContent, { opacity: fadeAnim }]}>
             
-            {/* Header Text (Warm White Theme) */}
+            {/* Header Text Area */}
             <View style={styles.headerTextContainer}>
-              <Text style={styles.badgeText}>KMT BAZAAR ASSISTANT</Text>
               <Text style={styles.title}>गाँव को शहर बनाते हैं</Text>
               <Text style={styles.subtitle}>
                 Aapke bazaar ka smart digital saathi! Aapki zaroorat, humara hal.
               </Text>
             </View>
 
-            {/* Character & Floating Elements Section */}
+            {/* Character & Voice GIF Container */}
             <View style={styles.characterContainer}>
-              
-              {/* Floating Gift Icon (Top Left) */}
-              <Animated.View
-                style={[
-                  styles.floatingBadge,
-                  styles.floatTopLeft,
-                  { transform: [{ translateY: floatAnim1 }] },
-                ]}
-              >
-                <Text style={styles.iconText}>🎁</Text>
-                <Text style={styles.iconLabel}>Offers</Text>
-              </Animated.View>
-
-              {/* Floating Delivery Boy Icon (Top Right) */}
-              <Animated.View
-                style={[
-                  styles.floatingBadge,
-                  styles.floatTopRight,
-                  { transform: [{ translateY: floatAnim2 }] },
-                ]}
-              >
-                <Text style={styles.iconText}>🚚</Text>
-                <Text style={styles.iconLabel}>Fast Express</Text>
-              </Animated.View>
-
-              {/* Floating Cart Icon (Bottom Left) */}
-              <Animated.View
-                style={[
-                  styles.floatingBadge,
-                  styles.floatBottomLeft,
-                  { transform: [{ translateY: floatAnim3 }] },
-                ]}
-              >
-                <Text style={styles.iconText}>🛒</Text>
-                <Text style={styles.iconLabel}>Easy Cart</Text>
-              </Animated.View>
-
-              {/* Still Assistant GIF Image */}
               <View style={styles.characterWrapper}>
+                
+                {/* Main Still Assistant Character */}
                 <Image
                   source={AssistantGif}
                   style={styles.imageSize}
                   resizeMode="contain"
                 />
+
+                {/* Single Voice GIF Button (Right Side) */}
+                <TouchableOpacity
+                  activeOpacity={0.8}
+                  style={styles.voiceButtonRight}
+                  onPress={() => console.log("Voice Assistant Activated")}
+                >
+                  <Image
+                    source={VoiceGif}
+                    style={styles.voiceGifSize}
+                    resizeMode="contain"
+                  />
+                </TouchableOpacity>
+
               </View>
             </View>
 
             {/* Navigation Actions */}
             <View style={styles.actionContainer}>
-              
-              {/* Primary Gradient Style Button */}
               <TouchableOpacity
                 activeOpacity={0.85}
                 style={styles.primaryBtnWrapper}
@@ -143,7 +93,6 @@ export default function Index() {
                 </View>
               </TouchableOpacity>
 
-              {/* Secondary Button */}
               <TouchableOpacity
                 activeOpacity={0.8}
                 style={styles.secondaryBtn}
@@ -151,7 +100,6 @@ export default function Index() {
               >
                 <Text style={styles.secondaryBtnText}>Create Account</Text>
               </TouchableOpacity>
-
             </View>
           </Animated.View>
         </SafeAreaView>
@@ -175,7 +123,7 @@ export default function Index() {
 const styles = StyleSheet.create({
   blackBackground: {
     flex: 1,
-    backgroundColor: "#000000", // LINE 181: SOLID BLACK BACKGROUND
+    backgroundColor: "#000000",
   },
   safeArea: {
     flex: 1,
@@ -191,38 +139,30 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
     paddingHorizontal: 20,
-    paddingTop: 15,
+    paddingTop: 20,
     paddingBottom: 25,
   },
   headerTextContainer: {
     alignItems: "center",
     marginTop: 10,
   },
-  badgeText: {
-    color: "#E63946", // Accent Red Badge
-    fontSize: 12,
-    fontWeight: "bold",
-    letterSpacing: 1.5,
-    marginBottom: 4,
-  },
   title: {
     fontSize: 28,
     fontWeight: "800",
-    color: "#FAF9F6", // WARM WHITE
+    color: "#FAF9F6", // Warm White
     textAlign: "center",
   },
   subtitle: {
     fontSize: 14,
-    color: "#E8E6E3", // WARM OFF-WHITE
+    color: "#E8E6E3", // Warm Off-White
     marginTop: 6,
     textAlign: "center",
     lineHeight: 20,
     paddingHorizontal: 15,
   },
   
-  // Character & Floating Icons Layout
+  // Character Layout
   characterContainer: {
-    position: "relative",
     width: "100%",
     height: 360,
     justifyContent: "center",
@@ -233,50 +173,33 @@ const styles = StyleSheet.create({
     height: 330,
     justifyContent: "center",
     alignItems: "center",
+    position: "relative",
   },
   imageSize: {
     width: "100%",
     height: "100%",
   },
 
-  // Floating Badges Styling
-  floatingBadge: {
+  // Voice GIF Button Style (Positioned at Right Side)
+  voiceButtonRight: {
     position: "absolute",
-    backgroundColor: "#1C1C1E", // Dark card background for contrast
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 16,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.15)",
-    shadowColor: "#000",
+    right: -10,
+    top: "35%",
+    backgroundColor: "rgba(28, 28, 30, 0.85)",
+    padding: 8,
+    borderRadius: 30,
+    borderWidth: 1.5,
+    borderColor: "rgba(255, 255, 255, 0.2)",
+    elevation: 8,
+    shadowColor: "#E63946",
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
+    shadowOpacity: 0.4,
     shadowRadius: 8,
-    elevation: 4,
-    zIndex: 10,
+    zIndex: 20,
   },
-  floatTopLeft: {
-    top: 20,
-    left: 10,
-  },
-  floatTopRight: {
-    top: 30,
-    right: 10,
-  },
-  floatBottomLeft: {
-    bottom: 25,
-    left: 15,
-  },
-  iconText: {
-    fontSize: 18,
-  },
-  iconLabel: {
-    fontSize: 12,
-    fontWeight: "700",
-    color: "#F5F5F0", // WARM WHITE TEXT
+  voiceGifSize: {
+    width: 42,
+    height: 42,
   },
 
   // Buttons Styling
@@ -287,10 +210,6 @@ const styles = StyleSheet.create({
   primaryBtnWrapper: {
     borderRadius: 16,
     overflow: "hidden",
-    shadowColor: "#E63946",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.4,
-    shadowRadius: 8,
     elevation: 5,
   },
   primaryGradientBtn: {
@@ -309,13 +228,13 @@ const styles = StyleSheet.create({
   secondaryBtn: {
     backgroundColor: "transparent",
     borderWidth: 1.5,
-    borderColor: "rgba(250, 249, 246, 0.3)", // Light Border
+    borderColor: "rgba(250, 249, 246, 0.3)",
     paddingVertical: 15,
     borderRadius: 16,
     alignItems: "center",
   },
   secondaryBtnText: {
-    color: "#FAF9F6", // WARM WHITE
+    color: "#FAF9F6",
     fontSize: 16,
     fontWeight: "600",
   },
