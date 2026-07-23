@@ -66,12 +66,12 @@ export default function Index() {
   // --- VIEW 2: INTERACTIVE ASSISTANT SCREEN ---
   if (showAssistant) {
     return (
-      <View style={styles.lightBackground}>
-        <StatusBar barStyle="dark-content" />
+      <View style={styles.blackBackground}>
+        <StatusBar barStyle="light-content" />
         <SafeAreaView style={styles.safeArea}>
           <Animated.View style={[styles.mainContent, { opacity: fadeAnim }]}>
             
-            {/* Header Text */}
+            {/* Header Text (Warm White Theme) */}
             <View style={styles.headerTextContainer}>
               <Text style={styles.badgeText}>KMT BAZAAR ASSISTANT</Text>
               <Text style={styles.title}>गाँव को शहर बनाते हैं</Text>
@@ -129,7 +129,7 @@ export default function Index() {
               </View>
             </View>
 
-            {/* Navigation Actions (Using replace so back button won't return here) */}
+            {/* Navigation Actions */}
             <View style={styles.actionContainer}>
               
               {/* Primary Gradient Style Button */}
@@ -173,9 +173,9 @@ export default function Index() {
 
 // --- STYLES ---
 const styles = StyleSheet.create({
-  lightBackground: {
+  blackBackground: {
     flex: 1,
-    backgroundColor: "#F8F9FA", // <-- LINE 181: BACKGROUND COLOR HERE
+    backgroundColor: "#000000", // LINE 181: SOLID BLACK BACKGROUND
   },
   safeArea: {
     flex: 1,
@@ -199,7 +199,7 @@ const styles = StyleSheet.create({
     marginTop: 10,
   },
   badgeText: {
-    color: "#E63946",
+    color: "#E63946", // Accent Red Badge
     fontSize: 12,
     fontWeight: "bold",
     letterSpacing: 1.5,
@@ -208,12 +208,12 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 28,
     fontWeight: "800",
-    color: "#1E293B",
+    color: "#FAF9F6", // WARM WHITE
     textAlign: "center",
   },
   subtitle: {
     fontSize: 14,
-    color: "#64748B",
+    color: "#E8E6E3", // WARM OFF-WHITE
     marginTop: 6,
     textAlign: "center",
     lineHeight: 20,
@@ -242,16 +242,18 @@ const styles = StyleSheet.create({
   // Floating Badges Styling
   floatingBadge: {
     position: "absolute",
-    backgroundColor: "#FFFFFF",
+    backgroundColor: "#1C1C1E", // Dark card background for contrast
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 16,
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.15)",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 4,
     zIndex: 10,
@@ -274,7 +276,7 @@ const styles = StyleSheet.create({
   iconLabel: {
     fontSize: 12,
     fontWeight: "700",
-    color: "#334155",
+    color: "#F5F5F0", // WARM WHITE TEXT
   },
 
   // Buttons Styling
@@ -287,7 +289,7 @@ const styles = StyleSheet.create({
     overflow: "hidden",
     shadowColor: "#E63946",
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
+    shadowOpacity: 0.4,
     shadowRadius: 8,
     elevation: 5,
   },
@@ -305,15 +307,15 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
   secondaryBtn: {
-    backgroundColor: "#FFFFFF",
+    backgroundColor: "transparent",
     borderWidth: 1.5,
-    borderColor: "#CBD5E1",
+    borderColor: "rgba(250, 249, 246, 0.3)", // Light Border
     paddingVertical: 15,
     borderRadius: 16,
     alignItems: "center",
   },
   secondaryBtnText: {
-    color: "#334155",
+    color: "#FAF9F6", // WARM WHITE
     fontSize: 16,
     fontWeight: "600",
   },
