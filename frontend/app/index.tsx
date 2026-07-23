@@ -1,168 +1,288 @@
 import { useEffect, useState, useRef } from "react";
-import { View, Image, Animated, PanResponder, TouchableOpacity, Text, StyleSheet, SafeAreaView } from "react-native";
+import {
+  View,
+  Image,
+  Animated,
+  PanResponder,
+  TouchableOpacity,
+  Text,
+  StyleSheet,
+  SafeAreaView,
+  StatusBar,
+} from "react-native";
 import { router } from "expo-router";
 
-// 1. PNG ki jagah ab hum apni GIF file import kar rahe hain
-import AssistantGif from "../assets/images/assistant.gif"; 
+import AssistantGif from "../assets/images/assistant.gif";
 
 export default function Index() {
-  // State to manage splash vs assistant view
   const [showAssistant, setShowAssistant] = useState(false);
 
-  // --- Swiping & Animation Logic (Same as before) ---
+  // Smooth Fade-In & Slide-Up Animation for Screen Load
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(30)).current;
+
+  // Swiping & 3D Rotation Logic
   const pan = useRef(new Animated.ValueXY()).current;
   const panResponder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
-      onPanResponderMove: Animated.event(
-        [null, { dx: pan.x }], 
-        { useNativeDriver: false }
-      ),
+      onPanResponderMove: Animated.event([null, { dx: pan.x }], {
+        useNativeDriver: false,
+      }),
       onPanResponderRelease: () => {
-        // Smoothly bring back to center
         Animated.spring(pan, {
           toValue: { x: 0, y: 0 },
           useNativeDriver: false,
-          friction: 5,
+          friction: 6,
+          tension: 40,
         }).start();
       },
     })
   ).current;
 
-  // 3D Rotation effect based on swipe
+  // Enhanced Animation Interpolations
   const rotateY = pan.x.interpolate({
     inputRange: [-200, 200],
-    outputRange: ["-45deg", "45deg"],
+    outputRange: ["-35deg", "35deg"],
+    extrapolate: "clamp",
+  });
+
+  const scaleChar = pan.x.interpolate({
+    inputRange: [-200, 0, 200],
+    outputRange: [0.9, 1, 0.9],
+    extrapolate: "clamp",
   });
 
   useEffect(() => {
-    // 3 second timer for the initial black splash screen
+    // 2.5 second Splash Timer
     const timer = setTimeout(() => {
       setShowAssistant(true);
-    }, 3000);
+      // Run Screen Entrance Animation
+      Animated.parallel([
+        Animated.timing(fadeAnim, {
+          toValue: 1,
+          duration: 800,
+          useNativeDriver: true,
+        }),
+        Animated.timing(slideAnim, {
+          toValue: 0,
+          duration: 800,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    }, 2500);
 
     return () => clearTimeout(timer);
   }, []);
 
-  // --- VIEW 2: INTERACTIVE ASSISTANT SCREEN (After 3 seconds) ---
+  // --- VIEW 2: INTERACTIVE ASSISTANT SCREEN ---
   if (showAssistant) {
     return (
-      <SafeAreaView style={styles.assistantContainer}>
-        {/* Header Text */}
-        <View style={styles.headerText}>
-          <Text style={styles.title}>KMT Bazaar Assistant</Text>
-          <Text style={styles.subtitle}>[ KMT - Bazaar [ASSISTANT] ] गाॅव को शहर बनाते हैं </Text>
-        </View>
+      <View style={styles.darkBackground}>
+        <StatusBar barStyle="light-content" />
+        <SafeAreaView style={styles.safeArea}>
+          
+          {/* Top Bar with Skip Button */}
+          <View style={styles.topBar}>
+            <TouchableOpacity
+              style={styles.skipButton}
+              onPress={() => router.replace("/(tabs)")} // Direct home route
+            >
+              <Text style={styles.skipText}>Skip</Text>
+            </TouchableOpacity>
+          </View>
 
-        {/* Swipe Area with the Animated GIF */}
-        <View style={styles.characterSwipeArea} {...panResponder.panHandlers}>
           <Animated.View
             style={[
-              styles.characterWrapper,
+              styles.mainContent,
               {
-                transform: [
-                  { translateX: pan.x }, // Horizontal movement
-                  { rotateY: rotateY }, // 3D Rotate
-                ],
+                opacity: fadeAnim,
+                transform: [{ translateY: slideAnim }],
               },
             ]}
           >
-            {/* Using the same Image component, React Native handles GIFs automatically */}
-            <Image
-              source={AssistantGif} // Your animated GIF
-              style={styles.imageSize}
-              resizeMode="contain" 
-            />
-          </Animated.View>
-        </View>
+            {/* Header Text */}
+            <View style={styles.headerTextContainer}>
+              <Text style={styles.badgeText}>KMT BAZAAR ASSISTANT</Text>
+              <Text style={styles.title}>गाँव को शहर बनाते हैं</Text>
+              <Text style={styles.subtitle}>
+                Aapke bazaar ka smart digital saathi! Aapki zaroorat, humara hal.
+              </Text>
+            </View>
 
-        {/* Action Button */}
-        <TouchableOpacity 
-          style={styles.loginButton} 
-          onPress={() => router.replace("/auth/login")}
-        >
-          <Text style={styles.loginButtonText}>Let's Go to Login</Text>
-        </TouchableOpacity>
-      </SafeAreaView>
+            {/* Interactive Animated GIF Area */}
+            <View
+              style={styles.characterSwipeArea}
+              {...panResponder.panHandlers}
+            >
+              <Animated.View
+                style={[
+                  styles.characterWrapper,
+                  {
+                    transform: [
+                      { translateX: pan.x },
+                      { rotateY: rotateY },
+                      { scale: scaleChar },
+                    ],
+                  },
+                ]}
+              >
+                <Image
+                  source={AssistantGif}
+                  style={styles.imageSize}
+                  resizeMode="contain"
+                />
+              </Animated.View>
+            </View>
+
+            {/* Navigation Actions (Login + Sign Up) */}
+            <View style={styles.actionContainer}>
+              <TouchableOpacity
+                activeOpacity={0.8}
+                style={styles.primaryBtn}
+                onPress={() => router.push("/auth/login")}
+              >
+                <Text style={styles.primaryBtnText}>Login</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                activeOpacity={0.8}
+                style={styles.secondaryBtn}
+                onPress={() => router.push("/auth/register")}
+              >
+                <Text style={styles.secondaryBtnText}>Create Account</Text>
+              </TouchableOpacity>
+            </View>
+          </Animated.View>
+        </SafeAreaView>
+      </View>
     );
   }
 
-  // --- VIEW 1: AAPKA ORIGINAL BLACK SPLASH SCREEN (First 3 seconds, untouched) ---
+  // --- VIEW 1: BLACK SPLASH SCREEN ---
   return (
-    <View
-      style={{
-        flex: 1,
-        justifyContent: "center",
-        alignItems: "center",
-        backgroundColor: "#000", // Original black background
-      }}
-    >
+    <View style={styles.splashContainer}>
+      <StatusBar barStyle="light-content" />
       <Image
-        // Original splash icon
         source={require("../assets/images/splash-icon.png")}
-        style={{ width: 250, height: 250 }}
+        style={{ width: 220, height: 220, resizeMode: "contain" }}
       />
     </View>
   );
 }
 
-// Custom Styles for the Assistant Screen
+// --- STYLES ---
 const styles = StyleSheet.create({
-  assistantContainer: { 
-    flex: 1, 
-    backgroundColor: "#ffffff", // Clean white background
-    justifyContent: "space-between", 
-    alignItems: "center", 
-    paddingVertical: 30 
+  darkBackground: {
+    flex: 1,
+    backgroundColor: "#0F172A", // Dark Premium Slate Blue
   },
-  headerText: { 
-    alignItems: "center", 
-    marginTop: 60,
-    paddingHorizontal: 20
+  safeArea: {
+    flex: 1,
   },
-  title: { 
-    fontSize: 30, 
-    fontWeight: "bold", 
-    color: "#333333",
-    textAlign: 'center'
+  splashContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#000000",
   },
-  subtitle: { 
-    fontSize: 16, 
-    color: "#666666", 
+  topBar: {
+    width: "100%",
+    alignItems: "flex-end",
+    paddingHorizontal: 24,
+    paddingTop: 10,
+  },
+  skipButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: "rgba(255, 255, 255, 0.1)",
+  },
+  skipText: {
+    color: "#94A3B8",
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  mainContent: {
+    flex: 1,
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: 24,
+    paddingBottom: 20,
+  },
+  headerTextContainer: {
+    alignItems: "center",
     marginTop: 10,
-    textAlign: 'center'
   },
-  characterSwipeArea: { 
-    flex: 1, 
-    justifyContent: "center", 
-    alignItems: "center", 
+  badgeText: {
+    color: "#38BDF8", // Cyan Accent
+    fontSize: 12,
+    fontWeight: "bold",
+    letterSpacing: 1.5,
+    marginBottom: 6,
+  },
+  title: {
+    fontSize: 28,
+    fontWeight: "800",
+    color: "#FFFFFF",
+    textAlign: "center",
+  },
+  subtitle: {
+    fontSize: 14,
+    color: "#94A3B8",
+    marginTop: 8,
+    textAlign: "center",
+    lineHeight: 20,
+    paddingHorizontal: 10,
+  },
+  characterSwipeArea: {
+    flex: 1,
+    justify.content: "center",
+    alignItems: "center",
     width: "100%",
   },
-  characterWrapper: { 
-    width: 280, // Size of the GIF container
-    height: 350, 
-    justifyContent: "center", 
-    alignItems: "center" 
+  characterWrapper: {
+    width: 280,
+    height: 320,
+    justifyContent: "center",
+    alignItems: "center",
   },
-  imageSize: { 
-    width: "100%", 
-    height: "100%" 
+  imageSize: {
+    width: "100%",
+    height: "100%",
   },
-  loginButton: { 
-    backgroundColor: "#000000", // Clean black button
-    paddingVertical: 16, 
-    paddingHorizontal: 60, 
-    borderRadius: 30, 
-    marginBottom: 40,
-    shadowColor: "#000",
+  actionContainer: {
+    width: "100%",
+    gap: 12,
+    marginBottom: 10,
+  },
+  primaryBtn: {
+    backgroundColor: "#2563EB", // Modern Vibrant Blue
+    paddingVertical: 16,
+    borderRadius: 16,
+    alignItems: "center",
+    shadowColor: "#2563EB",
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 5,
-    elevation: 8,
+    shadowOpacity: 0.4,
+    shadowRadius: 10,
+    elevation: 6,
   },
-  loginButtonText: { 
-    color: "#ffffff", 
-    fontSize: 18, 
-    fontWeight: "bold" 
+  primaryBtnText: {
+    color: "#FFFFFF",
+    fontSize: 16,
+    fontWeight: "700",
+  },
+  secondaryBtn: {
+    backgroundColor: "transparent",
+    borderWidth: 1.5,
+    borderColor: "rgba(255, 255, 255, 0.2)",
+    paddingVertical: 15,
+    borderRadius: 16,
+    alignItems: "center",
+  },
+  secondaryBtnText: {
+    color: "#FFFFFF",
+    fontSize: 16,
+    fontWeight: "600",
   },
 });
