@@ -12,7 +12,7 @@ import {
 } from "react-native";
 import { router } from "expo-router";
 
-// --- GIF IMPORTS (Sirf Assistant aur Voice GIF) ---
+// --- GIF IMPORTS ---
 import AssistantGif from "../assets/images/assistant.gif";
 import VoiceGif from "../assets/images/voice.gif"; 
 
@@ -54,32 +54,29 @@ export default function Index() {
               </Text>
             </View>
 
-            {/* Character & Voice GIF Container */}
+            {/* Character Section */}
             <View style={styles.characterContainer}>
               <View style={styles.characterWrapper}>
-                
-                {/* Main Still Assistant Character */}
                 <Image
                   source={AssistantGif}
                   style={styles.imageSize}
                   resizeMode="contain"
                 />
-
-                {/* Single Voice GIF Button (Right Side) */}
-                <TouchableOpacity
-                  activeOpacity={0.8}
-                  style={styles.voiceButtonRight}
-                  onPress={() => console.log("Voice Assistant Activated")}
-                >
-                  <Image
-                    source={VoiceGif}
-                    style={styles.voiceGifSize}
-                    resizeMode="contain"
-                  />
-                </TouchableOpacity>
-
               </View>
             </View>
+
+            {/* Voice GIF in Rectangular Space (Below Assistant, Above Buttons) */}
+            <TouchableOpacity
+              activeOpacity={0.8}
+              style={styles.voiceRectContainer}
+              onPress={() => console.log("Voice Assistant Activated")}
+            >
+              <Image
+                source={VoiceGif}
+                style={styles.voiceRectGif}
+                resizeMode="contain"
+              />
+            </TouchableOpacity>
 
             {/* Navigation Actions */}
             <View style={styles.actionContainer}>
@@ -101,6 +98,7 @@ export default function Index() {
                 <Text style={styles.secondaryBtnText}>Create Account</Text>
               </TouchableOpacity>
             </View>
+
           </Animated.View>
         </SafeAreaView>
       </View>
@@ -139,7 +137,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
     paddingHorizontal: 20,
-    paddingTop: 20,
+    paddingTop: 15,
     paddingBottom: 25,
   },
   headerTextContainer: {
@@ -164,42 +162,32 @@ const styles = StyleSheet.create({
   // Character Layout
   characterContainer: {
     width: "100%",
-    height: 360,
+    height: 280,
     justifyContent: "center",
     alignItems: "center",
   },
   characterWrapper: {
     width: width * 0.75,
-    height: 330,
+    height: 270,
     justifyContent: "center",
     alignItems: "center",
-    position: "relative",
   },
   imageSize: {
     width: "100%",
     height: "100%",
   },
 
-  // Voice GIF Button Style (Positioned at Right Side)
-  voiceButtonRight: {
-    position: "absolute",
-    right: -10,
-    top: "35%",
-    backgroundColor: "rgba(28, 28, 30, 0.85)",
-    padding: 8,
-    borderRadius: 30,
-    borderWidth: 1.5,
-    borderColor: "rgba(255, 255, 255, 0.2)",
-    elevation: 8,
-    shadowColor: "#E63946",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.4,
-    shadowRadius: 8,
-    zIndex: 20,
+  // Voice Rectangular Container (Assistant ke neeche & Login ke upar)
+  voiceRectContainer: {
+    width: "100%",
+    height: 60,
+    justifyContent: "center",
+    alignItems: "center",
+    marginVertical: 10,
   },
-  voiceGifSize: {
-    width: 42,
-    height: 42,
+  voiceRectGif: {
+    width: "100%",
+    height: "100%",
   },
 
   // Buttons Styling
