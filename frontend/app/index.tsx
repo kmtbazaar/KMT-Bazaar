@@ -180,10 +180,10 @@ const styles = StyleSheet.create({
   // Voice Rectangular Container (Assistant ke neeche & Login ke upar)
   voiceRectContainer: {
     width: "100%",
-    height: 60,
+    height: 100,
     justifyContent: "center",
     alignItems: "center",
-    marginVertical: 10,
+    marginVertical: 5,
   },
   voiceRectGif: {
     width: "100%",
