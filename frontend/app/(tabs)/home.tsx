@@ -69,24 +69,11 @@ export default function Home() {
         </Pressable>
       </SafeAreaView>
 
-      <ScrollView
-  style={{ flex: 1 }}
-  contentContainerStyle={{ flexGrow: 1, paddingBottom: 150 }}
-  refreshControl={
-    <RefreshControl
-      refreshing={refreshing}
-      onRefresh={onRefresh}
-      tintColor={COLORS.brand}
-    />
-  }
-  showsVerticalScrollIndicator={false}
-  bounces={false}
-  overScrollMode="never"
->
-  showsVerticalScrollIndicator={false}
-  bounces={false}
-  overScrollMode="never"
->
+            <ScrollView
+        contentContainerStyle={{ paddingBottom: 100 }}
+        refreshControl={<RefreshControl tintColor={COLORS.brand} refreshing={refreshing} onRefresh={onRefresh} />}
+        showsVerticalScrollIndicator={false}
+      >
 
 
         {/* Banner Carousel */}
