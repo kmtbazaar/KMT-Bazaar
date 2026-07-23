@@ -48,9 +48,9 @@ export default function Index() {
             
             {/* Header Text Area */}
             <View style={styles.headerTextContainer}>
-              <Text style={styles.title}>गाँव को शहर बनाते हैं</Text>
+              <Text style={styles.title}>KMT Bazaar</Text>
               <Text style={styles.subtitle}>
-                Aapke bazaar ka smart digital saathi! Aapki zaroorat, humara hal.
+                गांव को शहर बनाते हैं ! BOT RAMU
               </Text>
             </View>
 
