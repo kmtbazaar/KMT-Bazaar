@@ -3,73 +3,61 @@ import {
   View,
   Image,
   Animated,
-  PanResponder,
   TouchableOpacity,
   Text,
   StyleSheet,
   SafeAreaView,
   StatusBar,
+  Dimensions,
 } from "react-native";
 import { router } from "expo-router";
 
 import AssistantGif from "../assets/images/assistant.gif";
 
+const { width } = Dimensions.get("window");
+
 export default function Index() {
   const [showAssistant, setShowAssistant] = useState(false);
 
-  // Smooth Fade-In & Slide-Up Animation for Screen Load
+  // Smooth Fade-In Animation for Screen Load
   const fadeAnim = useRef(new Animated.Value(0)).current;
-  const slideAnim = useRef(new Animated.Value(30)).current;
 
-  // Swiping & 3D Rotation Logic
-  const pan = useRef(new Animated.ValueXY()).current;
-  const panResponder = useRef(
-    PanResponder.create({
-      onStartShouldSetPanResponder: () => true,
-      onPanResponderMove: Animated.event([null, { dx: pan.x }], {
-        useNativeDriver: false,
-      }),
-      onPanResponderRelease: () => {
-        Animated.spring(pan, {
-          toValue: { x: 0, y: 0 },
-          useNativeDriver: false,
-          friction: 6,
-          tension: 40,
-        }).start();
-      },
-    })
-  ).current;
-
-  // Enhanced Animation Interpolations
-  const rotateY = pan.x.interpolate({
-    inputRange: [-200, 200],
-    outputRange: ["-35deg", "35deg"],
-    extrapolate: "clamp",
-  });
-
-  const scaleChar = pan.x.interpolate({
-    inputRange: [-200, 0, 200],
-    outputRange: [0.9, 1, 0.9],
-    extrapolate: "clamp",
-  });
+  // Continuous Floating Animations for Elements (Cart, Delivery, Gifts)
+  const floatAnim1 = useRef(new Animated.Value(0)).current;
+  const floatAnim2 = useRef(new Animated.Value(0)).current;
+  const floatAnim3 = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
+    // Floating loop animations
+    const createFloatingAnimation = (animValue: Animated.Value, duration: number) => {
+      return Animated.loop(
+        Animated.sequence([
+          Animated.timing(animValue, {
+            toValue: -12,
+            duration: duration,
+            useNativeDriver: true,
+          }),
+          Animated.timing(animValue, {
+            toValue: 0,
+            duration: duration,
+            useNativeDriver: true,
+          }),
+        ])
+      );
+    };
+
+    createFloatingAnimation(floatAnim1, 1800).start();
+    createFloatingAnimation(floatAnim2, 2200).start();
+    createFloatingAnimation(floatAnim3, 2000).start();
+
     // 2.5 second Splash Timer
     const timer = setTimeout(() => {
       setShowAssistant(true);
-      // Run Screen Entrance Animation
-      Animated.parallel([
-        Animated.timing(fadeAnim, {
-          toValue: 1,
-          duration: 800,
-          useNativeDriver: true,
-        }),
-        Animated.timing(slideAnim, {
-          toValue: 0,
-          duration: 800,
-          useNativeDriver: true,
-        }),
-      ]).start();
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 800,
+        useNativeDriver: true,
+      }).start();
     }, 2500);
 
     return () => clearTimeout(timer);
@@ -78,29 +66,11 @@ export default function Index() {
   // --- VIEW 2: INTERACTIVE ASSISTANT SCREEN ---
   if (showAssistant) {
     return (
-      <View style={styles.darkBackground}>
-        <StatusBar barStyle="light-content" />
+      <View style={styles.lightBackground}>
+        <StatusBar barStyle="dark-content" />
         <SafeAreaView style={styles.safeArea}>
-          
-          {/* Top Bar with Skip Button */}
-          <View style={styles.topBar}>
-            <TouchableOpacity
-              style={styles.skipButton}
-              onPress={() => router.replace("/(tabs)")} // Direct home route
-            >
-              <Text style={styles.skipText}>Skip</Text>
-            </TouchableOpacity>
-          </View>
-
-          <Animated.View
-            style={[
-              styles.mainContent,
-              {
-                opacity: fadeAnim,
-                transform: [{ translateY: slideAnim }],
-              },
-            ]}
-          >
+          <Animated.View style={[styles.mainContent, { opacity: fadeAnim }]}>
+            
             {/* Header Text */}
             <View style={styles.headerTextContainer}>
               <Text style={styles.badgeText}>KMT BAZAAR ASSISTANT</Text>
@@ -110,41 +80,70 @@ export default function Index() {
               </Text>
             </View>
 
-            {/* Interactive Animated GIF Area */}
-            <View
-              style={styles.characterSwipeArea}
-              {...panResponder.panHandlers}
-            >
+            {/* Character & Floating Elements Section */}
+            <View style={styles.characterContainer}>
+              
+              {/* Floating Gift Icon (Top Left) */}
               <Animated.View
                 style={[
-                  styles.characterWrapper,
-                  {
-                    transform: [
-                      { translateX: pan.x },
-                      { rotateY: rotateY },
-                      { scale: scaleChar },
-                    ],
-                  },
+                  styles.floatingBadge,
+                  styles.floatTopLeft,
+                  { transform: [{ translateY: floatAnim1 }] },
                 ]}
               >
+                <Text style={styles.iconText}>🎁</Text>
+                <Text style={styles.iconLabel}>Offers</Text>
+              </Animated.View>
+
+              {/* Floating Delivery Boy Icon (Top Right) */}
+              <Animated.View
+                style={[
+                  styles.floatingBadge,
+                  styles.floatTopRight,
+                  { transform: [{ translateY: floatAnim2 }] },
+                ]}
+              >
+                <Text style={styles.iconText}>🚚</Text>
+                <Text style={styles.iconLabel}>Fast Express</Text>
+              </Animated.View>
+
+              {/* Floating Cart Icon (Bottom Left) */}
+              <Animated.View
+                style={[
+                  styles.floatingBadge,
+                  styles.floatBottomLeft,
+                  { transform: [{ translateY: floatAnim3 }] },
+                ]}
+              >
+                <Text style={styles.iconText}>🛒</Text>
+                <Text style={styles.iconLabel}>Easy Cart</Text>
+              </Animated.View>
+
+              {/* Still Assistant GIF Image */}
+              <View style={styles.characterWrapper}>
                 <Image
                   source={AssistantGif}
                   style={styles.imageSize}
                   resizeMode="contain"
                 />
-              </Animated.View>
+              </View>
             </View>
 
-            {/* Navigation Actions (Login + Sign Up) */}
+            {/* Navigation Actions (Gradient Style Buttons) */}
             <View style={styles.actionContainer}>
+              
+              {/* Primary Gradient Style Button */}
               <TouchableOpacity
-                activeOpacity={0.8}
-                style={styles.primaryBtn}
+                activeOpacity={0.85}
+                style={styles.primaryBtnWrapper}
                 onPress={() => router.push("/auth/login")}
               >
-                <Text style={styles.primaryBtnText}>Login</Text>
+                <View style={styles.primaryGradientBtn}>
+                  <Text style={styles.primaryBtnText}>Login</Text>
+                </View>
               </TouchableOpacity>
 
+              {/* Secondary Button */}
               <TouchableOpacity
                 activeOpacity={0.8}
                 style={styles.secondaryBtn}
@@ -152,6 +151,7 @@ export default function Index() {
               >
                 <Text style={styles.secondaryBtnText}>Create Account</Text>
               </TouchableOpacity>
+
             </View>
           </Animated.View>
         </SafeAreaView>
@@ -173,9 +173,9 @@ export default function Index() {
 
 // --- STYLES ---
 const styles = StyleSheet.create({
-  darkBackground: {
+  lightBackground: {
     flex: 1,
-    backgroundColor: "#0F172A", // Dark Premium Slate Blue
+    backgroundColor: "#F8F9FA", // Matching Image Soft Light Background
   },
   safeArea: {
     flex: 1,
@@ -186,64 +186,51 @@ const styles = StyleSheet.create({
     alignItems: "center",
     backgroundColor: "#000000",
   },
-  topBar: {
-    width: "100%",
-    alignItems: "flex-end",
-    paddingHorizontal: 24,
-    paddingTop: 10,
-  },
-  skipButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-    backgroundColor: "rgba(255, 255, 255, 0.1)",
-  },
-  skipText: {
-    color: "#94A3B8",
-    fontSize: 14,
-    fontWeight: "600",
-  },
   mainContent: {
     flex: 1,
     justifyContent: "space-between",
     alignItems: "center",
-    paddingHorizontal: 24,
-    paddingBottom: 20,
+    paddingHorizontal: 20,
+    paddingTop: 15,
+    paddingBottom: 25,
   },
   headerTextContainer: {
     alignItems: "center",
     marginTop: 10,
   },
   badgeText: {
-    color: "#38BDF8", // Cyan Accent
+    color: "#E63946", // Modern Red Accent
     fontSize: 12,
     fontWeight: "bold",
     letterSpacing: 1.5,
-    marginBottom: 6,
+    marginBottom: 4,
   },
   title: {
     fontSize: 28,
     fontWeight: "800",
-    color: "#FFFFFF",
+    color: "#1E293B",
     textAlign: "center",
   },
   subtitle: {
     fontSize: 14,
-    color: "#94A3B8",
-    marginTop: 8,
+    color: "#64748B",
+    marginTop: 6,
     textAlign: "center",
     lineHeight: 20,
-    paddingHorizontal: 10,
+    paddingHorizontal: 15,
   },
-  characterSwipeArea: {
-    flex: 1,
+  
+  // Character & Floating Icons Layout
+  characterContainer: {
+    position: "relative",
+    width: "100%",
+    height: 360,
     justifyContent: "center",
     alignItems: "center",
-    width: "100%",
   },
   characterWrapper: {
-    width: 280,
-    height: 320,
+    width: width * 0.75,
+    height: 330,
     justifyContent: "center",
     alignItems: "center",
   },
@@ -251,37 +238,82 @@ const styles = StyleSheet.create({
     width: "100%",
     height: "100%",
   },
+
+  // Floating Badges Styling
+  floatingBadge: {
+    position: "absolute",
+    backgroundColor: "#FFFFFF",
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
+    zIndex: 10,
+  },
+  floatTopLeft: {
+    top: 20,
+    left: 10,
+  },
+  floatTopRight: {
+    top: 30,
+    right: 10,
+  },
+  floatBottomLeft: {
+    bottom: 25,
+    left: 15,
+  },
+  iconText: {
+    fontSize: 18,
+  },
+  iconLabel: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: "#334155",
+  },
+
+  // Buttons Styling
   actionContainer: {
     width: "100%",
     gap: 12,
-    marginBottom: 10,
   },
-  primaryBtn: {
-    backgroundColor: "#2563EB", // Modern Vibrant Blue
+  primaryBtnWrapper: {
+    borderRadius: 16,
+    overflow: "hidden",
+    shadowColor: "#E63946",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  primaryGradientBtn: {
+    backgroundColor: "#E63946", // Vibrant Red Theme Gradient feel
     paddingVertical: 16,
     borderRadius: 16,
     alignItems: "center",
-    shadowColor: "#2563EB",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.4,
-    shadowRadius: 10,
-    elevation: 6,
+    borderTopWidth: 1,
+    borderTopColor: "rgba(255, 255, 255, 0.3)",
   },
   primaryBtnText: {
     color: "#FFFFFF",
-    fontSize: 16,
+    fontSize: 17,
     fontWeight: "700",
   },
   secondaryBtn: {
-    backgroundColor: "transparent",
+    backgroundColor: "#FFFFFF",
     borderWidth: 1.5,
-    borderColor: "rgba(255, 255, 255, 0.2)",
+    borderColor: "#CBD5E1",
     paddingVertical: 15,
     borderRadius: 16,
     alignItems: "center",
   },
   secondaryBtnText: {
-    color: "#FFFFFF",
+    color: "#334155",
     fontSize: 16,
     fontWeight: "600",
   },
