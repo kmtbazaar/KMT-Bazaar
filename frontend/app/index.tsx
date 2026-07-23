@@ -237,7 +237,7 @@ const styles = StyleSheet.create({
   },
   characterSwipeArea: {
     flex: 1,
-    justify.content: "center",
+    justifyContent: "center",
     alignItems: "center",
     width: "100%",
   },
