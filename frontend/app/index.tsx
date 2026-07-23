@@ -46,11 +46,11 @@ export default function Index() {
         <SafeAreaView style={styles.safeArea}>
           <Animated.View style={[styles.mainContent, { opacity: fadeAnim }]}>
             
-            {/* Header Text Area */}
-            <View style={styles.headerTextContainer}>
-              <Text style={styles.title}>KMT Bazaar</Text>
-              <Text style={styles.subtitle}>
-                गांव को शहर बनाते हैं ! BOT RAMU
+            {/* Header Text Inside Blue Gradient Tile */}
+            <View style={styles.blueGradientTile}>
+              <Text style={styles.tileTitle}>गाँव को शहर बनाते हैं</Text>
+              <Text style={styles.tileSubtitle}>
+                Aapke bazaar ka smart digital saathi! Aapki zaroorat, humara hal.
               </Text>
             </View>
 
@@ -65,7 +65,7 @@ export default function Index() {
               </View>
             </View>
 
-            {/* Voice GIF in Rectangular Space (Below Assistant, Above Buttons) */}
+            {/* Voice GIF Container (Below Assistant, Above Buttons) */}
             <TouchableOpacity
               activeOpacity={0.8}
               style={styles.voiceRectContainer}
@@ -140,26 +140,40 @@ const styles = StyleSheet.create({
     paddingTop: 15,
     paddingBottom: 25,
   },
-  headerTextContainer: {
+
+  // Blue Gradient Style Tile for Header Text
+  blueGradientTile: {
+    width: "100%",
+    backgroundColor: "#1E3A8A", // Deep Rich Blue
+    paddingVertical: 18,
+    paddingHorizontal: 20,
+    borderRadius: 20,
+    borderWidth: 1.5,
+    borderColor: "#3B82F6", // Bright Blue Glowing Border
     alignItems: "center",
     marginTop: 10,
+    // Native Elevation & Shadow Effect
+    shadowColor: "#2563EB",
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.35,
+    shadowRadius: 10,
+    elevation: 8,
   },
-  title: {
-    fontSize: 28,
+  tileTitle: {
+    fontSize: 26,
     fontWeight: "800",
-    color: "#FAF9F6", // Warm White
+    color: "#FFFFFF",
     textAlign: "center",
   },
-  subtitle: {
-    fontSize: 14,
-    color: "#E8E6E3", // Warm Off-White
+  tileSubtitle: {
+    fontSize: 13,
+    color: "#93C5FD", // Soft Ice Blue Accent
     marginTop: 6,
     textAlign: "center",
-    lineHeight: 20,
-    paddingHorizontal: 15,
+    lineHeight: 18,
   },
   
-  // Character Layout
+  // Character Layout (Bada Assistant)
   characterContainer: {
     width: "100%",
     height: 340,
@@ -177,14 +191,14 @@ const styles = StyleSheet.create({
     height: "100%",
   },
 
-  // Voice Rectangular Container (Assistant ke neeche & Login ke upar)
+  // Voice Container (Gaps Removed)
   voiceRectContainer: {
     width: "100%",
-    height: 100,
+    height: 60,
     justifyContent: "center",
     alignItems: "center",
     marginVertical: 0,
-    marginTop: -10
+    marginTop: -10,
   },
   voiceRectGif: {
     width: "100%",
