@@ -50,7 +50,7 @@ export default function Index() {
             <View style={styles.blueGradientTile}>
               <Text style={styles.tileTitle}>KMT Bazaar Assistant</Text>
               <Text style={styles.tileSubtitle}>
-              [ Aapka live Assistant ]
+              [ Aapka Live Assistant ]
               </Text>
             </View>
 
