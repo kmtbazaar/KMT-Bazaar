@@ -1,3 +1,4 @@
+import { Modal } from "react-native";
 import React, { useState, useEffect } from "react";
 import {
   View,
@@ -26,37 +27,90 @@ export default function RoojgarForm() {
   const [aadhar, setAadhar] = useState("");
   const [address, setAddress] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("");
+  const [showCategoryModal, setShowCategoryModal] = useState(false);
 
   // Dynamic Categories State
-  const [categories, setCategories] = useState<any[]>([]);
-  const [loadingCategories, setLoadingCategories] = useState(true);
+const [categories, setCategories] = useState([
+  { id: "1", name: "Plumber", icon: "🔧" },
+  { id: "2", name: "Electrician", icon: "⚡" },
+  { id: "3", name: "Carpenter", icon: "🪚" },
+  { id: "4", name: "Painter", icon: "🎨" },
+  { id: "5", name: "Mason", icon: "🧱" },
+  { id: "6", name: "Welder", icon: "🔥" },
+  { id: "7", name: "AC Technician", icon: "❄️" },
+  { id: "8", name: "Driver", icon: "🚗" },
+  { id: "9", name: "Delivery Boy", icon: "🛵" },
+  { id: "10", name: "Cook", icon: "👨‍🍳" },
+  { id: "11", name: "House Maid", icon: "🧹" },
+  { id: "12", name: "Security Guard", icon: "🛡️" },
+  { id: "13", name: "Gardener", icon: "🌿" },
+  { id: "14", name: "Mechanic", icon: "🛠️" },
+  { id: "15", name: "Computer Operator", icon: "💻" },
+  { id: "16", name: "Data Entry", icon: "⌨️" },
+  { id: "17", name: "Tailor", icon: "🧵" },
+  { id: "18", name: "Beautician", icon: "💄" },
+  { id: "19", name: "Teacher", icon: "📚" },
+  { id: "20", name: "Other", icon: "📋" },
+  
+]);  // बाकी categories...
+;  const [loadingCategories, setLoadingCategories] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // App khulte hi Admin Panel (Backend) se Categories mangwana
-  useEffect(() => {
-    fetchCategories();
-  }, []);
-
+  
   const fetchCategories = async () => {
     try {
       const response = await fetch(`${API_BASE_URL}/roojgar-categories`);
       const data = await response.json();
       
       if (data && data.categories) {
-        setCategories(data.categories);
       } else {
-        setCategories([
-          { id: "1", name: "Delivery", icon: "🛵", color: "#F59E0B" },
-          { id: "2", name: "Retail/Shop", icon: "🏪", color: "#10B981" },
+   ([
+  { id: "1", name: "Plumber", icon: "🔧", color: "#3B82F6" },
+  { id: "2", name: "Electrician", icon: "⚡", color: "#F59E0B" },
+  { id: "3", name: "Carpenter", icon: "🪚", color: "#10B981" },
+  { id: "4", name: "Painter", icon: "🎨", color: "#8B5CF6" },
+  { id: "5", name: "Mason", icon: "🧱", color: "#EF4444" },
+  { id: "6", name: "Welder", icon: "🔥", color: "#06B6D4" },
+  { id: "7", name: "AC Technician", icon: "❄️", color: "#0EA5E9" },
+  { id: "8", name: "Driver", icon: "🚗", color: "#F97316" },
+  { id: "9", name: "Delivery Boy", icon: "🛵", color: "#22C55E" },
+  { id: "10", name: "Cook", icon: "👨‍🍳", color: "#EAB308" },
+  { id: "11", name: "House Maid", icon: "🧹", color: "#EC4899" },
+  { id: "12", name: "Security Guard", icon: "🛡️", color: "#6366F1" },
+  { id: "13", name: "Gardener", icon: "🌿", color: "#16A34A" },
+  { id: "14", name: "Mechanic", icon: "🛠️", color: "#78716C" },
+  { id: "15", name: "Computer Operator", icon: "💻", color: "#2563EB" },
+  { id: "16", name: "Data Entry", icon: "⌨️", color: "#0F766E" },
+  { id: "17", name: "Tailor", icon: "🧵", color: "#DB2777" },
+  { id: "18", name: "Beautician", icon: "💄", color: "#C026D3" },
+  { id: "19", name: "Teacher", icon: "📚", color: "#7C3AED" },
+  { id: "20", name: "Other", icon: "📋", color: "#64748B" },
         ]);
       }
     } catch (error) {
       console.log("Category Fetch Error:", error);
-      setCategories([
-        { id: "1", name: "Delivery", icon: "🛵", color: "#F59E0B" },
-        { id: "2", name: "Retail/Shop", icon: "🏪", color: "#10B981" },
-        { id: "3", name: "Tech/IT", icon: "💻", color: "#3B82F6" },
-        { id: "4", name: "Labor/Work", icon: "🏗️", color: "#8B5CF6" },
+      ([
+         { id: "1", name: "Plumber", icon: "🔧", color: "#3B82F6" },
+  { id: "2", name: "Electrician", icon: "⚡", color: "#F59E0B" },
+  { id: "3", name: "Carpenter", icon: "🪚", color: "#10B981" },
+  { id: "4", name: "Painter", icon: "🎨", color: "#8B5CF6" },
+  { id: "5", name: "Mason", icon: "🧱", color: "#EF4444" },
+  { id: "6", name: "Welder", icon: "🔥", color: "#06B6D4" },
+  { id: "7", name: "AC Technician", icon: "❄️", color: "#0EA5E9" },
+  { id: "8", name: "Driver", icon: "🚗", color: "#F97316" },
+  { id: "9", name: "Delivery Boy", icon: "🛵", color: "#22C55E" },
+  { id: "10", name: "Cook", icon: "👨‍🍳", color: "#EAB308" },
+  { id: "11", name: "House Maid", icon: "🧹", color: "#EC4899" },
+  { id: "12", name: "Security Guard", icon: "🛡️", color: "#6366F1" },
+  { id: "13", name: "Gardener", icon: "🌿", color: "#16A34A" },
+  { id: "14", name: "Mechanic", icon: "🛠️", color: "#78716C" },
+  { id: "15", name: "Computer Operator", icon: "💻", color: "#2563EB" },
+  { id: "16", name: "Data Entry", icon: "⌨️", color: "#0F766E" },
+  { id: "17", name: "Tailor", icon: "🧵", color: "#DB2777" },
+  { id: "18", name: "Beautician", icon: "💄", color: "#C026D3" },
+  { id: "19", name: "Teacher", icon: "📚", color: "#7C3AED" },
+  { id: "20", name: "Other", icon: "📋", color: "#64748B" },
       ]);
     } finally {
       setLoadingCategories(false);
@@ -195,37 +249,74 @@ export default function RoojgarForm() {
             </View>
           </View>
 
-          {/* Dynamic Category Selection */}
-          <Text style={styles.sectionTitle}>Job Category</Text>
-          
-          {loadingCategories ? (
-            <ActivityIndicator size="large" color="#3B82F6" style={{ marginVertical: 20 }} />
-          ) : (
-            <View style={styles.categoryContainer}>
-              {categories.map((cat, index) => {
-                const isSelected = selectedCategory === cat.name;
-                return (
-                  <TouchableOpacity
-                    key={cat.id || index}
-                    activeOpacity={0.8}
-                    style={[
-                      styles.categoryBox,
-                      isSelected && { borderColor: cat.color || "#3B82F6", backgroundColor: `${cat.color || "#3B82F6"}15` } 
-                    ]}
-                    onPress={() => setSelectedCategory(cat.name)}
-                  >
-                    <Text style={styles.categoryIcon}>{cat.icon}</Text>
-                    <Text style={[styles.categoryText, isSelected && { color: cat.color || "#3B82F6", fontWeight: "bold" }]}>
-                      {cat.name}
-                    </Text>
-                    {isSelected && (
-                      <View style={[styles.activeIndicator, { backgroundColor: cat.color || "#3B82F6" }]} />
-                    )}
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-          )}
+<Text style={styles.sectionTitle}>Job Category</Text>
+
+<TouchableOpacity
+  style={styles.input}
+  onPress={() => setShowCategoryModal(true)}
+>
+  <Text style={{ color: selectedCategory ? "#F8FAFC" : "#64748B" }}>
+    {selectedCategory || "Select Job Category"}
+  </Text>
+</TouchableOpacity>
+
+<Modal
+  visible={showCategoryModal}
+  transparent
+  animationType="slide"
+>
+  <View
+    style={{
+      flex: 1,
+      justifyContent: "flex-end",
+      backgroundColor: "rgba(0,0,0,0.5)",
+    }}
+  >
+    <View
+      style={{
+        backgroundColor: "#1E293B",
+        borderTopLeftRadius: 20,
+        borderTopRightRadius: 20,
+        padding: 20,
+        maxHeight: "70%",
+      }}
+    >
+      <ScrollView>
+        {categories.map((cat) => (
+          <TouchableOpacity
+            key={cat.id}
+            style={{
+              paddingVertical: 15,
+              borderBottomWidth: 1,
+              borderBottomColor: "#334155",
+            }}
+            onPress={() => {
+              setSelectedCategory(cat.name);
+              setShowCategoryModal(false);
+            }}
+          >
+            <Text style={{ color: "#fff", fontSize: 16 }}>
+              {cat.icon} {cat.name}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </ScrollView>
+
+      <TouchableOpacity
+        onPress={() => setShowCategoryModal(false)}
+        style={{
+          marginTop: 15,
+          backgroundColor: "#EF4444",
+          padding: 14,
+          borderRadius: 10,
+          alignItems: "center",
+        }}
+      >
+        <Text style={{ color: "#fff", fontWeight: "bold" }}>Close</Text>
+      </TouchableOpacity>
+    </View>
+  </View>
+</Modal>
 
           {/* Submit Button */}
           <TouchableOpacity 

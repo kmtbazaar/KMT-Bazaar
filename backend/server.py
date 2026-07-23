@@ -143,6 +143,16 @@ class AIChatRequest(BaseModel):
     message: str
 
 
+class JobApplicationIn(BaseModel):
+    name: str
+    mobile: str
+    aadhar: str
+    address: str
+    category: str
+    appliedAt: Optional[str] = None
+    
+
+
 # ------------------ HELPERS ------------------
 def hash_password(p: str) -> str:
     return pwd_context.hash(p)
@@ -255,11 +265,55 @@ async def me(current=Depends(get_current_user)):
 class AvatarUpdateIn(BaseModel):
     avatar: str
 
-@api.post("/auth/update-avatar")
-async def update_avatar(data: AvatarUpdateIn, current=Depends(get_current_user)):
-    await db.users.update_one({"id": current["id"]}, {"$set": {"avatar": data.avatar}})
-    return {"ok": True, "avatar": data.avatar}
-# --------------------------------------------
+@api.post("/submit-roojgar")
+async def submit_roojgar(data: JobApplicationIn):
+
+    application = {
+        "id": str(uuid.uuid4()),
+        "name": data.name,
+        "mobile": data.mobile,
+        "aadhar": data.aadhar,
+        "address": data.address,
+        "category": data.category,
+        "status": "pending",
+        "appliedAt": data.appliedAt or now_iso(),
+        "created_at": now_iso()
+    }
+
+    await db.roojgar_applications.insert_one(application)
+
+    application.pop("_id", None)
+
+    return {
+        "success": True,
+        "message": "Roojgar application submitted",
+        "data": application
+    }
+# ------------------ ROJGAR ------------------
+
+@api.post("/jobs/apply")
+async def apply_job(data: JobApplicationIn):
+
+    job = {
+        "id": str(uuid.uuid4()),
+        "name": data.name,
+        "phone": data.phone,
+        "skill": data.skill,
+        "location": data.location,
+        "experience": data.experience,
+        "status": "pending",
+        "created_at": now_iso()
+    }
+
+    await db.job_applications.insert_one(job)
+
+    job.pop("_id", None)
+
+    return {
+        "success": True,
+        "message": "Application submitted",
+        "data": job
+    }
 
 # ------------------ CATALOG ------------------
 @api.get("/categories")
