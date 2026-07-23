@@ -162,13 +162,13 @@ const styles = StyleSheet.create({
   // Character Layout
   characterContainer: {
     width: "100%",
-    height: 280,
+    height: 340,
     justifyContent: "center",
     alignItems: "center",
   },
   characterWrapper: {
-    width: width * 0.75,
-    height: 270,
+    width: width * 0.90,
+    height: 330,
     justifyContent: "center",
     alignItems: "center",
   },
@@ -183,7 +183,8 @@ const styles = StyleSheet.create({
     height: 100,
     justifyContent: "center",
     alignItems: "center",
-    marginVertical: 5,
+    marginVertical: 0,
+    marginTop: -10
   },
   voiceRectGif: {
     width: "100%",
