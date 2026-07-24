@@ -21,7 +21,7 @@ export interface User {
   avatar?: string | null;
 }
 
-// 🔥 WEB & MOBILE OPTIMIZED STORAGE 🔥
+// Storage helpers
 export async function setToken(token: string) {
   if (Platform.OS === 'web') {
     sessionStorage.setItem(TOKEN_KEY, token);
@@ -74,7 +74,7 @@ export async function getUser() {
   }
 }
 
-// 🔥 IMPROVED API FETCH LOGIC (SAFE FOR DELETE & EMPTY RESPONSES) 🔥
+// Robust API Fetch Handler
 export async function apiFetch<T = any>(
   path: string,
   options: RequestInit = {}
@@ -89,7 +89,6 @@ export async function apiFetch<T = any>(
   const cleanPath = path.startsWith("/") ? path : `/${path}`;
   const res = await fetch(`${API}${cleanPath}`, { ...options, headers });
   
-  // Handle HTTP Error Codes
   if (!res.ok) {
     let errorMsg = `HTTP ${res.status}`;
     try {
@@ -100,7 +99,6 @@ export async function apiFetch<T = any>(
     throw new Error(typeof errorMsg === "string" ? errorMsg : JSON.stringify(errorMsg));
   }
 
-  // Handle successful empty response (e.g., 204 No Content for DELETE)
   if (res.status === 204) {
     return {} as T;
   }
@@ -154,7 +152,6 @@ export const api = {
   updateAddress: (id: string, data: any) =>
     apiFetch(`/addresses/${encodeURIComponent(id)}`, { method: "PUT", body: JSON.stringify(data) }),
     
-  // 🔥 FIXED DELETE ADDRESS METHOD 🔥
   deleteAddress: (id: string) => 
     apiFetch(`/addresses/${encodeURIComponent(id)}`, { method: "DELETE" }),
 
