@@ -43,13 +43,13 @@ export default function Home() {
   const [unread, setUnread] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
 
-  // 1. Dynamic Address State
+  // Dynamic Address Fallback State
   const [selectedAddress, setSelectedAddress] = useState<string>("Home · Karmatar");
 
-  // 4. Animated Search Bar Placeholder Index
+  // Animated Search Bar Placeholder Index
   const [placeholderIdx, setPlaceholderIdx] = useState(0);
 
-  // 5. Notification Pulse Animation Scale
+  // Notification Pulse Animation Scale
   const bellScale = useSharedValue(1);
 
   const load = useCallback(async () => {
@@ -71,7 +71,7 @@ export default function Home() {
     return () => clearInterval(interval);
   }, []);
 
-  // 5. Notification Bell Pulse Trigger
+  // Notification Bell Pulse Animation Effect
   useEffect(() => {
     if (unread > 0) {
       bellScale.value = withRepeat(
@@ -79,7 +79,7 @@ export default function Home() {
           withTiming(1.2, { duration: 300 }),
           withTiming(1, { duration: 300 })
         ),
-        -1, // Infinite loop while unread > 0
+        -1, // Infinite loop when unread > 0
         true
       );
     } else {
@@ -93,9 +93,9 @@ export default function Home() {
 
   const onRefresh = async () => { setRefreshing(true); await load(); setRefreshing(false); };
 
-  // 2. Notification Click Handler (Clears badge immediately)
+  // Clear unread badge on click & navigate
   const handleNotificationPress = () => {
-    setUnread(0); // Clear badge locally
+    setUnread(0);
     router.push("/notifications" as any);
   };
 
@@ -104,14 +104,14 @@ export default function Home() {
       <LinearGradient colors={[COLORS.brand, COLORS.brandDark]} style={s.headerBg} />
       <SafeAreaView edges={["top"]} style={s.headerWrap}>
         <View style={s.headerRow}>
-          {/* 1. Address Selector Button */}
+          {/* 1. Address Selector (Route: /adresses) */}
           <Pressable 
             style={s.locWrap} 
             testID="location-selector"
-            onPress={() => router.push("/select-address" as any)}
+            onPress={() => router.push("/adresses" as any)}
           >
             <MaterialCommunityIcons name="map-marker" size={20} color="#fff" />
-            <View>
+            <View style={{ flex: 1 }}>
               <Text style={s.locLabel}>Deliver to</Text>
               <Text style={s.locValue} numberOfLines={1}>
                 {user?.address || selectedAddress}{" "}
@@ -120,7 +120,7 @@ export default function Home() {
             </View>
           </Pressable>
 
-          {/* 3 & 5. Animated Notification Bell at Logo Position (Top Right) */}
+          {/* Animated Notification Bell on Top Right (Logo Position) */}
           <View style={s.headerActions}>
             <Animated.View style={animatedBellStyle}>
               <Pressable testID="notifications-bell" onPress={handleNotificationPress} style={s.iconBtn}>
@@ -135,7 +135,7 @@ export default function Home() {
           </View>
         </View>
 
-        {/* 4. Animated Search Bar */}
+        {/* Animated Placeholder Search Bar */}
         <Pressable 
           testID="home-search-trigger"
           onPress={() => router.push("/search" as any)}
