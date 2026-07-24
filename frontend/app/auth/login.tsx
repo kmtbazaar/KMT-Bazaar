@@ -78,6 +78,37 @@ export default function Login() {
   const [error, setError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
 
+  // Pixar Eye Blinking & Floating Animation for Assistant Logo
+  const blinkAnim = useSharedValue(1);
+  const floatAnim = useSharedValue(0);
+
+  useEffect(() => {
+    blinkAnim.value = withRepeat(
+      withSequence(
+        withTiming(0.3, { duration: 150 }),
+        withTiming(1, { duration: 150 }),
+        withTiming(1, { duration: 3000 })
+      ),
+      -1,
+      false
+    );
+    floatAnim.value = withRepeat(
+      withSequence(
+        withTiming(-6, { duration: 1500, easing: Easing.inOut(Easing.ease) }),
+        withTiming(6, { duration: 1500, easing: Easing.inOut(Easing.ease) })
+      ),
+      -1,
+      true
+    );
+  }, []);
+
+  const pixarAssistantStyle = useAnimatedStyle(() => ({
+    transform: [
+      { translateY: floatAnim.value },
+      { scaleY: blinkAnim.value }
+    ],
+  }));
+
   // Production-grade Password Validation Checker
   const validatePassword = (pass: string) => {
     const isLengthValid = pass.length >= 10;
@@ -158,12 +189,7 @@ export default function Login() {
           />
         </View>
 
-        {/* Animated Logo & Text */}
-        <Animated.View entering={ZoomIn.duration(700).springify()}>
-          <View style={s.logoGlowContainer}>
-            <Image source={{ uri: LOGO_URL }} style={s.logo} contentFit="contain" />
-          </View>
-        </Animated.View>
+        {/* Logo removed from top and shifted to bottom */}
         <Animated.Text entering={FadeInDown.delay(200).springify()} style={s.appName}>KMT BAZAAR</Animated.Text>
         <Animated.Text entering={FadeInDown.delay(350).springify()} style={s.welcome}>Welcome back, login to continue</Animated.Text>
       </SafeAreaView>
@@ -260,6 +286,27 @@ export default function Login() {
               </>
             )}
           </View>
+
+          {/* Bottom Hub Container: Logo on Left, Assistant Badge on Right */}
+          <View style={s.bottomHubContainer}>
+            <Animated.View style={[s.pixarAvatarWrapper, pixarAssistantStyle]}>
+              <Image source={{ uri: LOGO_URL }} style={s.pixarAvatarImage} contentFit="contain" />
+            </Animated.View>
+
+            <Pressable 
+              style={s.pixarAssistantButton}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                router.replace("/(tabs)/home" as any);
+              }}
+            >
+              <View style={s.pixarTextBadge}>
+                <Text style={s.pixarBadgeTitle}>KMT Assistant</Text>
+                <Text style={s.pixarBadgeSubtitle}>Tap to quick-enter ✨</Text>
+              </View>
+            </Pressable>
+          </View>
+
         </ScrollView>
       </KeyboardAvoidingView>
 
@@ -324,17 +371,7 @@ const s = StyleSheet.create({
     shadowRadius: 10,
   },
 
-  logoGlowContainer: {
-    padding: 4,
-    borderRadius: 60,
-    shadowColor: "#00B4D8",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.5,
-    shadowRadius: 12,
-    elevation: 8,
-  },
-  logo: { width: 100, height: 100, marginTop: SPACING.xs },
-  appName: { color: "#FFFFFF", fontSize: 26, fontWeight: "900", letterSpacing: 3, marginTop: 10 },
+  appName: { color: "#FFFFFF", fontSize: 26, fontWeight: "900", letterSpacing: 3, marginTop: 4 },
   welcome: { color: "#00B4D8", marginTop: 4, marginBottom: SPACING.lg, fontSize: 14, fontWeight: "600" },
   
   cardWrapper: {
@@ -403,7 +440,7 @@ const s = StyleSheet.create({
     fontWeight: "600",
   },
   ruleValid: {
-    color: "#10B981", // Green check indicator for matched rules
+    color: "#10B981",
   },
   
   cta: { 
@@ -422,4 +459,58 @@ const s = StyleSheet.create({
   alt: { textAlign: "center", marginTop: SPACING.lg, color: "#64748B", fontSize: 14 },
   altLink: { color: "#FF6E00", fontWeight: "800", fontSize: 14 },
   err: { color: "#EF4444", marginTop: 4, marginBottom: 12, fontSize: 13, fontWeight: "600", marginLeft: 4 },
+
+  bottomHubContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginTop: 25,
+    paddingHorizontal: 5,
+  },
+  pixarAvatarWrapper: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: "#FFFFFF",
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#00B4D8",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  pixarAvatarImage: {
+    width: 38,
+    height: 38,
+  },
+  pixarAssistantButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(0, 180, 216, 0.1)",
+    borderWidth: 1.5,
+    borderColor: "rgba(0, 180, 216, 0.4)",
+    borderRadius: RADIUS.pill,
+    paddingVertical: 10,
+    paddingHorizontal: 18,
+    shadowColor: "#00B4D8",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  pixarTextBadge: {
+    flexDirection: "column",
+  },
+  pixarBadgeTitle: {
+    color: "#FFFFFF",
+    fontSize: 14,
+    fontWeight: "800",
+    letterSpacing: 0.5,
+  },
+  pixarBadgeSubtitle: {
+    color: "#00B4D8",
+    fontSize: 11,
+    fontWeight: "600",
+  },
 });
