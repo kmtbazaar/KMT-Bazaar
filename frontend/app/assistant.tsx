@@ -1,6 +1,4 @@
-
 import { router } from "expo-router";
-import VoiceButton from "../components/VoiceButton";
 import React, { useRef, useState } from "react";
 import {
   View,
@@ -12,13 +10,14 @@ import {
   TouchableOpacity,
   Text,
 } from "react-native";
-
 import { SafeAreaView } from "react-native-safe-area-context";
 
+// Apne components import check kar lijiye
 import BotHeader from "../components/BotHeader";
 import ChatBubble from "../components/ChatBubble";
 import ChatInput from "../components/ChatInput";
 import TypingIndicator from "../components/TypingIndicator";
+import VoiceButton from "../components/VoiceButton";
 import { askAI } from "../services/ai";
 
 type Message = {
@@ -29,6 +28,8 @@ type Message = {
 
 export default function AssistantScreen() {
   const scrollRef = useRef<ScrollView>(null);
+  const [input, setInput] = useState("");
+  const [typing, setTyping] = useState(false);
 
   const [messages, setMessages] = useState<Message[]>([
     {
@@ -38,25 +39,15 @@ export default function AssistantScreen() {
     },
   ]);
 
-  const [input, setInput] = useState("");
-  const [typing, setTyping] = useState(false);
-
-  // Normal send (typing ke liye)
   const onSend = async () => {
     if (!input.trim()) return;
     const currentInput = input;
-    setInput(""); // Input turant clear kar do
+    setInput("");
     await processMessage(currentInput);
   };
 
-  // Core logic message send karne ke liye
   const processMessage = async (textToSend: string) => {
-    const userMessage = {
-      id: Date.now(),
-      text: textToSend,
-      isUser: true,
-    };
-
+    const userMessage = { id: Date.now(), text: textToSend, isUser: true };
     setMessages((prev) => [...prev, userMessage]);
     setTyping(true);
 
@@ -65,11 +56,7 @@ export default function AssistantScreen() {
       setTyping(false);
       setMessages((prev) => [
         ...prev,
-        {
-          id: Date.now() + 1,
-          text: response.message,
-          isUser: false,
-        },
+        { id: Date.now() + 1, text: response.message, isUser: false },
       ]);
     } catch (error) {
       setTyping(false);
@@ -77,7 +64,7 @@ export default function AssistantScreen() {
         ...prev,
         {
           id: Date.now() + 1,
-          text: "⚠ AI Service Error (Please wait or check connection)",
+          text: "⚠ Oops! Network issue. Please try again.",
           isUser: false,
         },
       ]);
@@ -85,7 +72,7 @@ export default function AssistantScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
       <BotHeader />
 
       <KeyboardAvoidingView
@@ -95,56 +82,52 @@ export default function AssistantScreen() {
         <ScrollView
           ref={scrollRef}
           style={styles.chat}
-          contentContainerStyle={{ paddingBottom: 16 }}
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
           onContentSizeChange={() =>
             scrollRef.current?.scrollToEnd({ animated: true })
           }
         >
-          {/* Banner */}
-          <Image
-            source={require("../assets/ai/assistant-banner.png")}
-            style={styles.banner}
-            resizeMode="cover"
-          />
+          {/* BANNER SECTION */}
+          <View style={styles.bannerContainer}>
+            <Image
+              source={require("../assets/ai/assistant-banner.png")}
+              style={styles.banner}
+              resizeMode="cover"
+            />
+            <View style={styles.bannerOverlay} />
+            <Text style={styles.bannerTitle}>KMT AI ✨</Text>
+          </View>
 
-          {/* Messages */}
-          <View style={{ paddingHorizontal: 16, paddingTop: 16 }}>
+          {/* MESSAGES AREA */}
+          <View style={styles.messagesContainer}>
             {messages.map((item) => (
-              <ChatBubble
-                key={item.id}
-                message={item.text}
-                isUser={item.isUser}
-              />
+              <ChatBubble key={item.id} message={item.text} isUser={item.isUser} />
             ))}
             {typing && <TypingIndicator />}
           </View>
         </ScrollView>
 
-        {/* Naya Roojgar Button Area - Yahan Navigation Add Kiya Hai */}
+        {/* SIRF ROOJGAR BUTTON (Quick Action) */}
         <View style={styles.quickActionsContainer}>
           <TouchableOpacity
             style={styles.roojgarButton}
             onPress={() => router.push("/RoojgarForm")}
+            activeOpacity={0.8}
           >
             <Text style={styles.roojgarButtonText}>💼 Roojgar / Jobs</Text>
           </TouchableOpacity>
         </View>
 
-        {/* Input Area */}
+        {/* INPUT AREA */}
         <View style={styles.bottomContainer}>
-          <View style={{ flex: 1 }}>
-            <ChatInput
-              value={input}
-              onChangeText={setInput}
-              onSend={onSend}
-            />
+          <View style={styles.inputWrapper}>
+            <ChatInput value={input} onChangeText={setInput} onSend={onSend} />
           </View>
-
-          <VoiceButton
-            onPress={() => {
-              console.log("Voice Assistant");
-            }}
-          />
+          <View style={styles.voiceBtnWrapper}>
+            <VoiceButton onPress={() => console.log("Voice Assistant triggered")} />
+          </View>
         </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -154,38 +137,83 @@ export default function AssistantScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#0A1224",
-  },
-  banner: {
-    width: "100%",
-    height: 220,
+    backgroundColor: "#0F172A",
   },
   chat: {
     flex: 1,
   },
+  scrollContent: {
+    paddingBottom: 16,
+  },
+  bannerContainer: {
+    marginHorizontal: 16,
+    marginTop: 12,
+    marginBottom: 8,
+    borderRadius: 16,
+    overflow: "hidden",
+    height: 120,
+    position: "relative",
+    borderWidth: 1,
+    borderColor: "#1E293B",
+  },
+  banner: {
+    width: "100%",
+    height: "100%",
+  },
+  bannerOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(15, 23, 42, 0.3)",
+  },
+  bannerTitle: {
+    position: "absolute",
+    bottom: 12,
+    left: 16,
+    color: "#FFFFFF",
+    fontSize: 20,
+    fontWeight: "bold",
+    textShadowColor: "rgba(0, 0, 0, 0.5)",
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 4,
+  },
+  messagesContainer: {
+    paddingHorizontal: 16,
+    paddingTop: 8,
+  },
   quickActionsContainer: {
-    flexDirection: "row",
-    paddingHorizontal: 12,
-    paddingBottom: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    alignItems: "flex-start", // Left aligned premium chip
   },
   roojgarButton: {
-    backgroundColor: "#1E2A47", 
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: 20,
+    backgroundColor: "#1E293B",
+    paddingVertical: 10,
+    paddingHorizontal: 18,
+    borderRadius: 24,
     borderWidth: 1,
-    borderColor: "#3A4A73",
+    borderColor: "#334155",
   },
   roojgarButtonText: {
     color: "#FFFFFF",
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: "600",
   },
   bottomContainer: {
     flexDirection: "row",
     alignItems: "flex-end",
-    paddingHorizontal: 12,
-    paddingBottom: 10,
-    backgroundColor: "#0A1224",
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    paddingBottom: Platform.OS === "ios" ? 8 : 16,
+    backgroundColor: "#0F172A",
+    borderTopWidth: 1,
+    borderColor: "#1E293B",
+  },
+  inputWrapper: {
+    flex: 1,
+    marginRight: 10,
+  },
+  voiceBtnWrapper: {
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 4,
   },
 });
