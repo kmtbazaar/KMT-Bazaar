@@ -70,7 +70,7 @@ export default function AssistantScreen() {
     }
   };
 
-  // Button switch logic (Voice vs Send)
+  // Dual button logic (Send vs Voice)
   const handleActionPress = () => {
     if (input.trim().length > 0) {
       onSend();
@@ -81,7 +81,7 @@ export default function AssistantScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
-      {/* 🟢 SLIM HEADER (BotHeader file se slim hoga) */}
+      {/* 1. PATLA HEADER */}
       <BotHeader />
 
       <KeyboardAvoidingView
@@ -98,7 +98,7 @@ export default function AssistantScreen() {
             scrollRef.current?.scrollToEnd({ animated: true })
           }
         >
-          {/* BANNER (Wapas Pehle Jaisa Normal/Full) */}
+          {/* 2. CHOTA BANNER */}
           <View style={styles.bannerContainer}>
             <Image
               source={require("../assets/ai/assistant-banner.png")}
@@ -116,7 +116,7 @@ export default function AssistantScreen() {
           </View>
         </ScrollView>
 
-        {/* SIRF ROOJGAR BUTTON */}
+        {/* ROOJGAR BUTTON */}
         <View style={styles.quickActionsContainer}>
           <TouchableOpacity
             style={styles.roojgarButton}
@@ -127,11 +127,11 @@ export default function AssistantScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* COMPACT & PATLA BOTTOM INPUT AREA */}
+        {/* 3. MOTA/SPACIOUS BOTTOM INPUT AREA */}
         <View style={styles.bottomContainer}>
-          <View style={styles.compactInputWrapper}>
+          <View style={styles.motaInputWrapper}>
             <TextInput
-              style={styles.slimInput}
+              style={styles.motaInput}
               value={input}
               onChangeText={setInput}
               placeholder="Ask anything..."
@@ -152,7 +152,7 @@ export default function AssistantScreen() {
             >
               <MaterialCommunityIcons
                 name={input.trim().length > 0 ? "send" : "microphone"}
-                size={18}
+                size={20}
                 color="#FFFFFF"
               />
             </TouchableOpacity>
@@ -174,9 +174,13 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingBottom: 8,
   },
+  // Chota Banner Style
   bannerContainer: {
-    width: "100%",
-    height: 180, // Normal Banner Height
+    marginHorizontal: 12,
+    marginTop: 6,
+    height: 80, // 🔥 Banner ko chota kar diya
+    borderRadius: 10,
+    overflow: "hidden",
   },
   banner: {
     width: "100%",
@@ -184,60 +188,64 @@ const styles = StyleSheet.create({
   },
   messagesContainer: {
     paddingHorizontal: 16,
-    paddingTop: 12,
+    paddingTop: 8,
   },
   quickActionsContainer: {
     paddingHorizontal: 16,
-    paddingVertical: 6,
+    paddingVertical: 4,
     alignItems: "flex-start",
   },
   roojgarButton: {
     backgroundColor: "#1E293B",
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: 20,
+    paddingVertical: 6,
+    paddingHorizontal: 14,
+    borderRadius: 16,
     borderWidth: 1,
     borderColor: "#334155",
   },
   roojgarButtonText: {
     color: "#FFFFFF",
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: "600",
   },
+  // Mota/Spacious Bottom Input Area Style
   bottomContainer: {
     paddingHorizontal: 12,
-    paddingTop: 6,
-    paddingBottom: Platform.OS === "ios" ? 10 : 12,
+    paddingTop: 8,
+    paddingBottom: Platform.OS === "ios" ? 10 : 14,
     backgroundColor: "#0F172A",
+    borderTopWidth: 1,
+    borderTopColor: "#1E293B",
   },
-  compactInputWrapper: {
+  motaInputWrapper: {
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: "#1E293B",
-    borderRadius: 24,
-    paddingHorizontal: 12,
-    borderWidth: 1,
+    borderRadius: 28, // 🔥 Thoda aur rounded aur mota feel dene ke liye
+    paddingHorizontal: 14,
+    paddingVertical: 6,   // 🔥 Thoda mota height padding
+    borderWidth: 1.5,
     borderColor: "#334155",
   },
-  slimInput: {
+  motaInput: {
     flex: 1,
     color: "#FFFFFF",
-    fontSize: 14,
-    height: 38,
-    paddingHorizontal: 6,
+    fontSize: 15,
+    height: 44, // 🔥 Input box ki height thoda moti/badi ki hai
+    paddingHorizontal: 4,
   },
   actionBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 38,  // 🔥 Button bhi thoda bada/mota kiya hai
+    height: 38,
+    borderRadius: 19,
     justifyContent: "center",
     alignItems: "center",
-    marginLeft: 6,
+    marginLeft: 8,
   },
   voiceBtnBg: {
-    backgroundColor: "#3B82F6",
+    backgroundColor: "#3B82F6", // Blue for Mic
   },
   sendBtnBg: {
-    backgroundColor: "#10B981",
+    backgroundColor: "#10B981", // Green for Send
   },
 });
