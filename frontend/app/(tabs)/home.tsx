@@ -108,7 +108,7 @@ export default function Home() {
           <Pressable 
             style={s.locWrap} 
             testID="location-selector"
-            onPress={() => router.push("/adresses" as any)}
+            onPress={() => router.push("/addresses" as any)}
           >
             <MaterialCommunityIcons name="map-marker" size={20} color="#fff" />
             <View style={{ flex: 1 }}>
