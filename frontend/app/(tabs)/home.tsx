@@ -24,18 +24,18 @@ import CheckoutBar from "@/src/components/CheckoutBar";
 const { width } = Dimensions.get("window");
 const BANNER_W = width - 32;
 
-// Custom Theme Palette: Sky Blue, Orange, Pure White & Dark Accents
+// Custom Theme Palette: Clean Pure White, Sky Blue Header & Vibrant Orange
 const THEME = {
-  skyBg: "#E0F2FE",          // Light Refreshing Sky Blue Background
-  skyBgSoft: "#F0F9FF",      // Soft Sky Tint Surface
+  whiteBg: "#FFFFFF",        // Pure Crisp White Page Background
   skyHeader: "#0284C7",      // Deep Sky Blue Header
   skyHeaderDark: "#0369A1",  // Deep Header Accent
   orange: "#FF6B00",         // Vibrant Orange
   orangeBright: "#FF8800",   // Bright Orange Highlight
   orangeGlow: "#F97316",     // Border Glow Orange
   black: "#0F172A",          // Dark Slate Text for Clear Reading
-  blackMuted: "#475569",     // Muted Slate Text
-  white: "#FFFFFF",          // Crisp Pure White
+  blackMuted: "#64748B",     // Muted Slate Text
+  white: "#FFFFFF",          // Pure White
+  borderSoft: "#E2E8F0",     // Soft Divider Border
 };
 
 // Search bar placeholder texts for animation
@@ -172,7 +172,7 @@ export default function Home() {
 
   return (
     <View style={[s.root, Platform.OS === 'web' ? ({ height: '100vh', overflow: 'hidden' } as any) : {}]} testID="home-screen">
-      {/* Sky Blue Dynamic Header Gradient */}
+      {/* Sky Blue Header Gradient strictly up to Search Box */}
       <LinearGradient colors={[THEME.skyHeader, THEME.skyHeaderDark]} style={s.headerBg} />
       
       <SafeAreaView edges={["top"]} style={s.headerWrap}>
@@ -246,7 +246,7 @@ export default function Home() {
         style={Platform.OS === 'web' ? ({ height: '100%', overflowY: 'auto', touchAction: 'pan-y' } as any) : {}}
       >
 
-        {/* Banner Carousel with Gradient Flashing Border Only */}
+        {/* Clean Banner Carousel without Dull Overlays */}
         <FlatList
           horizontal
           style={Platform.OS === 'web' ? { overflowX: 'auto' } : {}}
@@ -254,24 +254,18 @@ export default function Home() {
           showsHorizontalScrollIndicator={false}
           snapToInterval={BANNER_W + 12}
           decelerationRate="fast"
-          contentContainerStyle={{ paddingHorizontal: SPACING.lg, paddingVertical: SPACING.md, gap: 12 }}
+          contentContainerStyle={{ paddingHorizontal: SPACING.lg, paddingTop: SPACING.md, paddingBottom: SPACING.sm, gap: 12 }}
           keyExtractor={(it) => String(it.id)}
           renderItem={({ item }) => (
             <Pressable testID={`banner-${item.id}`} onPress={() => router.push(`/category/${item.category_id}` as any)} style={s.banner}>
               <Image source={{ uri: item.image }} style={s.bannerImg} contentFit="cover" />
-              <LinearGradient 
-                colors={["rgba(2, 132, 199, 0.85)", "rgba(15, 23, 42, 0.3)"]} 
-                style={StyleSheet.absoluteFill} 
-                start={{ x: 0, y: 0 }} 
-                end={{ x: 1, y: 1 }} 
-              />
               
               {/* Animated Gradient Border Flash */}
               <Animated.View style={[s.bannerFlashBorder, animatedFlashStyle]} />
 
               <View style={s.bannerText}>
-                <Text style={s.bannerSubtitle}>{item.subtitle}</Text>
-                <Text style={s.bannerTitle}>{item.title}</Text>
+                {item.subtitle ? <Text style={s.bannerSubtitle}>{item.subtitle}</Text> : null}
+                {item.title ? <Text style={s.bannerTitle}>{item.title}</Text> : null}
                 <View style={s.bannerCta}>
                   <Text style={s.bannerCtaText}>{item.cta || "Explore Now"} →</Text>
                 </View>
@@ -302,7 +296,7 @@ export default function Home() {
           ))}
         </View>
 
-        {/* Nearby Stores List (Chote Tiles with Flashing Gradient Border) */}
+        {/* Nearby Stores List */}
         <SectionTitle title="Nearby Stores" subtitle="Fast delivery hubs" />
         <FlatList
           horizontal
@@ -410,9 +404,10 @@ function SectionTitle({ title, subtitle }: { title: string; subtitle?: string })
 }
 
 const s = StyleSheet.create({
-  root: { flex: 1, backgroundColor: THEME.skyBg },
-  headerBg: { position: "absolute", top: 0, left: 0, right: 0, height: 210, borderBottomLeftRadius: 20, borderBottomRightRadius: 20 },
-  headerWrap: { paddingHorizontal: SPACING.lg, paddingBottom: SPACING.md },
+  root: { flex: 1, backgroundColor: THEME.whiteBg },
+  /* Header Height Restricted strictly till search box */
+  headerBg: { position: "absolute", top: 0, left: 0, right: 0, height: 155, borderBottomLeftRadius: 18, borderBottomRightRadius: 18 },
+  headerWrap: { paddingHorizontal: SPACING.lg, paddingBottom: SPACING.xs },
   headerRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingTop: 4 },
   locWrap: { flexDirection: "row", gap: 8, alignItems: "center", flex: 1, marginRight: 12, zIndex: 99, elevation: 5 },
   locIconBg: { width: 34, height: 34, borderRadius: 17, backgroundColor: THEME.white, alignItems: "center", justifyContent: "center", ...shadow.soft },
@@ -427,16 +422,17 @@ const s = StyleSheet.create({
   searchPlaceholderText: { fontSize: 14, color: THEME.blackMuted, fontWeight: "600" },
   searchMicBg: { backgroundColor: THEME.orange, padding: 6, borderRadius: 12 },
 
-  banner: { width: BANNER_W, height: 160, borderRadius: RADIUS.lg, overflow: "hidden", backgroundColor: THEME.white, position: "relative", ...shadow.soft },
+  /* Clean Banner Styling */
+  banner: { width: BANNER_W, height: 155, borderRadius: RADIUS.lg, overflow: "hidden", backgroundColor: THEME.white, position: "relative", ...shadow.soft },
   bannerImg: { width: "100%", height: "100%" },
   bannerFlashBorder: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, borderRadius: RADIUS.lg, borderWidth: 2.5, borderColor: THEME.orangeBright, pointerEvents: "none" },
-  bannerText: { position: "absolute", left: 18, top: 20, right: 90 },
-  bannerSubtitle: { color: "#FFEDD5", fontSize: 12, fontWeight: "800", letterSpacing: 0.5, textTransform: "uppercase" },
-  bannerTitle: { color: THEME.white, fontSize: 22, fontWeight: "900", marginTop: 4 },
-  bannerCta: { marginTop: 12, paddingHorizontal: 14, paddingVertical: 7, borderRadius: RADIUS.pill, alignSelf: "flex-start", backgroundColor: THEME.orange },
-  bannerCtaText: { color: THEME.white, fontWeight: "800", fontSize: 13 },
+  bannerText: { position: "absolute", left: 16, bottom: 16, right: 16, alignItems: "flex-start" },
+  bannerSubtitle: { color: THEME.white, fontSize: 11, fontWeight: "800", letterSpacing: 0.5, textTransform: "uppercase", backgroundColor: "rgba(0,0,0,0.5)", paddingHorizontal: 8, paddingVertical: 2, borderRadius: 4 },
+  bannerTitle: { color: THEME.white, fontSize: 18, fontWeight: "900", marginTop: 4, textShadowColor: "rgba(0,0,0,0.7)", textShadowRadius: 6 },
+  bannerCta: { marginTop: 8, paddingHorizontal: 14, paddingVertical: 6, borderRadius: RADIUS.pill, alignSelf: "flex-start", backgroundColor: THEME.orange },
+  bannerCtaText: { color: THEME.white, fontWeight: "800", fontSize: 12 },
   
-  sectionHead: { paddingHorizontal: SPACING.lg, marginTop: SPACING.lg, marginBottom: SPACING.sm },
+  sectionHead: { paddingHorizontal: SPACING.lg, marginTop: SPACING.md, marginBottom: SPACING.sm },
   sectionIndicator: { width: 4, height: 16, backgroundColor: THEME.orange, borderRadius: 2 },
   sectionTitle: { fontSize: 18, fontWeight: "900", color: THEME.black },
   sectionSub: { fontSize: 12, color: THEME.blackMuted, marginTop: 2, marginLeft: 12 },
@@ -446,12 +442,12 @@ const s = StyleSheet.create({
   catItem: { alignItems: "center" },
   catCircleWrap: { position: "relative", width: 60, height: 60 },
   catFlashBorder: { position: "absolute", top: -2, left: -2, right: -2, bottom: -2, borderRadius: 32, borderWidth: 2, borderColor: THEME.orange, zIndex: 1, pointerEvents: "none" },
-  catCircle: { width: 60, height: 60, borderRadius: 30, overflow: "hidden", alignItems: "center", justifyContent: "center", backgroundColor: THEME.white, ...shadow.soft },
+  catCircle: { width: 60, height: 60, borderRadius: 30, overflow: "hidden", alignItems: "center", justifyContent: "center", backgroundColor: THEME.white, ...shadow.soft, borderWidth: 1, borderColor: THEME.borderSoft },
   catImg: { width: "100%", height: "100%" },
   catName: { fontSize: 11, fontWeight: "700", color: THEME.black, marginTop: 6, textAlign: "center" },
   
   /* Compact Store Tile Styling */
-  storeCardSmall: { width: 135, backgroundColor: THEME.white, borderRadius: RADIUS.md, overflow: "hidden", position: "relative", ...shadow.soft },
+  storeCardSmall: { width: 135, backgroundColor: THEME.white, borderRadius: RADIUS.md, overflow: "hidden", position: "relative", ...shadow.soft, borderWidth: 1, borderColor: THEME.borderSoft },
   storeFlashBorder: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, borderRadius: RADIUS.md, borderWidth: 1.5, borderColor: THEME.orangeGlow, pointerEvents: "none", zIndex: 2 },
   storeImgSmall: { width: "100%", height: 65 },
   storeNameSmall: { fontWeight: "800", color: THEME.black, fontSize: 12 },
