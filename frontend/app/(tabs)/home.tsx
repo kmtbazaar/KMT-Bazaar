@@ -50,15 +50,32 @@ export default function Home() {
   // Sync selected address automatically whenever user returns to Home Screen
   useFocusEffect(
     useCallback(() => {
+      let isMounted = true;
       const loadActiveAddress = async () => {
         try {
+          // 1. Check local storage selection
           const activeAddr = await AsyncStorage.getItem("selected_address");
           if (activeAddr) {
             const parsed = JSON.parse(activeAddr);
             const labelStr = parsed.label || "Home";
             const locationStr = parsed.line1 || parsed.city || "Karmatar";
-            setSelectedAddress(`${labelStr} · ${locationStr}`);
-          } else if (user?.address) {
+            if (isMounted) setSelectedAddress(`${labelStr} · ${locationStr}`);
+            return;
+          }
+
+          // 2. Fallback to API user addresses if no local selection
+          const addrList = await api.addresses();
+          if (addrList && addrList.length > 0) {
+            const def = addrList.find((a: any) => a.is_default) || addrList[0];
+            const labelStr = def.label || "Home";
+            const locationStr = def.line1 || def.city || "Karmatar";
+            if (isMounted) setSelectedAddress(`${labelStr} · ${locationStr}`);
+            await AsyncStorage.setItem("selected_address", JSON.stringify(def));
+            return;
+          }
+
+          // 3. Fallback to User Context
+          if (user?.address && isMounted) {
             setSelectedAddress(user.address);
           }
         } catch (err) {
@@ -66,6 +83,7 @@ export default function Home() {
         }
       };
       loadActiveAddress();
+      return () => { isMounted = false; };
     }, [user])
   );
 
@@ -80,7 +98,7 @@ export default function Home() {
       const [b, c, s, t, u] = await Promise.all([
         api.banners(), api.categories(), api.stores(), api.products({ trending: true }), api.unreadCount(),
       ]);
-      setBanners(b); setCats(c); setStores(s); setTrending(t); setUnread(u.count || 0);
+      setBanners(b || []); setCats(c || []); setStores(s || []); setTrending(t || []); setUnread(u?.count || 0);
     } catch (e) { console.log("load err", e); }
   }, []);
 
@@ -200,7 +218,7 @@ export default function Home() {
           snapToInterval={BANNER_W + 12}
           decelerationRate="fast"
           contentContainerStyle={{ paddingHorizontal: SPACING.lg, paddingVertical: SPACING.lg, gap: 12 }}
-          keyExtractor={(it) => it.id}
+          keyExtractor={(it) => String(it.id)}
           renderItem={({ item, index }) => (
             <Animated.View entering={FadeInUp.delay(index * 80)}>
               <Pressable testID={`banner-${item.id}`} onPress={() => router.push(`/category/${item.category_id}` as any)} style={s.banner}>
@@ -209,8 +227,8 @@ export default function Home() {
                 <View style={s.bannerText}>
                   <Text style={s.bannerSubtitle}>{item.subtitle}</Text>
                   <Text style={s.bannerTitle}>{item.title}</Text>
-                  <View style={[s.bannerCta, { backgroundColor: item.color }]}>
-                    <Text style={s.bannerCtaText}>{item.cta} →</Text>
+                  <View style={[s.bannerCta, { backgroundColor: item.color || COLORS.brand }]}>
+                    <Text style={s.bannerCtaText}>{item.cta || "Explore"} →</Text>
                   </View>
                 </View>
               </Pressable>
@@ -228,7 +246,7 @@ export default function Home() {
               onPress={() => router.push({ pathname: `/category/${c.id}`, params: { name: c.name } } as any)}
               style={s.catItem}
             >
-              <View style={[s.catCircle, { backgroundColor: c.color + "22" }]}>
+              <View style={[s.catCircle, { backgroundColor: (c.color || COLORS.brand) + "22" }]}>
                 <Image source={{ uri: c.image }} style={s.catImg} contentFit="cover" />
               </View>
               <Text style={s.catName}>{c.name}</Text>
@@ -243,7 +261,7 @@ export default function Home() {
           data={stores}
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={{ paddingHorizontal: SPACING.lg, gap: SPACING.md }}
-          keyExtractor={(it) => it.id}
+          keyExtractor={(it) => String(it.id)}
           renderItem={({ item }) => {
             const isAvailable = item.is_online !== false;
 
@@ -271,7 +289,7 @@ export default function Home() {
                     {isAvailable ? (
                       <View style={s.ratePill}>
                         <MaterialCommunityIcons name="star" size={10} color="#fff" />
-                        <Text style={s.rateText}>{item.rating}</Text>
+                        <Text style={s.rateText}>{item.rating || "4.5"}</Text>
                       </View>
                     ) : (
                       <View style={[s.ratePill, { backgroundColor: COLORS.textMuted }]}>
@@ -280,7 +298,7 @@ export default function Home() {
                       </View>
                     )}
 
-                    <Text style={s.storeMin}>{item.delivery_min} min</Text>
+                    <Text style={s.storeMin}>{item.delivery_min || 15} min</Text>
                   </View>
                 </View>
               </Pressable>
