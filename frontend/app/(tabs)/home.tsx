@@ -70,10 +70,18 @@ export default function Home() {
       </SafeAreaView>
 
             <ScrollView
-        contentContainerStyle={{ paddingBottom: 100 }}
-        refreshControl={<RefreshControl tintColor={COLORS.brand} refreshing={refreshing} onRefresh={onRefresh} />}
-        showsVerticalScrollIndicator={false}
-      >
+  contentContainerStyle={{ paddingBottom: 100 }}
+  refreshControl={
+    Platform.OS === 'web' ? undefined : (
+      <RefreshControl tintColor={COLORS.brand} refreshing={refreshing} onRefresh={onRefresh} />
+    )
+  }
+  showsVerticalScrollIndicator={false}
+  // 🔥 Chrome Stuck Issue Fix for Web:
+  style={Platform.OS === 'web' ? ({ overscrollBehavior: 'contain', touchAction: 'pan-y' } as any) : {}}
+>
+
+
 
 
         {/* Banner Carousel */}
@@ -215,7 +223,14 @@ function SectionTitle({ title, subtitle }: { title: string; subtitle?: string })
 }
 
 const s = StyleSheet.create({
-  root: { flex: 1, backgroundColor: COLORS.surfaceSecondary },
+  root: { 
+    flex: 1, 
+    backgroundColor: COLORS.surfaceSecondary,
+    ...(Platform.OS === 'web' ? { height: '100vh', overflowY: 'auto' } : {}) 
+  },
+  // ...
+});
+
   headerBg: { position: "absolute", top: 0, left: 0, right: 0, height: 220 },
   headerWrap: { paddingHorizontal: SPACING.lg, paddingBottom: SPACING.md },
   headerRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingTop: 4 },
