@@ -1,3 +1,2 @@
-# Ai assistant ready
-# home Stuck fix
 
+# login screen ka logo nichey left mai karna hai
