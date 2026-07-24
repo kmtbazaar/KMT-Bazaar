@@ -23,10 +23,8 @@ import CheckoutBar from "@/src/components/CheckoutBar";
 
 const { width } = Dimensions.get("window");
 const BANNER_W = width - 32;
-// Standard 1200x250 ratio = 4.8:1
-const BANNER_H = BANNER_W / 4.8;
 
-// Custom Theme Palette
+// Custom Theme Palette: Clean Pure White, Sky Blue Header & Vibrant Orange
 const THEME = {
   whiteBg: "#FFFFFF",        // Pure Crisp White Page Background
   skyHeader: "#0284C7",      // Deep Sky Blue Header
@@ -68,6 +66,7 @@ export default function Home() {
       let isMounted = true;
       const loadActiveAddress = async () => {
         try {
+          // 1. Check local storage selection
           const activeAddr = await AsyncStorage.getItem("selected_address");
           if (activeAddr) {
             const parsed = JSON.parse(activeAddr);
@@ -77,6 +76,7 @@ export default function Home() {
             return;
           }
 
+          // 2. Fallback to API user addresses if no local selection
           const addrList = await api.addresses();
           if (addrList && addrList.length > 0) {
             const def = addrList.find((a: any) => a.is_default) || addrList[0];
@@ -87,6 +87,7 @@ export default function Home() {
             return;
           }
 
+          // 3. Fallback to User Context
           if (user?.address && isMounted) {
             setSelectedAddress(user.address);
           }
@@ -99,6 +100,7 @@ export default function Home() {
     }, [user])
   );
 
+  // Animated Search Bar Placeholder Index
   const [placeholderIdx, setPlaceholderIdx] = useState(0);
 
   // Shared Values for Flashing Border Animations ONLY
@@ -116,6 +118,7 @@ export default function Home() {
 
   useEffect(() => { load(); }, [load]);
 
+  // Search placeholder animation timer
   useEffect(() => {
     const interval = setInterval(() => {
       setPlaceholderIdx((prev) => (prev + 1) % SEARCH_PLACEHOLDERS.length);
@@ -123,6 +126,7 @@ export default function Home() {
     return () => clearInterval(interval);
   }, []);
 
+  // Continuous Dynamic Gradient Border Flash Animation Effect ONLY
   useEffect(() => {
     flashOpacity.value = withRepeat(
       withSequence(
@@ -134,6 +138,7 @@ export default function Home() {
     );
   }, []);
 
+  // Notification Bell Pulse Animation Effect
   useEffect(() => {
     if (unread > 0) {
       bellScale.value = withRepeat(
@@ -141,7 +146,7 @@ export default function Home() {
           withTiming(1.25, { duration: 300 }),
           withTiming(1, { duration: 300 })
         ),
-        -1,
+        -1, // Infinite loop when unread > 0
         true
       );
     } else {
@@ -159,6 +164,7 @@ export default function Home() {
 
   const onRefresh = async () => { setRefreshing(true); await load(); setRefreshing(false); };
 
+  // Clear unread badge on click & navigate
   const handleNotificationPress = () => {
     setUnread(0);
     router.push("/notifications" as any);
@@ -166,69 +172,67 @@ export default function Home() {
 
   return (
     <View style={[s.root, Platform.OS === 'web' ? ({ height: '100vh', overflow: 'hidden' } as any) : {}]} testID="home-screen">
-      {/* Dynamic Header Section (Blue Background strictly parallel/aligned to Search Bar Bottom) */}
-      <View style={s.headerContainer}>
-        <LinearGradient colors={[THEME.skyHeader, THEME.skyHeaderDark]} style={StyleSheet.absoluteFill} />
-        
-        <SafeAreaView edges={["top"]} style={s.headerWrap}>
-          <View style={s.headerRow}>
-            {/* Address Selector */}
-            <Pressable 
-              style={s.locWrap} 
-              testID="location-selector"
-              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-              onPress={() => router.push("/addresses" as any)}
-            >
-              <View style={s.locIconBg}>
-                <MaterialCommunityIcons name="map-marker-radius" size={20} color={THEME.orange} />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={s.locLabel}>Deliver to</Text>
-                <Text style={s.locValue} numberOfLines={1}>
-                  {selectedAddress}{" "}
-                  <MaterialCommunityIcons name="chevron-down" size={16} color={THEME.white} />
-                </Text>
-              </View>
-            </Pressable>
-
-            {/* Notification Bell */}
-            <View style={s.headerActions}>
-              <Animated.View style={animatedBellStyle}>
-                <Pressable testID="notifications-bell" onPress={handleNotificationPress} style={s.iconBtn}>
-                  <MaterialCommunityIcons name="bell-ring-outline" size={22} color={THEME.white} />
-                  {unread > 0 && (
-                    <View style={s.bellBadge}>
-                      <Text style={s.bellBadgeText}>{unread}</Text>
-                    </View>
-                  )}
-                </Pressable>
-              </Animated.View>
-            </View>
-          </View>
-
-          {/* Search Bar perfectly parallel with Header bottom edge */}
+      {/* Sky Blue Header Gradient strictly up to Search Box */}
+      <LinearGradient colors={[THEME.skyHeader, THEME.skyHeaderDark]} style={s.headerBg} />
+      
+      <SafeAreaView edges={["top"]} style={s.headerWrap}>
+        <View style={s.headerRow}>
+          {/* 1. Address Selector (Route: /addresses) */}
           <Pressable 
-            testID="home-search-trigger"
-            onPress={() => router.push("/search" as any)}
-            style={s.searchWrap}
+            style={s.locWrap} 
+            testID="location-selector"
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            onPress={() => router.push("/addresses" as any)}
           >
-            <MaterialCommunityIcons name="magnify" size={22} color={THEME.skyHeader} />
-            <Animated.View 
-              key={placeholderIdx} 
-              entering={FadeIn.duration(400)} 
-              exiting={FadeOut.duration(400)}
-              style={{ flex: 1, marginLeft: 8 }}
-            >
-              <Text style={s.searchPlaceholderText}>
-                {SEARCH_PLACEHOLDERS[placeholderIdx]}
+            <View style={s.locIconBg}>
+              <MaterialCommunityIcons name="map-marker-radius" size={20} color={THEME.orange} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={s.locLabel}>Deliver to</Text>
+              <Text style={s.locValue} numberOfLines={1}>
+                {selectedAddress}{" "}
+                <MaterialCommunityIcons name="chevron-down" size={16} color={THEME.white} />
               </Text>
-            </Animated.View>
-            <View style={s.searchMicBg}>
-              <MaterialCommunityIcons name="tune-variant" size={16} color={THEME.white} />
             </View>
           </Pressable>
-        </SafeAreaView>
-      </View>
+
+          {/* Animated Notification Bell on Top Right */}
+          <View style={s.headerActions}>
+            <Animated.View style={animatedBellStyle}>
+              <Pressable testID="notifications-bell" onPress={handleNotificationPress} style={s.iconBtn}>
+                <MaterialCommunityIcons name="bell-ring-outline" size={22} color={THEME.white} />
+                {unread > 0 && (
+                  <View style={s.bellBadge}>
+                    <Text style={s.bellBadgeText}>{unread}</Text>
+                  </View>
+                )}
+              </Pressable>
+            </Animated.View>
+          </View>
+        </View>
+
+        {/* Search Bar */}
+        <Pressable 
+          testID="home-search-trigger"
+          onPress={() => router.push("/search" as any)}
+          style={s.searchWrap}
+        >
+          <MaterialCommunityIcons name="magnify" size={22} color={THEME.skyHeader} />
+          <Animated.View 
+            key={placeholderIdx} 
+            entering={FadeIn.duration(400)} 
+            exiting={FadeOut.duration(400)}
+            style={{ flex: 1, marginLeft: 8 }}
+          >
+            <Text style={s.searchPlaceholderText}>
+              {SEARCH_PLACEHOLDERS[placeholderIdx]}
+            </Text>
+          </Animated.View>
+          <View style={s.searchMicBg}>
+            <MaterialCommunityIcons name="tune-variant" size={16} color={THEME.white} />
+          </View>
+        </Pressable>
+      </SafeAreaView>
 
       <ScrollView
         contentContainerStyle={{ paddingBottom: 120, flexGrow: 1 }}
@@ -242,7 +246,7 @@ export default function Home() {
         style={Platform.OS === 'web' ? ({ height: '100%', overflowY: 'auto', touchAction: 'pan-y' } as any) : {}}
       >
 
-        {/* 1200x250 Dimension Space Banner Carousel */}
+        {/* Clean Banner Carousel without Dull Overlays */}
         <FlatList
           horizontal
           style={Platform.OS === 'web' ? { overflowX: 'auto' } : {}}
@@ -250,28 +254,31 @@ export default function Home() {
           showsHorizontalScrollIndicator={false}
           snapToInterval={BANNER_W + 12}
           decelerationRate="fast"
-          contentContainerStyle={{ paddingHorizontal: SPACING.lg, paddingTop: SPACING.md, paddingBottom: SPACING.xs, gap: 12 }}
+          contentContainerStyle={{ paddingHorizontal: SPACING.lg, paddingTop: SPACING.md, paddingBottom: SPACING.sm, gap: 12 }}
           keyExtractor={(it) => String(it.id)}
           renderItem={({ item }) => (
             <Pressable testID={`banner-${item.id}`} onPress={() => router.push(`/category/${item.category_id}` as any)} style={s.banner}>
               <Image source={{ uri: item.image }} style={s.bannerImg} contentFit="cover" />
               
-              {/* Border Glow Animation */}
+              {/* Animated Gradient Border Flash */}
               <Animated.View style={[s.bannerFlashBorder, animatedFlashStyle]} />
 
               <View style={s.bannerText}>
                 {item.subtitle ? <Text style={s.bannerSubtitle}>{item.subtitle}</Text> : null}
                 {item.title ? <Text style={s.bannerTitle}>{item.title}</Text> : null}
+                <View style={s.bannerCta}>
+                  <Text style={s.bannerCtaText}>{item.cta || "Explore Now"} →</Text>
+                </View>
               </View>
             </Pressable>
           )}
         />
 
-        {/* Categories Section (3 Columns Layout) */}
+        {/* Categories Section with Flashing Border Tiles */}
         <SectionTitle title="Shop by Category" subtitle="Clear & easy ordering" />
         <View style={s.catsGrid}>
           {cats.map((c) => (
-            <View key={c.id} style={s.catItemWrap3Col}>
+            <View key={c.id} style={s.catItemWrap}>
               <Pressable
                 testID={`category-${c.id}`}
                 onPress={() => router.push({ pathname: `/category/${c.id}`, params: { name: c.name } } as any)}
@@ -307,10 +314,12 @@ export default function Home() {
                 disabled={!isAvailable}
                 onPress={() => router.push({ pathname: `/store/${item.id}`, params: { name: item.name } } as any)}
               >
+                {/* Animated Flashing Gradient Border */}
                 <Animated.View style={[s.storeFlashBorder, animatedFlashStyle]} />
                 
                 <View style={{ position: "relative" }}>
                   <Image source={{ uri: item.image }} style={s.storeImgSmall} contentFit="cover" />
+                  
                   {!isAvailable && (
                     <View style={s.offlineOverlay}>
                       <Text style={s.offlineText}>CLOSED</Text>
@@ -323,6 +332,7 @@ export default function Home() {
                     {item.name}
                   </Text>
                   <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 4 }}>
+                    
                     {isAvailable ? (
                       <View style={s.ratePillSmall}>
                         <MaterialCommunityIcons name="star" size={9} color={THEME.white} />
@@ -334,6 +344,7 @@ export default function Home() {
                         <Text style={s.rateTextSmall}>Off</Text>
                       </View>
                     )}
+
                     <Text style={s.storeMinSmall}>{item.delivery_min || 15}m</Text>
                   </View>
                 </View>
@@ -342,11 +353,11 @@ export default function Home() {
           }}
         />
 
-        {/* Trending Products Section - Clean 3 Columns Grid */}
+        {/* Trending Products Section */}
         <SectionTitle title="Trending Products" subtitle="Best sellers this week" />
-        <View style={s.trendingGrid3Col}>
+        <View style={s.trendingGrid}>
           {trending.map((item) => (
-            <View key={item.id} style={s.productTileCard3Col}>
+            <View key={item.id} style={s.productTileCard}>
               <Animated.View style={[s.productFlashBorder, animatedFlashStyle]} />
               <ProductCard p={item} />
             </View>
@@ -355,7 +366,7 @@ export default function Home() {
         
         <View style={{ height: 20 }} />
         
-        {/* Promise Guarantee Banner */}
+        {/* Sky & Orange Promise Strip */}
         <View style={s.brandStrip}>
           <LinearGradient 
             colors={[THEME.skyHeader, THEME.skyHeaderDark]} 
@@ -394,16 +405,9 @@ function SectionTitle({ title, subtitle }: { title: string; subtitle?: string })
 
 const s = StyleSheet.create({
   root: { flex: 1, backgroundColor: THEME.whiteBg },
-  
-  /* Header parallel to search box bottom boundary */
-  headerContainer: {
-    width: "100%",
-    borderBottomLeftRadius: 18,
-    borderBottomRightRadius: 18,
-    overflow: "hidden",
-    paddingBottom: SPACING.sm,
-  },
-  headerWrap: { paddingHorizontal: SPACING.lg },
+  /* Header Height Restricted strictly till search box */
+  headerBg: { position: "absolute", top: 0, left: 0, right: 0, height: 155, borderBottomLeftRadius: 18, borderBottomRightRadius: 18 },
+  headerWrap: { paddingHorizontal: SPACING.lg, paddingBottom: SPACING.xs },
   headerRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingTop: 4 },
   locWrap: { flexDirection: "row", gap: 8, alignItems: "center", flex: 1, marginRight: 12, zIndex: 99, elevation: 5 },
   locIconBg: { width: 34, height: 34, borderRadius: 17, backgroundColor: THEME.white, alignItems: "center", justifyContent: "center", ...shadow.soft },
@@ -414,32 +418,33 @@ const s = StyleSheet.create({
   bellBadge: { position: "absolute", top: 2, right: 2, backgroundColor: THEME.orange, minWidth: 18, height: 18, borderRadius: 9, paddingHorizontal: 4, alignItems: "center", justifyContent: "center", borderWidth: 1.5, borderColor: THEME.white },
   bellBadgeText: { color: THEME.white, fontSize: 9, fontWeight: "900" },
   
-  searchWrap: { flexDirection: "row", alignItems: "center", backgroundColor: THEME.white, borderRadius: RADIUS.pill, paddingHorizontal: 14, paddingVertical: 10, marginTop: SPACING.md, ...shadow.card, height: 46, borderWidth: 1.5, borderColor: THEME.orange },
+  searchWrap: { flexDirection: "row", alignItems: "center", backgroundColor: THEME.white, borderRadius: RADIUS.pill, paddingHorizontal: 14, paddingVertical: 10, marginTop: SPACING.md, ...shadow.card, height: 48, borderWidth: 1.5, borderColor: THEME.orange },
   searchPlaceholderText: { fontSize: 14, color: THEME.blackMuted, fontWeight: "600" },
   searchMicBg: { backgroundColor: THEME.orange, padding: 6, borderRadius: 12 },
 
-  /* 1200x250 Ratio Custom Banner Space */
-  banner: { width: BANNER_W, height: BANNER_H, minHeight: 90, borderRadius: RADIUS.lg, overflow: "hidden", backgroundColor: THEME.white, position: "relative", ...shadow.soft },
+  /* Clean Banner Styling */
+  banner: { width: BANNER_W, height: 155, borderRadius: RADIUS.lg, overflow: "hidden", backgroundColor: THEME.white, position: "relative", ...shadow.soft },
   bannerImg: { width: "100%", height: "100%" },
   bannerFlashBorder: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, borderRadius: RADIUS.lg, borderWidth: 2.5, borderColor: THEME.orangeBright, pointerEvents: "none" },
-  bannerText: { position: "absolute", left: 12, bottom: 8, right: 12 },
-  bannerSubtitle: { color: THEME.white, fontSize: 10, fontWeight: "800", backgroundColor: "rgba(0,0,0,0.5)", paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, alignSelf: "flex-start" },
-  bannerTitle: { color: THEME.white, fontSize: 14, fontWeight: "900", marginTop: 2, textShadowColor: "rgba(0,0,0,0.7)", textShadowRadius: 4 },
+  bannerText: { position: "absolute", left: 16, bottom: 16, right: 16, alignItems: "flex-start" },
+  bannerSubtitle: { color: THEME.white, fontSize: 11, fontWeight: "800", letterSpacing: 0.5, textTransform: "uppercase", backgroundColor: "rgba(0,0,0,0.5)", paddingHorizontal: 8, paddingVertical: 2, borderRadius: 4 },
+  bannerTitle: { color: THEME.white, fontSize: 18, fontWeight: "900", marginTop: 4, textShadowColor: "rgba(0,0,0,0.7)", textShadowRadius: 6 },
+  bannerCta: { marginTop: 8, paddingHorizontal: 14, paddingVertical: 6, borderRadius: RADIUS.pill, alignSelf: "flex-start", backgroundColor: THEME.orange },
+  bannerCtaText: { color: THEME.white, fontWeight: "800", fontSize: 12 },
   
   sectionHead: { paddingHorizontal: SPACING.lg, marginTop: SPACING.md, marginBottom: SPACING.sm },
   sectionIndicator: { width: 4, height: 16, backgroundColor: THEME.orange, borderRadius: 2 },
   sectionTitle: { fontSize: 18, fontWeight: "900", color: THEME.black },
   sectionSub: { fontSize: 12, color: THEME.blackMuted, marginTop: 2, marginLeft: 12 },
   
-  /* Category Tiles in 3-Columns Layout */
-  catsGrid: { flexDirection: "row", flexWrap: "wrap", paddingHorizontal: SPACING.md, justifyContent: "flex-start", gap: 8 },
-  catItemWrap3Col: { width: "31%", alignItems: "center", marginBottom: SPACING.md },
+  catsGrid: { flexDirection: "row", flexWrap: "wrap", paddingHorizontal: SPACING.sm },
+  catItemWrap: { width: "20%", alignItems: "center", marginBottom: SPACING.md },
   catItem: { alignItems: "center" },
-  catCircleWrap: { position: "relative", width: 68, height: 68 },
-  catFlashBorder: { position: "absolute", top: -2, left: -2, right: -2, bottom: -2, borderRadius: 36, borderWidth: 2, borderColor: THEME.orange, zIndex: 1, pointerEvents: "none" },
-  catCircle: { width: 68, height: 68, borderRadius: 34, overflow: "hidden", alignItems: "center", justifyContent: "center", backgroundColor: THEME.white, ...shadow.soft, borderWidth: 1, borderColor: THEME.borderSoft },
+  catCircleWrap: { position: "relative", width: 60, height: 60 },
+  catFlashBorder: { position: "absolute", top: -2, left: -2, right: -2, bottom: -2, borderRadius: 32, borderWidth: 2, borderColor: THEME.orange, zIndex: 1, pointerEvents: "none" },
+  catCircle: { width: 60, height: 60, borderRadius: 30, overflow: "hidden", alignItems: "center", justifyContent: "center", backgroundColor: THEME.white, ...shadow.soft, borderWidth: 1, borderColor: THEME.borderSoft },
   catImg: { width: "100%", height: "100%" },
-  catName: { fontSize: 12, fontWeight: "700", color: THEME.black, marginTop: 6, textAlign: "center" },
+  catName: { fontSize: 11, fontWeight: "700", color: THEME.black, marginTop: 6, textAlign: "center" },
   
   /* Compact Store Tile Styling */
   storeCardSmall: { width: 135, backgroundColor: THEME.white, borderRadius: RADIUS.md, overflow: "hidden", position: "relative", ...shadow.soft, borderWidth: 1, borderColor: THEME.borderSoft },
@@ -453,9 +458,8 @@ const s = StyleSheet.create({
   offlineOverlay: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(15, 23, 42, 0.75)", justifyContent: "center", alignItems: "center" },
   offlineText: { color: THEME.white, backgroundColor: "#E11D48", paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, fontSize: 9, fontWeight: "900" },
 
-  /* Trending Products in 3-Columns Layout */
-  trendingGrid3Col: { flexDirection: "row", flexWrap: "wrap", paddingHorizontal: SPACING.md, justifyContent: "space-between" },
-  productTileCard3Col: { width: "32%", marginBottom: 10, position: "relative" },
+  trendingGrid: { flexDirection: "row", flexWrap: "wrap", paddingHorizontal: SPACING.lg, justifyContent: "space-between" },
+  productTileCard: { width: width > 768 ? "23%" : "48%", marginBottom: 12, position: "relative" },
   productFlashBorder: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, borderRadius: RADIUS.md, borderWidth: 1.5, borderColor: THEME.orange, pointerEvents: "none", zIndex: 2 },
 
   brandStrip: { marginHorizontal: SPACING.lg, marginTop: SPACING.lg, borderRadius: RADIUS.md, overflow: "hidden", ...shadow.card },
