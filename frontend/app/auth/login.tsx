@@ -21,7 +21,7 @@ import Animated, {
   Easing 
 } from "react-native-reanimated";
 import { useAuth } from "@/src/AuthContext";
-import { COLORS, LOGO_URL, RADIUS, SPACING, shadow } from "@/src/theme";
+import { COLORS, LOGO_URL, RADIUS, SPACING } from "@/src/theme";
 
 const { width } = Dimensions.get("window");
 
@@ -76,10 +76,25 @@ export default function Login() {
   const [otpSent, setOtpSent] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
+
+  // Production-grade Password Validation Checker
+  const validatePassword = (pass: string) => {
+    const isLengthValid = pass.length >= 10;
+    const hasUpperCase = /[A-Z]/.test(pass);
+    const hasNumber = /[0-9]/.test(pass);
+    const hasSymbol = /[^A-Za-z0-9]/.test(pass);
+    return isLengthValid && hasUpperCase && hasNumber && hasSymbol;
+  };
 
   const onLogin = async () => {
     if (!email || !password) {
       setError("Please fill in both email and password");
+      return;
+    }
+    if (!validatePassword(password)) {
+      setError("Password must be 10+ chars with uppercase, number & symbol.");
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       return;
     }
     setError(null); setLoading(true);
@@ -177,7 +192,33 @@ export default function Login() {
             {tab === "password" ? (
               <>
                 <Field icon="email-outline" placeholder="Email Address" value={email} onChangeText={setEmail} keyboardType="email-address" testID="login-email-input" />
-                <Field icon="lock-outline" placeholder="Password" value={password} onChangeText={setPassword} secure testID="login-password-input" />
+                
+                <View style={s.fieldWrap}>
+                  <MaterialCommunityIcons name="lock-outline" size={22} color="#64748B" />
+                  <TextInput
+                    testID="login-password-input"
+                    placeholder="Password"
+                    value={password}
+                    onChangeText={setPassword}
+                    secureTextEntry={!showPassword}
+                    autoCapitalize="none"
+                    placeholderTextColor="#94A3B8"
+                    style={s.input}
+                  />
+                  <Pressable onPress={() => setShowPassword(!showPassword)}>
+                    <MaterialCommunityIcons name={showPassword ? "eye-off-outline" : "eye-outline"} size={22} color="#64748B" />
+                  </Pressable>
+                </View>
+
+                {/* Password Rule Hint */}
+                {password.length > 0 && (
+                  <View style={s.ruleBox}>
+                    <Text style={[s.ruleText, password.length >= 10 && s.ruleValid]}>• Min 10 chars</Text>
+                    <Text style={[s.ruleText, /[A-Z]/.test(password) && s.ruleValid]}>• 1 Uppercase</Text>
+                    <Text style={[s.ruleText, /[0-9]/.test(password) && s.ruleValid]}>• 1 Number</Text>
+                    <Text style={[s.ruleText, /[^A-Za-z0-9]/.test(password) && s.ruleValid]}>• 1 Symbol (!@#..)</Text>
+                  </View>
+                )}
                 
                 {error && <Text style={s.err} testID="login-error">{error}</Text>}
                 
@@ -248,7 +289,6 @@ const s = StyleSheet.create({
   root: { flex: 1, backgroundColor: "#050B14" },
   headerBg: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0 },
   
-  /* Animated Tiles Layout */
   tilesWrapper: {
     position: "absolute",
     top: 0,
@@ -269,7 +309,6 @@ const s = StyleSheet.create({
     marginVertical: 8,
   },
 
-  /* Sky Blue Banner Under Header */
   skyBlueBanner: {
     width: "100%",
     height: 2,
@@ -303,7 +342,6 @@ const s = StyleSheet.create({
     paddingBottom: 40,
   },
   
-  /* White Card Design */
   card: {
     backgroundColor: "#FFFFFF", 
     borderRadius: 24, 
@@ -346,13 +384,28 @@ const s = StyleSheet.create({
     backgroundColor: "#F8FAFC", 
     borderRadius: RADIUS.lg, 
     paddingHorizontal: 16, 
-    marginBottom: SPACING.lg, 
+    marginBottom: SPACING.md, 
     borderWidth: 1.5, 
     borderColor: "#E2E8F0" 
   },
   input: { flex: 1, paddingVertical: 14, fontSize: 15, color: "#0F172A", fontWeight: "500" },
+
+  ruleBox: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+    marginBottom: SPACING.md,
+    paddingHorizontal: 4,
+  },
+  ruleText: {
+    fontSize: 11,
+    color: "#94A3B8",
+    fontWeight: "600",
+  },
+  ruleValid: {
+    color: "#10B981", // Green check indicator for matched rules
+  },
   
-  /* Orange Action Button */
   cta: { 
     marginTop: SPACING.xs, 
     borderRadius: RADIUS.pill, 
@@ -368,5 +421,5 @@ const s = StyleSheet.create({
   
   alt: { textAlign: "center", marginTop: SPACING.lg, color: "#64748B", fontSize: 14 },
   altLink: { color: "#FF6E00", fontWeight: "800", fontSize: 14 },
-  err: { color: "#EF4444", marginTop: -8, marginBottom: 12, fontSize: 13, fontWeight: "600", marginLeft: 4 },
+  err: { color: "#EF4444", marginTop: 4, marginBottom: 12, fontSize: 13, fontWeight: "600", marginLeft: 4 },
 });
