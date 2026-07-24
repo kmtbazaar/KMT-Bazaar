@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { View, Text, StyleSheet, Pressable, FlatList, TextInput, ActivityIndicator, Modal, Alert, ScrollView, TouchableOpacity, Keyboard } from "react-native";
+import { View, Text, StyleSheet, Pressable, FlatList, TextInput, ActivityIndicator, Modal, Alert, ScrollView, TouchableOpacity, Keyboard, Platform } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
@@ -10,7 +10,7 @@ import { COLORS, RADIUS, SPACING, shadow } from "@/src/theme";
 
 export default function Addresses() {
   const router = useRouter();
-  const { user, setUser } = useAuth(); // Auth context for syncing address globally
+  const { user, setUser } = useAuth();
   const [addresses, setAddresses] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [formVisible, setFormVisible] = useState(false);
@@ -37,7 +37,6 @@ export default function Addresses() {
       const data = await api.addresses();
       setAddresses(data || []);
 
-      // Read current selected address from storage to highlight radio button
       const stored = await AsyncStorage.getItem("selected_address");
       if (stored) {
         const parsed = JSON.parse(stored);
@@ -54,18 +53,15 @@ export default function Addresses() {
     }
   };
 
-  // 🎯 Address Selection Handler (Checkout / Home Sync)
   const handleSelectAddress = async (selectedAddr: any) => {
     const formattedAddressStr = `${selectedAddr.label || 'Home'} · ${selectedAddr.line1 || selectedAddr.city}`;
     
-    // 1. Save locally in AsyncStorage so it persists across app reopens
     try {
       await AsyncStorage.setItem("selected_address", JSON.stringify(selectedAddr));
     } catch (err) {
       console.log("Error saving active address:", err);
     }
 
-    // 2. Update active address globally in AuthContext
     if (setUser) {
       setUser({
         ...user,
@@ -74,7 +70,6 @@ export default function Addresses() {
       });
     }
 
-    // 3. Return back to Home / Checkout page
     router.back();
   };
 
@@ -131,30 +126,42 @@ export default function Addresses() {
     }
   };
 
-  // 🔥 FIXED DELETE HANDLER (Passes correct ID format)
+  // 🔥 FIXED DELETE HANDLER (WEB & MOBILE COMPATIBLE)
   const handleDelete = async (item: any) => {
     const targetId = String(item.id || item._id);
 
-    Alert.alert("Delete Address", "Are you sure you want to delete this address?", [
-      { text: "Cancel", style: "cancel" },
-      { 
-        text: "Delete", 
-        style: "destructive", 
-        onPress: async () => {
-          try {
-            await api.deleteAddress(targetId);
-            if (selectedAddrId === targetId) {
-              await AsyncStorage.removeItem("selected_address");
-              setSelectedAddrId(null);
-            }
-            loadAddresses();
-          } catch (e: any) {
-            console.log("DELETE API ERROR:", e);
-            Alert.alert("Error", e.message || "Failed to delete address");
-          }
+    const executeDelete = async () => {
+      try {
+        setLoading(true);
+        await api.deleteAddress(targetId);
+
+        if (selectedAddrId === targetId) {
+          await AsyncStorage.removeItem("selected_address");
+          setSelectedAddrId(null);
         }
+        
+        await loadAddresses();
+      } catch (e: any) {
+        console.log("DELETE API ERROR:", e);
+        Alert.alert("Error", e.message || "Failed to delete address");
+        setLoading(false);
       }
-    ]);
+    };
+
+    if (Platform.OS === 'web') {
+      if (window.confirm("Are you sure you want to delete this address?")) {
+        executeDelete();
+      }
+    } else {
+      Alert.alert("Delete Address", "Are you sure you want to delete this address?", [
+        { text: "Cancel", style: "cancel" },
+        { 
+          text: "Delete", 
+          style: "destructive", 
+          onPress: executeDelete
+        }
+      ]);
+    }
   };
 
   if (loading) {
@@ -178,13 +185,10 @@ export default function Addresses() {
         ListEmptyComponent={<Text style={s.emptyText}>No saved addresses found.</Text>}
         renderItem={({ item }) => {
           const itemId = String(item.id || item._id);
-          
-          // Check if address is active
           const isSelected = selectedAddrId === itemId || String(user?.activeAddress?.id || user?.activeAddress?._id) === itemId;
 
           return (
             <View style={[s.card, isSelected && s.cardSelected]}>
-              {/* Card Body - Tap to Select Address */}
               <TouchableOpacity 
                 activeOpacity={0.7}
                 onPress={() => handleSelectAddress(item)}
@@ -216,7 +220,6 @@ export default function Addresses() {
                 <Text style={s.phoneText}>Phone: {item.phone}</Text>
               </TouchableOpacity>
 
-              {/* Action Buttons - Independent Click Handlers */}
               <View style={s.actionRow}>
                 <TouchableOpacity 
                   activeOpacity={0.6}
@@ -226,7 +229,6 @@ export default function Addresses() {
                   <Text style={s.actionTextEdit}>EDIT</Text>
                 </TouchableOpacity>
 
-                {/* 🔥 FIXED DELETE BUTTON (Passes full item object) */}
                 <TouchableOpacity 
                   activeOpacity={0.6}
                   onPress={() => handleDelete(item)} 
