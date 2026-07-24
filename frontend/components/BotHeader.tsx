@@ -10,7 +10,7 @@ export default function BotHeader() {
         onPress={() => router.back()}
         style={styles.backButton}
       >
-        <Ionicons name="arrow-back" size={24} color="#fff" />
+        <Ionicons name="arrow-back" size={20} color="#fff" />
       </TouchableOpacity>
 
       <Image
@@ -34,50 +34,50 @@ const styles = StyleSheet.create({
   container: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 18,
-    paddingVertical: 15,
+    paddingHorizontal: 14,
+    paddingVertical: 6, // 🔥 Height ko patla kar diya (pehle 15 tha)
     backgroundColor: "#101828",
     borderBottomWidth: 1,
     borderBottomColor: "#1f2937",
   },
 
   backButton: {
-    marginRight: 12,
-    padding: 4,
+    marginRight: 10,
+    padding: 2,
   },
 
   avatar: {
-    width: 55,
-    height: 55,
-    borderRadius: 30,
+    width: 34,  // 🔥 Avatar size chota kar diya (pehle 55 tha)
+    height: 34,
+    borderRadius: 17,
   },
 
   info: {
-    marginLeft: 14,
+    marginLeft: 10,
   },
 
   title: {
     color: "#fff",
-    fontSize: 18,
-    fontWeight: "700",
+    fontSize: 14, // 🔥 Font size compact kiya (pehle 18 tha)
+    fontWeight: "600",
   },
 
   statusRow: {
     flexDirection: "row",
     alignItems: "center",
-    marginTop: 5,
+    marginTop: 1, // 🔥 Gap kam kiya
   },
 
   dot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
+    width: 6,   // 🔥 Dot chota kiya (pehle 10 tha)
+    height: 6,
+    borderRadius: 3,
     backgroundColor: "#22c55e",
-    marginRight: 6,
+    marginRight: 4,
   },
 
   status: {
     color: "#9ca3af",
-    fontSize: 13,
+    fontSize: 10, // 🔥 Status text chota kiya (pehle 13 tha)
   },
 });
