@@ -9,15 +9,14 @@ import {
   Image,
   TouchableOpacity,
   Text,
+  TextInput,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 
-// Apne components import check kar lijiye
 import BotHeader from "../components/BotHeader";
 import ChatBubble from "../components/ChatBubble";
-import ChatInput from "../components/ChatInput";
 import TypingIndicator from "../components/TypingIndicator";
-import VoiceButton from "../components/VoiceButton";
 import { askAI } from "../services/ai";
 
 type Message = {
@@ -64,15 +63,25 @@ export default function AssistantScreen() {
         ...prev,
         {
           id: Date.now() + 1,
-          text: "⚠ Oops! Network issue. Please try again.",
+          text: "⚠ Network issue. Please try again.",
           isUser: false,
         },
       ]);
     }
   };
 
+  // Button switch logic (Voice vs Send)
+  const handleActionPress = () => {
+    if (input.trim().length > 0) {
+      onSend();
+    } else {
+      console.log("Voice Recording Triggered");
+    }
+  };
+
   return (
     <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
+      {/* 🟢 SLIM HEADER (BotHeader file se slim hoga) */}
       <BotHeader />
 
       <KeyboardAvoidingView
@@ -89,18 +98,16 @@ export default function AssistantScreen() {
             scrollRef.current?.scrollToEnd({ animated: true })
           }
         >
-          {/* BANNER SECTION */}
+          {/* BANNER (Wapas Pehle Jaisa Normal/Full) */}
           <View style={styles.bannerContainer}>
             <Image
               source={require("../assets/ai/assistant-banner.png")}
               style={styles.banner}
               resizeMode="cover"
             />
-            <View style={styles.bannerOverlay} />
-            <Text style={styles.bannerTitle}>KMT AI ✨</Text>
           </View>
 
-          {/* MESSAGES AREA */}
+          {/* MESSAGES */}
           <View style={styles.messagesContainer}>
             {messages.map((item) => (
               <ChatBubble key={item.id} message={item.text} isUser={item.isUser} />
@@ -109,7 +116,7 @@ export default function AssistantScreen() {
           </View>
         </ScrollView>
 
-        {/* SIRF ROOJGAR BUTTON (Quick Action) */}
+        {/* SIRF ROOJGAR BUTTON */}
         <View style={styles.quickActionsContainer}>
           <TouchableOpacity
             style={styles.roojgarButton}
@@ -120,13 +127,35 @@ export default function AssistantScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* INPUT AREA */}
+        {/* COMPACT & PATLA BOTTOM INPUT AREA */}
         <View style={styles.bottomContainer}>
-          <View style={styles.inputWrapper}>
-            <ChatInput value={input} onChangeText={setInput} onSend={onSend} />
-          </View>
-          <View style={styles.voiceBtnWrapper}>
-            <VoiceButton onPress={() => console.log("Voice Assistant triggered")} />
+          <View style={styles.compactInputWrapper}>
+            <TextInput
+              style={styles.slimInput}
+              value={input}
+              onChangeText={setInput}
+              placeholder="Ask anything..."
+              placeholderTextColor="#64748B"
+              multiline={false}
+              returnKeyType="send"
+              onSubmitEditing={onSend}
+            />
+
+            {/* DUAL BUTTON (SEND / MIC) */}
+            <TouchableOpacity
+              style={[
+                styles.actionBtn,
+                input.trim().length > 0 ? styles.sendBtnBg : styles.voiceBtnBg,
+              ]}
+              onPress={handleActionPress}
+              activeOpacity={0.7}
+            >
+              <MaterialCommunityIcons
+                name={input.trim().length > 0 ? "send" : "microphone"}
+                size={18}
+                color="#FFFFFF"
+              />
+            </TouchableOpacity>
           </View>
         </View>
       </KeyboardAvoidingView>
@@ -143,52 +172,30 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    paddingBottom: 16,
+    paddingBottom: 8,
   },
   bannerContainer: {
-    marginHorizontal: 16,
-    marginTop: 12,
-    marginBottom: 8,
-    borderRadius: 16,
-    overflow: "hidden",
-    height: 120,
-    position: "relative",
-    borderWidth: 1,
-    borderColor: "#1E293B",
+    width: "100%",
+    height: 180, // Normal Banner Height
   },
   banner: {
     width: "100%",
     height: "100%",
   },
-  bannerOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(15, 23, 42, 0.3)",
-  },
-  bannerTitle: {
-    position: "absolute",
-    bottom: 12,
-    left: 16,
-    color: "#FFFFFF",
-    fontSize: 20,
-    fontWeight: "bold",
-    textShadowColor: "rgba(0, 0, 0, 0.5)",
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 4,
-  },
   messagesContainer: {
     paddingHorizontal: 16,
-    paddingTop: 8,
+    paddingTop: 12,
   },
   quickActionsContainer: {
     paddingHorizontal: 16,
-    paddingVertical: 8,
-    alignItems: "flex-start", // Left aligned premium chip
+    paddingVertical: 6,
+    alignItems: "flex-start",
   },
   roojgarButton: {
     backgroundColor: "#1E293B",
-    paddingVertical: 10,
-    paddingHorizontal: 18,
-    borderRadius: 24,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 20,
     borderWidth: 1,
     borderColor: "#334155",
   },
@@ -198,22 +205,39 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
   bottomContainer: {
-    flexDirection: "row",
-    alignItems: "flex-end",
-    paddingHorizontal: 16,
-    paddingTop: 8,
-    paddingBottom: Platform.OS === "ios" ? 8 : 16,
+    paddingHorizontal: 12,
+    paddingTop: 6,
+    paddingBottom: Platform.OS === "ios" ? 10 : 12,
     backgroundColor: "#0F172A",
-    borderTopWidth: 1,
-    borderColor: "#1E293B",
   },
-  inputWrapper: {
+  compactInputWrapper: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#1E293B",
+    borderRadius: 24,
+    paddingHorizontal: 12,
+    borderWidth: 1,
+    borderColor: "#334155",
+  },
+  slimInput: {
     flex: 1,
-    marginRight: 10,
+    color: "#FFFFFF",
+    fontSize: 14,
+    height: 38,
+    paddingHorizontal: 6,
   },
-  voiceBtnWrapper: {
+  actionBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     justifyContent: "center",
     alignItems: "center",
-    marginBottom: 4,
+    marginLeft: 6,
+  },
+  voiceBtnBg: {
+    backgroundColor: "#3B82F6",
+  },
+  sendBtnBg: {
+    backgroundColor: "#10B981",
   },
 });
