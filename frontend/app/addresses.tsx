@@ -151,45 +151,58 @@ export default function Addresses() {
           const isSelected = user?.activeAddress?.id === itemId || user?.activeAddress?._id === itemId;
 
           return (
-            <TouchableOpacity 
-              activeOpacity={0.8}
-              onPress={() => handleSelectAddress(item)}
-              style={[s.card, isSelected && s.cardSelected]}
-            >
-              <View style={s.cardHeader}>
-                <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-                  <MaterialCommunityIcons 
-                    name={isSelected ? "radiobox-marked" : "radiobox-blank"} 
-                    size={22} 
-                    color={isSelected ? COLORS.brand : COLORS.textMuted} 
-                  />
-                  <View style={s.labelBadge}>
-                    <MaterialCommunityIcons name={item.label?.toLowerCase() === "work" ? "briefcase" : "home"} size={14} color={COLORS.brand} />
-                    <Text style={s.labelText}>{item.label || "Home"}</Text>
+            <View style={[s.card, isSelected && s.cardSelected]}>
+              {/* Card Body - Tap to Select Address */}
+              <TouchableOpacity 
+                activeOpacity={0.7}
+                onPress={() => handleSelectAddress(item)}
+                style={{ paddingHorizontal: SPACING.md, paddingTop: SPACING.md }}
+              >
+                <View style={s.cardHeader}>
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                    <MaterialCommunityIcons 
+                      name={isSelected ? "radiobox-marked" : "radiobox-blank"} 
+                      size={22} 
+                      color={isSelected ? COLORS.brand : COLORS.textMuted} 
+                    />
+                    <View style={s.labelBadge}>
+                      <MaterialCommunityIcons name={item.label?.toLowerCase() === "work" ? "briefcase" : "home"} size={14} color={COLORS.brand} />
+                      <Text style={s.labelText}>{item.label || "Home"}</Text>
+                    </View>
                   </View>
+
+                  {isSelected && (
+                    <View style={s.selectedBadge}>
+                      <Text style={s.selectedBadgeText}>DELIVERING HERE</Text>
+                    </View>
+                  )}
                 </View>
 
-                {isSelected && (
-                  <View style={s.selectedBadge}>
-                    <Text style={s.selectedBadgeText}>DELIVERING HERE</Text>
-                  </View>
-                )}
-              </View>
+                <Text style={s.nameText}>{item.full_name}</Text>
+                <Text style={s.addressText}>{item.line1}</Text>
+                <Text style={s.addressText}>{item.city}, {item.state} - {item.pincode}</Text>
+                <Text style={s.phoneText}>Phone: {item.phone}</Text>
+              </TouchableOpacity>
 
-              <Text style={s.nameText}>{item.full_name}</Text>
-              <Text style={s.addressText}>{item.line1}</Text>
-              <Text style={s.addressText}>{item.city}, {item.state} - {item.pincode}</Text>
-              <Text style={s.phoneText}>Phone: {item.phone}</Text>
-
+              {/* Action Buttons - Independent Click Handlers */}
               <View style={s.actionRow}>
-                <TouchableOpacity onPress={() => handleOpenForm(item)} style={s.actionBtn}>
+                <TouchableOpacity 
+                  activeOpacity={0.6}
+                  onPress={() => handleOpenForm(item)} 
+                  style={s.actionBtn}
+                >
                   <Text style={s.actionTextEdit}>EDIT</Text>
                 </TouchableOpacity>
-                <TouchableOpacity onPress={() => handleDelete(itemId)} style={[s.actionBtn, { borderLeftWidth: 1, borderColor: COLORS.border }]}>
+
+                <TouchableOpacity 
+                  activeOpacity={0.6}
+                  onPress={() => handleDelete(itemId)} 
+                  style={[s.actionBtn, { borderLeftWidth: 1, borderColor: COLORS.border }]}
+                >
                   <Text style={s.actionTextDelete}>DELETE</Text>
                 </TouchableOpacity>
               </View>
-            </TouchableOpacity>
+            </View>
           );
         }}
       />
@@ -251,18 +264,18 @@ const s = StyleSheet.create({
   backBtn: { marginRight: 16 },
   headerTitle: { fontSize: 18, fontWeight: "800", color: COLORS.text },
   emptyText: { textAlign: "center", marginTop: 40, color: COLORS.textMuted, fontSize: 14 },
-  card: { backgroundColor: "#fff", borderRadius: RADIUS.md, marginBottom: SPACING.md, borderWidth: 1.5, borderColor: COLORS.border, ...shadow.soft },
+  card: { backgroundColor: "#fff", borderRadius: RADIUS.md, marginBottom: SPACING.md, borderWidth: 1.5, borderColor: COLORS.border, ...shadow.soft, overflow: "hidden" },
   cardSelected: { borderColor: COLORS.brand, backgroundColor: "#fffaf5" },
-  cardHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", padding: SPACING.md, borderBottomWidth: 1, borderColor: COLORS.surfaceSecondary },
+  cardHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingBottom: SPACING.sm, borderBottomWidth: 1, borderColor: COLORS.surfaceSecondary },
   labelBadge: { flexDirection: "row", alignItems: "center", backgroundColor: COLORS.brandLight, paddingHorizontal: 8, paddingVertical: 4, borderRadius: RADIUS.sm, gap: 4 },
   labelText: { color: COLORS.brand, fontSize: 12, fontWeight: "700" },
   selectedBadge: { backgroundColor: COLORS.brand, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 4 },
   selectedBadgeText: { color: "#fff", fontSize: 9, fontWeight: "900" },
-  nameText: { color: COLORS.text, fontSize: 16, fontWeight: "800", paddingHorizontal: SPACING.md, paddingTop: 12, paddingBottom: 2 },
-  addressText: { color: COLORS.text, fontSize: 14, paddingHorizontal: SPACING.md, paddingTop: 2, lineHeight: 20 },
-  phoneText: { color: COLORS.textMuted, fontSize: 13, paddingHorizontal: SPACING.md, paddingVertical: 6, fontWeight: "600" },
-  actionRow: { flexDirection: "row", borderTopWidth: 1, borderColor: COLORS.border, marginTop: 4 },
-  actionBtn: { flex: 1, paddingVertical: 12, alignItems: "center" },
+  nameText: { color: COLORS.text, fontSize: 16, fontWeight: "800", paddingTop: 10, paddingBottom: 2 },
+  addressText: { color: COLORS.text, fontSize: 14, paddingTop: 2, lineHeight: 20 },
+  phoneText: { color: COLORS.textMuted, fontSize: 13, paddingVertical: 6, fontWeight: "600" },
+  actionRow: { flexDirection: "row", borderTopWidth: 1, borderColor: COLORS.border, marginTop: 8 },
+  actionBtn: { flex: 1, paddingVertical: 12, alignItems: "center", backgroundColor: "#fff" },
   actionTextEdit: { color: COLORS.brand, fontWeight: "700", fontSize: 13 },
   actionTextDelete: { color: COLORS.error, fontWeight: "700", fontSize: 13 },
   footer: { padding: SPACING.lg, backgroundColor: "#fff", borderTopWidth: 1, borderColor: COLORS.border },
