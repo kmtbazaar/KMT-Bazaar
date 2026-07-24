@@ -6,15 +6,40 @@ import { LinearGradient } from "expo-linear-gradient";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useCart } from "@/src/CartContext";
+import { useAuth } from "@/src/AuthContext";
 import { COLORS, LOGO_URL, RADIUS, SPACING, shadow } from "@/src/theme";
 
 export default function Cart() {
   const router = useRouter();
   const { cart, refresh, update } = useCart();
+  const { user } = useAuth();
   const [busy, setBusy] = useState(false);
+  const [selectedAddress, setSelectedAddress] = useState<any>(null);
 
-  useFocusEffect(useCallback(() => { refresh(); }, []));
+  // Fetch cart & selected delivery address when screen gets focus
+  useFocusEffect(
+    useCallback(() => { 
+      refresh(); 
+      loadSelectedAddress();
+    }, [])
+  );
+
+  const loadSelectedAddress = async () => {
+    try {
+      const stored = await AsyncStorage.getItem("selected_address");
+      if (stored) {
+        setSelectedAddress(JSON.parse(stored));
+      } else if (user?.activeAddress) {
+        setSelectedAddress(user.activeAddress);
+      } else {
+        setSelectedAddress(null);
+      }
+    } catch (e) {
+      console.log("Failed to load address in cart", e);
+    }
+  };
 
   const onQty = async (pid: string, qty: number) => {
     setBusy(true);
@@ -38,9 +63,37 @@ export default function Cart() {
     );
   }
 
+  const getAddressDisplay = () => {
+    if (!selectedAddress) return "Select Delivery Address";
+    const label = selectedAddress.label || "Home";
+    const line = selectedAddress.line1 || selectedAddress.address || selectedAddress.city;
+    return `${label} · ${line}`;
+  };
+
   return (
     <SafeAreaView style={s.root} edges={["top"]} testID="cart-screen">
       <Text style={s.title}>My Cart ({cart.item_count})</Text>
+
+      {/* 📍 Active Address Header Bar */}
+      <View style={s.addressCard}>
+        <View style={s.addressLeft}>
+          <MaterialCommunityIcons name="map-marker" size={22} color={COLORS.brand} />
+          <View style={{ flex: 1 }}>
+            <Text style={s.addressTitle}>Delivering To</Text>
+            <Text style={s.addressSub} numberOfLines={1}>
+              {getAddressDisplay()}
+            </Text>
+          </View>
+        </View>
+        <Pressable 
+          style={s.changeBtn} 
+          onPress={() => router.push("/addresses")}
+          hitSlop={8}
+        >
+          <Text style={s.changeBtnText}>CHANGE</Text>
+        </Pressable>
+      </View>
+
       <ScrollView contentContainerStyle={{ padding: SPACING.lg, paddingBottom: 200 }} showsVerticalScrollIndicator={false}>
         {cart.items.map((it: any) => (
           <View key={it.product_id} style={s.itemCard} testID={`cart-item-${it.product_id}`}>
@@ -116,6 +169,15 @@ const s = StyleSheet.create({
   emptySub: { color: COLORS.textMuted },
   shopBtn: { marginTop: 20, backgroundColor: COLORS.accent, paddingHorizontal: 28, paddingVertical: 14, borderRadius: RADIUS.pill },
   shopBtnText: { color: "#fff", fontWeight: "800" },
+
+  // 📍 Address Box Styles
+  addressCard: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", backgroundColor: "#fff", paddingHorizontal: SPACING.lg, paddingVertical: 10, borderBottomWidth: 1, borderColor: COLORS.border },
+  addressLeft: { flexDirection: "row", alignItems: "center", gap: 10, flex: 1, marginRight: 10 },
+  addressTitle: { fontSize: 11, fontWeight: "700", color: COLORS.textMuted, textTransform: "uppercase" },
+  addressSub: { fontSize: 13, fontWeight: "700", color: COLORS.text },
+  changeBtn: { paddingHorizontal: 10, paddingVertical: 6, backgroundColor: COLORS.brandLight, borderRadius: RADIUS.sm },
+  changeBtnText: { color: COLORS.brand, fontSize: 12, fontWeight: "800" },
+
   itemCard: { flexDirection: "row", gap: SPACING.md, backgroundColor: "#fff", padding: SPACING.md, borderRadius: RADIUS.md, marginBottom: SPACING.sm, borderWidth: 1, borderColor: COLORS.border },
   itemImg: { width: 80, height: 80, borderRadius: RADIUS.sm, backgroundColor: COLORS.surfaceTertiary },
   itemName: { fontWeight: "700", color: COLORS.text, fontSize: 14 },
