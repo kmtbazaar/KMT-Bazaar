@@ -22,7 +22,7 @@ import ProductCard from "@/src/components/ProductCard";
 import CheckoutBar from "@/src/components/CheckoutBar";
 
 // 🖼️ Local Asset PNG Reference
-const localCatBanner = require("@/assets/image/cat-banner.png");
+const localCatBanner = require("@/assets/images/cat-banner.png");
 
 const { width } = Dimensions.get("window");
 const BANNER_W = width - 32;
