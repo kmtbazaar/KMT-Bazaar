@@ -21,12 +21,9 @@ import { RADIUS, SPACING, shadow } from "@/src/theme";
 import ProductCard from "@/src/components/ProductCard";
 import CheckoutBar from "@/src/components/CheckoutBar";
 
-// 🖼️ Local Asset PNG Reference
-const localCatBanner = require("@/assets/images/cat-banner.png");
-
 const { width } = Dimensions.get("window");
 const BANNER_W = width - 32;
-// 1200x250 ratio = 4.8:1
+// Standard 1200x250 ratio = 4.8:1
 const BANNER_H = BANNER_W / 4.8;
 
 // Custom Theme Palette
@@ -169,7 +166,7 @@ export default function Home() {
 
   return (
     <View style={[s.root, Platform.OS === 'web' ? ({ height: '100vh', overflow: 'hidden' } as any) : {}]} testID="home-screen">
-      {/* Dynamic Header Section */}
+      {/* Dynamic Header Section (Blue Background strictly parallel/aligned to Search Bar Bottom) */}
       <View style={s.headerContainer}>
         <LinearGradient colors={[THEME.skyHeader, THEME.skyHeaderDark]} style={StyleSheet.absoluteFill} />
         
@@ -209,7 +206,7 @@ export default function Home() {
             </View>
           </View>
 
-          {/* Search Bar */}
+          {/* Search Bar perfectly parallel with Header bottom edge */}
           <Pressable 
             testID="home-search-trigger"
             onPress={() => router.push("/search" as any)}
@@ -245,28 +242,19 @@ export default function Home() {
         style={Platform.OS === 'web' ? ({ height: '100%', overflowY: 'auto', touchAction: 'pan-y' } as any) : {}}
       >
 
-        {/* 1200x250 Banner Carousel with Local PNG Asset Fallback */}
+        {/* 1200x250 Dimension Space Banner Carousel */}
         <FlatList
           horizontal
           style={Platform.OS === 'web' ? { overflowX: 'auto' } : {}}
-          data={banners.length > 0 ? banners : [{ id: "local-banner", category_id: "" }]}
+          data={banners}
           showsHorizontalScrollIndicator={false}
           snapToInterval={BANNER_W + 12}
           decelerationRate="fast"
           contentContainerStyle={{ paddingHorizontal: SPACING.lg, paddingTop: SPACING.md, paddingBottom: SPACING.xs, gap: 12 }}
           keyExtractor={(it) => String(it.id)}
           renderItem={({ item }) => (
-            <Pressable 
-              testID={`banner-${item.id}`} 
-              onPress={() => item.category_id && router.push(`/category/${item.category_id}` as any)} 
-              style={s.banner}
-            >
-              {/* Uses local assets/cat-banner.png if item.image is not provided/available */}
-              <Image 
-                source={item.image ? { uri: item.image } : localCatBanner} 
-                style={s.bannerImg} 
-                contentFit="cover" 
-              />
+            <Pressable testID={`banner-${item.id}`} onPress={() => router.push(`/category/${item.category_id}` as any)} style={s.banner}>
+              <Image source={{ uri: item.image }} style={s.bannerImg} contentFit="cover" />
               
               {/* Border Glow Animation */}
               <Animated.View style={[s.bannerFlashBorder, animatedFlashStyle]} />
@@ -407,6 +395,7 @@ function SectionTitle({ title, subtitle }: { title: string; subtitle?: string })
 const s = StyleSheet.create({
   root: { flex: 1, backgroundColor: THEME.whiteBg },
   
+  /* Header parallel to search box bottom boundary */
   headerContainer: {
     width: "100%",
     borderBottomLeftRadius: 18,
