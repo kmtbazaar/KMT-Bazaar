@@ -178,7 +178,7 @@ const styles = StyleSheet.create({
   bannerContainer: {
     marginHorizontal: 12,
     marginTop: 6,
-    height: 120, // 🔥 Banner ko chota kar diya
+    height: 140, // 🔥 Banner ko chota kar diya
     borderRadius: 10,
     overflow: "hidden",
   },
