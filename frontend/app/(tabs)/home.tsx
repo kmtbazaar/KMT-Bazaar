@@ -3,8 +3,9 @@ import { View, Text, ScrollView, StyleSheet, Pressable, FlatList, Dimensions, Re
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
+import { useRouter, useFocusEffect } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import Animated, { 
   FadeInUp, 
   FadeIn, 
@@ -45,6 +46,25 @@ export default function Home() {
 
   // Dynamic Address Fallback State
   const [selectedAddress, setSelectedAddress] = useState<string>("Home · Karmatar");
+
+  // Load active address whenever Home Screen is focused/visited
+  useFocusEffect(
+    useCallback(() => {
+      const loadActiveAddress = async () => {
+        try {
+          const activeAddr = await AsyncStorage.getItem("selected_address");
+          if (activeAddr) {
+            const parsed = JSON.parse(activeAddr);
+            const formattedText = `${parsed.type || 'Home'} · ${parsed.address || parsed.city || 'Karmatar'}`;
+            setSelectedAddress(formattedText);
+          }
+        } catch (err) {
+          console.log("Error reading active address:", err);
+        }
+      };
+      loadActiveAddress();
+    }, [])
+  );
 
   // Animated Search Bar Placeholder Index
   const [placeholderIdx, setPlaceholderIdx] = useState(0);
@@ -115,7 +135,7 @@ export default function Home() {
             <View style={{ flex: 1 }}>
               <Text style={s.locLabel}>Deliver to</Text>
               <Text style={s.locValue} numberOfLines={1}>
-                {user?.address || selectedAddress}{" "}
+                {selectedAddress}{" "}
                 <MaterialCommunityIcons name="chevron-down" size={16} color="#fff" />
               </Text>
             </View>
