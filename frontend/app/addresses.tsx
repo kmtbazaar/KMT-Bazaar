@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, Pressable, FlatList, TextInput, ActivityIndicat
 import { SafeAreaView } from "react-native-safe-area-context";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { api } from "@/src/api";
 import { useAuth } from "@/src/AuthContext";
 import { COLORS, RADIUS, SPACING, shadow } from "@/src/theme";
@@ -14,6 +15,7 @@ export default function Addresses() {
   const [loading, setLoading] = useState(true);
   const [formVisible, setFormVisible] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [selectedAddrId, setSelectedAddrId] = useState<string | null>(null);
 
   const [formData, setFormData] = useState({ 
     label: "Home", 
@@ -25,13 +27,24 @@ export default function Addresses() {
     phone: "" 
   });
 
-  useEffect(() => { loadAddresses(); }, []);
+  useEffect(() => { 
+    loadAddresses(); 
+  }, []);
 
   const loadAddresses = async () => {
     setLoading(true);
     try {
       const data = await api.addresses();
       setAddresses(data || []);
+
+      // Read current selected address from storage to highlight radio button
+      const stored = await AsyncStorage.getItem("selected_address");
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        setSelectedAddrId(parsed.id || parsed._id || null);
+      } else if (user?.activeAddress) {
+        setSelectedAddrId(user.activeAddress.id || user.activeAddress._id || null);
+      }
     } catch (e) {
       console.log("Failed to load addresses", e);
     } finally {
@@ -39,11 +52,18 @@ export default function Addresses() {
     }
   };
 
-  // 🎯 Address Selection Handler (Checkout Style)
-  const handleSelectAddress = (selectedAddr: any) => {
+  // 🎯 Address Selection Handler (Checkout / Home Sync)
+  const handleSelectAddress = async (selectedAddr: any) => {
     const formattedAddressStr = `${selectedAddr.label || 'Home'} · ${selectedAddr.line1 || selectedAddr.city}`;
     
-    // Update active address globally in AuthContext
+    // 1. Save locally in AsyncStorage so it persists across app reopens
+    try {
+      await AsyncStorage.setItem("selected_address", JSON.stringify(selectedAddr));
+    } catch (err) {
+      console.log("Error saving active address:", err);
+    }
+
+    // 2. Update active address globally in AuthContext
     if (setUser) {
       setUser({
         ...user,
@@ -52,7 +72,7 @@ export default function Addresses() {
       });
     }
 
-    // Return back to Home / Checkout page
+    // 3. Return back to Home / Checkout page
     router.back();
   };
 
@@ -117,6 +137,10 @@ export default function Addresses() {
         onPress: async () => {
           try {
             await api.deleteAddress(id);
+            if (selectedAddrId === id) {
+              await AsyncStorage.removeItem("selected_address");
+              setSelectedAddrId(null);
+            }
             loadAddresses();
           } catch (e) {
             Alert.alert("Error", "Failed to delete address");
@@ -147,8 +171,9 @@ export default function Addresses() {
         ListEmptyComponent={<Text style={s.emptyText}>No saved addresses found.</Text>}
         renderItem={({ item }) => {
           const itemId = item.id || item._id;
+          
           // Check if address is active
-          const isSelected = user?.activeAddress?.id === itemId || user?.activeAddress?._id === itemId;
+          const isSelected = selectedAddrId === itemId || user?.activeAddress?.id === itemId || user?.activeAddress?._id === itemId;
 
           return (
             <View style={[s.card, isSelected && s.cardSelected]}>
