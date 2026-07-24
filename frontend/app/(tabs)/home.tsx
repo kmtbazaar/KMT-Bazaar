@@ -5,15 +5,33 @@ import { LinearGradient } from "expo-linear-gradient";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
-import Animated, { FadeInUp } from "react-native-reanimated";
+import Animated, { 
+  FadeInUp, 
+  FadeIn, 
+  FadeOut, 
+  useSharedValue, 
+  useAnimatedStyle, 
+  withRepeat, 
+  withSequence, 
+  withTiming 
+} from "react-native-reanimated";
 import { api } from "@/src/api";
 import { useAuth } from "@/src/AuthContext";
-import { COLORS, LOGO_URL, RADIUS, SPACING, shadow } from "@/src/theme";
+import { COLORS, RADIUS, SPACING, shadow } from "@/src/theme";
 import ProductCard from "@/src/components/ProductCard";
 import CheckoutBar from "@/src/components/CheckoutBar";
 
 const { width } = Dimensions.get("window");
 const BANNER_W = width - 32;
+
+// Search bar placeholder texts for animation
+const SEARCH_PLACEHOLDERS = [
+  "Search 'groceries'...",
+  "Search 'fresh food'...",
+  "Search 'medicines'...",
+  "Search 'electronics'...",
+  "Search 'daily essentials'..."
+];
 
 export default function Home() {
   const { user } = useAuth();
@@ -24,6 +42,15 @@ export default function Home() {
   const [trending, setTrending] = useState<any[]>([]);
   const [unread, setUnread] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
+
+  // 1. Dynamic Address State
+  const [selectedAddress, setSelectedAddress] = useState<string>("Home · Karmatar");
+
+  // 4. Animated Search Bar Placeholder Index
+  const [placeholderIdx, setPlaceholderIdx] = useState(0);
+
+  // 5. Notification Pulse Animation Scale
+  const bellScale = useSharedValue(1);
 
   const load = useCallback(async () => {
     try {
@@ -36,36 +63,95 @@ export default function Home() {
 
   useEffect(() => { load(); }, [load]);
 
+  // Search placeholder animation timer
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setPlaceholderIdx((prev) => (prev + 1) % SEARCH_PLACEHOLDERS.length);
+    }, 2500);
+    return () => clearInterval(interval);
+  }, []);
+
+  // 5. Notification Bell Pulse Trigger
+  useEffect(() => {
+    if (unread > 0) {
+      bellScale.value = withRepeat(
+        withSequence(
+          withTiming(1.2, { duration: 300 }),
+          withTiming(1, { duration: 300 })
+        ),
+        -1, // Infinite loop while unread > 0
+        true
+      );
+    } else {
+      bellScale.value = withTiming(1, { duration: 200 });
+    }
+  }, [unread]);
+
+  const animatedBellStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: bellScale.value }]
+  }));
+
   const onRefresh = async () => { setRefreshing(true); await load(); setRefreshing(false); };
+
+  // 2. Notification Click Handler (Clears badge immediately)
+  const handleNotificationPress = () => {
+    setUnread(0); // Clear badge locally
+    router.push("/notifications" as any);
+  };
 
   return (
     <View style={[s.root, Platform.OS === 'web' ? ({ height: '100vh', overflow: 'hidden' } as any) : {}]} testID="home-screen">
       <LinearGradient colors={[COLORS.brand, COLORS.brandDark]} style={s.headerBg} />
       <SafeAreaView edges={["top"]} style={s.headerWrap}>
         <View style={s.headerRow}>
-          <Pressable style={s.locWrap} testID="location-selector">
-            <MaterialCommunityIcons name="map-marker" size={18} color="#fff" />
+          {/* 1. Address Selector Button */}
+          <Pressable 
+            style={s.locWrap} 
+            testID="location-selector"
+            onPress={() => router.push("/select-address" as any)}
+          >
+            <MaterialCommunityIcons name="map-marker" size={20} color="#fff" />
             <View>
               <Text style={s.locLabel}>Deliver to</Text>
-              <Text style={s.locValue}>Home · {user?.name?.split(" ")[0] || "Guest"} <MaterialCommunityIcons name="chevron-down" size={14} color="#fff" /></Text>
+              <Text style={s.locValue} numberOfLines={1}>
+                {user?.address || selectedAddress}{" "}
+                <MaterialCommunityIcons name="chevron-down" size={16} color="#fff" />
+              </Text>
             </View>
           </Pressable>
+
+          {/* 3 & 5. Animated Notification Bell at Logo Position (Top Right) */}
           <View style={s.headerActions}>
-            <Pressable testID="notifications-bell" onPress={() => router.push("/notifications" as any)} style={s.iconBtn}>
-              <MaterialCommunityIcons name="bell-outline" size={22} color="#fff" />
-              {unread > 0 && <View style={s.bellBadge}><Text style={s.bellBadgeText}>{unread}</Text></View>}
-            </Pressable>
-            <Image source={{ uri: LOGO_URL }} style={s.logoSmall} contentFit="contain" />
+            <Animated.View style={animatedBellStyle}>
+              <Pressable testID="notifications-bell" onPress={handleNotificationPress} style={s.iconBtn}>
+                <MaterialCommunityIcons name="bell-outline" size={22} color="#fff" />
+                {unread > 0 && (
+                  <View style={s.bellBadge}>
+                    <Text style={s.bellBadgeText}>{unread}</Text>
+                  </View>
+                )}
+              </Pressable>
+            </Animated.View>
           </View>
         </View>
 
+        {/* 4. Animated Search Bar */}
         <Pressable 
           testID="home-search-trigger"
           onPress={() => router.push("/search" as any)}
           style={s.searchWrap}
         >
           <MaterialCommunityIcons name="magnify" size={20} color={COLORS.textMuted} />
-          <Text style={s.searchPlaceholderText}>Search for groceries, food, medicines...</Text>
+          <Animated.View 
+            key={placeholderIdx} 
+            entering={FadeIn.duration(400)} 
+            exiting={FadeOut.duration(400)}
+            style={{ flex: 1, marginLeft: 8 }}
+          >
+            <Text style={s.searchPlaceholderText}>
+              {SEARCH_PLACEHOLDERS[placeholderIdx]}
+            </Text>
+          </Animated.View>
         </Pressable>
       </SafeAreaView>
 
@@ -191,7 +277,6 @@ export default function Home() {
         <View style={{ height: 24 }} />
         
         <View style={s.brandStrip}>
-          <Image source={{ uri: LOGO_URL }} style={{ width: 60, height: 60 }} contentFit="contain" />
           <View style={{ flex: 1 }}>
             <Text style={s.brandStripTitle}>KMT Bazaar Promise</Text>
             <Text style={s.brandStripSub}>Fast delivery · Trusted shops · Easy returns</Text>
@@ -219,16 +304,15 @@ const s = StyleSheet.create({
   headerBg: { position: "absolute", top: 0, left: 0, right: 0, height: 220 },
   headerWrap: { paddingHorizontal: SPACING.lg, paddingBottom: SPACING.md },
   headerRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingTop: 4 },
-  locWrap: { flexDirection: "row", gap: 6, alignItems: "flex-start" },
+  locWrap: { flexDirection: "row", gap: 6, alignItems: "center", flex: 1, marginRight: 12 },
   locLabel: { color: "rgba(255,255,255,0.7)", fontSize: 11, fontWeight: "600" },
   locValue: { color: "#fff", fontSize: 14, fontWeight: "700" },
-  headerActions: { flexDirection: "row", alignItems: "center", gap: SPACING.md },
+  headerActions: { flexDirection: "row", alignItems: "center" },
   iconBtn: { width: 38, height: 38, borderRadius: 19, backgroundColor: "rgba(255,255,255,0.18)", alignItems: "center", justifyContent: "center" },
   bellBadge: { position: "absolute", top: 4, right: 4, backgroundColor: COLORS.accent, minWidth: 16, height: 16, borderRadius: 8, paddingHorizontal: 3, alignItems: "center", justifyContent: "center" },
   bellBadgeText: { color: "#fff", fontSize: 9, fontWeight: "800" },
-  logoSmall: { width: 36, height: 36 },
   searchWrap: { flexDirection: "row", alignItems: "center", backgroundColor: "#fff", borderRadius: RADIUS.pill, paddingHorizontal: 14, paddingVertical: 12, marginTop: SPACING.md, ...shadow.card, height: 46 },
-  searchPlaceholderText: { flex: 1, fontSize: 14, color: COLORS.textMuted, marginLeft: 8, fontWeight: "500" },
+  searchPlaceholderText: { fontSize: 14, color: COLORS.textMuted, fontWeight: "500" },
   banner: { width: BANNER_W, height: 160, borderRadius: RADIUS.lg, overflow: "hidden", backgroundColor: COLORS.surfaceTertiary },
   bannerImg: { width: "100%", height: "100%" },
   bannerText: { position: "absolute", left: 16, top: 20, right: 100 },
