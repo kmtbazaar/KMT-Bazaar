@@ -21,7 +21,7 @@ export interface User {
   avatar?: string | null;
 }
 
-// 🔥 WEB & MOBILE OPTIMIZED STORAGE (localStorage ko sessionStorage kar diya) 🔥
+// 🔥 WEB & MOBILE OPTIMIZED STORAGE 🔥
 export async function setToken(token: string) {
   if (Platform.OS === 'web') {
     sessionStorage.setItem(TOKEN_KEY, token);
@@ -74,7 +74,7 @@ export async function getUser() {
   }
 }
 
-// 🔥 API FETCH LOGIC 🔥
+// 🔥 IMPROVED API FETCH LOGIC (SAFE FOR DELETE & EMPTY RESPONSES) 🔥
 export async function apiFetch<T = any>(
   path: string,
   options: RequestInit = {}
@@ -86,16 +86,29 @@ export async function apiFetch<T = any>(
   };
   if (token) headers.Authorization = `Bearer ${token}`;
   
-  const res = await fetch(`${API}${path}`, { ...options, headers });
+  const cleanPath = path.startsWith("/") ? path : `/${path}`;
+  const res = await fetch(`${API}${cleanPath}`, { ...options, headers });
+  
+  // Handle HTTP Error Codes
+  if (!res.ok) {
+    let errorMsg = `HTTP ${res.status}`;
+    try {
+      const errText = await res.text();
+      const errJson = errText ? JSON.parse(errText) : null;
+      errorMsg = (errJson && (errJson.detail || errJson.message)) || errorMsg;
+    } catch {}
+    throw new Error(typeof errorMsg === "string" ? errorMsg : JSON.stringify(errorMsg));
+  }
+
+  // Handle successful empty response (e.g., 204 No Content for DELETE)
+  if (res.status === 204) {
+    return {} as T;
+  }
+
   const text = await res.text();
   let json: any = null;
   
   try { json = text ? JSON.parse(text) : null; } catch { json = text; }
-  
-  if (!res.ok) {
-    const msg = (json && (json.detail || json.message)) || `HTTP ${res.status}`;
-    throw new Error(typeof msg === "string" ? msg : JSON.stringify(msg));
-  }
   return json as T;
 }
 
@@ -138,11 +151,13 @@ export const api = {
   createAddress: (data: any) =>
     apiFetch("/addresses", { method: "POST", body: JSON.stringify(data) }),
     
-  // 👇 Yahan updateAddress add kar diya hai 👇
   updateAddress: (id: string, data: any) =>
-    apiFetch(`/addresses/${id}`, { method: "PUT", body: JSON.stringify(data) }),
+    apiFetch(`/addresses/${encodeURIComponent(id)}`, { method: "PUT", body: JSON.stringify(data) }),
     
-  deleteAddress: (id: string) => apiFetch(`/addresses/${id}`, { method: "DELETE" }),
+  // 🔥 FIXED DELETE ADDRESS METHOD 🔥
+  deleteAddress: (id: string) => 
+    apiFetch(`/addresses/${encodeURIComponent(id)}`, { method: "DELETE" }),
+
   checkout: (data: { address_id: string; payment_method: string; notes?: string }) =>
     apiFetch<any>("/orders/checkout", { method: "POST", body: JSON.stringify(data) }),
   orders: () => apiFetch<any[]>("/orders"),
