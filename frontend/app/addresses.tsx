@@ -41,9 +41,11 @@ export default function Addresses() {
       const stored = await AsyncStorage.getItem("selected_address");
       if (stored) {
         const parsed = JSON.parse(stored);
-        setSelectedAddrId(parsed.id || parsed._id || null);
+        const storedId = parsed.id || parsed._id;
+        setSelectedAddrId(storedId ? String(storedId) : null);
       } else if (user?.activeAddress) {
-        setSelectedAddrId(user.activeAddress.id || user.activeAddress._id || null);
+        const activeId = user.activeAddress.id || user.activeAddress._id;
+        setSelectedAddrId(activeId ? String(activeId) : null);
       }
     } catch (e) {
       console.log("Failed to load addresses", e);
@@ -79,15 +81,15 @@ export default function Addresses() {
   const handleOpenForm = (address?: any) => {
     if (address) {
       const addressId = address.id || address._id;
-      setEditingId(addressId);
+      setEditingId(addressId ? String(addressId) : null);
       setFormData({ 
         label: address.label || "Home", 
-        full_name: address.full_name || "", 
-        line1: address.line1 || "", 
+        full_name: address.full_name || address.name || "", 
+        line1: address.line1 || address.address || "", 
         city: address.city || "", 
         state: address.state || "", 
-        pincode: address.pincode || "", 
-        phone: address.phone || "" 
+        pincode: address.pincode ? String(address.pincode) : "", 
+        phone: address.phone ? String(address.phone) : "" 
       });
     } else {
       setEditingId(null);
@@ -121,6 +123,7 @@ export default function Addresses() {
         await api.createAddress(formData);
       }
       setFormVisible(false);
+      setEditingId(null);
       loadAddresses();
     } catch (e: any) {
       console.log("BACKEND ERROR DETAILS:", e);
@@ -170,10 +173,10 @@ export default function Addresses() {
         contentContainerStyle={{ padding: SPACING.lg }}
         ListEmptyComponent={<Text style={s.emptyText}>No saved addresses found.</Text>}
         renderItem={({ item }) => {
-          const itemId = item.id || item._id;
+          const itemId = String(item.id || item._id);
           
           // Check if address is active
-          const isSelected = selectedAddrId === itemId || user?.activeAddress?.id === itemId || user?.activeAddress?._id === itemId;
+          const isSelected = selectedAddrId === itemId || String(user?.activeAddress?.id || user?.activeAddress?._id) === itemId;
 
           return (
             <View style={[s.card, isSelected && s.cardSelected]}>
@@ -203,8 +206,8 @@ export default function Addresses() {
                   )}
                 </View>
 
-                <Text style={s.nameText}>{item.full_name}</Text>
-                <Text style={s.addressText}>{item.line1}</Text>
+                <Text style={s.nameText}>{item.full_name || item.name}</Text>
+                <Text style={s.addressText}>{item.line1 || item.address}</Text>
                 <Text style={s.addressText}>{item.city}, {item.state} - {item.pincode}</Text>
                 <Text style={s.phoneText}>Phone: {item.phone}</Text>
               </TouchableOpacity>
@@ -267,7 +270,7 @@ export default function Addresses() {
               </View>
 
               <View style={s.modalActions}>
-                <TouchableOpacity onPress={() => setFormVisible(false)} style={s.cancelBtn}>
+                <TouchableOpacity onPress={() => { setFormVisible(false); setEditingId(null); }} style={s.cancelBtn}>
                   <Text style={s.cancelBtnText}>CANCEL</Text>
                 </TouchableOpacity>
                 <TouchableOpacity onPress={handleSave} style={s.saveBtn}>
