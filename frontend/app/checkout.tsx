@@ -5,6 +5,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { api } from "@/src/api";
 import { useCart } from "@/src/CartContext";
 import { COLORS, RADIUS, SPACING } from "@/src/theme";
@@ -26,19 +27,46 @@ export default function Checkout() {
     try {
       const a = await api.addresses();
       setAddresses(a || []);
-      if (a?.length && !selectedAddr) {
-        setSelectedAddr(a.find((x: any) => x.is_default)?.id || a[0].id);
+
+      // 🎯 First preference: Selected address from AsyncStorage / Local selection
+      const stored = await AsyncStorage.getItem("selected_address");
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        const storedId = parsed.id || parsed._id;
+        if (storedId && a?.some((x: any) => String(x.id || x._id) === String(storedId))) {
+          setSelectedAddr(String(storedId));
+          return;
+        }
       }
+
+      // 🎯 Fallback: Default or first address
+      if (a?.length && !selectedAddr) {
+        const def = a.find((x: any) => x.is_default);
+        const firstId = def ? (def.id || def._id) : (a[0].id || a[0]._id);
+        setSelectedAddr(firstId ? String(firstId) : null);
+      }
+
       if (a?.length === 0) setShowForm(true);
     } catch (e) {
       console.log("Failed to load addresses", e);
     }
   };
+
   useEffect(() => { loadAddrs(); }, []);
+
+  const handleSelectAddr = async (addr: any) => {
+    const id = String(addr.id || addr._id);
+    setSelectedAddr(id);
+    try {
+      await AsyncStorage.setItem("selected_address", JSON.stringify(addr));
+    } catch (e) {
+      console.log("Failed to save address locally", e);
+    }
+  };
 
   // FIX: Edit button logic
   const handleEdit = (addr: any) => {
-    const addressId = addr.id || addr._id;
+    const addressId = String(addr.id || addr._id);
     setEditingId(addressId);
     setForm({
       label: addr.label || "Home",
@@ -60,7 +88,10 @@ export default function Checkout() {
       { text: "Delete", style: "destructive", onPress: async () => {
           try {
             await api.deleteAddress(id);
-            if (selectedAddr === id) setSelectedAddr(null);
+            if (selectedAddr === id) {
+              await AsyncStorage.removeItem("selected_address");
+              setSelectedAddr(null);
+            }
             loadAddrs();
           } catch (e) {
             Alert.alert("Error", "Failed to delete address");
@@ -92,7 +123,11 @@ export default function Checkout() {
       } else {
         // FIX: Create new address
         const a = await api.createAddress({ ...form, is_default: addresses.length === 0 });
-        if (addresses.length === 0) setSelectedAddr(a.id);
+        const createdId = String(a.id || a._id);
+        if (addresses.length === 0) {
+          setSelectedAddr(createdId);
+          await AsyncStorage.setItem("selected_address", JSON.stringify(a));
+        }
       }
       
       // Reset form
@@ -120,7 +155,8 @@ export default function Checkout() {
       await refresh();
       router.replace(`/orders/${order.id}` as any);
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    } catch (e) {
+    } catch (e: any) {
+      Alert.alert("Checkout Error", e.message || "Failed to place order");
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
     } finally { setLoading(false); }
   };
@@ -137,12 +173,13 @@ export default function Checkout() {
           
           <Text style={s.section}>Delivery Address</Text>
           {addresses.map((a) => {
-            const isSelected = selectedAddr === (a.id || a._id);
+            const addrId = String(a.id || a._id);
+            const isSelected = selectedAddr === addrId;
             return (
               <Pressable
-                key={a.id || a._id}
-                testID={`addr-${a.id || a._id}`}
-                onPress={() => setSelectedAddr(a.id || a._id)}
+                key={addrId}
+                testID={`addr-${addrId}`}
+                onPress={() => handleSelectAddr(a)}
                 style={[s.addrCard, isSelected && s.addrCardActive]}
               >
                 <View style={{ flexDirection: "row", flex: 1 }}>
@@ -160,7 +197,7 @@ export default function Checkout() {
                     <TouchableOpacity onPress={() => handleEdit(a)} hitSlop={10} style={{ padding: 4 }}>
                       <MaterialCommunityIcons name="pencil" size={18} color={COLORS.brand} />
                     </TouchableOpacity>
-                    <TouchableOpacity onPress={() => handleDelete(a.id || a._id)} hitSlop={10} style={{ padding: 4 }}>
+                    <TouchableOpacity onPress={() => handleDelete(addrId)} hitSlop={10} style={{ padding: 4 }}>
                       <MaterialCommunityIcons name="trash-can-outline" size={18} color={COLORS.error} />
                     </TouchableOpacity>
                   </View>
