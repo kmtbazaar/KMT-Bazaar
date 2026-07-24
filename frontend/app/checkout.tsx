@@ -19,7 +19,6 @@ export default function Checkout() {
   const [loading, setLoading] = useState(false);
   const [showForm, setShowForm] = useState(false);
   
-  // FIX: Added edit mode tracking
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState({ label: "Home", full_name: "", phone: "", line1: "", line2: "", city: "", state: "", pincode: "" });
 
@@ -28,7 +27,6 @@ export default function Checkout() {
       const a = await api.addresses();
       setAddresses(a || []);
 
-      // 🎯 First preference: Selected address from AsyncStorage / Local selection
       const stored = await AsyncStorage.getItem("selected_address");
       if (stored) {
         const parsed = JSON.parse(stored);
@@ -39,7 +37,6 @@ export default function Checkout() {
         }
       }
 
-      // 🎯 Fallback: Default or first address
       if (a?.length && !selectedAddr) {
         const def = a.find((x: any) => x.is_default);
         const firstId = def ? (def.id || def._id) : (a[0].id || a[0]._id);
@@ -64,7 +61,6 @@ export default function Checkout() {
     }
   };
 
-  // FIX: Edit button logic
   const handleEdit = (addr: any) => {
     const addressId = String(addr.id || addr._id);
     setEditingId(addressId);
@@ -81,28 +77,51 @@ export default function Checkout() {
     setShowForm(true);
   };
 
-  // FIX: Delete button logic
-  const handleDelete = async (id: string) => {
-    Alert.alert("Delete Address", "Are you sure?", [
-      { text: "Cancel", style: "cancel" },
-      { text: "Delete", style: "destructive", onPress: async () => {
-          try {
-            await api.deleteAddress(id);
-            if (selectedAddr === id) {
-              await AsyncStorage.removeItem("selected_address");
-              setSelectedAddr(null);
-            }
-            loadAddrs();
-          } catch (e) {
-            Alert.alert("Error", "Failed to delete address");
-          }
+  // 🔥 FIXED DELETE BUTTON LOGIC (WEB & MOBILE COMPATIBLE)
+  const handleDelete = async (targetId: string) => {
+    const idToDelete = String(targetId);
+
+    const executeDelete = async () => {
+      try {
+        setLoading(true);
+        
+        // 1. Backend API Call
+        await api.deleteAddress(idToDelete);
+
+        // 2. Clear Local Selection if this address was selected
+        if (String(selectedAddr) === idToDelete) {
+          await AsyncStorage.removeItem("selected_address");
+          setSelectedAddr(null);
         }
+
+        // 3. Instant UI Refresh & Reload
+        await loadAddrs();
+      } catch (e: any) {
+        console.log("CHECKOUT DELETE ERROR:", e);
+        Alert.alert("Error", e.message || "Failed to delete address");
+      } finally {
+        setLoading(false);
       }
-    ]);
+    };
+
+    // Platform Check for Web Async Fix
+    if (Platform.OS === 'web') {
+      if (window.confirm("Are you sure you want to delete this address?")) {
+        executeDelete();
+      }
+    } else {
+      Alert.alert("Delete Address", "Are you sure you want to delete this address?", [
+        { text: "Cancel", style: "cancel" },
+        { 
+          text: "Delete", 
+          style: "destructive", 
+          onPress: executeDelete
+        }
+      ]);
+    }
   };
 
   const saveAddr = async () => {
-    // FIX: Strict Validation
     if (!form.full_name || !form.phone || !form.line1 || !form.city || !form.state || !form.pincode) {
       Alert.alert("Required", "Please fill all required fields.");
       return;
@@ -118,10 +137,8 @@ export default function Checkout() {
 
     try {
       if (editingId) {
-        // FIX: Update existing address
         await api.updateAddress(editingId, form);
       } else {
-        // FIX: Create new address
         const a = await api.createAddress({ ...form, is_default: addresses.length === 0 });
         const createdId = String(a.id || a._id);
         if (addresses.length === 0) {
@@ -130,11 +147,10 @@ export default function Checkout() {
         }
       }
       
-      // Reset form
       setEditingId(null);
       setForm({ label: "Home", full_name: "", phone: "", line1: "", line2: "", city: "", state: "", pincode: "" });
       setShowForm(false);
-      loadAddrs(); // Reload the list
+      loadAddrs();
     } catch (e) {
       Alert.alert("Error", "Failed to save address");
     }
@@ -191,7 +207,6 @@ export default function Checkout() {
                   </View>
                 </View>
                 
-                {/* FIX: Edit & Delete Icons inside the card */}
                 {isSelected && (
                   <View style={s.actionRow}>
                     <TouchableOpacity onPress={() => handleEdit(a)} hitSlop={10} style={{ padding: 4 }}>
@@ -220,7 +235,6 @@ export default function Checkout() {
           {showForm && (
             <View style={s.form}>
               <Input ph="Full name" v={form.full_name} oc={(v: string) => setForm({ ...form, full_name: v })} testID="addr-name" />
-              {/* FIX: Phone max 10 and numeric filter */}
               <Input ph="Phone (10 digits)" v={form.phone} oc={(v: string) => setForm({ ...form, phone: v.replace(/[^0-9]/g, '') })} kt="number-pad" maxLength={10} testID="addr-phone" />
               <Input ph="House no, Building" v={form.line1} oc={(v: string) => setForm({ ...form, line1: v })} testID="addr-line1" />
               <Input ph="Area, Street (optional)" v={form.line2} oc={(v: string) => setForm({ ...form, line2: v })} testID="addr-line2" />
@@ -229,7 +243,6 @@ export default function Checkout() {
                 <View style={{ flex: 1 }}><Input ph="City" v={form.city} oc={(v: string) => setForm({ ...form, city: v })} testID="addr-city" /></View>
                 <View style={{ flex: 1 }}><Input ph="State" v={form.state} oc={(v: string) => setForm({ ...form, state: v })} testID="addr-state" /></View>
               </View>
-              {/* FIX: Pincode max 6 and numeric filter */}
               <Input ph="Pincode" v={form.pincode} oc={(v: string) => setForm({ ...form, pincode: v.replace(/[^0-9]/g, '') })} kt="number-pad" maxLength={6} testID="addr-pincode" />
               
               <View style={{ flexDirection: "row", gap: 8, marginTop: 4 }}>
@@ -289,7 +302,6 @@ export default function Checkout() {
   );
 }
 
-// FIX: Added maxLength support in Input helper
 function Input({ ph, v, oc, kt, maxLength, testID }: any) {
   return <TextInput testID={testID} placeholder={ph} value={v} onChangeText={oc} keyboardType={kt} maxLength={maxLength} placeholderTextColor={COLORS.textMuted} style={ss.input} />;
 }
