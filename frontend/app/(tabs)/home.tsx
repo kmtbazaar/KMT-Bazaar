@@ -47,7 +47,7 @@ export default function Home() {
   // Dynamic Address Fallback State
   const [selectedAddress, setSelectedAddress] = useState<string>("Home · Karmatar");
 
-  // Load active address whenever Home Screen is focused/visited
+  // Sync selected address automatically whenever user returns to Home Screen
   useFocusEffect(
     useCallback(() => {
       const loadActiveAddress = async () => {
@@ -55,15 +55,18 @@ export default function Home() {
           const activeAddr = await AsyncStorage.getItem("selected_address");
           if (activeAddr) {
             const parsed = JSON.parse(activeAddr);
-            const formattedText = `${parsed.type || 'Home'} · ${parsed.address || parsed.city || 'Karmatar'}`;
-            setSelectedAddress(formattedText);
+            const labelStr = parsed.label || "Home";
+            const locationStr = parsed.line1 || parsed.city || "Karmatar";
+            setSelectedAddress(`${labelStr} · ${locationStr}`);
+          } else if (user?.address) {
+            setSelectedAddress(user.address);
           }
         } catch (err) {
           console.log("Error reading active address:", err);
         }
       };
       loadActiveAddress();
-    }, [])
+    }, [user])
   );
 
   // Animated Search Bar Placeholder Index
