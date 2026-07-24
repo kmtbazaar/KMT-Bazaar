@@ -147,7 +147,7 @@ export default function Login() {
         <AnimatedTile delay={1500} color="#FF6E00" />
       </View>
 
-      <SafeAreaView edges={["top"]} style={{ alignItems: "center", paddingTop: SPACING.lg, zIndex: 2 }}>
+      <SafeAreaView edges={["top"]} style={{ zIndex: 2, paddingHorizontal: SPACING.lg }}>
         {/* Sky Blue Accent Header Bar */}
         <View style={s.skyBlueBanner}>
           <LinearGradient
@@ -158,13 +158,19 @@ export default function Login() {
           />
         </View>
 
-        {/* Animated Logo & Text */}
-        <Animated.View entering={ZoomIn.duration(700).springify()}>
-          <View style={s.logoGlowContainer}>
+        {/* Top Header Row: Left Logo & Right Assistant */}
+        <View style={s.topHeaderRow}>
+          <Animated.View entering={ZoomIn.duration(700).springify()} style={s.logoContainer}>
             <Image source={{ uri: LOGO_URL }} style={s.logo} contentFit="contain" />
+            <Text style={s.appName}>KMT BAZAAR</Text>
+          </Animated.View>
+          
+          {/* Assistant component placed opposite (right side) */}
+          <View style={s.assistantContainer}>
+            <AIAssistant />
           </View>
-        </Animated.View>
-        <Animated.Text entering={FadeInDown.delay(200).springify()} style={s.appName}>KMT BAZAAR</Animated.Text>
+        </View>
+
         <Animated.Text entering={FadeInDown.delay(350).springify()} style={s.welcome}>Welcome back, login to continue</Animated.Text>
       </SafeAreaView>
 
@@ -263,8 +269,6 @@ export default function Login() {
         </ScrollView>
       </KeyboardAvoidingView>
 
-      <AIAssistant />
-
     </View>
   );
 }
@@ -324,18 +328,24 @@ const s = StyleSheet.create({
     shadowRadius: 10,
   },
 
-  logoGlowContainer: {
-    padding: 4,
-    borderRadius: 60,
-    shadowColor: "#00B4D8",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.5,
-    shadowRadius: 12,
-    elevation: 8,
+  topHeaderRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: SPACING.xs,
   },
-  logo: { width: 100, height: 100, marginTop: SPACING.xs },
-  appName: { color: "#FFFFFF", fontSize: 26, fontWeight: "900", letterSpacing: 3, marginTop: 10 },
-  welcome: { color: "#00B4D8", marginTop: 4, marginBottom: SPACING.lg, fontSize: 14, fontWeight: "600" },
+  logoContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+  logo: { width: 45, height: 45 },
+  appName: { color: "#FFFFFF", fontSize: 18, fontWeight: "900", letterSpacing: 2 },
+  assistantContainer: {
+    // Aligns AIAssistant component nicely on the opposite side
+  },
+
+  welcome: { color: "#00B4D8", marginTop: 4, marginBottom: SPACING.lg, fontSize: 13, fontWeight: "600" },
   
   cardWrapper: {
     paddingHorizontal: SPACING.lg,
