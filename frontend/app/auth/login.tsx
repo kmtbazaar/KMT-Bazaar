@@ -21,7 +21,7 @@ import Animated, {
   Easing 
 } from "react-native-reanimated";
 import { useAuth } from "@/src/AuthContext";
-import { LOGO_URL, RADIUS, SPACING } from "@/src/theme";
+import { COLORS, LOGO_URL, RADIUS, SPACING } from "@/src/theme";
 
 const { width } = Dimensions.get("window");
 
@@ -78,38 +78,7 @@ export default function Login() {
   const [error, setError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
 
-  // Pixar Eye Blinking & Floating Animation for Assistant Logo
-  const blinkAnim = useSharedValue(1);
-  const floatAnim = useSharedValue(0);
-
-  useEffect(() => {
-    blinkAnim.value = withRepeat(
-      withSequence(
-        withTiming(0.3, { duration: 150 }),
-        withTiming(1, { duration: 150 }),
-        withTiming(1, { duration: 3000 })
-      ),
-      -1,
-      false
-    );
-    floatAnim.value = withRepeat(
-      withSequence(
-        withTiming(-6, { duration: 1500, easing: Easing.inOut(Easing.ease) }),
-        withTiming(6, { duration: 1500, easing: Easing.inOut(Easing.ease) })
-      ),
-      -1,
-      true
-    );
-  }, []);
-
-  const pixarAssistantStyle = useAnimatedStyle(() => ({
-    transform: [
-      { translateY: floatAnim.value },
-      { scaleY: blinkAnim.value }
-    ],
-  }));
-
-  // Password Validation Checker
+  // Production-grade Password Validation Checker
   const validatePassword = (pass: string) => {
     const isLengthValid = pass.length >= 10;
     const hasUpperCase = /[A-Z]/.test(pass);
@@ -166,7 +135,7 @@ export default function Login() {
   return (
     <View style={s.root} testID="login-screen">
       {/* Dark Ambient Background Gradient */}
-      <LinearGradient colors={["#050B14", "#0A1224", "#000000"]} style={StyleSheet.absoluteFillObject} />
+      <LinearGradient colors={["#050B14", "#0A1224", "#000000"]} style={s.headerBg} />
 
       {/* Animated Environment Tiles & Glowing Flashes */}
       <View style={s.tilesWrapper} pointerEvents="none">
@@ -178,138 +147,124 @@ export default function Login() {
         <AnimatedTile delay={1500} color="#FF6E00" />
       </View>
 
-      <SafeAreaView edges={["top", "bottom"]} style={{ flex: 1 }}>
-        <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={{ flex: 1 }}>
-          <ScrollView contentContainerStyle={s.scrollContainer} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
-            
-            {/* Top Header Title */}
-            <View style={s.topHeader}>
-              <View style={s.skyBlueBanner}>
-                <LinearGradient
-                  colors={["transparent", "#00B4D8", "transparent"]}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                  style={s.skyBlueLine}
-                />
-              </View>
-              <Animated.Text entering={FadeInDown.delay(200).springify()} style={s.appName}>KMT BAZAAR</Animated.Text>
-              <Animated.Text entering={FadeInDown.delay(350).springify()} style={s.welcome}>Secure Portal Login</Animated.Text>
-            </View>
+      <SafeAreaView edges={["top"]} style={{ alignItems: "center", paddingTop: SPACING.lg, zIndex: 2 }}>
+        {/* Sky Blue Accent Header Bar */}
+        <View style={s.skyBlueBanner}>
+          <LinearGradient
+            colors={["transparent", "#00B4D8", "transparent"]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={s.skyBlueLine}
+          />
+        </View>
 
-            {/* Solid White Card with Top Gradient Border */}
-            <View style={s.card}>
-              <LinearGradient
-                colors={["#00B4D8", "#FF6E00"]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-                style={s.cardTopBorder}
-              />
+        {/* Animated Logo & Text */}
+        <Animated.View entering={ZoomIn.duration(700).springify()}>
+          <View style={s.logoGlowContainer}>
+            <Image source={{ uri: LOGO_URL }} style={s.logo} contentFit="contain" />
+          </View>
+        </Animated.View>
+        <Animated.Text entering={FadeInDown.delay(200).springify()} style={s.appName}>KMT BAZAAR</Animated.Text>
+        <Animated.Text entering={FadeInDown.delay(350).springify()} style={s.welcome}>Welcome back, login to continue</Animated.Text>
+      </SafeAreaView>
 
-              <View style={s.tabsRow}>
-                <Pressable testID="tab-password" onPress={() => setTab("password")} style={[s.tab, tab === "password" && s.tabActive]}>
-                  <Text style={[s.tabText, tab === "password" && s.tabTextActive]}>Email & Password</Text>
-                </Pressable>
-                <Pressable testID="tab-otp" onPress={() => setTab("otp")} style={[s.tab, tab === "otp" && s.tabActive]}>
-                  <Text style={[s.tabText, tab === "otp" && s.tabTextActive]}>Mobile OTP</Text>
-                </Pressable>
-              </View>
+      <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={{ flex: 1, zIndex: 2 }}>
+        <ScrollView contentContainerStyle={s.cardWrapper} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+          
+          {/* Solid White Card with Top Gradient Border */}
+          <View style={s.card}>
+            <LinearGradient
+              colors={["#00B4D8", "#FF6E00"]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={s.cardTopBorder}
+            />
 
-              {tab === "password" ? (
-                <>
-                  <Field icon="email-outline" placeholder="Email Address" value={email} onChangeText={setEmail} keyboardType="email-address" testID="login-email-input" />
-                  
-                  <View style={s.fieldWrap}>
-                    <MaterialCommunityIcons name="lock-outline" size={22} color="#64748B" />
-                    <TextInput
-                      testID="login-password-input"
-                      placeholder="Password (10+ chars, A-Z, #, 0-9)"
-                      value={password}
-                      onChangeText={setPassword}
-                      secureTextEntry={!showPassword}
-                      autoCapitalize="none"
-                      placeholderTextColor="#94A3B8"
-                      style={s.input}
-                    />
-                    <Pressable onPress={() => setShowPassword(!showPassword)}>
-                      <MaterialCommunityIcons name={showPassword ? "eye-off-outline" : "eye-outline"} size={22} color="#64748B" />
-                    </Pressable>
-                  </View>
-
-                  {/* Password Rule Hint */}
-                  {password.length > 0 && (
-                    <View style={s.ruleBox}>
-                      <Text style={[s.ruleText, password.length >= 10 && s.ruleValid]}>• Min 10 chars</Text>
-                      <Text style={[s.ruleText, /[A-Z]/.test(password) && s.ruleValid]}>• 1 Uppercase</Text>
-                      <Text style={[s.ruleText, /[0-9]/.test(password) && s.ruleValid]}>• 1 Number</Text>
-                      <Text style={[s.ruleText, /[^A-Za-z0-9]/.test(password) && s.ruleValid]}>• 1 Symbol</Text>
-                    </View>
-                  )}
-                  
-                  {error && <Text style={s.err} testID="login-error">{error}</Text>}
-                  
-                  <Pressable testID="login-submit-button" onPress={onLogin} style={({ pressed }) => [s.cta, pressed && { opacity: 0.85 }]}>
-                    <LinearGradient colors={["#FF6E00", "#E05E00"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={s.ctaGrad}>
-                      {loading ? <ActivityIndicator color="#fff" /> : <Text style={s.ctaText}>Login Securely</Text>}
-                    </LinearGradient>
-                  </Pressable>
-                  
-                  <Pressable onPress={() => router.push("/auth/register" as any)} testID="goto-register">
-                    <Text style={s.alt}>New to KMT Bazaar? <Text style={s.altLink}>Create account</Text></Text>
-                  </Pressable>
-                </>
-              ) : (
-                <>
-                  <Field icon="cellphone" placeholder="Phone number (10 digits)" value={phone} onChangeText={(v: string) => setPhone(v.replace(/[^0-9]/g, ''))} keyboardType="phone-pad" maxLength={10} testID="otp-phone-input" />
-                  
-                  {otpSent && (
-                    <Animated.View entering={FadeInDown.duration(400)}>
-                      <Field icon="shield-key-outline" placeholder="Enter 6-digit OTP" value={otp} onChangeText={(v: string) => setOtp(v.replace(/[^0-9]/g, ''))} keyboardType="number-pad" maxLength={6} testID="otp-code-input" />
-                    </Animated.View>
-                  )}
-                  
-                  {error && <Text style={s.err}>{error}</Text>}
-                  
-                  {!otpSent ? (
-                    <Pressable testID="otp-send-button" onPress={onOtpRequest} style={s.cta}>
-                      <LinearGradient colors={["#FF6E00", "#E05E00"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={s.ctaGrad}>
-                        <Text style={s.ctaText}>Send OTP</Text>
-                      </LinearGradient>
-                    </Pressable>
-                  ) : (
-                    <Pressable testID="otp-verify-button" onPress={onOtpVerify} style={s.cta}>
-                      <LinearGradient colors={["#00B4D8", "#0077B6"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={s.ctaGrad}>
-                        {loading ? <ActivityIndicator color="#fff" /> : <Text style={s.ctaText}>Verify & Continue</Text>}
-                      </LinearGradient>
-                    </Pressable>
-                  )}
-                </>
-              )}
-            </View>
-
-            {/* Bottom Interactive Pixar-Style Animated Assistant & Logo Hub */}
-            <View style={s.bottomHubContainer}>
-              <Pressable 
-                style={s.pixarAssistantButton}
-                onPress={() => {
-                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                  router.push("/(tabs)/home" as any);
-                }}
-              >
-                <Animated.View style={[s.pixarAvatarWrapper, pixarAssistantStyle]}>
-                  <Image source={{ uri: LOGO_URL }} style={s.pixarAvatarImage} contentFit="contain" />
-                </Animated.View>
-                <View style={s.pixarTextBadge}>
-                  <Text style={s.pixarBadgeTitle}>KMT Assistant</Text>
-                  <Text style={s.pixarBadgeSubtitle}>Tap to quick-enter ✨</Text>
-                </View>
+            <View style={s.tabsRow}>
+              <Pressable testID="tab-password" onPress={() => setTab("password")} style={[s.tab, tab === "password" && s.tabActive]}>
+                <Text style={[s.tabText, tab === "password" && s.tabTextActive]}>Email & Password</Text>
+              </Pressable>
+              <Pressable testID="tab-otp" onPress={() => setTab("otp")} style={[s.tab, tab === "otp" && s.tabActive]}>
+                <Text style={[s.tabText, tab === "otp" && s.tabTextActive]}>Mobile OTP</Text>
               </Pressable>
             </View>
 
-          </ScrollView>
-        </KeyboardAvoidingView>
-      </SafeAreaView>
+            {tab === "password" ? (
+              <>
+                <Field icon="email-outline" placeholder="Email Address" value={email} onChangeText={setEmail} keyboardType="email-address" testID="login-email-input" />
+                
+                <View style={s.fieldWrap}>
+                  <MaterialCommunityIcons name="lock-outline" size={22} color="#64748B" />
+                  <TextInput
+                    testID="login-password-input"
+                    placeholder="Password"
+                    value={password}
+                    onChangeText={setPassword}
+                    secureTextEntry={!showPassword}
+                    autoCapitalize="none"
+                    placeholderTextColor="#94A3B8"
+                    style={s.input}
+                  />
+                  <Pressable onPress={() => setShowPassword(!showPassword)}>
+                    <MaterialCommunityIcons name={showPassword ? "eye-off-outline" : "eye-outline"} size={22} color="#64748B" />
+                  </Pressable>
+                </View>
+
+                {/* Password Rule Hint */}
+                {password.length > 0 && (
+                  <View style={s.ruleBox}>
+                    <Text style={[s.ruleText, password.length >= 10 && s.ruleValid]}>• Min 10 chars</Text>
+                    <Text style={[s.ruleText, /[A-Z]/.test(password) && s.ruleValid]}>• 1 Uppercase</Text>
+                    <Text style={[s.ruleText, /[0-9]/.test(password) && s.ruleValid]}>• 1 Number</Text>
+                    <Text style={[s.ruleText, /[^A-Za-z0-9]/.test(password) && s.ruleValid]}>• 1 Symbol (!@#..)</Text>
+                  </View>
+                )}
+                
+                {error && <Text style={s.err} testID="login-error">{error}</Text>}
+                
+                <Pressable testID="login-submit-button" onPress={onLogin} style={({ pressed }) => [s.cta, pressed && { opacity: 0.85 }]}>
+                  <LinearGradient colors={["#FF6E00", "#E05E00"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={s.ctaGrad}>
+                    {loading ? <ActivityIndicator color="#fff" /> : <Text style={s.ctaText}>Login Securely</Text>}
+                  </LinearGradient>
+                </Pressable>
+                
+                <Pressable onPress={() => router.push("/auth/register" as any)} testID="goto-register">
+                  <Text style={s.alt}>New to KMT Bazaar? <Text style={s.altLink}>Create account</Text></Text>
+                </Pressable>
+              </>
+            ) : (
+              <>
+                <Field icon="cellphone" placeholder="Phone number (10 digits)" value={phone} onChangeText={(v: string) => setPhone(v.replace(/[^0-9]/g, ''))} keyboardType="phone-pad" maxLength={10} testID="otp-phone-input" />
+                
+                {otpSent && (
+                  <Animated.View entering={FadeInDown.duration(400)}>
+                    <Field icon="shield-key-outline" placeholder="Enter 6-digit OTP" value={otp} onChangeText={(v: string) => setOtp(v.replace(/[^0-9]/g, ''))} keyboardType="number-pad" maxLength={6} testID="otp-code-input" />
+                  </Animated.View>
+                )}
+                
+                {error && <Text style={s.err}>{error}</Text>}
+                
+                {!otpSent ? (
+                  <Pressable testID="otp-send-button" onPress={onOtpRequest} style={s.cta}>
+                    <LinearGradient colors={["#FF6E00", "#E05E00"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={s.ctaGrad}>
+                      <Text style={s.ctaText}>Send OTP</Text>
+                    </LinearGradient>
+                  </Pressable>
+                ) : (
+                  <Pressable testID="otp-verify-button" onPress={onOtpVerify} style={s.cta}>
+                    <LinearGradient colors={["#00B4D8", "#0077B6"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={s.ctaGrad}>
+                      {loading ? <ActivityIndicator color="#fff" /> : <Text style={s.ctaText}>Verify & Continue</Text>}
+                    </LinearGradient>
+                  </Pressable>
+                )}
+              </>
+            )}
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
 
       <AIAssistant />
+
     </View>
   );
 }
@@ -332,6 +287,7 @@ function Field({ icon, secure, testID, ...rest }: any) {
 
 const s = StyleSheet.create({
   root: { flex: 1, backgroundColor: "#050B14" },
+  headerBg: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0 },
   
   tilesWrapper: {
     position: "absolute",
@@ -353,21 +309,10 @@ const s = StyleSheet.create({
     marginVertical: 8,
   },
 
-  scrollContainer: {
-    paddingHorizontal: SPACING.lg,
-    paddingTop: SPACING.md,
-    paddingBottom: 40,
-    zIndex: 2,
-  },
-
-  topHeader: {
-    alignItems: "center",
-    marginBottom: SPACING.lg,
-  },
   skyBlueBanner: {
     width: "100%",
     height: 2,
-    marginBottom: SPACING.sm,
+    marginBottom: SPACING.md,
     alignItems: "center",
   },
   skyBlueLine: {
@@ -379,8 +324,23 @@ const s = StyleSheet.create({
     shadowRadius: 10,
   },
 
-  appName: { color: "#FFFFFF", fontSize: 24, fontWeight: "900", letterSpacing: 3, marginTop: 4 },
-  welcome: { color: "#00B4D8", marginTop: 2, fontSize: 13, fontWeight: "600" },
+  logoGlowContainer: {
+    padding: 4,
+    borderRadius: 60,
+    shadowColor: "#00B4D8",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.5,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  logo: { width: 100, height: 100, marginTop: SPACING.xs },
+  appName: { color: "#FFFFFF", fontSize: 26, fontWeight: "900", letterSpacing: 3, marginTop: 10 },
+  welcome: { color: "#00B4D8", marginTop: 4, marginBottom: SPACING.lg, fontSize: 14, fontWeight: "600" },
+  
+  cardWrapper: {
+    paddingHorizontal: SPACING.lg,
+    paddingBottom: 40,
+  },
   
   card: {
     backgroundColor: "#FFFFFF", 
@@ -443,7 +403,7 @@ const s = StyleSheet.create({
     fontWeight: "600",
   },
   ruleValid: {
-    color: "#10B981", 
+    color: "#10B981", // Green check indicator for matched rules
   },
   
   cta: { 
@@ -462,57 +422,4 @@ const s = StyleSheet.create({
   alt: { textAlign: "center", marginTop: SPACING.lg, color: "#64748B", fontSize: 14 },
   altLink: { color: "#FF6E00", fontWeight: "800", fontSize: 14 },
   err: { color: "#EF4444", marginTop: 4, marginBottom: 12, fontSize: 13, fontWeight: "600", marginLeft: 4 },
-
-  bottomHubContainer: {
-    marginTop: 25,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  pixarAssistantButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "rgba(0, 180, 216, 0.1)",
-    borderWidth: 1.5,
-    borderColor: "rgba(0, 180, 216, 0.4)",
-    borderRadius: RADIUS.pill,
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    gap: 14,
-    shadowColor: "#00B4D8",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  pixarAvatarWrapper: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: "#FFFFFF",
-    alignItems: "center",
-    justifyContent: "center",
-    shadowColor: "#FF6E00",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.5,
-    shadowRadius: 6,
-    elevation: 6,
-  },
-  pixarAvatarImage: {
-    width: 36,
-    height: 36,
-  },
-  pixarTextBadge: {
-    flexDirection: "column",
-  },
-  pixarBadgeTitle: {
-    color: "#FFFFFF",
-    fontSize: 15,
-    fontWeight: "800",
-    letterSpacing: 0.5,
-  },
-  pixarBadgeSubtitle: {
-    color: "#00B4D8",
-    fontSize: 12,
-    fontWeight: "600",
-  },
 });
