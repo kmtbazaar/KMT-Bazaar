@@ -88,7 +88,7 @@ export default function Login() {
       withSequence(
         withTiming(0.3, { duration: 150 }),
         withTiming(1, { duration: 150 }),
-        withTiming(1, { duration: 3000 }) // Stay open for 3 seconds
+        withTiming(1, { duration: 3000 })
       ),
       -1,
       false
@@ -111,7 +111,7 @@ export default function Login() {
     ],
   }));
 
-  // Production-grade Password Validation Checker
+  // Password Validation Checker
   const validatePassword = (pass: string) => {
     const isLengthValid = pass.length >= 10;
     const hasUpperCase = /[A-Z]/.test(pass);
@@ -180,7 +180,7 @@ export default function Login() {
         <AnimatedTile delay={1500} color="#FF6E00" />
       </View>
 
-      <SafeAreaView edges={["top"]} style={{ alignItems: "center", paddingTop: SPN_TOP_PADDING = SPACING.md, zIndex: 2 }}>
+      <SafeAreaView edges={["top"]} style={s.topSafeArea}>
         {/* Sky Blue Accent Header Bar */}
         <View style={s.skyBlueBanner}>
           <LinearGradient
@@ -295,7 +295,7 @@ export default function Login() {
               style={s.pixarAssistantButton}
               onPress={() => {
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                router.push("/(tabs)/home" as any); // Touch karke aage page par jane ka action
+                router.push("/(tabs)/home" as any);
               }}
             >
               <Animated.View style={[s.pixarAvatarWrapper, pixarAssistantStyle]}>
@@ -345,7 +345,7 @@ const s = StyleSheet.create({
     height: 380,
     flexDirection: "row",
     flexWrap: "wrap",
-    justifyContent: "space-around",
+    justify.content: "space-around",
     alignItems: "center",
     padding: 10,
     zIndex: 1,
@@ -357,6 +357,11 @@ const s = StyleSheet.create({
     marginVertical: 8,
   },
 
+  topSafeArea: {
+    alignItems: "center",
+    paddingTop: SPACING.md,
+    zIndex: 2,
+  },
   skyBlueBanner: {
     width: "100%",
     height: 2,
@@ -461,7 +466,6 @@ const s = StyleSheet.create({
   altLink: { color: "#FF6E00", fontWeight: "800", fontSize: 14 },
   err: { color: "#EF4444", marginTop: 4, marginBottom: 12, fontSize: 13, fontWeight: "600", marginLeft: 4 },
 
-  /* Pixar Assistant Interactive Bottom Section */
   bottomHubContainer: {
     marginTop: 25,
     alignItems: "center",
