@@ -1,10 +1,10 @@
 {
   "expo": {
-    "name": "frontend",
-    "slug": "frontend",
+    "name": "KMT Bazaar",
+    "slug": "kmt-bazaar",
     "version": "1.0.0",
     "orientation": "portrait",
-    "scheme": "frontend",
+    "scheme": "kmt-bazaar",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
@@ -22,6 +22,8 @@
     "web": {
       "bundler": "metro",
       "output": "single",
+      "name": "KMT Bazaar",
+      "shortName": "KMT Bazaar",
       "favicon": "./assets/images/favicon.png"
     },
     "plugins": [
