@@ -15,8 +15,7 @@ import Animated, {
   useAnimatedStyle, 
   withRepeat, 
   withSequence, 
-  withTiming,
-  withSpring
+  withTiming 
 } from "react-native-reanimated";
 import { api } from "@/src/api";
 import { useAuth } from "@/src/AuthContext";
@@ -27,19 +26,17 @@ import CheckoutBar from "@/src/components/CheckoutBar";
 const { width } = Dimensions.get("window");
 const BANNER_W = width - 32;
 
-// Custom Vibrant Sky Blue & Orange Theme Palette
-const SKY_COLORS = {
-  primary: "#0284C7",        // Rich Sky Blue
-  primaryLight: "#38BDF8",   // Light Sky Blue
-  primarySoft: "#E0F2FE",    // Very Soft Sky Tint
-  primaryGlow: "#7DD3FC",    // Border Glow Sky
-  accent: "#F97316",         // Premium Vibrant Orange
-  accentLight: "#FFEDD5",   // Soft Orange Tint
-  background: "#F0F9FF",     // Subtle Sky Tinted White
-  cardBg: "#FFFFFF",         // Pure White
-  textDark: "#0F172A",       // Dark Slate Text
-  textMuted: "#64748B",      // Muted Slate Text
-  borderGlow: "#38BDF8"      // Flash Border Color
+// Strict 3-Color Theme Palette: Black, White, and Orange
+const THEME = {
+  black: "#0A0A0A",        // Pitch Black
+  blackLight: "#18181B",   // Soft Black Card Bg
+  blackCard: "#121212",    // Deep Dark Surface
+  orange: "#FF6B00",       // Vibrant Dynamic Orange
+  orangeBright: "#FF8800", // Bright Orange Highlight
+  orangeGlow: "rgba(255, 107, 0, 0.4)", // Border Flash
+  white: "#FFFFFF",        // Pure Crisp White
+  whiteMuted: "rgba(255, 255, 255, 0.7)", // Subtitle White
+  whiteSoft: "rgba(255, 255, 255, 0.12)",  // Subtle Border White
 };
 
 // Search bar placeholder texts for animation
@@ -107,9 +104,9 @@ export default function Home() {
   // Animated Search Bar Placeholder Index
   const [placeholderIdx, setPlaceholderIdx] = useState(0);
 
-  // Shared Values for Animated Flash & Pulse Effects
+  // Shared Values for Flashing & Pulsing Theme Animations
   const bellScale = useSharedValue(1);
-  const flashOpacity = useSharedValue(0.3);
+  const flashOpacity = useSharedValue(0.2);
 
   const load = useCallback(async () => {
     try {
@@ -130,12 +127,12 @@ export default function Home() {
     return () => clearInterval(interval);
   }, []);
 
-  // Continuous Border Flash Glow Animation Effect
+  // Continuous Dynamic Flash Animation Effect for Borders
   useEffect(() => {
     flashOpacity.value = withRepeat(
       withSequence(
-        withTiming(1, { duration: 1000 }),
-        withTiming(0.3, { duration: 1000 })
+        withTiming(1, { duration: 900 }),
+        withTiming(0.25, { duration: 900 })
       ),
       -1,
       true
@@ -176,8 +173,9 @@ export default function Home() {
 
   return (
     <View style={[s.root, Platform.OS === 'web' ? ({ height: '100vh', overflow: 'hidden' } as any) : {}]} testID="home-screen">
-      {/* Dynamic Sky Gradient Header */}
-      <LinearGradient colors={[SKY_COLORS.primary, SKY_COLORS.primaryLight]} style={s.headerBg} />
+      {/* Black & Orange Dynamic Header Gradient */}
+      <LinearGradient colors={[THEME.black, "#1C0A00"]} style={s.headerBg} />
+      
       <SafeAreaView edges={["top"]} style={s.headerWrap}>
         <View style={s.headerRow}>
           {/* 1. Address Selector (Route: /addresses) */}
@@ -188,13 +186,13 @@ export default function Home() {
             onPress={() => router.push("/addresses" as any)}
           >
             <View style={s.locIconBg}>
-              <MaterialCommunityIcons name="map-marker-radius" size={20} color={SKY_COLORS.accent} />
+              <MaterialCommunityIcons name="map-marker-radius" size={20} color={THEME.orange} />
             </View>
             <View style={{ flex: 1 }}>
               <Text style={s.locLabel}>Deliver to</Text>
               <Text style={s.locValue} numberOfLines={1}>
                 {selectedAddress}{" "}
-                <MaterialCommunityIcons name="chevron-down" size={16} color="#fff" />
+                <MaterialCommunityIcons name="chevron-down" size={16} color={THEME.orange} />
               </Text>
             </View>
           </Pressable>
@@ -203,7 +201,7 @@ export default function Home() {
           <View style={s.headerActions}>
             <Animated.View style={animatedBellStyle}>
               <Pressable testID="notifications-bell" onPress={handleNotificationPress} style={s.iconBtn}>
-                <MaterialCommunityIcons name="bell-ring-outline" size={22} color="#fff" />
+                <MaterialCommunityIcons name="bell-ring-outline" size={22} color={THEME.white} />
                 {unread > 0 && (
                   <View style={s.bellBadge}>
                     <Text style={s.bellBadgeText}>{unread}</Text>
@@ -214,13 +212,13 @@ export default function Home() {
           </View>
         </View>
 
-        {/* Animated Sky Placeholder Search Bar */}
+        {/* Crisp White Search Bar with Orange Highlights */}
         <Pressable 
           testID="home-search-trigger"
           onPress={() => router.push("/search" as any)}
           style={s.searchWrap}
         >
-          <MaterialCommunityIcons name="magnify" size={22} color={SKY_COLORS.primary} />
+          <MaterialCommunityIcons name="magnify" size={22} color={THEME.orange} />
           <Animated.View 
             key={placeholderIdx} 
             entering={FadeIn.duration(400)} 
@@ -232,7 +230,7 @@ export default function Home() {
             </Text>
           </Animated.View>
           <View style={s.searchMicBg}>
-            <MaterialCommunityIcons name="tune-variant" size={16} color={SKY_COLORS.primary} />
+            <MaterialCommunityIcons name="tune-variant" size={16} color={THEME.white} />
           </View>
         </Pressable>
       </SafeAreaView>
@@ -241,7 +239,7 @@ export default function Home() {
         contentContainerStyle={{ paddingBottom: 120, flexGrow: 1 }}
         refreshControl={
           Platform.OS === 'web' ? undefined : (
-            <RefreshControl tintColor={SKY_COLORS.primary} refreshing={refreshing} onRefresh={onRefresh} />
+            <RefreshControl tintColor={THEME.orange} refreshing={refreshing} onRefresh={onRefresh} />
           )
         }
         showsVerticalScrollIndicator={false}
@@ -249,7 +247,7 @@ export default function Home() {
         style={Platform.OS === 'web' ? ({ height: '100%', overflowY: 'auto', touchAction: 'pan-y' } as any) : {}}
       >
 
-        {/* Animated Sky Banner Carousel with Border Flash */}
+        {/* Animated Banner Carousel with Orange Flashing Border */}
         <FlatList
           horizontal
           style={Platform.OS === 'web' ? { overflowX: 'auto' } : {}}
@@ -257,20 +255,20 @@ export default function Home() {
           showsHorizontalScrollIndicator={false}
           snapToInterval={BANNER_W + 12}
           decelerationRate="fast"
-          contentContainerStyle={{ paddingHorizontal: SPACING.lg, paddingVertical: SPACING.lg, gap: 12 }}
+          contentContainerStyle={{ paddingHorizontal: SPACING.lg, paddingVertical: SPACING.md, gap: 12 }}
           keyExtractor={(it) => String(it.id)}
           renderItem={({ item, index }) => (
-            <Animated.View entering={FadeInUp.delay(index * 100).duration(600).springify()}>
+            <Animated.View entering={FadeInUp.delay(index * 100).duration(600)}>
               <Pressable testID={`banner-${item.id}`} onPress={() => router.push(`/category/${item.category_id}` as any)} style={s.banner}>
                 <Image source={{ uri: item.image }} style={s.bannerImg} contentFit="cover" />
                 <LinearGradient 
-                  colors={["rgba(2, 132, 199, 0.85)", "rgba(15, 23, 42, 0.25)"]} 
+                  colors={["rgba(10, 10, 10, 0.9)", "rgba(10, 10, 10, 0.3)"]} 
                   style={StyleSheet.absoluteFill} 
                   start={{ x: 0, y: 0 }} 
                   end={{ x: 1, y: 1 }} 
                 />
                 
-                {/* Dynamic Flashing Border Layer */}
+                {/* Dynamic Flashing Orange Border */}
                 <Animated.View style={[s.bannerFlashBorder, animatedFlashStyle]} />
 
                 <View style={s.bannerText}>
@@ -285,13 +283,13 @@ export default function Home() {
           )}
         />
 
-        {/* Categories Section with Glowing Animated Tiles */}
-        <SectionTitle title="Shop by Category" subtitle="Explore top items" />
+        {/* Categories Section with Black/Orange Animated Circular Tiles */}
+        <SectionTitle title="Shop by Category" subtitle="Clear, instant ordering" />
         <View style={s.catsGrid}>
           {cats.map((c, index) => (
             <Animated.View 
               key={c.id} 
-              entering={FadeInDown.delay(index * 60).duration(500).springify()}
+              entering={FadeInDown.delay(index * 50).duration(400)}
               style={s.catItemWrap}
             >
               <Pressable
@@ -308,27 +306,28 @@ export default function Home() {
           ))}
         </View>
 
-        {/* Nearby Stores Animated List */}
-        <SectionTitle title="Nearby Stores" subtitle="Fast delivery from local hub" />
+        {/* Nearby Stores Animated List (Chote Tiles Version) */}
+        <SectionTitle title="Nearby Stores" subtitle="Fast delivery hubs" />
         <FlatList
           horizontal
           data={stores}
           showsHorizontalScrollIndicator={false}
-          contentContainerStyle={{ paddingHorizontal: SPACING.lg, gap: SPACING.md, paddingVertical: 4 }}
+          contentContainerStyle={{ paddingHorizontal: SPACING.lg, gap: 10, paddingVertical: 4 }}
           keyExtractor={(it) => String(it.id)}
           renderItem={({ item, index }) => {
             const isAvailable = item.is_online !== false;
 
             return (
-              <Animated.View entering={FadeInUp.delay(index * 90).duration(500)}>
+              <Animated.View entering={FadeInUp.delay(index * 80).duration(400)}>
                 <Pressable 
                   testID={`store-${item.id}`} 
-                  style={[s.storeCard, !isAvailable && { opacity: 0.55, backgroundColor: "#f9fafb" }]}
+                  style={[s.storeCardSmall, !isAvailable && { opacity: 0.5 }]}
                   disabled={!isAvailable}
                   onPress={() => router.push({ pathname: `/store/${item.id}`, params: { name: item.name } } as any)}
                 >
+                  <Animated.View style={[s.storeFlashBorder, animatedFlashStyle]} />
                   <View style={{ position: "relative" }}>
-                    <Image source={{ uri: item.image }} style={s.storeImg} contentFit="cover" />
+                    <Image source={{ uri: item.image }} style={s.storeImgSmall} contentFit="cover" />
                     
                     {!isAvailable && (
                       <View style={s.offlineOverlay}>
@@ -337,23 +336,25 @@ export default function Home() {
                     )}
                   </View>
 
-                  <View style={{ padding: 8 }}>
-                    <Text style={[s.storeName, !isAvailable && { color: SKY_COLORS.textMuted }]} numberOfLines={1}>{item.name}</Text>
+                  <View style={{ padding: 6 }}>
+                    <Text style={[s.storeNameSmall, !isAvailable && { color: THEME.whiteMuted }]} numberOfLines={1}>
+                      {item.name}
+                    </Text>
                     <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 4 }}>
                       
                       {isAvailable ? (
-                        <View style={s.ratePill}>
-                          <MaterialCommunityIcons name="star" size={10} color="#fff" />
-                          <Text style={s.rateText}>{item.rating || "4.5"}</Text>
+                        <View style={s.ratePillSmall}>
+                          <MaterialCommunityIcons name="star" size={9} color={THEME.white} />
+                          <Text style={s.rateTextSmall}>{item.rating || "4.5"}</Text>
                         </View>
                       ) : (
-                        <View style={[s.ratePill, { backgroundColor: SKY_COLORS.textMuted }]}>
-                          <MaterialCommunityIcons name="store-off-outline" size={10} color="#fff" />
-                          <Text style={s.rateText}>Closed</Text>
+                        <View style={[s.ratePillSmall, { backgroundColor: THEME.black }]}>
+                          <MaterialCommunityIcons name="store-off-outline" size={9} color={THEME.whiteMuted} />
+                          <Text style={s.rateTextSmall}>Off</Text>
                         </View>
                       )}
 
-                      <Text style={s.storeMin}>{item.delivery_min || 15} min</Text>
+                      <Text style={s.storeMinSmall}>{item.delivery_min || 15}m</Text>
                     </View>
                   </View>
                 </Pressable>
@@ -362,13 +363,13 @@ export default function Home() {
           }}
         />
 
-        {/* Trending Animated Tile Grid */}
+        {/* Trending Animated Grid */}
         <SectionTitle title="Trending Products" subtitle="Best sellers this week" />
         <View style={s.trendingGrid}>
           {trending.map((item, index) => (
             <Animated.View 
               key={item.id} 
-              entering={FadeInUp.delay(index * 70).duration(500)}
+              entering={FadeInUp.delay(index * 60).duration(400)}
               style={s.productTileCard}
             >
               <Animated.View style={[s.productFlashBorder, animatedFlashStyle]} />
@@ -377,18 +378,18 @@ export default function Home() {
           ))}
         </View>
         
-        <View style={{ height: 24 }} />
+        <View style={{ height: 20 }} />
         
-        {/* Sky & Orange Theme Promise Strip */}
-        <Animated.View entering={FadeIn.delay(300)} style={s.brandStrip}>
+        {/* Black & Orange Promise Strip */}
+        <Animated.View entering={FadeIn.delay(200)} style={s.brandStrip}>
           <LinearGradient 
-            colors={[SKY_COLORS.primary, SKY_COLORS.primaryLight]} 
+            colors={[THEME.blackLight, THEME.black]} 
             style={s.brandStripGradient}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0 }}
           >
             <View style={s.brandIconCircle}>
-              <MaterialCommunityIcons name="shield-check" size={24} color={SKY_COLORS.accent} />
+              <MaterialCommunityIcons name="shield-check" size={22} color={THEME.orange} />
             </View>
             <View style={{ flex: 1 }}>
               <Text style={s.brandStripTitle}>KMT Bazaar Promise</Text>
@@ -407,7 +408,7 @@ export default function Home() {
 function SectionTitle({ title, subtitle }: { title: string; subtitle?: string }) {
   return (
     <View style={s.sectionHead}>
-      <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+      <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
         <View style={s.sectionIndicator} />
         <Text style={s.sectionTitle}>{title}</Text>
       </View>
@@ -417,61 +418,63 @@ function SectionTitle({ title, subtitle }: { title: string; subtitle?: string })
 }
 
 const s = StyleSheet.create({
-  root: { flex: 1, backgroundColor: SKY_COLORS.background },
-  headerBg: { position: "absolute", top: 0, left: 0, right: 0, height: 220, borderBottomLeftRadius: 24, borderBottomRightRadius: 24 },
+  root: { flex: 1, backgroundColor: THEME.black },
+  headerBg: { position: "absolute", top: 0, left: 0, right: 0, height: 210, borderBottomLeftRadius: 20, borderBottomRightRadius: 20 },
   headerWrap: { paddingHorizontal: SPACING.lg, paddingBottom: SPACING.md },
   headerRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingTop: 4 },
   locWrap: { flexDirection: "row", gap: 8, alignItems: "center", flex: 1, marginRight: 12, zIndex: 99, elevation: 5 },
-  locIconBg: { width: 32, height: 32, borderRadius: 16, backgroundColor: "#fff", alignItems: "center", justifyContent: "center" },
-  locLabel: { color: "rgba(255,255,255,0.85)", fontSize: 11, fontWeight: "600" },
-  locValue: { color: "#fff", fontSize: 14, fontWeight: "800" },
+  locIconBg: { width: 34, height: 34, borderRadius: 17, backgroundColor: THEME.blackLight, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: THEME.orange },
+  locLabel: { color: THEME.whiteMuted, fontSize: 11, fontWeight: "600" },
+  locValue: { color: THEME.white, fontSize: 14, fontWeight: "800" },
   headerActions: { flexDirection: "row", alignItems: "center" },
-  iconBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: "rgba(255,255,255,0.25)", alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: "rgba(255,255,255,0.4)" },
-  bellBadge: { position: "absolute", top: 2, right: 2, backgroundColor: SKY_COLORS.accent, minWidth: 18, height: 18, borderRadius: 9, paddingHorizontal: 4, alignItems: "center", justifyContent: "center", borderWidth: 1.5, borderColor: "#fff" },
-  bellBadgeText: { color: "#fff", fontSize: 9, fontWeight: "900" },
+  iconBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: THEME.blackLight, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: THEME.whiteSoft },
+  bellBadge: { position: "absolute", top: 2, right: 2, backgroundColor: THEME.orange, minWidth: 18, height: 18, borderRadius: 9, paddingHorizontal: 4, alignItems: "center", justifyContent: "center", borderWidth: 1.5, borderColor: THEME.black },
+  bellBadgeText: { color: THEME.white, fontSize: 9, fontWeight: "900" },
   
-  searchWrap: { flexDirection: "row", alignItems: "center", backgroundColor: SKY_COLORS.cardBg, borderRadius: RADIUS.pill, paddingHorizontal: 14, paddingVertical: 10, marginTop: SPACING.md, ...shadow.card, height: 48, borderWidth: 1.5, borderColor: SKY_COLORS.primaryGlow },
-  searchPlaceholderText: { fontSize: 14, color: SKY_COLORS.textMuted, fontWeight: "600" },
-  searchMicBg: { backgroundColor: SKY_COLORS.primarySoft, padding: 6, borderRadius: 12 },
+  searchWrap: { flexDirection: "row", alignItems: "center", backgroundColor: THEME.white, borderRadius: RADIUS.pill, paddingHorizontal: 14, paddingVertical: 10, marginTop: SPACING.md, ...shadow.card, height: 48, borderWidth: 1.5, borderColor: THEME.orange },
+  searchPlaceholderText: { fontSize: 14, color: THEME.black, fontWeight: "700" },
+  searchMicBg: { backgroundColor: THEME.orange, padding: 6, borderRadius: 12 },
 
-  banner: { width: BANNER_W, height: 165, borderRadius: RADIUS.lg, overflow: "hidden", backgroundColor: SKY_COLORS.cardBg, position: "relative" },
+  banner: { width: BANNER_W, height: 160, borderRadius: RADIUS.lg, overflow: "hidden", backgroundColor: THEME.blackLight, position: "relative" },
   bannerImg: { width: "100%", height: "100%" },
-  bannerFlashBorder: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, borderRadius: RADIUS.lg, borderWidth: 2, borderColor: SKY_COLORS.accent, pointerEvents: "none" },
-  bannerText: { position: "absolute", left: 18, top: 22, right: 90 },
-  bannerSubtitle: { color: SKY_COLORS.accentLight, fontSize: 12, fontWeight: "800", letterSpacing: 0.5, textTransform: "uppercase" },
-  bannerTitle: { color: "#fff", fontSize: 22, fontWeight: "900", marginTop: 4, textShadowColor: "rgba(0,0,0,0.3)", textShadowRadius: 4 },
-  bannerCta: { marginTop: 14, paddingHorizontal: 16, paddingVertical: 8, borderRadius: RADIUS.pill, alignSelf: "flex-start", backgroundColor: SKY_COLORS.accent },
-  bannerCtaText: { color: "#fff", fontWeight: "800", fontSize: 13 },
+  bannerFlashBorder: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, borderRadius: RADIUS.lg, borderWidth: 2, borderColor: THEME.orange, pointerEvents: "none" },
+  bannerText: { position: "absolute", left: 18, top: 20, right: 90 },
+  bannerSubtitle: { color: THEME.orangeBright, fontSize: 12, fontWeight: "800", letterSpacing: 0.5, textTransform: "uppercase" },
+  bannerTitle: { color: THEME.white, fontSize: 22, fontWeight: "900", marginTop: 4 },
+  bannerCta: { marginTop: 12, paddingHorizontal: 14, paddingVertical: 7, borderRadius: RADIUS.pill, alignSelf: "flex-start", backgroundColor: THEME.orange },
+  bannerCtaText: { color: THEME.white, fontWeight: "800", fontSize: 13 },
   
   sectionHead: { paddingHorizontal: SPACING.lg, marginTop: SPACING.lg, marginBottom: SPACING.sm },
-  sectionIndicator: { width: 4, height: 16, backgroundColor: SKY_COLORS.accent, borderRadius: 2 },
-  sectionTitle: { fontSize: 18, fontWeight: "800", color: SKY_COLORS.textDark },
-  sectionSub: { fontSize: 12, color: SKY_COLORS.textMuted, marginTop: 2, marginLeft: 10 },
+  sectionIndicator: { width: 4, height: 16, backgroundColor: THEME.orange, borderRadius: 2 },
+  sectionTitle: { fontSize: 18, fontWeight: "900", color: THEME.white },
+  sectionSub: { fontSize: 12, color: THEME.whiteMuted, marginTop: 2, marginLeft: 12 },
   
   catsGrid: { flexDirection: "row", flexWrap: "wrap", paddingHorizontal: SPACING.sm },
   catItemWrap: { width: "20%", alignItems: "center", marginBottom: SPACING.md },
   catItem: { alignItems: "center" },
-  catCircle: { width: 62, height: 62, borderRadius: 31, overflow: "hidden", alignItems: "center", justifyContent: "center", borderWidth: 2.5, borderColor: SKY_COLORS.accent, backgroundColor: SKY_COLORS.cardBg, ...shadow.soft },
+  catCircle: { width: 60, height: 60, borderRadius: 30, overflow: "hidden", alignItems: "center", justifyContent: "center", borderWidth: 2, borderColor: THEME.orange, backgroundColor: THEME.blackLight, ...shadow.soft },
   catImg: { width: "100%", height: "100%" },
-  catName: { fontSize: 11, fontWeight: "700", color: SKY_COLORS.textDark, marginTop: 6, textAlign: "center" },
+  catName: { fontSize: 11, fontWeight: "700", color: THEME.white, marginTop: 6, textAlign: "center" },
   
-  storeCard: { width: 170, backgroundColor: SKY_COLORS.cardBg, borderRadius: RADIUS.md, overflow: "hidden", borderWidth: 1.5, borderColor: SKY_COLORS.primaryGlow, ...shadow.soft },
-  storeImg: { width: "100%", height: 85 },
-  storeName: { fontWeight: "800", color: SKY_COLORS.textDark, fontSize: 13 },
-  ratePill: { flexDirection: "row", alignItems: "center", backgroundColor: SKY_COLORS.accent, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6, gap: 2 },
-  rateText: { color: "#fff", fontSize: 11, fontWeight: "800" },
-  storeMin: { fontSize: 11, color: SKY_COLORS.primary, fontWeight: "700" },
+  /* Chote Nearby Store Tiles Styling */
+  storeCardSmall: { width: 135, backgroundColor: THEME.blackCard, borderRadius: RADIUS.md, overflow: "hidden", borderWidth: 1, borderColor: THEME.whiteSoft, position: "relative" },
+  storeFlashBorder: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, borderRadius: RADIUS.md, borderWidth: 1, borderColor: THEME.orange, pointerEvents: "none", zIndex: 2 },
+  storeImgSmall: { width: "100%", height: 65 },
+  storeNameSmall: { fontWeight: "800", color: THEME.white, fontSize: 12 },
+  ratePillSmall: { flexDirection: "row", alignItems: "center", backgroundColor: THEME.orange, paddingHorizontal: 5, paddingVertical: 2, borderRadius: 4, gap: 2 },
+  rateTextSmall: { color: THEME.white, fontSize: 10, fontWeight: "800" },
+  storeMinSmall: { fontSize: 10, color: THEME.whiteMuted, fontWeight: "700" },
 
-  offlineOverlay: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(15, 23, 42, 0.6)", justifyContent: "center", alignItems: "center" },
-  offlineText: { color: "#fff", backgroundColor: "#EF4444", paddingHorizontal: 8, paddingVertical: 4, borderRadius: 4, fontSize: 10, fontWeight: "900" },
+  offlineOverlay: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(10, 10, 10, 0.75)", justifyContent: "center", alignItems: "center" },
+  offlineText: { color: THEME.white, backgroundColor: "#E11D48", paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, fontSize: 9, fontWeight: "900" },
 
   trendingGrid: { flexDirection: "row", flexWrap: "wrap", paddingHorizontal: SPACING.lg, justifyContent: "space-between" },
-  productTileCard: { width: width > 768 ? "23%" : "48%", marginBottom: 14, position: "relative" },
-  productFlashBorder: { position: "absolute", top: -2, left: -2, right: -2, bottom: -2, borderRadius: RADIUS.md, borderWidth: 1.5, borderColor: SKY_COLORS.primaryGlow, zIndex: 1, pointerEvents: "none" },
+  productTileCard: { width: width > 768 ? "23%" : "48%", marginBottom: 12, position: "relative" },
+  productFlashBorder: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, borderRadius: RADIUS.md, borderWidth: 1, borderColor: THEME.orangeGlow, pointerEvents: "none", zIndex: 2 },
 
-  brandStrip: { marginHorizontal: SPACING.lg, marginTop: SPACING.lg, borderRadius: RADIUS.md, overflow: "hidden", ...shadow.card },
+  brandStrip: { marginHorizontal: SPACING.lg, marginTop: SPACING.lg, borderRadius: RADIUS.md, overflow: "hidden", borderWidth: 1, borderColor: THEME.orange },
   brandStripGradient: { flexDirection: "row", gap: SPACING.md, alignItems: "center", padding: SPACING.md },
-  brandIconCircle: { width: 40, height: 40, borderRadius: 20, backgroundColor: "#fff", alignItems: "center", justifyContent: "center" },
-  brandStripTitle: { color: "#fff", fontWeight: "900", fontSize: 15 },
-  brandStripSub: { color: SKY_COLORS.primarySoft, marginTop: 2, fontSize: 12, fontWeight: "600" },
+  brandIconCircle: { width: 38, height: 38, borderRadius: 19, backgroundColor: THEME.black, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: THEME.orange },
+  brandStripTitle: { color: THEME.white, fontWeight: "900", fontSize: 14 },
+  brandStripSub: { color: THEME.whiteMuted, marginTop: 2, fontSize: 12, fontWeight: "600" },
 });
