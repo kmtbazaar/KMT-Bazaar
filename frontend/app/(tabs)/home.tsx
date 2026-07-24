@@ -104,10 +104,11 @@ export default function Home() {
       <LinearGradient colors={[COLORS.brand, COLORS.brandDark]} style={s.headerBg} />
       <SafeAreaView edges={["top"]} style={s.headerWrap}>
         <View style={s.headerRow}>
-          {/* 1. Address Selector (Route: /adresses) */}
+          {/* 1. Address Selector (Route: /addresses) */}
           <Pressable 
             style={s.locWrap} 
             testID="location-selector"
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
             onPress={() => router.push("/addresses" as any)}
           >
             <MaterialCommunityIcons name="map-marker" size={20} color="#fff" />
@@ -304,7 +305,7 @@ const s = StyleSheet.create({
   headerBg: { position: "absolute", top: 0, left: 0, right: 0, height: 220 },
   headerWrap: { paddingHorizontal: SPACING.lg, paddingBottom: SPACING.md },
   headerRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingTop: 4 },
-  locWrap: { flexDirection: "row", gap: 6, alignItems: "center", flex: 1, marginRight: 12 },
+  locWrap: { flexDirection: "row", gap: 6, alignItems: "center", flex: 1, marginRight: 12, zIndex: 99, elevation: 5 },
   locLabel: { color: "rgba(255,255,255,0.7)", fontSize: 11, fontWeight: "600" },
   locValue: { color: "#fff", fontSize: 14, fontWeight: "700" },
   headerActions: { flexDirection: "row", alignItems: "center" },
