@@ -69,20 +69,16 @@ export default function Home() {
         </Pressable>
       </SafeAreaView>
 
-            <ScrollView
-  contentContainerStyle={{ paddingBottom: 100 }}
-  refreshControl={
-    Platform.OS === 'web' ? undefined : (
-      <RefreshControl tintColor={COLORS.brand} refreshing={refreshing} onRefresh={onRefresh} />
-    )
-  }
-  showsVerticalScrollIndicator={false}
-  // 🔥 Chrome Stuck Issue Fix for Web:
-  style={Platform.OS === 'web' ? ({ overscrollBehavior: 'contain', touchAction: 'pan-y' } as any) : {}}
->
-
-
-
+      <ScrollView
+        contentContainerStyle={{ paddingBottom: 100 }}
+        refreshControl={
+          Platform.OS === "web" ? undefined : (
+            <RefreshControl tintColor={COLORS.brand} refreshing={refreshing} onRefresh={onRefresh} />
+          )
+        }
+        showsVerticalScrollIndicator={false}
+        style={Platform.OS === "web" ? ({ overscrollBehavior: "contain", touchAction: "pan-y" } as any) : {}}
+      >
 
         {/* Banner Carousel */}
         <FlatList
@@ -138,20 +134,18 @@ export default function Home() {
           contentContainerStyle={{ paddingHorizontal: SPACING.lg, gap: SPACING.md }}
           keyExtractor={(it) => it.id}
           renderItem={({ item }) => {
-            // 🔥 NAYA: Check agar store available hai ya nahi
             const isAvailable = item.is_online !== false;
 
             return (
               <Pressable 
                 testID={`store-${item.id}`} 
-                style={[s.storeCard, !isAvailable && { opacity: 0.55, backgroundColor: "#f9fafb" }]} // Grey effect
-                disabled={!isAvailable} // 🔥 Click disable karne ke liye
+                style={[s.storeCard, !isAvailable && { opacity: 0.55, backgroundColor: "#f9fafb" }]}
+                disabled={!isAvailable}
                 onPress={() => router.push({ pathname: `/store/${item.id}`, params: { name: item.name } } as any)}
               >
                 <View style={{ position: "relative" }}>
                   <Image source={{ uri: item.image }} style={s.storeImg} contentFit="cover" />
                   
-                  {/* 🔥 NOT AVAILABLE ka badge */}
                   {!isAvailable && (
                     <View style={s.offlineOverlay}>
                       <Text style={s.offlineText}>NOT AVAILABLE</Text>
@@ -223,14 +217,7 @@ function SectionTitle({ title, subtitle }: { title: string; subtitle?: string })
 }
 
 const s = StyleSheet.create({
-  root: { 
-    flex: 1, 
-    backgroundColor: COLORS.surfaceSecondary,
-    ...(Platform.OS === 'web' ? { height: '100vh', overflowY: 'auto' } : {}) 
-  },
-  // ...
-});
-
+  root: { flex: 1, backgroundColor: COLORS.surfaceSecondary },
   headerBg: { position: "absolute", top: 0, left: 0, right: 0, height: 220 },
   headerWrap: { paddingHorizontal: SPACING.lg, paddingBottom: SPACING.md },
   headerRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingTop: 4 },
@@ -267,7 +254,6 @@ const s = StyleSheet.create({
   rateText: { color: "#fff", fontSize: 11, fontWeight: "700" },
   storeMin: { fontSize: 11, color: COLORS.textSecondary },
 
-  // 🔥 NAYA: Offline stores ke styling
   offlineOverlay: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "center", alignItems: "center" },
   offlineText: { color: "#fff", backgroundColor: "#ef4444", paddingHorizontal: 6, paddingVertical: 3, borderRadius: 4, fontSize: 10, fontWeight: "900" },
 
