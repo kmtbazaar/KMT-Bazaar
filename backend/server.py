@@ -493,10 +493,39 @@ async def create_address(data: AddressIn, current=Depends(get_current_user)):
     return addr
 
 
+# 🔥 EDIT / UPDATE ADDRESS
+@api.put("/addresses/{addr_id}")
+async def update_address(addr_id: str, data: AddressIn, current=Depends(get_current_user)):
+    if data.is_default:
+        await db.addresses.update_many({"user_id": current["id"]}, {"$set": {"is_default": False}})
+    
+    res = await db.addresses.update_one(
+        {"id": addr_id, "user_id": current["id"]},
+        {"$set": data.dict()}
+    )
+    if res.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Address not found")
+        
+    updated = await db.addresses.find_one({"id": addr_id, "user_id": current["id"]}, {"_id": 0})
+    return updated
+
+
+# 🔥 DELETE ADDRESS (WITH LOGS)
 @api.delete("/addresses/{addr_id}")
 async def delete_address(addr_id: str, current=Depends(get_current_user)):
-    await db.addresses.delete_one({"id": addr_id, "user_id": current["id"]})
+    print(f"\n--- DELETE REQUEST ---")
+    print(f"Target Addr ID: {addr_id}")
+    print(f"User ID: {current['id']}")
+    
+    res = await db.addresses.delete_one({"id": addr_id, "user_id": current["id"]})
+    
+    if res.deleted_count == 0:
+        print("❌ Delete fail: ID match nahi hui ya user alag tha.")
+        raise HTTPException(status_code=404, detail="Address not found or unauthorized")
+        
+    print("✅ Address successfully deleted from MongoDB!")
     return {"ok": True}
+
 
 
 # ------------------ ORDERS ------------------
