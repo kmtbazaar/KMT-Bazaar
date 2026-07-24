@@ -4,16 +4,17 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { api } from "@/src/api";
+import { useAuth } from "@/src/AuthContext";
 import { COLORS, RADIUS, SPACING, shadow } from "@/src/theme";
 
 export default function Addresses() {
   const router = useRouter();
+  const { user, setUser } = useAuth(); // Auth context for syncing address globally
   const [addresses, setAddresses] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [formVisible, setFormVisible] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  
-  // FIX: Keys updated exactly matching backend Schema (full_name, line1, state added)
+
   const [formData, setFormData] = useState({ 
     label: "Home", 
     full_name: "", 
@@ -38,11 +39,27 @@ export default function Addresses() {
     }
   };
 
+  // 🎯 Address Selection Handler (Checkout Style)
+  const handleSelectAddress = (selectedAddr: any) => {
+    const formattedAddressStr = `${selectedAddr.label || 'Home'} · ${selectedAddr.line1 || selectedAddr.city}`;
+    
+    // Update active address globally in AuthContext
+    if (setUser) {
+      setUser({
+        ...user,
+        activeAddress: selectedAddr,
+        address: formattedAddressStr
+      });
+    }
+
+    // Return back to Home / Checkout page
+    router.back();
+  };
+
   const handleOpenForm = (address?: any) => {
     if (address) {
       const addressId = address.id || address._id;
       setEditingId(addressId);
-      // FIX: Mapping backend fields to form
       setFormData({ 
         label: address.label || "Home", 
         full_name: address.full_name || "", 
@@ -62,7 +79,6 @@ export default function Addresses() {
   const handleSave = async () => {
     Keyboard.dismiss();
 
-    // FIX: Validation updated for new fields
     if (!formData.full_name || !formData.line1 || !formData.city || !formData.state || !formData.pincode || !formData.phone) {
       Alert.alert("Required Fields", "Please fill all fields to proceed.");
       return;
@@ -95,7 +111,10 @@ export default function Addresses() {
   const handleDelete = async (id: string) => {
     Alert.alert("Delete Address", "Are you sure you want to delete this address?", [
       { text: "Cancel", style: "cancel" },
-      { text: "Delete", style: "destructive", onPress: async () => {
+      { 
+        text: "Delete", 
+        style: "destructive", 
+        onPress: async () => {
           try {
             await api.deleteAddress(id);
             loadAddresses();
@@ -117,7 +136,7 @@ export default function Addresses() {
         <TouchableOpacity onPress={() => router.back()} hitSlop={10} style={s.backBtn}>
           <MaterialCommunityIcons name="arrow-left" size={24} color={COLORS.text} />
         </TouchableOpacity>
-        <Text style={s.headerTitle}>Saved Addresses</Text>
+        <Text style={s.headerTitle}>Select Delivery Address</Text>
       </View>
 
       <FlatList
@@ -128,20 +147,40 @@ export default function Addresses() {
         ListEmptyComponent={<Text style={s.emptyText}>No saved addresses found.</Text>}
         renderItem={({ item }) => {
           const itemId = item.id || item._id;
+          // Check if address is active
+          const isSelected = user?.activeAddress?.id === itemId || user?.activeAddress?._id === itemId;
+
           return (
-            <View style={s.card}>
+            <TouchableOpacity 
+              activeOpacity={0.8}
+              onPress={() => handleSelectAddress(item)}
+              style={[s.card, isSelected && s.cardSelected]}
+            >
               <View style={s.cardHeader}>
-                <View style={s.labelBadge}>
-                  <MaterialCommunityIcons name={item.label?.toLowerCase() === "work" ? "briefcase" : "home"} size={14} color={COLORS.brand} />
-                  <Text style={s.labelText}>{item.label || "Home"}</Text>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                  <MaterialCommunityIcons 
+                    name={isSelected ? "radiobox-marked" : "radiobox-blank"} 
+                    size={22} 
+                    color={isSelected ? COLORS.brand : COLORS.textMuted} 
+                  />
+                  <View style={s.labelBadge}>
+                    <MaterialCommunityIcons name={item.label?.toLowerCase() === "work" ? "briefcase" : "home"} size={14} color={COLORS.brand} />
+                    <Text style={s.labelText}>{item.label || "Home"}</Text>
+                  </View>
                 </View>
+
+                {isSelected && (
+                  <View style={s.selectedBadge}>
+                    <Text style={s.selectedBadgeText}>DELIVERING HERE</Text>
+                  </View>
+                )}
               </View>
-              {/* FIX: Using full_name and line1 for display */}
+
               <Text style={s.nameText}>{item.full_name}</Text>
               <Text style={s.addressText}>{item.line1}</Text>
               <Text style={s.addressText}>{item.city}, {item.state} - {item.pincode}</Text>
               <Text style={s.phoneText}>Phone: {item.phone}</Text>
-              
+
               <View style={s.actionRow}>
                 <TouchableOpacity onPress={() => handleOpenForm(item)} style={s.actionBtn}>
                   <Text style={s.actionTextEdit}>EDIT</Text>
@@ -150,8 +189,8 @@ export default function Addresses() {
                   <Text style={s.actionTextDelete}>DELETE</Text>
                 </TouchableOpacity>
               </View>
-            </View>
-          )
+            </TouchableOpacity>
+          );
         }}
       />
 
@@ -167,7 +206,7 @@ export default function Addresses() {
           <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: 'flex-end' }} keyboardShouldPersistTaps="handled">
             <View style={s.modalContent}>
               <Text style={s.modalTitle}>{editingId ? "Edit Address" : "Add New Address"}</Text>
-              
+
               <View style={s.typeRow}>
                 {["Home", "Work", "Other"].map(type => (
                   <TouchableOpacity key={type} onPress={() => setFormData({ ...formData, label: type })} style={[s.typeBtn, formData.label === type && s.typeBtnActive]}>
@@ -176,10 +215,9 @@ export default function Addresses() {
                 ))}
               </View>
 
-              {/* FIX: Form fields updated with full_name, line1, and state */}
               <TextInput style={s.input} placeholder="Receiver's Name" value={formData.full_name} onChangeText={t => setFormData({ ...formData, full_name: t })} />
               <TextInput style={s.input} placeholder="Street / House No." value={formData.line1} onChangeText={t => setFormData({ ...formData, line1: t })} />
-              
+
               <View style={{ flexDirection: "row", gap: 10 }}>
                 <TextInput style={[s.input, { flex: 1 }]} placeholder="City" value={formData.city} onChangeText={t => setFormData({ ...formData, city: t })} />
                 <TextInput style={[s.input, { flex: 1 }]} placeholder="State" value={formData.state} onChangeText={t => setFormData({ ...formData, state: t })} />
@@ -213,10 +251,13 @@ const s = StyleSheet.create({
   backBtn: { marginRight: 16 },
   headerTitle: { fontSize: 18, fontWeight: "800", color: COLORS.text },
   emptyText: { textAlign: "center", marginTop: 40, color: COLORS.textMuted, fontSize: 14 },
-  card: { backgroundColor: "#fff", borderRadius: RADIUS.md, marginBottom: SPACING.md, borderWidth: 1, borderColor: COLORS.border, ...shadow.soft },
-  cardHeader: { padding: SPACING.md, borderBottomWidth: 1, borderColor: COLORS.surfaceSecondary },
-  labelBadge: { flexDirection: "row", alignItems: "center", backgroundColor: COLORS.brandLight, alignSelf: "flex-start", paddingHorizontal: 8, paddingVertical: 4, borderRadius: RADIUS.sm, gap: 4 },
+  card: { backgroundColor: "#fff", borderRadius: RADIUS.md, marginBottom: SPACING.md, borderWidth: 1.5, borderColor: COLORS.border, ...shadow.soft },
+  cardSelected: { borderColor: COLORS.brand, backgroundColor: "#fffaf5" },
+  cardHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", padding: SPACING.md, borderBottomWidth: 1, borderColor: COLORS.surfaceSecondary },
+  labelBadge: { flexDirection: "row", alignItems: "center", backgroundColor: COLORS.brandLight, paddingHorizontal: 8, paddingVertical: 4, borderRadius: RADIUS.sm, gap: 4 },
   labelText: { color: COLORS.brand, fontSize: 12, fontWeight: "700" },
+  selectedBadge: { backgroundColor: COLORS.brand, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 4 },
+  selectedBadgeText: { color: "#fff", fontSize: 9, fontWeight: "900" },
   nameText: { color: COLORS.text, fontSize: 16, fontWeight: "800", paddingHorizontal: SPACING.md, paddingTop: 12, paddingBottom: 2 },
   addressText: { color: COLORS.text, fontSize: 14, paddingHorizontal: SPACING.md, paddingTop: 2, lineHeight: 20 },
   phoneText: { color: COLORS.textMuted, fontSize: 13, paddingHorizontal: SPACING.md, paddingVertical: 6, fontWeight: "600" },
