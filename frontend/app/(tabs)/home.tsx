@@ -39,7 +39,7 @@ export default function Home() {
   const onRefresh = async () => { setRefreshing(true); await load(); setRefreshing(false); };
 
   return (
-    <View style={s.root} testID="home-screen">
+    <View style={[s.root, Platform.OS === 'web' ? ({ height: '100vh', overflow: 'hidden' } as any) : {}]} testID="home-screen">
       <LinearGradient colors={[COLORS.brand, COLORS.brandDark]} style={s.headerBg} />
       <SafeAreaView edges={["top"]} style={s.headerWrap}>
         <View style={s.headerRow}>
@@ -70,14 +70,15 @@ export default function Home() {
       </SafeAreaView>
 
       <ScrollView
-        contentContainerStyle={{ paddingBottom: 100 }}
+        contentContainerStyle={{ paddingBottom: 120, flexGrow: 1 }}
         refreshControl={
-          Platform.OS === "web" ? undefined : (
+          Platform.OS === 'web' ? undefined : (
             <RefreshControl tintColor={COLORS.brand} refreshing={refreshing} onRefresh={onRefresh} />
           )
         }
         showsVerticalScrollIndicator={false}
-        style={Platform.OS === "web" ? ({ overscrollBehavior: "contain", touchAction: "pan-y" } as any) : {}}
+        nestedScrollEnabled={true}
+        style={Platform.OS === 'web' ? ({ height: '100%', overflowY: 'auto', touchAction: 'pan-y' } as any) : {}}
       >
 
         {/* Banner Carousel */}
@@ -179,16 +180,13 @@ export default function Home() {
 
         {/* Trending */}
         <SectionTitle title="Trending Products" subtitle="Best sellers this week" />
-        <FlatList
-          data={trending}
-          scrollEnabled={false}
-          numColumns={width > 768 ? 4 : 2}
-          key={`trending-grid-${width > 768 ? 'web' : 'mobile'}`}
-          contentContainerStyle={{ paddingHorizontal: SPACING.lg, gap: 12 }}
-          columnWrapperStyle={{ justifyContent: "space-between", marginBottom: 12 }}
-          keyExtractor={(it) => it.id}
-          renderItem={({ item }) => (<View style={{ width: width > 768 ? "22%" : "46%", marginHorizontal: "1%" }}><ProductCard p={item} /></View>)}
-        />
+        <View style={{ flexDirection: "row", flexWrap: "wrap", paddingHorizontal: SPACING.lg, justifyContent: "space-between" }}>
+          {trending.map((item) => (
+            <View key={item.id} style={{ width: width > 768 ? "23%" : "48%", marginBottom: 12 }}>
+              <ProductCard p={item} />
+            </View>
+          ))}
+        </View>
         
         <View style={{ height: 24 }} />
         
