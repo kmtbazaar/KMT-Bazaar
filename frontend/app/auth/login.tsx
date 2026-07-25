@@ -80,7 +80,7 @@ export default function Login() {
 
   // Production-grade Password Validation Checker
   const validatePassword = (pass: string) => {
-    const isLengthValid = pass.length >= 10;
+    const isLengthValid = pass.length >= 8;
     const hasUpperCase = /[A-Z]/.test(pass);
     const hasNumber = /[0-9]/.test(pass);
     const hasSymbol = /[^A-Za-z0-9]/.test(pass);
@@ -93,7 +93,7 @@ export default function Login() {
       return;
     }
     if (!validatePassword(password)) {
-      setError("Password must be 10+ chars with uppercase, number & symbol.");
+      setError("Password must be 8+ chars with uppercase, number & symbol.");
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       return;
     }
