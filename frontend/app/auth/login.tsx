@@ -213,10 +213,10 @@ export default function Login() {
                 {/* Password Rule Hint */}
                 {password.length > 0 && (
                   <View style={s.ruleBox}>
-                    <Text style={[s.ruleText, password.length >= 10 && s.ruleValid]}>• Min 10 chars</Text>
-                    <Text style={[s.ruleText, /[A-Z]/.test(password) && s.ruleValid]}>• 1 Uppercase</Text>
-                    <Text style={[s.ruleText, /[0-9]/.test(password) && s.ruleValid]}>• 1 Number</Text>
-                    <Text style={[s.ruleText, /[^A-Za-z0-9]/.test(password) && s.ruleValid]}>• 1 Symbol (!@#..)</Text>
+                    <Text style={[s.ruleText, password.length >= 8 && s.ruleValid]}></Text>
+                    <Text style={[s.ruleText, /[A-Z]/.test(password) && s.ruleValid]}></Text>
+                    <Text style={[s.ruleText, /[0-9]/.test(password) && s.ruleValid]}></Text>
+                    <Text style={[s.ruleText, /[^A-Za-z0-9]/.test(password) && s.ruleValid]}></Text>
                   </View>
                 )}
                 
