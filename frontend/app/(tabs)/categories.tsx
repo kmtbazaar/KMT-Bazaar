@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef } from "react";
-import { View, Text, ScrollView, StyleSheet, Pressable, FlatList, ActivityIndicator, Animated } from "react-native";
+import { View, Text, ScrollView, StyleSheet, Pressable, FlatList, ActivityIndicator } from "react-native";
 import { Image } from "expo-image";
-import { useRouter } from "expo-router";
+import { useRouter, useNavigation } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { api } from "@/src/api";
@@ -11,25 +11,47 @@ import CheckoutBar from "@/src/components/CheckoutBar";
 import { useCart } from "@/src/CartContext";
 
 const RAIL_WIDTH = 88;
-const HEADER_HEIGHT = 60; // Header ki height hide/show calculation ke liye
 
 export default function Categories() {
   const router = useRouter();
+  const navigation = useNavigation(); // Tab bar hide/show control ke liye
   const [cats, setCats] = useState<any[]>([]);
   const [active, setActive] = useState<string>("");
   const [products, setProducts] = useState<any[]>([]);
   const [loadingProducts, setLoadingProducts] = useState(false);
   const { itemCount } = useCart();
 
-  // Scroll Animation state
-  const scrollY = useRef(new Animated.Value(0)).current;
+  // Scroll tracking ke liye ref
+  const lastOffsetY = useRef(0);
 
-  // Header ke liye TranslateY Interpolation (Scroll karne par hide/show hone ke liye)
-  const headerTranslateY = scrollY.interpolate({
-    inputRange: [0, HEADER_HEIGHT],
-    outputRange: [0, -HEADER_HEIGHT],
-    extrapolate: "clamp",
-  });
+  const handleScroll = (event: any) => {
+    const currentOffsetY = event.nativeEvent.contentOffset.y;
+    const diff = currentOffsetY - lastOffsetY.current;
+
+    // Minimum 10px scroll hone par action execute karein
+    if (Math.abs(diff) > 10) {
+      if (diff > 0 && currentOffsetY > 50) {
+        // Scroll DOWN -> Bottom Tab Layout Ko HIDE Karo
+        navigation.setOptions({
+          tabBarStyle: { display: "none" },
+        });
+      } else if (diff < 0) {
+        // Scroll UP -> Bottom Tab Layout Ko UNHIDE Karo
+        navigation.setOptions({
+          tabBarStyle: {
+            position: "absolute",
+            borderTopColor: COLORS.border,
+            backgroundColor: "#FFFFFF",
+            height: 65,
+            paddingTop: 4,
+            paddingBottom: 12,
+            display: "flex",
+          },
+        });
+      }
+      lastOffsetY.current = currentOffsetY;
+    }
+  };
 
   useEffect(() => {
     (async () => {
@@ -65,8 +87,7 @@ export default function Categories() {
 
   return (
     <SafeAreaView style={s.root} edges={["top"]} testID="categories-screen">
-      {/* Animated Header (Scroll Down par Hide, Scroll Up par Show) */}
-      <Animated.View style={[s.header, { transform: [{ translateY: headerTranslateY }] }]}>
+      <View style={s.header}>
         <Text style={s.title}>Categories</Text>
         <Pressable
           testID="search-btn"
@@ -77,7 +98,7 @@ export default function Categories() {
           <MaterialCommunityIcons name="magnify" size={18} color={COLORS.textSecondary} />
           <Text style={s.searchText}>Search</Text>
         </Pressable>
-      </Animated.View>
+      </View>
 
       <View style={s.body}>
         {/* Side rail */}
@@ -134,12 +155,9 @@ export default function Categories() {
                 </View>
               }
               showsVerticalScrollIndicator={false}
-              // Scroll detection ke liye animation handle
+              // Scroll Event Added
+              onScroll={handleScroll}
               scrollEventThrottle={16}
-              onScroll={Animated.event(
-                [{ nativeEvent: { contentOffset: { y: scrollY } } }],
-                { useNativeDriver: true }
-              )}
             />
           )}
         </View>
@@ -153,15 +171,13 @@ export default function Categories() {
 const s = StyleSheet.create({
   root: { flex: 1, backgroundColor: COLORS.surface },
   header: {
-    height: HEADER_HEIGHT,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
     paddingHorizontal: SPACING.lg,
-    paddingTop: SPACING.xs,
+    paddingTop: SPACING.md,
     paddingBottom: SPACING.sm,
     backgroundColor: COLORS.surface,
-    zIndex: 10,
   },
   title: { fontSize: 22, fontWeight: "800", color: COLORS.text },
   searchPill: {
