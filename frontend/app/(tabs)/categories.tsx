@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from "react";
-import { View, Text, ScrollView, StyleSheet, Pressable, FlatList, ActivityIndicator } from "react-native";
+import React, { useEffect, useState, useRef } from "react";
+import { View, Text, ScrollView, StyleSheet, Pressable, FlatList, ActivityIndicator, Animated } from "react-native";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -11,6 +11,7 @@ import CheckoutBar from "@/src/components/CheckoutBar";
 import { useCart } from "@/src/CartContext";
 
 const RAIL_WIDTH = 88;
+const HEADER_HEIGHT = 60; // Header ki height hide/show calculation ke liye
 
 export default function Categories() {
   const router = useRouter();
@@ -19,6 +20,16 @@ export default function Categories() {
   const [products, setProducts] = useState<any[]>([]);
   const [loadingProducts, setLoadingProducts] = useState(false);
   const { itemCount } = useCart();
+
+  // Scroll Animation state
+  const scrollY = useRef(new Animated.Value(0)).current;
+
+  // Header ke liye TranslateY Interpolation (Scroll karne par hide/show hone ke liye)
+  const headerTranslateY = scrollY.interpolate({
+    inputRange: [0, HEADER_HEIGHT],
+    outputRange: [0, -HEADER_HEIGHT],
+    extrapolate: "clamp",
+  });
 
   useEffect(() => {
     (async () => {
@@ -54,7 +65,8 @@ export default function Categories() {
 
   return (
     <SafeAreaView style={s.root} edges={["top"]} testID="categories-screen">
-      <View style={s.header}>
+      {/* Animated Header (Scroll Down par Hide, Scroll Up par Show) */}
+      <Animated.View style={[s.header, { transform: [{ translateY: headerTranslateY }] }]}>
         <Text style={s.title}>Categories</Text>
         <Pressable
           testID="search-btn"
@@ -65,7 +77,7 @@ export default function Categories() {
           <MaterialCommunityIcons name="magnify" size={18} color={COLORS.textSecondary} />
           <Text style={s.searchText}>Search</Text>
         </Pressable>
-      </View>
+      </Animated.View>
 
       <View style={s.body}>
         {/* Side rail */}
@@ -122,6 +134,12 @@ export default function Categories() {
                 </View>
               }
               showsVerticalScrollIndicator={false}
+              // Scroll detection ke liye animation handle
+              scrollEventThrottle={16}
+              onScroll={Animated.event(
+                [{ nativeEvent: { contentOffset: { y: scrollY } } }],
+                { useNativeDriver: true }
+              )}
             />
           )}
         </View>
@@ -135,13 +153,15 @@ export default function Categories() {
 const s = StyleSheet.create({
   root: { flex: 1, backgroundColor: COLORS.surface },
   header: {
+    height: HEADER_HEIGHT,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
     paddingHorizontal: SPACING.lg,
-    paddingTop: SPACING.md,
+    paddingTop: SPACING.xs,
     paddingBottom: SPACING.sm,
     backgroundColor: COLORS.surface,
+    zIndex: 10,
   },
   title: { fontSize: 22, fontWeight: "800", color: COLORS.text },
   searchPill: {
