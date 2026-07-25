@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from "react";
+Import React, { useEffect, useState, useCallback } from "react";
 import { View, Text, ScrollView, StyleSheet, Pressable, FlatList, Dimensions, RefreshControl, Platform } from "react-native";
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
@@ -17,7 +17,7 @@ import Animated, {
 } from "react-native-reanimated";
 import { api } from "@/src/api";
 import { useAuth } from "@/src/AuthContext";
-import { RADIUS, SPACING, LOGO_URL, shadow } from "@/src/theme";
+import { RADIUS, SPACING, shadow } from "@/src/theme";
 import ProductCard from "@/src/components/ProductCard";
 import CheckoutBar from "@/src/components/CheckoutBar";
 
@@ -235,7 +235,7 @@ export default function Home() {
       </SafeAreaView>
 
       <ScrollView
-        contentContainerStyle={{ paddingBottom: 140, flexGrow: 1 }}
+        contentContainerStyle={{ paddingBottom: 120, flexGrow: 1 }}
         refreshControl={
           Platform.OS === 'web' ? undefined : (
             <RefreshControl tintColor={THEME.orange} refreshing={refreshing} onRefresh={onRefresh} />
@@ -385,27 +385,6 @@ export default function Home() {
         </View>
       </ScrollView>
 
-      {/* Floating Bottom Assistant Row: KMTBazaar Logo on LEFT, Assistant.png on RIGHT */}
-      <View style={s.bottomFloatingRow} pointerEvents="box-none">
-        {/* KMTBazaar Logo on Left */}
-        <View style={s.floatingLogoWrap}>
-          <Image source={{ uri: LOGO_URL }} style={s.floatingLogoImg} contentFit="contain" />
-        </View>
-
-        {/* Assistant Button on Right */}
-        <Pressable 
-          style={s.floatingAssistantBtn}
-          onPress={() => router.push("/assistant" as any)}
-          testID="assistant-btn"
-        >
-          <Image 
-            source={require("@/assets/images/assistant.png")} 
-            style={s.assistantImg} 
-            contentFit="contain" 
-          />
-        </Pressable>
-      </View>
-
       {/* Floating Checkout Bar */}
       <CheckoutBar />
     </View>
@@ -488,46 +467,4 @@ const s = StyleSheet.create({
   brandIconCircle: { width: 38, height: 38, borderRadius: 19, backgroundColor: THEME.white, alignItems: "center", justifyContent: "center" },
   brandStripTitle: { color: THEME.white, fontWeight: "900", fontSize: 14 },
   brandStripSub: { color: "#E0F2FE", marginTop: 2, fontSize: 12, fontWeight: "600" },
-
-  /* Bottom Floating Row Styling */
-  bottomFloatingRow: {
-    position: "absolute",
-    bottom: 80,
-    left: 16,
-    right: 16,
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    zIndex: 999,
-  },
-  floatingLogoWrap: {
-    width: 46,
-    height: 46,
-    borderRadius: 23,
-    backgroundColor: THEME.white,
-    alignItems: "center",
-    justifyContent: "center",
-    ...shadow.floating,
-    borderWidth: 1.5,
-    borderColor: THEME.borderSoft,
-  },
-  floatingLogoImg: {
-    width: 34,
-    height: 34,
-  },
-  floatingAssistantBtn: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    backgroundColor: THEME.white,
-    alignItems: "center",
-    justifyContent: "center",
-    ...shadow.floating,
-    borderWidth: 1.5,
-    borderColor: THEME.orange,
-  },
-  assistantImg: {
-    width: 40,
-    height: 40,
-  },
 });
