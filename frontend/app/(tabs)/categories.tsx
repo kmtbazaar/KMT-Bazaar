@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from "react";
-import { View, Text, ScrollView, StyleSheet, Pressable, FlatList, ActivityIndicator } from "react-native";
+import { View, Text, ScrollView, StyleSheet, Pressable, FlatList, ActivityIndicator, Animated } from "react-native";
 import { Image } from "expo-image";
 import { useRouter, useNavigation } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -14,29 +14,49 @@ const RAIL_WIDTH = 88;
 
 export default function Categories() {
   const router = useRouter();
-  const navigation = useNavigation(); // Tab bar hide/show control ke liye
+  const navigation = useNavigation();
   const [cats, setCats] = useState<any[]>([]);
   const [active, setActive] = useState<string>("");
   const [products, setProducts] = useState<any[]>([]);
   const [loadingProducts, setLoadingProducts] = useState(false);
   const { itemCount } = useCart();
 
-  // Scroll tracking ke liye ref
+  // Animated Value for Slide Up / Slide Down Animation (0 = Visible, 100 = Hidden Below Screen)
+  const translateYAnim = useRef(new Animated.Value(0)).current;
   const lastOffsetY = useRef(0);
+  const isHidden = useRef(false);
 
   const handleScroll = (event: any) => {
     const currentOffsetY = event.nativeEvent.contentOffset.y;
     const diff = currentOffsetY - lastOffsetY.current;
 
-    // Minimum 10px scroll hone par action execute karein
+    // Minimum 10px scroll sensitivity
     if (Math.abs(diff) > 10) {
-      if (diff > 0 && currentOffsetY > 50) {
-        // Scroll DOWN -> Bottom Tab Layout Ko HIDE Karo
-        navigation.setOptions({
-          tabBarStyle: { display: "none" },
+      if (diff > 0 && currentOffsetY > 50 && !isHidden.current) {
+        // Scroll DOWN -> Smooth Slide Down (Hide Tab Bar)
+        isHidden.current = true;
+        Animated.timing(translateYAnim, {
+          toValue: 100, // Slide down out of bounds
+          duration: 250,
+          useNativeDriver: false,
+        }).start(({ finished }) => {
+          if (finished) {
+            navigation.setOptions({
+              tabBarStyle: {
+                position: "absolute",
+                borderTopColor: COLORS.border,
+                backgroundColor: "#FFFFFF",
+                height: 65,
+                paddingTop: 4,
+                paddingBottom: 12,
+                transform: [{ translateY: 100 }],
+              },
+            });
+          }
         });
-      } else if (diff < 0) {
-        // Scroll UP -> Bottom Tab Layout Ko UNHIDE Karo
+      } else if (diff < 0 && isHidden.current) {
+        // Scroll UP -> Smooth Slide Up (Show Tab Bar)
+        isHidden.current = false;
         navigation.setOptions({
           tabBarStyle: {
             position: "absolute",
@@ -45,9 +65,14 @@ export default function Categories() {
             height: 65,
             paddingTop: 4,
             paddingBottom: 12,
-            display: "flex",
+            transform: [{ translateY: translateYAnim }],
           },
         });
+        Animated.timing(translateYAnim, {
+          toValue: 0, // Slide up back to position
+          duration: 250,
+          useNativeDriver: false,
+        }).start();
       }
       lastOffsetY.current = currentOffsetY;
     }
@@ -155,7 +180,6 @@ export default function Categories() {
                 </View>
               }
               showsVerticalScrollIndicator={false}
-              // Scroll Event Added
               onScroll={handleScroll}
               scrollEventThrottle={16}
             />
