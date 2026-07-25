@@ -1,40 +1,42 @@
 import { StyleSheet } from "react-native";
 
 export const COLORS = {
-  // ===== BRAND =====
+  // ===== BRAND (Categories matching Primary Orange) =====
   brand: "#f6750b",
-  brandDark: "#eceef4",
-  brandLight: "#DBEAFE",
+  brandDark: "#d66205",
+  brandLight: "#fff2e8",
 
   // ===== ACCENT =====
   accent: "#F97316",
   accentDark: "#EA580C",
   accentLight: "#FFF7ED",
 
-  // ===== BACKGROUND =====
+  // ===== BACKGROUNDS & SURFACES =====
   background: "#F4F7FC",
-  surface: "#FFFFFF",
-  surfaceSecondary: "#F8FAFC",
+  surface: "#FFFFFF",            // Active Rail / Product Grid background
+  surfaceSecondary: "#F8FAFC",   // Inactive Rail Side-bar background
   surfaceTertiary: "#EEF2FF",
   surfaceInverse: "#111827",
 
   // ===== TEXT =====
-  text: "#050c1c",
-  textSecondary: "#4B5563",
-  textMuted: "#9CA3AF",
+  text: "#050c1c",               // Category titles & Main Headings
+  textSecondary: "#4B5563",      // Inactive Rail Labels & Search
+  textMuted: "#9CA3AF",          // Empty state icons & subtle counts
 
-  // ===== BORDER =====
-  border: "#cbd8f1",
+  // ===== BORDERS (Exact Categories Match) =====
+  border: "#cbd8f1",             // Standard rail & grid dividers
   borderStrong: "#CBD5E1",
+  borderActive: "#f6750b",       // Active Category image border
 
   // ===== STATUS =====
   success: "#22C55E",
   warning: "#FACC15",
   error: "#EF4444",
 
-  // ===== EXTRA =====
+  // ===== EXTRA & UTILITY =====
   white: "#FFFFFF",
   black: "#000000",
+  transparent: "transparent",
 
   // ===== PREMIUM COLORS =====
   gold: "#FBBF24",
@@ -42,7 +44,7 @@ export const COLORS = {
   pink: "#EC4899",
   sky: "#0EA5E9",
 
-  // ===== GLASS =====
+  // ===== GLASS & OVERLAYS =====
   glass: "rgba(255,255,255,0.75)",
   overlay: "rgba(0,0,0,0.45)",
 };
@@ -76,6 +78,7 @@ export const FONT = {
 export const LOGO_URL =
   "https://customer-assets.emergentagent.com/job_1ae74cf0-8aee-427c-ac11-8ee2e0303df6/artifacts/xvwo5fui_file_00000000af4c720b99befeb2888762a7.png";
 
+// ===== SHADOWS & ANIMATED BORDER PRESETS =====
 export const shadow = {
   soft: {
     shadowColor: "#000",
@@ -99,6 +102,14 @@ export const shadow = {
     shadowOpacity: 0.15,
     shadowRadius: 20,
     elevation: 10,
+  },
+
+  // Active Category Rail Border Highlight Style
+  railBarActive: {
+    width: 3,
+    backgroundColor: COLORS.brand,
+    borderTopRightRadius: 4,
+    borderBottomRightRadius: 4,
   },
 };
 
