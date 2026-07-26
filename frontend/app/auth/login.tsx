@@ -148,7 +148,7 @@ export default function Login() {
         <AnimatedTile delay={1500} color="#FF6E00" />
       </View>
 
-      <SafeAreaView edges={["top"]} style={{ alignItems: "center", paddingTop: SPACING.lg, zIndex: 2 }}>
+      <SafeAreaView edges={["top"]} style={{ alignItems: "center", paddingTop:100 SPACING.lg, zIndex: 2 }}>
         {/* Sky Blue Accent Header Bar */}
         <View style={s.skyBlueBanner}>
           <LinearGradient
