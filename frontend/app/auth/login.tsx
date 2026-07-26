@@ -1,7 +1,3 @@
-
-
-
-
 import AIAssistant from "../../components/AIAssistant";
 import React, { useState, useEffect } from "react";
 import {
@@ -162,12 +158,7 @@ export default function Login() {
           />
         </View>
 
-        {/* Animated Logo & Text */}
-        <Animated.View entering={ZoomIn.duration(700).springify()}>
-          <View style={s.logoGlowContainer}>
-            <Image source={{ uri: LOGO_URL }} style={s.logo} contentFit="contain" />
-          </View>
-        </Animated.View>
+        {/* Animated Text Header (Logo removed from top) */}
         <Animated.Text entering={FadeInDown.delay(200).springify()} style={s.appName}>KMT BAZAAR</Animated.Text>
         <Animated.Text entering={FadeInDown.delay(350).springify()} style={s.welcome}>Welcome back, login to continue</Animated.Text>
       </SafeAreaView>
@@ -267,6 +258,13 @@ export default function Login() {
         </ScrollView>
       </KeyboardAvoidingView>
 
+      {/* Shifted Logo to Left Bottom Corner */}
+      <Animated.View entering={ZoomIn.duration(700).springify()} style={s.bottomLeftLogoContainer}>
+        <View style={s.logoGlowContainer}>
+          <Image source={{ uri: LOGO_URL }} style={s.logo} contentFit="contain" />
+        </View>
+      </Animated.View>
+
       <AIAssistant />
 
     </View>
@@ -328,6 +326,13 @@ const s = StyleSheet.create({
     shadowRadius: 10,
   },
 
+  bottomLeftLogoContainer: {
+    position: "absolute",
+    bottom: 25,
+    left: 20,
+    zIndex: 10,
+  },
+
   logoGlowContainer: {
     padding: 4,
     borderRadius: 60,
@@ -337,7 +342,7 @@ const s = StyleSheet.create({
     shadowRadius: 12,
     elevation: 8,
   },
-  logo: { width: 100, height: 100, marginTop: SPACING.xs },
+  logo: { width: 80, height: 80 },
   appName: { color: "#FFFFFF", fontSize: 26, fontWeight: "900", letterSpacing: 3, marginTop: 10 },
   welcome: { color: "#00B4D8", marginTop: 4, marginBottom: SPACING.lg, fontSize: 14, fontWeight: "600" },
   
