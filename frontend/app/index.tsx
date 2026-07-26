@@ -9,12 +9,16 @@ import {
   SafeAreaView,
   StatusBar,
   Dimensions,
+  ImageBackground,
 } from "react-native";
 import { router } from "expo-router";
 
 // --- GIF IMPORTS ---
 import AssistantGif from "../assets/images/assistant.gif";
 import VoiceGif from "../assets/images/voice.gif"; 
+
+// Premium Brown Leather Texture URL
+const LEATHER_BG_URL = "https://www.transparenttextures.com/patterns/leather.png";
 
 const { width } = Dimensions.get("window");
 
@@ -41,13 +45,17 @@ export default function Index() {
   // --- VIEW 2: INTERACTIVE ASSISTANT SCREEN ---
   if (showAssistant) {
     return (
-      <View style={styles.blackBackground}>
+      <ImageBackground
+        source={{ uri: LEATHER_BG_URL }}
+        style={styles.leatherBackground}
+        resizeMode="repeat"
+      >
         <StatusBar barStyle="light-content" />
         <SafeAreaView style={styles.safeArea}>
           <Animated.View style={[styles.mainContent, { opacity: fadeAnim }]}>
             
-            {/* Header Text Inside Blue Gradient Tile */}
-            <View style={styles.blueGradientTile}>
+            {/* Header Text Inside Gold Accent Leather Tile */}
+            <View style={styles.headerTile}>
               <Text style={styles.tileTitle}>KMT Bazaar Assistant</Text>
               <Text style={styles.tileSubtitle}>
               [ Aapka Live Assistant ]
@@ -101,27 +109,31 @@ export default function Index() {
 
           </Animated.View>
         </SafeAreaView>
-      </View>
+      </ImageBackground>
     );
   }
 
-  // --- VIEW 1: BLACK SPLASH SCREEN ---
+  // --- VIEW 1: BROWN LEATHER SPLASH SCREEN ---
   return (
-    <View style={styles.splashContainer}>
+    <ImageBackground
+      source={{ uri: LEATHER_BG_URL }}
+      style={styles.splashContainer}
+      resizeMode="repeat"
+    >
       <StatusBar barStyle="light-content" />
       <Image
         source={require("../assets/images/splash-icon.png")}
         style={{ width: 220, height: 220, resizeMode: "contain" }}
       />
-    </View>
+    </ImageBackground>
   );
 }
 
 // --- STYLES ---
 const styles = StyleSheet.create({
-  blackBackground: {
+  leatherBackground: {
     flex: 1,
-    backgroundColor: "#000000",
+    backgroundColor: "#2B1704", // Deep Rich Saddle Brown Base Color
   },
   safeArea: {
     flex: 1,
@@ -130,7 +142,7 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "#000000",
+    backgroundColor: "#2B1704",
   },
   mainContent: {
     flex: 1,
@@ -141,33 +153,34 @@ const styles = StyleSheet.create({
     paddingBottom: 25,
   },
 
-  // Blue Gradient Style Tile for Header Text
-  blueGradientTile: {
+  // Premium Header Tile with Faux Stitching Effect
+  headerTile: {
     width: "100%",
-    backgroundColor: "#1E3A8A", // Deep Rich Blue
+    backgroundColor: "#1C0D02", 
     paddingVertical: 18,
     paddingHorizontal: 20,
     borderRadius: 20,
     borderWidth: 1.5,
-    borderColor: "#3B82F6", // Bright Blue Glowing Border
+    borderColor: "#D4AF37", // Warm Brass / Metallic Gold Border
+    borderStyle: "dashed", // Stitching Line Feel
     alignItems: "center",
     marginTop: 10,
     // Native Elevation & Shadow Effect
-    shadowColor: "#2563EB",
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.35,
+    shadowOpacity: 0.5,
     shadowRadius: 10,
     elevation: 8,
   },
   tileTitle: {
     fontSize: 26,
     fontWeight: "800",
-    color: "#FFFFFF",
+    color: "#F3E5AB", // Warm Cream Color
     textAlign: "center",
   },
   tileSubtitle: {
     fontSize: 13,
-    color: "#93C5FD", // Soft Ice Blue Accent
+    color: "#D4AF37", // Warm Gold Accent
     marginTop: 6,
     textAlign: "center",
     lineHeight: 18,
@@ -177,7 +190,7 @@ const styles = StyleSheet.create({
   characterContainer: {
     width: "100%",
     height: 340,
-    justifyContent: "center",
+    justify.content: "center",
     alignItems: "center",
   },
   characterWrapper: {
@@ -216,28 +229,28 @@ const styles = StyleSheet.create({
     elevation: 5,
   },
   primaryGradientBtn: {
-    backgroundColor: "#E63946",
+    backgroundColor: "#8B261D", // Rich Crimson Red Button (Matches Leather Theme)
     paddingVertical: 16,
     borderRadius: 16,
     alignItems: "center",
-    borderTopWidth: 1,
-    borderTopColor: "rgba(255, 255, 255, 0.3)",
+    borderWidth: 1,
+    borderColor: "#D4AF37", // Subtle Gold Stitching Line
   },
   primaryBtnText: {
-    color: "#FFFFFF",
+    color: "#FFF8DC",
     fontSize: 17,
     fontWeight: "700",
   },
   secondaryBtn: {
-    backgroundColor: "transparent",
+    backgroundColor: "rgba(28, 13, 2, 0.6)",
     borderWidth: 1.5,
-    borderColor: "rgba(250, 249, 246, 0.3)",
+    borderColor: "rgba(212, 175, 55, 0.5)",
     paddingVertical: 15,
     borderRadius: 16,
     alignItems: "center",
   },
   secondaryBtnText: {
-    color: "#FAF9F6",
+    color: "#F3E5AB",
     fontSize: 16,
     fontWeight: "600",
   },
