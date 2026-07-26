@@ -158,7 +158,7 @@ export default function Login() {
           />
         </View>
 
-        {/* Animated Text Header shifted further down */}
+        {/* Animated Text Header */}
         <Animated.Text entering={FadeInDown.delay(200).springify()} style={s.appName}>KMT BAZAAR</Animated.Text>
         <Animated.Text entering={FadeInDown.delay(350).springify()} style={s.welcome}>Welcome back, login to continue</Animated.Text>
       </SafeAreaView>
@@ -348,7 +348,7 @@ const s = StyleSheet.create({
   
   cardWrapper: {
     paddingHorizontal: SPACING.lg,
-    paddingTop: 140,
+    paddingTop: 10, // Fixed: removed the large gap
     paddingBottom: 110,
   },
   
