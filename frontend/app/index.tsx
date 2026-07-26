@@ -9,16 +9,12 @@ import {
   SafeAreaView,
   StatusBar,
   Dimensions,
-  ImageBackground,
 } from "react-native";
 import { router } from "expo-router";
 
 // --- GIF IMPORTS ---
 import AssistantGif from "../assets/images/assistant.gif";
 import VoiceGif from "../assets/images/voice.gif"; 
-
-// Premium Black Leather Texture URL
-const LEATHER_BG_URL = "https://www.transparenttextures.com/patterns/black-linen-2.png";
 
 const { width } = Dimensions.get("window");
 
@@ -45,17 +41,13 @@ export default function Index() {
   // --- VIEW 2: INTERACTIVE ASSISTANT SCREEN ---
   if (showAssistant) {
     return (
-      <ImageBackground
-        source={{ uri: LEATHER_BG_URL }}
-        style={styles.leatherBackground}
-        resizeMode="repeat"
-      >
+      <View style={styles.blackBackground}>
         <StatusBar barStyle="light-content" />
         <SafeAreaView style={styles.safeArea}>
           <Animated.View style={[styles.mainContent, { opacity: fadeAnim }]}>
             
-            {/* Header Text Inside Sleek Metallic Silver Tile */}
-            <View style={styles.headerTile}>
+            {/* Header Text Inside Blue Gradient Tile */}
+            <View style={styles.blueGradientTile}>
               <Text style={styles.tileTitle}>KMT Bazaar Assistant</Text>
               <Text style={styles.tileSubtitle}>
               [ Aapka Live Assistant ]
@@ -109,31 +101,27 @@ export default function Index() {
 
           </Animated.View>
         </SafeAreaView>
-      </ImageBackground>
+      </View>
     );
   }
 
-  // --- VIEW 1: BLACK LEATHER SPLASH SCREEN ---
+  // --- VIEW 1: BLACK SPLASH SCREEN ---
   return (
-    <ImageBackground
-      source={{ uri: LEATHER_BG_URL }}
-      style={styles.splashContainer}
-      resizeMode="repeat"
-    >
+    <View style={styles.splashContainer}>
       <StatusBar barStyle="light-content" />
       <Image
         source={require("../assets/images/splash-icon.png")}
         style={{ width: 220, height: 220, resizeMode: "contain" }}
       />
-    </ImageBackground>
+    </View>
   );
 }
 
 // --- STYLES ---
 const styles = StyleSheet.create({
-  leatherBackground: {
+  blackBackground: {
     flex: 1,
-    backgroundColor: "#121212", // Deep Charcoal Black Base
+    backgroundColor: "#000000",
   },
   safeArea: {
     flex: 1,
@@ -142,7 +130,7 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "#121212",
+    backgroundColor: "#000000",
   },
   mainContent: {
     flex: 1,
@@ -153,34 +141,33 @@ const styles = StyleSheet.create({
     paddingBottom: 25,
   },
 
-  // Premium Header Tile with Silver Stitching Effect
-  headerTile: {
+  // Blue Gradient Style Tile for Header Text
+  blueGradientTile: {
     width: "100%",
-    backgroundColor: "#1E1E1E", 
+    backgroundColor: "#1E3A8A", // Deep Rich Blue
     paddingVertical: 18,
     paddingHorizontal: 20,
     borderRadius: 20,
     borderWidth: 1.5,
-    borderColor: "#A0A0A0", // Metallic Silver Border
-    borderStyle: "dashed", // Stitching Line Feel
+    borderColor: "#3B82F6", // Bright Blue Glowing Border
     alignItems: "center",
     marginTop: 10,
     // Native Elevation & Shadow Effect
-    shadowColor: "#000",
+    shadowColor: "#2563EB",
     shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.6,
+    shadowOpacity: 0.35,
     shadowRadius: 10,
     elevation: 8,
   },
   tileTitle: {
     fontSize: 26,
     fontWeight: "800",
-    color: "#FFFFFF", // Clean Crisp White
+    color: "#FFFFFF",
     textAlign: "center",
   },
   tileSubtitle: {
     fontSize: 13,
-    color: "#B0B0B0", // Soft Metallic Gray
+    color: "#93C5FD", // Soft Ice Blue Accent
     marginTop: 6,
     textAlign: "center",
     lineHeight: 18,
@@ -229,12 +216,12 @@ const styles = StyleSheet.create({
     elevation: 5,
   },
   primaryGradientBtn: {
-    backgroundColor: "#222222", // Sleek Dark Matte Button
+    backgroundColor: "#E63946",
     paddingVertical: 16,
     borderRadius: 16,
     alignItems: "center",
-    borderWidth: 1,
-    borderColor: "#E0E0E0", // Glowing Silver Accent
+    borderTopWidth: 1,
+    borderTopColor: "rgba(255, 255, 255, 0.3)",
   },
   primaryBtnText: {
     color: "#FFFFFF",
@@ -242,15 +229,15 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
   secondaryBtn: {
-    backgroundColor: "rgba(255, 255, 255, 0.05)",
+    backgroundColor: "transparent",
     borderWidth: 1.5,
-    borderColor: "rgba(255, 255, 255, 0.2)",
+    borderColor: "rgba(250, 249, 246, 0.3)",
     paddingVertical: 15,
     borderRadius: 16,
     alignItems: "center",
   },
   secondaryBtnText: {
-    color: "#E0E0E0",
+    color: "#FAF9F6",
     fontSize: 16,
     fontWeight: "600",
   },
