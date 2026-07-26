@@ -190,7 +190,7 @@ const styles = StyleSheet.create({
   characterContainer: {
     width: "100%",
     height: 340,
-    justify.content: "center",
+    justifyContent: "center", 
     alignItems: "center",
   },
   characterWrapper: {
@@ -229,12 +229,12 @@ const styles = StyleSheet.create({
     elevation: 5,
   },
   primaryGradientBtn: {
-    backgroundColor: "#8B261D", // Rich Crimson Red Button (Matches Leather Theme)
+    backgroundColor: "#8B261D", // Rich Crimson Red Button
     paddingVertical: 16,
     borderRadius: 16,
     alignItems: "center",
     borderWidth: 1,
-    borderColor: "#D4AF37", // Subtle Gold Stitching Line
+    borderColor: "#D4AF37",
   },
   primaryBtnText: {
     color: "#FFF8DC",
