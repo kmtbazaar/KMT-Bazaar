@@ -344,7 +344,7 @@ const s = StyleSheet.create({
   },
   logo: { width: 80, height: 80 },
   appName: { color: "#FFFFFF", fontSize: 26, fontWeight: "900", letterSpacing: 3, marginTop: 15 },
-  welcome: { color: "#00B4D8", marginTop: 4, marginBottom: SPY_MARGIN = SPACING.md, fontSize: 14, fontWeight: "600" },
+  welcome: { color: "#00B4D8", marginTop: 4, marginBottom: SPACING.md, fontSize: 14, fontWeight: "600" },
   
   cardWrapper: {
     paddingHorizontal: SPACING.lg,
@@ -413,7 +413,7 @@ const s = StyleSheet.create({
     fontWeight: "600",
   },
   ruleValid: {
-    color: "#10B981", // Green check indicator for matched rules
+    color: "#10B981",
   },
   
   cta: { 
