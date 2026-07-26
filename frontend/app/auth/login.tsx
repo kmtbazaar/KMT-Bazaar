@@ -147,7 +147,7 @@ export default function Login() {
         <AnimatedTile delay={1500} color="#FF6E00" />
       </View>
 
-      <SafeAreaView edges={["top"]} style={{ alignItems: "center", paddingTop: SPACING.lg, zIndex: 2 }}>
+      <SafeAreaView edges={["top"]} style={{ alignItems: "center", paddingTop: SPACING.xs, zIndex: 2 }}>
         {/* Sky Blue Accent Header Bar */}
         <View style={s.skyBlueBanner}>
           <LinearGradient
@@ -312,7 +312,7 @@ const s = StyleSheet.create({
   skyBlueBanner: {
     width: "100%",
     height: 2,
-    marginBottom: SPACING.md,
+    marginBottom: SPACING.xs,
     alignItems: "center",
   },
   skyBlueLine: {
@@ -333,20 +333,22 @@ const s = StyleSheet.create({
     shadowRadius: 12,
     elevation: 8,
   },
-  logo: { width: 100, height: 100, marginTop: SPACING.xs },
-  appName: { color: "#FFFFFF", fontSize: 26, fontWeight: "900", letterSpacing: 3, marginTop: 10 },
-  welcome: { color: "#00B4D8", marginTop: 4, marginBottom: SPACING.lg, fontSize: 14, fontWeight: "600" },
+  logo: { width: 90, height: 90, marginTop: 0 },
+  appName: { color: "#FFFFFF", fontSize: 24, fontWeight: "900", letterSpacing: 3, marginTop: 6 },
+  welcome: { color: "#00B4D8", marginTop: 2, marginBottom: SPACING.sm, fontSize: 13, fontWeight: "600" },
   
   cardWrapper: {
+    flexGrow: 1,
+    justifyContent: "flex-end", // Push card down to the bottom elements
     paddingHorizontal: SPACING.lg,
-    paddingBottom: 40,
+    paddingBottom: 0, // Touch bottom elements
   },
   
   card: {
     backgroundColor: "#FFFFFF", 
     borderRadius: 24, 
-    padding: SPACING.xl, 
-    paddingBottom: 35,
+    padding: SPACING.lg, 
+    paddingBottom: 24,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 12 },
     shadowOpacity: 0.25,
@@ -354,6 +356,8 @@ const s = StyleSheet.create({
     elevation: 10,
     overflow: "hidden",
     position: "relative",
+    marginTop: "auto", // Niche touch karwayega
+    marginBottom: -5,  // Extra alignment if needed
   },
   cardTopBorder: {
     position: "absolute",
@@ -368,11 +372,11 @@ const s = StyleSheet.create({
     backgroundColor: "#F1F5F9", 
     borderRadius: RADIUS.pill, 
     padding: 4, 
-    marginBottom: SPACING.xl, 
+    marginBottom: SPACING.lg, 
     borderWidth: 1, 
     borderColor: "#E2E8F0" 
   },
-  tab: { flex: 1, paddingVertical: 10, alignItems: "center", borderRadius: RADIUS.pill },
+  tab: { flex: 1, paddingVertical: 8, alignItems: "center", borderRadius: RADIUS.pill },
   tabActive: { backgroundColor: "#FFFFFF", shadowColor: "#000", shadowOpacity: 0.08, shadowRadius: 4, elevation: 2 },
   tabText: { color: "#64748B", fontWeight: "700", fontSize: 13 },
   tabTextActive: { color: "#FF6E00", fontWeight: "800" },
@@ -384,17 +388,17 @@ const s = StyleSheet.create({
     backgroundColor: "#F8FAFC", 
     borderRadius: RADIUS.lg, 
     paddingHorizontal: 16, 
-    marginBottom: SPACING.md, 
+    marginBottom: SPACING.sm, 
     borderWidth: 1.5, 
     borderColor: "#E2E8F0" 
   },
-  input: { flex: 1, paddingVertical: 14, fontSize: 15, color: "#0F172A", fontWeight: "500" },
+  input: { flex: 1, paddingVertical: 12, fontSize: 15, color: "#0F172A", fontWeight: "500" },
 
   ruleBox: {
     flexDirection: "row",
     flexWrap: "wrap",
     gap: 8,
-    marginBottom: SPACING.md,
+    marginBottom: SPACING.sm,
     paddingHorizontal: 4,
   },
   ruleText: {
@@ -403,7 +407,7 @@ const s = StyleSheet.create({
     fontWeight: "600",
   },
   ruleValid: {
-    color: "#10B981", // Green check indicator for matched rules
+    color: "#10B981", 
   },
   
   cta: { 
@@ -416,10 +420,10 @@ const s = StyleSheet.create({
     shadowRadius: 8, 
     elevation: 5 
   },
-  ctaGrad: { paddingVertical: 16, alignItems: "center", justifyContent: "center" },
+  ctaGrad: { paddingVertical: 14, alignItems: "center", justifyContent: "center" },
   ctaText: { color: "#FFFFFF", fontSize: 16, fontWeight: "800", letterSpacing: 0.5 },
   
-  alt: { textAlign: "center", marginTop: SPACING.lg, color: "#64748B", fontSize: 14 },
-  altLink: { color: "#FF6E00", fontWeight: "800", fontSize: 14 },
-  err: { color: "#EF4444", marginTop: 4, marginBottom: 12, fontSize: 13, fontWeight: "600", marginLeft: 4 },
+  alt: { textAlign: "center", marginTop: SPACING.md, color: "#64748B", fontSize: 13 },
+  altLink: { color: "#FF6E00", fontWeight: "800", fontSize: 13 },
+  err: { color: "#EF4444", marginTop: 2, marginBottom: 8, fontSize: 12, fontWeight: "600", marginLeft: 4 },
 });
