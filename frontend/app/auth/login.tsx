@@ -1,7 +1,3 @@
-
-
-
-
 import AIAssistant from "../../components/AIAssistant";
 import React, { useState, useEffect } from "react";
 import {
@@ -27,7 +23,7 @@ import Animated, {
 import { useAuth } from "@/src/AuthContext";
 import { COLORS, LOGO_URL, RADIUS, SPACING } from "@/src/theme";
 
-const { width } = Dimensions.get("window");
+const { width, height } = Dimensions.get("window");
 
 // Animated Background Tile Component
 function AnimatedTile({ delay = 0, color = "#00B4D8" }: { delay?: number; color?: string }) {
@@ -151,7 +147,7 @@ export default function Login() {
         <AnimatedTile delay={1500} color="#FF6E00" />
       </View>
 
-      <SafeAreaView edges={["top"]} style={{ alignItems: "center", paddingTop: SPACING.lg, zIndex: 2 }}>
+      <SafeAreaView edges={["top"]} style={s.safeAreaShift}>
         {/* Sky Blue Accent Header Bar */}
         <View style={s.skyBlueBanner}>
           <LinearGradient
@@ -217,10 +213,10 @@ export default function Login() {
                 {/* Password Rule Hint */}
                 {password.length > 0 && (
                   <View style={s.ruleBox}>
-                    <Text style={[s.ruleText, password.length >= 8 && s.ruleValid]}></Text>
-                    <Text style={[s.ruleText, /[A-Z]/.test(password) && s.ruleValid]}></Text>
-                    <Text style={[s.ruleText, /[0-9]/.test(password) && s.ruleValid]}></Text>
-                    <Text style={[s.ruleText, /[^A-Za-z0-9]/.test(password) && s.ruleValid]}></Text>
+                    <Text style={[s.ruleText, password.length >= 8 && s.ruleValid]}>8+ Chars</Text>
+                    <Text style={[s.ruleText, /[A-Z]/.test(password) && s.ruleValid]}>1 Uppercase</Text>
+                    <Text style={[s.ruleText, /[0-9]/.test(password) && s.ruleValid]}>1 Number</Text>
+                    <Text style={[s.ruleText, /[^A-Za-z0-9]/.test(password) && s.ruleValid]}>1 Symbol</Text>
                   </View>
                 )}
                 
@@ -234,6 +230,11 @@ export default function Login() {
                 
                 <Pressable onPress={() => router.push("/auth/register" as any)} testID="goto-register">
                   <Text style={s.alt}>New to KMT Bazaar? <Text style={s.altLink}>Create account</Text></Text>
+                </Pressable>
+                
+                {/* FORGOT PASSWORD LINK ADDED HERE */}
+                <Pressable onPress={() => router.push("/auth/forgot-password" as any)} testID="goto-forgot-password">
+                  <Text style={s.forgotPassword}>Forgot password?</Text>
                 </Pressable>
               </>
             ) : (
@@ -313,6 +314,12 @@ const s = StyleSheet.create({
     marginVertical: 8,
   },
 
+  safeAreaShift: { 
+    alignItems: "center", 
+    paddingTop: SPACING.lg, 
+    marginTop: height * 0.05, // Added margin to shift text/logo down slightly
+    zIndex: 2 
+  },
   skyBlueBanner: {
     width: "100%",
     height: 2,
@@ -343,7 +350,8 @@ const s = StyleSheet.create({
   
   cardWrapper: {
     paddingHorizontal: SPACING.lg,
-    paddingBottom: 40,
+    paddingTop: 15,          // Added padding top to push card down
+    paddingBottom: 120,      // Increased to leave room for character PNG at the bottom
   },
   
   card: {
@@ -425,5 +433,14 @@ const s = StyleSheet.create({
   
   alt: { textAlign: "center", marginTop: SPACING.lg, color: "#64748B", fontSize: 14 },
   altLink: { color: "#FF6E00", fontWeight: "800", fontSize: 14 },
+  
+  forgotPassword: { 
+    textAlign: "center", 
+    marginTop: SPACING.md, 
+    color: "#FF6E00", 
+    fontSize: 14, 
+    fontWeight: "700" 
+  },
+  
   err: { color: "#EF4444", marginTop: 4, marginBottom: 12, fontSize: 13, fontWeight: "600", marginLeft: 4 },
 });
