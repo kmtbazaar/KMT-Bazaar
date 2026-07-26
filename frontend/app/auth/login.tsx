@@ -1,4 +1,4 @@
-import AIAssistant from "../../components/AIAssistant";
+Import AIAssistant from "../../components/AIAssistant";
 import React, { useState, useEffect } from "react";
 import {
   View, Text, TextInput, Pressable, StyleSheet, ScrollView,
@@ -78,7 +78,6 @@ export default function Login() {
   const [error, setError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
 
-  // Production-grade Password Validation Checker
   const validatePassword = (pass: string) => {
     const isLengthValid = pass.length >= 8;
     const hasUpperCase = /[A-Z]/.test(pass);
@@ -137,7 +136,7 @@ export default function Login() {
       {/* Dark Ambient Background Gradient */}
       <LinearGradient colors={["#050B14", "#0A1224", "#000000"]} style={s.headerBg} />
 
-      {/* Animated Environment Tiles & Glowing Flashes */}
+      {/* Animated Environment Tiles */}
       <View style={s.tilesWrapper} pointerEvents="none">
         <AnimatedTile delay={0} color="#00B4D8" />
         <AnimatedTile delay={600} color="#FF6E00" />
@@ -158,12 +157,14 @@ export default function Login() {
           />
         </View>
 
-        {/* Animated Logo & Text */}
+        {/* Animated Logo */}
         <Animated.View entering={ZoomIn.duration(700).springify()}>
           <View style={s.logoGlowContainer}>
             <Image source={{ uri: LOGO_URL }} style={s.logo} contentFit="contain" />
           </View>
         </Animated.View>
+
+        {/* Text Container pushed down over tiles */}
         <Animated.Text entering={FadeInDown.delay(200).springify()} style={s.appName}>KMT BAZAAR</Animated.Text>
         <Animated.Text entering={FadeInDown.delay(350).springify()} style={s.welcome}>Welcome back, login to continue</Animated.Text>
       </SafeAreaView>
@@ -171,7 +172,7 @@ export default function Login() {
       <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={{ flex: 1, zIndex: 2 }}>
         <ScrollView contentContainerStyle={s.cardWrapper} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
           
-          {/* Solid White Card with Top Gradient Border */}
+          {/* Solid White Login Card */}
           <View style={s.card}>
             <LinearGradient
               colors={["#00B4D8", "#FF6E00"]}
@@ -210,7 +211,6 @@ export default function Login() {
                   </Pressable>
                 </View>
 
-                {/* Password Rule Hint */}
                 {password.length > 0 && (
                   <View style={s.ruleBox}>
                     <Text style={[s.ruleText, password.length >= 8 && s.ruleValid]}></Text>
@@ -312,7 +312,7 @@ const s = StyleSheet.create({
   skyBlueBanner: {
     width: "100%",
     height: 2,
-    marginBottom: SPACING.xs,
+    marginBottom: 4,
     alignItems: "center",
   },
   skyBlueLine: {
@@ -325,30 +325,32 @@ const s = StyleSheet.create({
   },
 
   logoGlowContainer: {
-    padding: 4,
-    borderRadius: 60,
+    padding: 2,
+    borderRadius: 50,
     shadowColor: "#00B4D8",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.5,
-    shadowRadius: 12,
+    shadowRadius: 10,
     elevation: 8,
   },
-  logo: { width: 90, height: 90, marginTop: 0 },
-  appName: { color: "#FFFFFF", fontSize: 24, fontWeight: "900", letterSpacing: 3, marginTop: 6 },
-  welcome: { color: "#00B4D8", marginTop: 2, marginBottom: SPACING.sm, fontSize: 13, fontWeight: "600" },
+  logo: { width: 75, height: 75, marginTop: 0 },
+  
+  /* Text Shifted Down inside Black Area over Tiles */
+  appName: { color: "#FFFFFF", fontSize: 24, fontWeight: "900", letterSpacing: 3, marginTop: 35 },
+  welcome: { color: "#00B4D8", marginTop: 4, marginBottom: 10, fontSize: 13, fontWeight: "600" },
   
   cardWrapper: {
     flexGrow: 1,
-    justifyContent: "flex-end", // Push card down to the bottom elements
+    justifyContent: "flex-end", // Push card down to bottom
     paddingHorizontal: SPACING.lg,
-    paddingBottom: 0, // Touch bottom elements
+    paddingBottom: 25, // Bottom PNG icon height adjustment
   },
   
   card: {
     backgroundColor: "#FFFFFF", 
     borderRadius: 24, 
     padding: SPACING.lg, 
-    paddingBottom: 24,
+    paddingBottom: 20,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 12 },
     shadowOpacity: 0.25,
@@ -356,8 +358,7 @@ const s = StyleSheet.create({
     elevation: 10,
     overflow: "hidden",
     position: "relative",
-    marginTop: "auto", // Niche touch karwayega
-    marginBottom: -5,  // Extra alignment if needed
+    marginTop: "auto", 
   },
   cardTopBorder: {
     position: "absolute",
@@ -372,7 +373,7 @@ const s = StyleSheet.create({
     backgroundColor: "#F1F5F9", 
     borderRadius: RADIUS.pill, 
     padding: 4, 
-    marginBottom: SPACING.lg, 
+    marginBottom: SPACING.md, 
     borderWidth: 1, 
     borderColor: "#E2E8F0" 
   },
@@ -423,7 +424,7 @@ const s = StyleSheet.create({
   ctaGrad: { paddingVertical: 14, alignItems: "center", justifyContent: "center" },
   ctaText: { color: "#FFFFFF", fontSize: 16, fontWeight: "800", letterSpacing: 0.5 },
   
-  alt: { textAlign: "center", marginTop: SPACING.md, color: "#64748B", fontSize: 13 },
+  alt: { textAlign: "center", marginTop: SPACING.sm, color: "#64748B", fontSize: 13 },
   altLink: { color: "#FF6E00", fontWeight: "800", fontSize: 13 },
   err: { color: "#EF4444", marginTop: 2, marginBottom: 8, fontSize: 12, fontWeight: "600", marginLeft: 4 },
 });
