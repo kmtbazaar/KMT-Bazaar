@@ -1,4 +1,3 @@
-
 import AIAssistant from "../../components/AIAssistant";
 import React, { useState, useEffect } from "react";
 import {
@@ -148,7 +147,8 @@ export default function Login() {
         <AnimatedTile delay={1500} color="#FF6E00" />
       </View>
 
-      <SafeAreaView edges={["top"]} style={{ alignItems: "center", paddingTop:100 SPACING.lg, zIndex: 2 }}>
+      {/* Yahan par paddingTop fix kiya gaya hai taaki UI niche shift ho jaye */}
+      <SafeAreaView edges={["top"]} style={{ alignItems: "center", paddingTop: 160, zIndex: 2 }}>
         {/* Sky Blue Accent Header Bar */}
         <View style={s.skyBlueBanner}>
           <LinearGradient
@@ -413,7 +413,7 @@ const s = StyleSheet.create({
     fontWeight: "600",
   },
   ruleValid: {
-    color: "#10B981", // Green check indicator for matched rules
+    color: "#10B981", 
   },
   
   cta: { 
@@ -433,6 +433,3 @@ const s = StyleSheet.create({
   altLink: { color: "#FF6E00", fontWeight: "800", fontSize: 14 },
   err: { color: "#EF4444", marginTop: 4, marginBottom: 12, fontSize: 13, fontWeight: "600", marginLeft: 4 },
 });
-
-
-
