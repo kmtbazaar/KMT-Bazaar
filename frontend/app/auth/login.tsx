@@ -147,7 +147,7 @@ export default function Login() {
         <AnimatedTile delay={1500} color="#FF6E00" />
       </View>
 
-      <SafeAreaView edges={["top"]} style={{ alignItems: "center", paddingTop: SPACING.lg, zIndex: 2 }}>
+      <SafeAreaView edges={["top"]} style={s.headerContainer}>
         {/* Sky Blue Accent Header Bar */}
         <View style={s.skyBlueBanner}>
           <LinearGradient
@@ -289,30 +289,36 @@ const s = StyleSheet.create({
   root: { flex: 1, backgroundColor: "#050B14" },
   headerBg: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0 },
   
+  // Cleaned Grid Alignment for Background Tiles
   tilesWrapper: {
     position: "absolute",
-    top: 0,
+    top: 20,
     left: 0,
     right: 0,
-    height: 380,
+    height: 280,
     flexDirection: "row",
     flexWrap: "wrap",
-    justifyContent: "space-around",
-    alignItems: "center",
-    padding: 10,
+    justifyContent: "space-between",
+    paddingHorizontal: 20,
     zIndex: 1,
   },
   tile: {
-    width: (width - 60) / 3,
-    height: 70,
-    borderRadius: 16,
-    marginVertical: 8,
+    width: (width - 64) / 3, // Calculated perfectly to prevent overlap
+    height: 75,
+    borderRadius: 18,
+    marginVertical: 10,
+  },
+
+  headerContainer: {
+    alignItems: "center",
+    paddingTop: SPACING.xs,
+    zIndex: 2,
   },
 
   skyBlueBanner: {
     width: "100%",
     height: 2,
-    marginBottom: SPACING.md,
+    marginBottom: SPACING.sm,
     alignItems: "center",
   },
   skyBlueLine: {
@@ -325,17 +331,18 @@ const s = StyleSheet.create({
   },
 
   logoGlowContainer: {
-    padding: 4,
-    borderRadius: 60,
+    padding: 2,
+    borderRadius: 24,
+    backgroundColor: "rgba(5, 11, 20, 0.4)", // Slight translucent background to separate logo from tiles
     shadowColor: "#00B4D8",
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.5,
-    shadowRadius: 12,
+    shadowOpacity: 0.6,
+    shadowRadius: 16,
     elevation: 8,
   },
-  logo: { width: 100, height: 100, marginTop: SPACING.xs },
-  appName: { color: "#FFFFFF", fontSize: 26, fontWeight: "900", letterSpacing: 3, marginTop: 10 },
-  welcome: { color: "#00B4D8", marginTop: 4, marginBottom: SPACING.lg, fontSize: 14, fontWeight: "600" },
+  logo: { width: 90, height: 90 },
+  appName: { color: "#FFFFFF", fontSize: 24, fontWeight: "900", letterSpacing: 2.5, marginTop: 8 },
+  welcome: { color: "#00B4D8", marginTop: 2, marginBottom: SPACING.md, fontSize: 13, fontWeight: "600" },
   
   cardWrapper: {
     paddingHorizontal: SPACING.lg,
@@ -403,7 +410,7 @@ const s = StyleSheet.create({
     fontWeight: "600",
   },
   ruleValid: {
-    color: "#10B981", // Green check indicator for matched rules
+    color: "#10B981",
   },
   
   cta: { 
