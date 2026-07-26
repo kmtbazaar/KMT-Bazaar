@@ -147,7 +147,7 @@ export default function Login() {
         <AnimatedTile delay={1500} color="#FF6E00" />
       </View>
 
-      <SafeAreaView edges={["top"]} style={{ alignItems: "center", paddingTop: 160, zIndex: 2 }}>
+      <SafeAreaView edges={["top"]} style={{ alignItems: "center", paddingTop: 180, zIndex: 2 }}>
         {/* Animated Text Header (Logo aur Line yahan se hata di gayi hai) */}
         <Animated.Text entering={FadeInDown.delay(200).springify()} style={s.appName}>KMT BAZAAR</Animated.Text>
         <Animated.Text entering={FadeInDown.delay(350).springify()} style={s.welcome}>Welcome back, login to continue</Animated.Text>
