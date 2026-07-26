@@ -78,7 +78,6 @@ export default function Login() {
   const [error, setError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
 
-  // Production-grade Password Validation Checker
   const validatePassword = (pass: string) => {
     const isLengthValid = pass.length >= 8;
     const hasUpperCase = /[A-Z]/.test(pass);
@@ -134,10 +133,8 @@ export default function Login() {
 
   return (
     <View style={s.root} testID="login-screen">
-      {/* Dark Ambient Background Gradient */}
       <LinearGradient colors={["#050B14", "#0A1224", "#000000"]} style={s.headerBg} />
 
-      {/* Animated Environment Tiles & Glowing Flashes */}
       <View style={s.tilesWrapper} pointerEvents="none">
         <AnimatedTile delay={0} color="#00B4D8" />
         <AnimatedTile delay={600} color="#FF6E00" />
@@ -148,7 +145,6 @@ export default function Login() {
       </View>
 
       <SafeAreaView edges={["top"]} style={s.headerContainer}>
-        {/* Sky Blue Accent Header Bar */}
         <View style={s.skyBlueBanner}>
           <LinearGradient
             colors={["transparent", "#00B4D8", "transparent"]}
@@ -158,7 +154,6 @@ export default function Login() {
           />
         </View>
 
-        {/* Animated Logo & Text */}
         <Animated.View entering={ZoomIn.duration(700).springify()}>
           <View style={s.logoGlowContainer}>
             <Image source={{ uri: LOGO_URL }} style={s.logo} contentFit="contain" />
@@ -176,7 +171,6 @@ export default function Login() {
       <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={{ flex: 1, zIndex: 3 }}>
         <ScrollView contentContainerStyle={s.cardWrapper} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
           
-          {/* Solid White Card with Top Gradient Border */}
           <View style={s.card}>
             <LinearGradient
               colors={["#00B4D8", "#FF6E00"]}
@@ -215,7 +209,6 @@ export default function Login() {
                   </Pressable>
                 </View>
 
-                {/* Password Rule Hint */}
                 {password.length > 0 && (
                   <View style={s.ruleBox}>
                     <Text style={[s.ruleText, password.length >= 8 && s.ruleValid]}></Text>
@@ -265,13 +258,14 @@ export default function Login() {
               </>
             )}
           </View>
+
+          {/* Assistant is now INSIDE the ScrollView, touching the bottom of the card */}
+          <View style={s.aiAssistantContainer} pointerEvents="box-none">
+            <AIAssistant />
+          </View>
+
         </ScrollView>
       </KeyboardAvoidingView>
-
-      {/* AI Assistant Positioned so PNG Character Touches Bottom of Card */}
-      <View style={s.aiAssistantContainer} pointerEvents="box-none">
-        <AIAssistant />
-      </View>
 
     </View>
   );
@@ -319,6 +313,7 @@ const s = StyleSheet.create({
   headerContainer: {
     alignItems: "center",
     paddingTop: 5,
+    paddingBottom: 0, // 0 gap taaki text direct card par baithe
     zIndex: 2,
   },
 
@@ -357,14 +352,15 @@ const s = StyleSheet.create({
   welcome: { 
     color: "#00B4D8", 
     marginTop: 2, 
-    marginBottom: 4, // Text bilkul white card ke top line ko touch karega
+    marginBottom: 0, // Margin hataya gaya hai taaki line white box ko touch kare
     fontSize: 13, 
     fontWeight: "600" 
   },
   
   cardWrapper: {
     paddingHorizontal: SPACING.lg,
-    paddingBottom: 20,
+    paddingTop: 0, // Top margin/padding 0
+    paddingBottom: 20, // Page end padding
   },
   
   card: {
@@ -379,6 +375,7 @@ const s = StyleSheet.create({
     elevation: 10,
     overflow: "hidden",
     position: "relative",
+    marginBottom: 0, // Card ka neeche ka gap band kar diya
   },
   cardTopBorder: {
     position: "absolute",
@@ -448,11 +445,11 @@ const s = StyleSheet.create({
   altLink: { color: "#FF6E00", fontWeight: "800", fontSize: 14 },
   err: { color: "#EF4444", marginTop: 4, marginBottom: 12, fontSize: 13, fontWeight: "600", marginLeft: 4 },
 
-  // AIAssistant (PNG Character) Overlay Positioning
+  // Ab AIAssistant ko ScrollView ke andar normal flow mein laayein taaki exactly touch kare
   aiAssistantContainer: {
-    position: "absolute",
-    bottom: 10,
-    right: 10,
+    alignSelf: "flex-end", // Right side align
+    marginTop: -8, // Halkasa negative margin taaki PNG ka top edge strictly card bottom ko touch kare bina hide huye
+    marginRight: 10,
     zIndex: 10,
   }
 });
