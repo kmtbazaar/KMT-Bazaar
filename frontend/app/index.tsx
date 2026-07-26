@@ -17,8 +17,8 @@ import { router } from "expo-router";
 import AssistantGif from "../assets/images/assistant.gif";
 import VoiceGif from "../assets/images/voice.gif"; 
 
-// Premium Brown Leather Texture URL
-const LEATHER_BG_URL = "https://www.transparenttextures.com/patterns/leather.png";
+// Premium Black Leather Texture URL
+const LEATHER_BG_URL = "https://www.transparenttextures.com/patterns/black-linen-2.png";
 
 const { width } = Dimensions.get("window");
 
@@ -54,7 +54,7 @@ export default function Index() {
         <SafeAreaView style={styles.safeArea}>
           <Animated.View style={[styles.mainContent, { opacity: fadeAnim }]}>
             
-            {/* Header Text Inside Gold Accent Leather Tile */}
+            {/* Header Text Inside Sleek Metallic Silver Tile */}
             <View style={styles.headerTile}>
               <Text style={styles.tileTitle}>KMT Bazaar Assistant</Text>
               <Text style={styles.tileSubtitle}>
@@ -113,7 +113,7 @@ export default function Index() {
     );
   }
 
-  // --- VIEW 1: BROWN LEATHER SPLASH SCREEN ---
+  // --- VIEW 1: BLACK LEATHER SPLASH SCREEN ---
   return (
     <ImageBackground
       source={{ uri: LEATHER_BG_URL }}
@@ -133,7 +133,7 @@ export default function Index() {
 const styles = StyleSheet.create({
   leatherBackground: {
     flex: 1,
-    backgroundColor: "#2B1704", // Deep Rich Saddle Brown Base Color
+    backgroundColor: "#121212", // Deep Charcoal Black Base
   },
   safeArea: {
     flex: 1,
@@ -142,7 +142,7 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "#2B1704",
+    backgroundColor: "#121212",
   },
   mainContent: {
     flex: 1,
@@ -153,34 +153,34 @@ const styles = StyleSheet.create({
     paddingBottom: 25,
   },
 
-  // Premium Header Tile with Faux Stitching Effect
+  // Premium Header Tile with Silver Stitching Effect
   headerTile: {
     width: "100%",
-    backgroundColor: "#1C0D02", 
+    backgroundColor: "#1E1E1E", 
     paddingVertical: 18,
     paddingHorizontal: 20,
     borderRadius: 20,
     borderWidth: 1.5,
-    borderColor: "#D4AF37", // Warm Brass / Metallic Gold Border
+    borderColor: "#A0A0A0", // Metallic Silver Border
     borderStyle: "dashed", // Stitching Line Feel
     alignItems: "center",
     marginTop: 10,
     // Native Elevation & Shadow Effect
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.5,
+    shadowOpacity: 0.6,
     shadowRadius: 10,
     elevation: 8,
   },
   tileTitle: {
     fontSize: 26,
     fontWeight: "800",
-    color: "#F3E5AB", // Warm Cream Color
+    color: "#FFFFFF", // Clean Crisp White
     textAlign: "center",
   },
   tileSubtitle: {
     fontSize: 13,
-    color: "#D4AF37", // Warm Gold Accent
+    color: "#B0B0B0", // Soft Metallic Gray
     marginTop: 6,
     textAlign: "center",
     lineHeight: 18,
@@ -190,7 +190,7 @@ const styles = StyleSheet.create({
   characterContainer: {
     width: "100%",
     height: 340,
-    justifyContent: "center", 
+    justifyContent: "center",
     alignItems: "center",
   },
   characterWrapper: {
@@ -229,28 +229,28 @@ const styles = StyleSheet.create({
     elevation: 5,
   },
   primaryGradientBtn: {
-    backgroundColor: "#8B261D", // Rich Crimson Red Button
+    backgroundColor: "#222222", // Sleek Dark Matte Button
     paddingVertical: 16,
     borderRadius: 16,
     alignItems: "center",
     borderWidth: 1,
-    borderColor: "#D4AF37",
+    borderColor: "#E0E0E0", // Glowing Silver Accent
   },
   primaryBtnText: {
-    color: "#FFF8DC",
+    color: "#FFFFFF",
     fontSize: 17,
     fontWeight: "700",
   },
   secondaryBtn: {
-    backgroundColor: "rgba(28, 13, 2, 0.6)",
+    backgroundColor: "rgba(255, 255, 255, 0.05)",
     borderWidth: 1.5,
-    borderColor: "rgba(212, 175, 55, 0.5)",
+    borderColor: "rgba(255, 255, 255, 0.2)",
     paddingVertical: 15,
     borderRadius: 16,
     alignItems: "center",
   },
   secondaryBtnText: {
-    color: "#F3E5AB",
+    color: "#E0E0E0",
     fontSize: 16,
     fontWeight: "600",
   },
