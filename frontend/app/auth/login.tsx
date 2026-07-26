@@ -164,11 +164,16 @@ export default function Login() {
             <Image source={{ uri: LOGO_URL }} style={s.logo} contentFit="contain" />
           </View>
         </Animated.View>
-        <Animated.Text entering={FadeInDown.delay(200).springify()} style={s.appName}>KMT BAZAAR</Animated.Text>
-        <Animated.Text entering={FadeInDown.delay(350).springify()} style={s.welcome}>Welcome back, login to continue</Animated.Text>
+        
+        <Animated.Text entering={FadeInDown.delay(200).springify()} style={s.appName}>
+          KMT BAZAAR
+        </Animated.Text>
+        <Animated.Text entering={FadeInDown.delay(350).springify()} style={s.welcome}>
+          Welcome back, login to continue
+        </Animated.Text>
       </SafeAreaView>
 
-      <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={{ flex: 1, zIndex: 2 }}>
+      <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={{ flex: 1, zIndex: 3 }}>
         <ScrollView contentContainerStyle={s.cardWrapper} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
           
           {/* Solid White Card with Top Gradient Border */}
@@ -263,7 +268,10 @@ export default function Login() {
         </ScrollView>
       </KeyboardAvoidingView>
 
-      <AIAssistant />
+      {/* AI Assistant Positioned so PNG Character Touches Bottom of Card */}
+      <View style={s.aiAssistantContainer} pointerEvents="box-none">
+        <AIAssistant />
+      </View>
 
     </View>
   );
@@ -289,13 +297,12 @@ const s = StyleSheet.create({
   root: { flex: 1, backgroundColor: "#050B14" },
   headerBg: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0 },
   
-  // Cleaned Grid Alignment for Background Tiles
   tilesWrapper: {
     position: "absolute",
-    top: 20,
+    top: 10,
     left: 0,
     right: 0,
-    height: 280,
+    height: 240,
     flexDirection: "row",
     flexWrap: "wrap",
     justifyContent: "space-between",
@@ -303,22 +310,22 @@ const s = StyleSheet.create({
     zIndex: 1,
   },
   tile: {
-    width: (width - 64) / 3, // Calculated perfectly to prevent overlap
-    height: 75,
-    borderRadius: 18,
-    marginVertical: 10,
+    width: (width - 64) / 3,
+    height: 70,
+    borderRadius: 16,
+    marginVertical: 6,
   },
 
   headerContainer: {
     alignItems: "center",
-    paddingTop: SPACING.xs,
+    paddingTop: 5,
     zIndex: 2,
   },
 
   skyBlueBanner: {
     width: "100%",
     height: 2,
-    marginBottom: SPACING.sm,
+    marginBottom: 6,
     alignItems: "center",
   },
   skyBlueLine: {
@@ -332,28 +339,39 @@ const s = StyleSheet.create({
 
   logoGlowContainer: {
     padding: 2,
-    borderRadius: 24,
-    backgroundColor: "rgba(5, 11, 20, 0.4)", // Slight translucent background to separate logo from tiles
+    borderRadius: 20,
     shadowColor: "#00B4D8",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.6,
-    shadowRadius: 16,
+    shadowRadius: 14,
     elevation: 8,
   },
-  logo: { width: 90, height: 90 },
-  appName: { color: "#FFFFFF", fontSize: 24, fontWeight: "900", letterSpacing: 2.5, marginTop: 8 },
-  welcome: { color: "#00B4D8", marginTop: 2, marginBottom: SPACING.md, fontSize: 13, fontWeight: "600" },
+  logo: { width: 85, height: 85 },
+  appName: { 
+    color: "#FFFFFF", 
+    fontSize: 22, 
+    fontWeight: "900", 
+    letterSpacing: 2.5, 
+    marginTop: 4 
+  },
+  welcome: { 
+    color: "#00B4D8", 
+    marginTop: 2, 
+    marginBottom: 4, // Text bilkul white card ke top line ko touch karega
+    fontSize: 13, 
+    fontWeight: "600" 
+  },
   
   cardWrapper: {
     paddingHorizontal: SPACING.lg,
-    paddingBottom: 40,
+    paddingBottom: 20,
   },
   
   card: {
     backgroundColor: "#FFFFFF", 
     borderRadius: 24, 
     padding: SPACING.xl, 
-    paddingBottom: 35,
+    paddingBottom: 30,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 12 },
     shadowOpacity: 0.25,
@@ -429,4 +447,12 @@ const s = StyleSheet.create({
   alt: { textAlign: "center", marginTop: SPACING.lg, color: "#64748B", fontSize: 14 },
   altLink: { color: "#FF6E00", fontWeight: "800", fontSize: 14 },
   err: { color: "#EF4444", marginTop: 4, marginBottom: 12, fontSize: 13, fontWeight: "600", marginLeft: 4 },
+
+  // AIAssistant (PNG Character) Overlay Positioning
+  aiAssistantContainer: {
+    position: "absolute",
+    bottom: 10,
+    right: 10,
+    zIndex: 10,
+  }
 });
