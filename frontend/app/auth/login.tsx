@@ -147,7 +147,7 @@ export default function Login() {
         <AnimatedTile delay={1500} color="#FF6E00" />
       </View>
 
-      <SafeAreaView edges={["top"]} style={{ alignItems: "center", paddingTop: SPACING.lg, zIndex: 2 }}>
+      <SafeAreaView edges={["top"]} style={{ alignItems: "center", paddingTop: SPACING.xl, zIndex: 2 }}>
         {/* Sky Blue Accent Header Bar */}
         <View style={s.skyBlueBanner}>
           <LinearGradient
@@ -158,7 +158,7 @@ export default function Login() {
           />
         </View>
 
-        {/* Animated Text Header (Logo removed from top) */}
+        {/* Animated Text Header shifted further down */}
         <Animated.Text entering={FadeInDown.delay(200).springify()} style={s.appName}>KMT BAZAAR</Animated.Text>
         <Animated.Text entering={FadeInDown.delay(350).springify()} style={s.welcome}>Welcome back, login to continue</Animated.Text>
       </SafeAreaView>
@@ -328,7 +328,7 @@ const s = StyleSheet.create({
 
   bottomLeftLogoContainer: {
     position: "absolute",
-    bottom: 25,
+    bottom: 20,
     left: 20,
     zIndex: 10,
   },
@@ -343,12 +343,13 @@ const s = StyleSheet.create({
     elevation: 8,
   },
   logo: { width: 80, height: 80 },
-  appName: { color: "#FFFFFF", fontSize: 26, fontWeight: "900", letterSpacing: 3, marginTop: 10 },
-  welcome: { color: "#00B4D8", marginTop: 4, marginBottom: SPACING.lg, fontSize: 14, fontWeight: "600" },
+  appName: { color: "#FFFFFF", fontSize: 26, fontWeight: "900", letterSpacing: 3, marginTop: 15 },
+  welcome: { color: "#00B4D8", marginTop: 4, marginBottom: SPY_MARGIN = SPACING.md, fontSize: 14, fontWeight: "600" },
   
   cardWrapper: {
     paddingHorizontal: SPACING.lg,
-    paddingBottom: 40,
+    paddingTop: 10,
+    paddingBottom: 110,
   },
   
   card: {
