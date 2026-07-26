@@ -25,7 +25,6 @@ import { COLORS, LOGO_URL, RADIUS, SPACING } from "@/src/theme";
 
 const { width, height } = Dimensions.get("window");
 
-// Animated Background Tile Component
 function AnimatedTile({ delay = 0, color = "#00B4D8" }: { delay?: number; color?: string }) {
   const opacity = useSharedValue(0.15);
   const scale = useSharedValue(0.95);
@@ -78,7 +77,6 @@ export default function Login() {
   const [error, setError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
 
-  // Production-grade Password Validation Checker
   const validatePassword = (pass: string) => {
     const isLengthValid = pass.length >= 8;
     const hasUpperCase = /[A-Z]/.test(pass);
@@ -134,10 +132,8 @@ export default function Login() {
 
   return (
     <View style={s.root} testID="login-screen">
-      {/* Dark Ambient Background Gradient */}
       <LinearGradient colors={["#050B14", "#0A1224", "#000000"]} style={s.headerBg} />
 
-      {/* Animated Environment Tiles & Glowing Flashes */}
       <View style={s.tilesWrapper} pointerEvents="none">
         <AnimatedTile delay={0} color="#00B4D8" />
         <AnimatedTile delay={600} color="#FF6E00" />
@@ -147,8 +143,7 @@ export default function Login() {
         <AnimatedTile delay={1500} color="#FF6E00" />
       </View>
 
-      <SafeAreaView edges={["top"]} style={s.safeAreaShift}>
-        {/* Sky Blue Accent Header Bar */}
+      <SafeAreaView edges={["top"]} style={{ alignItems: "center", paddingTop: SPugglingTopZero = 4, zIndex: 2 }}>
         <View style={s.skyBlueBanner}>
           <LinearGradient
             colors={["transparent", "#00B4D8", "transparent"]}
@@ -158,21 +153,26 @@ export default function Login() {
           />
         </View>
 
-        {/* Animated Logo & Text */}
-        <Animated.View entering={ZoomIn.duration(700).springify()}>
-          <View style={s.logoGlowContainer}>
-            <Image source={{ uri: LOGO_URL }} style={s.logo} contentFit="contain" />
-          </View>
-        </Animated.View>
-        <Animated.Text entering={FadeInDown.delay(200).springify()} style={s.appName}>KMT BAZAAR</Animated.Text>
-        <Animated.Text entering={FadeInDown.delay(350).springify()} style={s.welcome}>Welcome back, login to continue</Animated.Text>
+        {/* --- CONCERN 1 & 2: Logo left + parallel to bot, Text shifted higher up --- */}
+        <View style={s.topContentGroup}>
+            <Animated.View entering={ZoomIn.duration(700).springify()}>
+              <View style={s.logoGlowContainer}>
+                <Image source={{ uri: LOGO_URL }} style={s.logoLeftAligned} contentFit="contain" />
+              </View>
+            </Animated.View>
+
+            <View style={s.textGroup}>
+                <Animated.Text entering={FadeInDown.delay(200).springify()} style={s.appName}>KMT BAZAAR</Animated.Text>
+                <Animated.Text entering={FadeInDown.delay(350).springify()} style={s.welcome}>Welcome back, login to continue</Animated.Text>
+            </View>
+        </View>
       </SafeAreaView>
 
       <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={{ flex: 1, zIndex: 2 }}>
-        <ScrollView contentContainerStyle={s.cardWrapper} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+        {/* --- CONCERN 3: Login box shifted higher up --- */}
+        <ScrollView contentContainerStyle={s.cardWrapperCompacted} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
           
-          {/* Solid White Card with Top Gradient Border */}
-          <View style={s.card}>
+          <View style={s.cardHigher}>
             <LinearGradient
               colors={["#00B4D8", "#FF6E00"]}
               start={{ x: 0, y: 0 }}
@@ -180,7 +180,7 @@ export default function Login() {
               style={s.cardTopBorder}
             />
 
-            <View style={s.tabsRow}>
+            <View style={s.tabsRowCompacted}>
               <Pressable testID="tab-password" onPress={() => setTab("password")} style={[s.tab, tab === "password" && s.tabActive]}>
                 <Text style={[s.tabText, tab === "password" && s.tabTextActive]}>Email & Password</Text>
               </Pressable>
@@ -210,7 +210,6 @@ export default function Login() {
                   </Pressable>
                 </View>
 
-                {/* Password Rule Hint */}
                 {password.length > 0 && (
                   <View style={s.ruleBox}>
                     <Text style={[s.ruleText, password.length >= 8 && s.ruleValid]}>8+ Chars</Text>
@@ -229,12 +228,11 @@ export default function Login() {
                 </Pressable>
                 
                 <Pressable onPress={() => router.push("/auth/register" as any)} testID="goto-register">
-                  <Text style={s.alt}>New to KMT Bazaar? <Text style={s.altLink}>Create account</Text></Text>
+                  <Text style={s.altHigher}>New to KMT Bazaar? <Text style={s.altLink}>Create account</Text></Text>
                 </Pressable>
-                
-                {/* FORGOT PASSWORD LINK ADDED HERE */}
+
                 <Pressable onPress={() => router.push("/auth/forgot-password" as any)} testID="goto-forgot-password">
-                  <Text style={s.forgotPassword}>Forgot password?</Text>
+                    <Text style={s.forgotPasswordCompacted}>Forgot password?</Text>
                 </Pressable>
               </>
             ) : (
@@ -270,6 +268,10 @@ export default function Login() {
 
       <AIAssistant />
 
+      {/* --- BOT PNG (Character) at Bottom-Right Parallel Reference --- */}
+      <View pointerEvents="none" style={s.extraImageContainerCompacted}>
+        <Image source={{ uri: "https://kmtbazaar.in/wp-content/uploads/2024/09/KMT-BAZAAR-Shopping-Boy-500-1-PNG.png" }} style={s.extraImageCompacted} contentFit="contain" />
+      </View>
     </View>
   );
 }
@@ -314,16 +316,10 @@ const s = StyleSheet.create({
     marginVertical: 8,
   },
 
-  safeAreaShift: { 
-    alignItems: "center", 
-    paddingTop: SPACING.lg, 
-    marginTop: height * 0.05, // Added margin to shift text/logo down slightly
-    zIndex: 2 
-  },
   skyBlueBanner: {
     width: "100%",
     height: 2,
-    marginBottom: SPACING.md,
+    marginBottom: SPACING.sm,
     alignItems: "center",
   },
   skyBlueLine: {
@@ -335,30 +331,42 @@ const s = StyleSheet.create({
     shadowRadius: 10,
   },
 
+  topContentGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    width: '90%',
+    marginLeft: '5%',
+    marginTop: -height * 0.015, // Lifted text/logo higher up smoothly
+  },
+  textGroup: {
+    marginLeft: 15,
+  },
+  logoLeftAligned: { 
+    width: 72, 
+    height: 72, 
+  },
   logoGlowContainer: {
     padding: 4,
-    borderRadius: 60,
+    borderRadius: 40,
     shadowColor: "#00B4D8",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.5,
     shadowRadius: 12,
     elevation: 8,
   },
-  logo: { width: 100, height: 100, marginTop: SPACING.xs },
-  appName: { color: "#FFFFFF", fontSize: 26, fontWeight: "900", letterSpacing: 3, marginTop: 10 },
-  welcome: { color: "#00B4D8", marginTop: 4, marginBottom: SPACING.lg, fontSize: 14, fontWeight: "600" },
+  appName: { color: "#FFFFFF", fontSize: 22, fontWeight: "900", letterSpacing: 2 },
+  welcome: { color: "#00B4D8", marginTop: 2, fontSize: 12, fontWeight: "600" },
   
-  cardWrapper: {
+  cardWrapperCompacted: {
     paddingHorizontal: SPACING.lg,
-    paddingTop: 15,          // Added padding top to push card down
-    paddingBottom: 120,      // Increased to leave room for character PNG at the bottom
+    paddingTop: 0,
+    paddingBottom: 80,
   },
-  
-  card: {
+  cardHigher: {
     backgroundColor: "#FFFFFF", 
     borderRadius: 24, 
     padding: SPACING.xl, 
-    paddingBottom: 35,
+    paddingBottom: 25,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 12 },
     shadowOpacity: 0.25,
@@ -366,7 +374,39 @@ const s = StyleSheet.create({
     elevation: 10,
     overflow: "hidden",
     position: "relative",
+    marginTop: -height * 0.025, // Shifted login box higher up
   },
+  tabsRowCompacted: { 
+    flexDirection: "row", 
+    backgroundColor: "#F1F5F9", 
+    borderRadius: RADIUS.pill, 
+    padding: 3, 
+    marginBottom: SPACING.md, 
+    borderWidth: 1, 
+    borderColor: "#E2E8F0" 
+  },
+  altHigher: { textAlign: "center", marginTop: SPACING.sm, color: "#64748B", fontSize: 13 },
+  forgotPasswordCompacted: { 
+    textAlign: "center", 
+    marginTop: 6, 
+    color: "#FF6E00", 
+    fontSize: 13, 
+    fontWeight: "700" 
+  },
+  extraImageContainerCompacted: {
+    position: 'absolute',
+    bottom: -5, // Parallel alignment near bottom edge
+    right: '5%', // Placed correctly on right side parallel to bottom elements
+    width: width * 0.38,
+    height: height * 0.22,
+    zIndex: 1, 
+  },
+  extraImageCompacted: {
+    width: '100%',
+    height: '100%',
+    opacity: 0.95,
+  },
+
   cardTopBorder: {
     position: "absolute",
     top: 0,
@@ -374,73 +414,18 @@ const s = StyleSheet.create({
     right: 0,
     height: 5,
   },
-  
-  tabsRow: { 
-    flexDirection: "row", 
-    backgroundColor: "#F1F5F9", 
-    borderRadius: RADIUS.pill, 
-    padding: 4, 
-    marginBottom: SPACING.xl, 
-    borderWidth: 1, 
-    borderColor: "#E2E8F0" 
-  },
-  tab: { flex: 1, paddingVertical: 10, alignItems: "center", borderRadius: RADIUS.pill },
+  tab: { flex: 1, paddingVertical: 8, alignItems: "center", borderRadius: RADIUS.pill },
   tabActive: { backgroundColor: "#FFFFFF", shadowColor: "#000", shadowOpacity: 0.08, shadowRadius: 4, elevation: 2 },
-  tabText: { color: "#64748B", fontWeight: "700", fontSize: 13 },
+  tabText: { color: "#64748B", fontWeight: "700", fontSize: 12 },
   tabTextActive: { color: "#FF6E00", fontWeight: "800" },
-  
-  fieldWrap: { 
-    flexDirection: "row", 
-    alignItems: "center", 
-    gap: 12, 
-    backgroundColor: "#F8FAFC", 
-    borderRadius: RADIUS.lg, 
-    paddingHorizontal: 16, 
-    marginBottom: SPACING.md, 
-    borderWidth: 1.5, 
-    borderColor: "#E2E8F0" 
-  },
-  input: { flex: 1, paddingVertical: 14, fontSize: 15, color: "#0F172A", fontWeight: "500" },
-
-  ruleBox: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 8,
-    marginBottom: SPACING.md,
-    paddingHorizontal: 4,
-  },
-  ruleText: {
-    fontSize: 11,
-    color: "#94A3B8",
-    fontWeight: "600",
-  },
-  ruleValid: {
-    color: "#10B981", // Green check indicator for matched rules
-  },
-  
-  cta: { 
-    marginTop: SPACING.xs, 
-    borderRadius: RADIUS.pill, 
-    overflow: "hidden", 
-    shadowColor: "#FF6E00", 
-    shadowOffset: { width: 0, height: 4 }, 
-    shadowOpacity: 0.35, 
-    shadowRadius: 8, 
-    elevation: 5 
-  },
-  ctaGrad: { paddingVertical: 16, alignItems: "center", justifyContent: "center" },
-  ctaText: { color: "#FFFFFF", fontSize: 16, fontWeight: "800", letterSpacing: 0.5 },
-  
-  alt: { textAlign: "center", marginTop: SPACING.lg, color: "#64748B", fontSize: 14 },
-  altLink: { color: "#FF6E00", fontWeight: "800", fontSize: 14 },
-  
-  forgotPassword: { 
-    textAlign: "center", 
-    marginTop: SPACING.md, 
-    color: "#FF6E00", 
-    fontSize: 14, 
-    fontWeight: "700" 
-  },
-  
-  err: { color: "#EF4444", marginTop: 4, marginBottom: 12, fontSize: 13, fontWeight: "600", marginLeft: 4 },
+  fieldWrap: { flexDirection: "row", alignItems: "center", gap: 12, backgroundColor: "#F8FAFC", borderRadius: RADIUS.lg, paddingHorizontal: 16, marginBottom: SPACING.sm, borderWidth: 1.5, borderColor: "#E2E8F0" },
+  input: { flex: 1, paddingVertical: 12, fontSize: 14, color: "#0F172A", fontWeight: "500" },
+  ruleBox: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: SPACING.sm, paddingHorizontal: 4 },
+  ruleText: { fontSize: 11, color: "#94A3B8", fontWeight: "600" },
+  ruleValid: { color: "#10B981" },
+  cta: { marginTop: SPACING.xs, borderRadius: RADIUS.pill, overflow: "hidden", shadowColor: "#FF6E00", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.35, shadowRadius: 8, elevation: 5 },
+  ctaGrad: { paddingVertical: 14, alignItems: "center", justifyContent: "center" },
+  ctaText: { color: "#FFFFFF", fontSize: 15, fontWeight: "800", letterSpacing: 0.5 },
+  altLink: { color: "#FF6E00", fontWeight: "800", fontSize: 13 },
+  err: { color: "#EF4444", marginTop: 2, marginBottom: 8, fontSize: 12, fontWeight: "600", marginLeft: 4 },
 });
