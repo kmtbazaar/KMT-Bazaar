@@ -147,19 +147,8 @@ export default function Login() {
         <AnimatedTile delay={1500} color="#FF6E00" />
       </View>
 
-      {/* Yahan par paddingTop fix kiya gaya hai taaki UI niche shift ho jaye */}
       <SafeAreaView edges={["top"]} style={{ alignItems: "center", paddingTop: 160, zIndex: 2 }}>
-        {/* Sky Blue Accent Header Bar */}
-        <View style={s.skyBlueBanner}>
-          <LinearGradient
-            colors={["transparent", "#00B4D8", "transparent"]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-            style={s.skyBlueLine}
-          />
-        </View>
-
-        {/* Animated Text Header (Logo removed from top) */}
+        {/* Animated Text Header (Logo aur Line yahan se hata di gayi hai) */}
         <Animated.Text entering={FadeInDown.delay(200).springify()} style={s.appName}>KMT BAZAAR</Animated.Text>
         <Animated.Text entering={FadeInDown.delay(350).springify()} style={s.welcome}>Welcome back, login to continue</Animated.Text>
       </SafeAreaView>
@@ -256,6 +245,17 @@ export default function Login() {
               </>
             )}
           </View>
+
+          {/* Sky Blue Accent Header Bar - Moved below the Card */}
+          <View style={s.skyBlueBanner}>
+            <LinearGradient
+              colors={["transparent", "#00B4D8", "transparent"]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={s.skyBlueLine}
+            />
+          </View>
+          
         </ScrollView>
       </KeyboardAvoidingView>
 
@@ -315,7 +315,7 @@ const s = StyleSheet.create({
   skyBlueBanner: {
     width: "100%",
     height: 2,
-    marginBottom: SPACING.md,
+    marginTop: SPACING.xl, // Style changed so gap looks correct below the card
     alignItems: "center",
   },
   skyBlueLine: {
