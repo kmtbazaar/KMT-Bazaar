@@ -1,4 +1,4 @@
-Import AIAssistant from "../../components/AIAssistant";
+import AIAssistant from "../../components/AIAssistant";
 import React, { useState, useEffect } from "react";
 import {
   View, Text, TextInput, Pressable, StyleSheet, ScrollView,
