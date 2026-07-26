@@ -348,7 +348,7 @@ const s = StyleSheet.create({
   
   cardWrapper: {
     paddingHorizontal: SPACING.lg,
-    paddingTop: 100,
+    paddingTop: 130,
     paddingBottom: 110,
   },
   
