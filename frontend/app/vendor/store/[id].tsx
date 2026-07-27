@@ -1,4 +1,4 @@
-Import React { useCallback, useState } from "react";
+import React, { useCallback, useState } from "react";
 import { View, Text, StyleSheet, FlatList, Pressable, Modal, TextInput, Alert, ActivityIndicator, ScrollView, Platform } from "react-native";
 import { Image } from "expo-image";
 import * as ImagePicker from "expo-image-picker"; 
