@@ -407,7 +407,7 @@ export default function VendorStoreDetail() {
         </View>
       </Modal>
 
-      {/* ADD PRODUCT MODAL */}
+      {/* ADD PRODUCT MODAL (Screen Fitted - Compact Vertical Spacing) */}
       <Modal visible={showAddModal} transparent animationType="slide">
         <View style={s.modalOverlayBottom}>
           <View style={s.modalContentBottom}>
@@ -424,14 +424,14 @@ export default function VendorStoreDetail() {
                 style={[s.inputCompact, s.inputHighlighted]}
               />
 
-              {/* Price & MRP Row (Vertically Shortened Box) */}
+              {/* Price & MRP Row */}
               <View style={s.rowCompact}>
                 <TextInput
                   placeholder="Price"
                   placeholderTextColor="#9CA3AF"
                   value={form.price}
                   onChangeText={(t) => setForm({ ...form, price: t })}
-                  style={[s.inputSuperCompact, s.flex1]}
+                  style={[s.inputCompact, s.flex1]}
                   keyboardType="numeric"
                 />
                 <TextInput
@@ -439,19 +439,19 @@ export default function VendorStoreDetail() {
                   placeholderTextColor="#9CA3AF"
                   value={form.mrp}
                   onChangeText={(t) => setForm({ ...form, mrp: t })}
-                  style={[s.inputSuperCompact, s.flex1]}
+                  style={[s.inputCompact, s.flex1]}
                   keyboardType="numeric"
                 />
               </View>
 
-              {/* Stock & Unit Row (Vertically Shortened Box) */}
+              {/* Stock & Unit Row */}
               <View style={s.rowCompact}>
                 <TextInput
                   placeholder="Stock"
                   placeholderTextColor="#9CA3AF"
                   value={form.stock}
                   onChangeText={(t) => setForm({ ...form, stock: t })}
-                  style={[s.inputSuperCompact, s.flex1]}
+                  style={[s.inputCompact, s.flex1]}
                   keyboardType="numeric"
                 />
                 <TextInput
@@ -459,7 +459,7 @@ export default function VendorStoreDetail() {
                   placeholderTextColor="#9CA3AF"
                   value={form.unit}
                   onChangeText={(t) => setForm({ ...form, unit: t })}
-                  style={[s.inputSuperCompact, s.flex1]}
+                  style={[s.inputCompact, s.flex1]}
                 />
               </View>
 
@@ -556,7 +556,7 @@ export default function VendorStoreDetail() {
         </View>
       </Modal>
 
-      {/* EDIT PRODUCT MODAL */}
+      {/* EDIT PRODUCT MODAL (Screen Fitted - Compact Vertical Spacing) */}
       <Modal visible={showEditProductModal} transparent animationType="slide">
         <View style={s.modalOverlayBottom}>
           <View style={s.modalContentBottom}>
@@ -573,14 +573,14 @@ export default function VendorStoreDetail() {
                 style={[s.inputCompact, s.inputHighlighted]}
               />
 
-              {/* Price & MRP Row (Vertically Shortened Box) */}
+              {/* Price & MRP Row */}
               <View style={s.rowCompact}>
                 <TextInput
                   placeholder="Price"
                   placeholderTextColor="#9CA3AF"
                   value={editProductForm.price}
                   onChangeText={(t) => setEditProductForm({ ...editProductForm, price: t })}
-                  style={[s.inputSuperCompact, s.flex1]}
+                  style={[s.inputCompact, s.flex1]}
                   keyboardType="numeric"
                 />
                 <TextInput
@@ -588,19 +588,19 @@ export default function VendorStoreDetail() {
                   placeholderTextColor="#9CA3AF"
                   value={editProductForm.mrp}
                   onChangeText={(t) => setEditProductForm({ ...editProductForm, mrp: t })}
-                  style={[s.inputSuperCompact, s.flex1]}
+                  style={[s.inputCompact, s.flex1]}
                   keyboardType="numeric"
                 />
               </View>
 
-              {/* Stock & Unit Row (Vertically Shortened Box) */}
+              {/* Stock & Unit Row */}
               <View style={s.rowCompact}>
                 <TextInput
                   placeholder="Stock"
                   placeholderTextColor="#9CA3AF"
                   value={editProductForm.stock}
                   onChangeText={(t) => setEditProductForm({ ...editProductForm, stock: t })}
-                  style={[s.inputSuperCompact, s.flex1]}
+                  style={[s.inputCompact, s.flex1]}
                   keyboardType="numeric"
                 />
                 <TextInput
@@ -608,7 +608,7 @@ export default function VendorStoreDetail() {
                   placeholderTextColor="#9CA3AF"
                   value={editProductForm.unit}
                   onChangeText={(t) => setEditProductForm({ ...editProductForm, unit: t })}
-                  style={[s.inputSuperCompact, s.flex1]}
+                  style={[s.inputCompact, s.flex1]}
                 />
               </View>
 
@@ -872,8 +872,8 @@ const s = StyleSheet.create({
   },
   modalTitle: { fontSize: 17, fontWeight: "800", color: "#000", marginBottom: 6 },
 
-  // INPUTS & BOXES
-  rowCompact: { flexDirection: "row", gap: 8, marginBottom: 4 },
+  // COMPACT INPUTS & BOXES (Vertically Shortened)
+  rowCompact: { flexDirection: "row", gap: 8, marginBottom: 5 },
   flex1: { flex: 1 },
   inputCompact: {
     backgroundColor: "#F9FAFB",
@@ -881,22 +881,10 @@ const s = StyleSheet.create({
     borderColor: "#E5E7EB",
     borderRadius: 10,
     paddingHorizontal: 12,
-    paddingVertical: 6,
+    paddingVertical: 6, // Vertically shortened
     fontSize: 13,
     color: "#000",
     marginBottom: 5,
-  },
-  // Specifically for Price, MRP, Stock, Unit (Vertically Shortened)
-  inputSuperCompact: {
-    backgroundColor: "#F9FAFB",
-    borderWidth: 1,
-    borderColor: "#E5E7EB",
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 2,
-    height: 30,
-    fontSize: 12,
-    color: "#000",
   },
   inputHighlighted: {
     borderColor: "#000",
