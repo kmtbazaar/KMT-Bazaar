@@ -80,24 +80,34 @@ export default function VendorStoreDetail() {
     finally { setLoading(false); }
   };
 
-  // 🔥 NAYA: Store Delete karne ka function
+  // 🔥 UPDATE: Delete Store with strict Warning & proper Error Handling
   const handleDeleteStore = () => {
-    Alert.alert("Delete Store", `Are you sure you want to permanently delete '${editForm.name}'?`, [
-      { text: "Cancel", style: "cancel" },
-      { 
-        text: "Delete", 
-        style: "destructive", 
-        onPress: async () => {
-          try {
-            await vendorApi.deleteStore(id); // API call
-            Alert.alert("Deleted", "Store has been deleted successfully.");
-            router.replace("/vendor"); // Delete hone ke baad dashboard par wapas
-          } catch (e) { 
-            Alert.alert("Error", "Could not delete store."); 
+    Alert.alert(
+      "⚠️ Warning: Delete Store", 
+      `Are you sure you want to permanently delete '${editForm.name}'?\n\nThis action cannot be undone and all associated products will be removed.`, 
+      [
+        { text: "Cancel", style: "cancel" },
+        { 
+          text: "Yes, Delete Store", 
+          style: "destructive", 
+          onPress: async () => {
+            try {
+              if (vendorApi.deleteStore) {
+                await vendorApi.deleteStore(id);
+              } else {
+                // Fallback delete handling
+                await vendorApi.updateStore(id, { is_deleted: true });
+              }
+              Alert.alert("Deleted", "Store has been deleted successfully.");
+              router.replace("/vendor");
+            } catch (e: any) { 
+              console.log("Delete Store Error:", e);
+              Alert.alert("Error", e?.message || "Could not delete store. Please try again."); 
+            }
           }
         }
-      }
-    ]);
+      ]
+    );
   };
 
   const handleAddProduct = async () => {
@@ -161,7 +171,6 @@ export default function VendorStoreDetail() {
           <MaterialCommunityIcons name="arrow-left" size={24} color="#fff" />
         </Pressable>
         
-        {/* 🔥 NAYA: Settings icon ke theek bagal mein Delete Store button */}
         <View style={{ flexDirection: "row", gap: 10 }}>
           <Pressable onPress={handleDeleteStore} style={[s.circleBtn, { backgroundColor: "rgba(220, 38, 38, 0.8)", borderColor: "rgba(220, 38, 38, 1)" }]}>
             <MaterialCommunityIcons name="trash-can-outline" size={22} color="#fff" />
@@ -181,11 +190,19 @@ export default function VendorStoreDetail() {
         ItemSeparatorComponent={() => <View style={{ height: 12 }} />}
         ListHeaderComponent={
           <>
+            {/* Banner Image */}
             <View style={s.bannerWrap}>
               <Image source={{ uri: editForm.image }} style={s.bannerImg} contentFit="cover" />
-              <LinearGradient colors={["rgba(0,0,0,0.8)", "transparent"]} style={StyleSheet.absoluteFill} />
-              <Text style={s.bannerTitle}>{editForm.name}</Text>
             </View>
+
+            {/* 🔥 NEW: Store Name Box Below Image & Above My Products */}
+            <View style={s.storeDetailsCard}>
+              <Text style={s.storeTitleText}>{editForm.name}</Text>
+              {editForm.address ? (
+                <Text style={s.storeAddressText}>📍 {editForm.address}</Text>
+              ) : null}
+            </View>
+
             <Text style={s.listTitle}>My Products ({products.length})</Text>
           </>
         }
@@ -316,15 +333,38 @@ const s = StyleSheet.create({
     borderRadius: 22, 
     backgroundColor: 'rgba(0,0,0,0.4)', 
     alignItems: 'center', 
-    justifyContent: 'center',
+    justify.content: 'center',
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.3)'
   },
 
-  bannerWrap: { width: "100%", height: 210, backgroundColor: '#ccc' },
+  bannerWrap: { width: "100%", height: 200, backgroundColor: '#ccc' },
   bannerImg: { width: "100%", height: "100%" },
-  bannerTitle: { position: 'absolute', bottom: 16, left: 20, fontSize: 26, fontWeight: '900', color: '#fff' },
-  listTitle: { fontSize: 16, fontWeight: '800', paddingHorizontal: 20, paddingTop: 20, color: COLORS.text },
+  
+  // 🔥 Store Details Card (Image ke niche)
+  storeDetailsCard: {
+    backgroundColor: '#fff',
+    padding: 16,
+    marginHorizontal: 16,
+    marginTop: -20, // Clean overlap card effect
+    borderRadius: RADIUS.md,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    ...shadow.soft
+  },
+  storeTitleText: {
+    fontSize: 22,
+    fontWeight: '900',
+    color: COLORS.text,
+  },
+  storeAddressText: {
+    fontSize: 13,
+    color: COLORS.textMuted,
+    marginTop: 4,
+    fontWeight: '500'
+  },
+
+  listTitle: { fontSize: 16, fontWeight: '800', paddingHorizontal: 20, paddingTop: 16, paddingBottom: 10, color: COLORS.text },
   card: { flexDirection: 'row', gap: 12, padding: 12, marginHorizontal: 20, backgroundColor: '#fff', borderRadius: RADIUS.md, borderWidth: 1, borderColor: COLORS.border, ...shadow.soft },
   img: { width: 70, height: 70, borderRadius: 8 },
   name: { fontWeight: '700', fontSize: 14, color: COLORS.text, flex: 1 },
