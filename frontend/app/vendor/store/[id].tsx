@@ -407,7 +407,7 @@ export default function VendorStoreDetail() {
         </View>
       </Modal>
 
-      {/* ADD PRODUCT MODAL (Screen Fitted - Compact Vertical Spacing) */}
+      {/* ADD PRODUCT MODAL (Optimized Compact Layout) */}
       <Modal visible={showAddModal} transparent animationType="slide">
         <View style={s.modalOverlayBottom}>
           <View style={s.modalContentBottom}>
@@ -455,7 +455,7 @@ export default function VendorStoreDetail() {
                   keyboardType="numeric"
                 />
                 <TextInput
-                  placeholder="Unit (e.g. 1 pc)"
+                  placeholder="Unit (e.g. 1 kg)"
                   placeholderTextColor="#9CA3AF"
                   value={form.unit}
                   onChangeText={(t) => setForm({ ...form, unit: t })}
@@ -470,18 +470,18 @@ export default function VendorStoreDetail() {
                   {form.image ? (
                     <Image source={{ uri: form.image }} style={s.previewImg} contentFit="cover" />
                   ) : (
-                    <MaterialCommunityIcons name="image-outline" size={24} color="#9CA3AF" />
+                    <MaterialCommunityIcons name="image-outline" size={28} color="#9CA3AF" />
                   )}
                 </View>
 
                 <View style={s.imagePickerCol}>
                   <Pressable style={s.pickBtnCompact} onPress={() => pickProductImage(false, false)}>
-                    <MaterialCommunityIcons name="image-multiple-outline" size={15} color="#EA580C" />
+                    <MaterialCommunityIcons name="image-multiple-outline" size={16} color="#EA580C" />
                     <Text style={s.pickBtnText}>Gallery</Text>
                   </Pressable>
 
                   <Pressable style={s.pickBtnCompact} onPress={() => pickProductImage(false, true)}>
-                    <MaterialCommunityIcons name="camera-outline" size={15} color="#EA580C" />
+                    <MaterialCommunityIcons name="camera-outline" size={16} color="#EA580C" />
                     <Text style={s.pickBtnText}>Camera</Text>
                   </Pressable>
                 </View>
@@ -493,7 +493,7 @@ export default function VendorStoreDetail() {
                 placeholderTextColor="#9CA3AF"
                 value={form.description}
                 onChangeText={(t) => setForm({ ...form, description: t })}
-                style={[s.inputCompact, { height: 42, textAlignVertical: "top", paddingTop: 6 }]}
+                style={[s.inputCompact, { height: 50, textAlignVertical: "top" }]}
                 multiline
               />
 
@@ -521,14 +521,14 @@ export default function VendorStoreDetail() {
               >
                 <MaterialCommunityIcons
                   name={form.trending ? "checkbox-marked" : "checkbox-blank-outline"}
-                  size={18}
+                  size={20}
                   color="#EA580C"
                 />
                 <Text style={s.checkboxLabel}>Mark as trending</Text>
               </Pressable>
 
               {/* Action Buttons Row */}
-              <View style={[s.rowCompact, { marginTop: 4 }]}>
+              <View style={[s.rowCompact, { marginTop: 6 }]}>
                 <Pressable
                   style={[s.actionBtnCompact, s.cancelBtn]}
                   onPress={() => {
@@ -556,7 +556,7 @@ export default function VendorStoreDetail() {
         </View>
       </Modal>
 
-      {/* EDIT PRODUCT MODAL (Screen Fitted - Compact Vertical Spacing) */}
+      {/* EDIT PRODUCT MODAL (Optimized Compact Layout) */}
       <Modal visible={showEditProductModal} transparent animationType="slide">
         <View style={s.modalOverlayBottom}>
           <View style={s.modalContentBottom}>
@@ -604,7 +604,7 @@ export default function VendorStoreDetail() {
                   keyboardType="numeric"
                 />
                 <TextInput
-                  placeholder="Unit (e.g. 1 pc)"
+                  placeholder="Unit (e.g. 1 kg)"
                   placeholderTextColor="#9CA3AF"
                   value={editProductForm.unit}
                   onChangeText={(t) => setEditProductForm({ ...editProductForm, unit: t })}
@@ -623,18 +623,18 @@ export default function VendorStoreDetail() {
                       contentFit="cover"
                     />
                   ) : (
-                    <MaterialCommunityIcons name="image-outline" size={24} color="#9CA3AF" />
+                    <MaterialCommunityIcons name="image-outline" size={28} color="#9CA3AF" />
                   )}
                 </View>
 
                 <View style={s.imagePickerCol}>
                   <Pressable style={s.pickBtnCompact} onPress={() => pickProductImage(true, false)}>
-                    <MaterialCommunityIcons name="image-multiple-outline" size={15} color="#EA580C" />
+                    <MaterialCommunityIcons name="image-multiple-outline" size={16} color="#EA580C" />
                     <Text style={s.pickBtnText}>Gallery</Text>
                   </Pressable>
 
                   <Pressable style={s.pickBtnCompact} onPress={() => pickProductImage(true, true)}>
-                    <MaterialCommunityIcons name="camera-outline" size={15} color="#EA580C" />
+                    <MaterialCommunityIcons name="camera-outline" size={16} color="#EA580C" />
                     <Text style={s.pickBtnText}>Camera</Text>
                   </Pressable>
                 </View>
@@ -646,7 +646,7 @@ export default function VendorStoreDetail() {
                 placeholderTextColor="#9CA3AF"
                 value={editProductForm.description}
                 onChangeText={(t) => setEditProductForm({ ...editProductForm, description: t })}
-                style={[s.inputCompact, { height: 42, textAlignVertical: "top", paddingTop: 6 }]}
+                style={[s.inputCompact, { height: 50, textAlignVertical: "top" }]}
                 multiline
               />
 
@@ -676,14 +676,14 @@ export default function VendorStoreDetail() {
               >
                 <MaterialCommunityIcons
                   name={editProductForm.trending ? "checkbox-marked" : "checkbox-blank-outline"}
-                  size={18}
+                  size={20}
                   color="#EA580C"
                 />
                 <Text style={s.checkboxLabel}>Mark as trending</Text>
               </Pressable>
 
               {/* Action Buttons Row */}
-              <View style={[s.rowCompact, { marginTop: 4 }]}>
+              <View style={[s.rowCompact, { marginTop: 6 }]}>
                 <Pressable
                   style={[s.actionBtnCompact, s.cancelBtn]}
                   onPress={() => setShowEditProductModal(false)}
@@ -856,24 +856,24 @@ const s = StyleSheet.create({
   },
   modalContentBottom: {
     backgroundColor: "#fff",
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
+    borderTopLeftRadius: 22,
+    borderTopRightRadius: 22,
     paddingHorizontal: 16,
-    paddingTop: 6,
-    maxHeight: "95%",
+    paddingTop: 8,
+    maxHeight: "92%",
   },
   dragHandle: {
-    width: 32,
-    height: 3,
+    width: 36,
+    height: 4,
     backgroundColor: "#E5E7EB",
     borderRadius: 2,
     alignSelf: "center",
-    marginBottom: 6,
+    marginBottom: 10,
   },
-  modalTitle: { fontSize: 17, fontWeight: "800", color: "#000", marginBottom: 6 },
+  modalTitle: { fontSize: 18, fontWeight: "800", color: "#000", marginBottom: 10 },
 
-  // COMPACT INPUTS & BOXES (Vertically Shortened)
-  rowCompact: { flexDirection: "row", gap: 8, marginBottom: 5 },
+  // Compact Form Inputs (Optimized Heights)
+  rowCompact: { flexDirection: "row", gap: 8, marginBottom: 8 },
   flex1: { flex: 1 },
   inputCompact: {
     backgroundColor: "#F9FAFB",
@@ -881,24 +881,24 @@ const s = StyleSheet.create({
     borderColor: "#E5E7EB",
     borderRadius: 10,
     paddingHorizontal: 12,
-    paddingVertical: 6, // Vertically shortened
-    fontSize: 13,
+    paddingVertical: 8,
+    fontSize: 14,
     color: "#000",
-    marginBottom: 5,
+    marginBottom: 8,
   },
   inputHighlighted: {
     borderColor: "#000",
     borderWidth: 1.2,
   },
-  sectionLabel: { fontSize: 12, fontWeight: "700", color: "#000", marginBottom: 4, marginTop: 2 },
+  sectionLabel: { fontSize: 13, fontWeight: "700", color: "#000", marginBottom: 6, marginTop: 2 },
 
   // Image Upload Row Compact
-  imageSectionRow: { flexDirection: "row", gap: 8, marginBottom: 5 },
+  imageSectionRow: { flexDirection: "row", gap: 10, marginBottom: 8 },
   imageBox: {
-    width: 60,
-    height: 60,
+    width: 72,
+    height: 72,
     backgroundColor: "#EFF6FF",
-    borderRadius: 10,
+    borderRadius: 12,
     borderWidth: 1,
     borderColor: "#DBEAFE",
     borderStyle: "dashed",
@@ -907,48 +907,48 @@ const s = StyleSheet.create({
     overflow: "hidden",
   },
   previewImg: { width: "100%", height: "100%" },
-  imagePickerCol: { flex: 1, justifyContent: "space-between", height: 60 },
+  imagePickerCol: { flex: 1, justifyContent: "space-between", height: 72 },
   pickBtnCompact: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: 4,
+    gap: 6,
     backgroundColor: "#FFF7ED",
     borderWidth: 1,
     borderColor: "#FFEDD5",
-    height: 28,
-    borderRadius: 14,
+    height: 33,
+    borderRadius: 16,
   },
-  pickBtnText: { color: "#EA580C", fontWeight: "700", fontSize: 12 },
+  pickBtnText: { color: "#EA580C", fontWeight: "700", fontSize: 13 },
 
   // Categories Chips
-  catContainer: { flexDirection: "row", flexWrap: "wrap", gap: 5, marginBottom: 5 },
+  catContainer: { flexDirection: "row", flexWrap: "wrap", gap: 6, marginBottom: 8 },
   catChip: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    borderRadius: 14,
     backgroundColor: "#fff",
     borderWidth: 1,
     borderColor: "#E5E7EB",
   },
   catChipActive: { backgroundColor: "#EA580C", borderColor: "#EA580C" },
-  catChipText: { fontSize: 11, color: "#374151", fontWeight: "600" },
+  catChipText: { fontSize: 12, color: "#374151", fontWeight: "600" },
   catChipTextActive: { color: "#fff", fontWeight: "700" },
 
   // Checkbox
-  checkboxRow: { flexDirection: "row", alignItems: "center", gap: 6, marginVertical: 3 },
-  checkboxLabel: { fontSize: 12, fontWeight: "700", color: "#000" },
+  checkboxRow: { flexDirection: "row", alignItems: "center", gap: 6, marginVertical: 4 },
+  checkboxLabel: { fontSize: 13, fontWeight: "700", color: "#000" },
 
   // Action Buttons Compact
   actionBtnCompact: {
     flex: 1,
-    height: 38,
-    borderRadius: 19,
+    height: 42,
+    borderRadius: 21,
     justifyContent: "center",
     alignItems: "center",
   },
   cancelBtn: { backgroundColor: "#fff", borderWidth: 1, borderColor: "#E5E7EB" },
-  cancelBtnText: { color: "#374151", fontWeight: "700", fontSize: 13 },
+  cancelBtnText: { color: "#374151", fontWeight: "700", fontSize: 14 },
   createBtn: { backgroundColor: "#EA580C" },
-  createBtnText: { color: "#fff", fontWeight: "800", fontSize: 13 },
+  createBtnText: { color: "#fff", fontWeight: "800", fontSize: 14 },
 });
