@@ -12,7 +12,6 @@ import { useAuth } from "@/src/AuthContext";
 import { COLORS, LOGO_URL, RADIUS, SPACING, shadow } from "@/src/theme";
 
 const ACTIONS = [
-  { icon: "package-variant", label: "My Products", path: "/vendor/products", color: "#2563EB" },
   { icon: "clipboard-list-outline", label: "Orders", path: "/vendor/orders", color: "#F97316" },
   { icon: "chart-line", label: "Earnings", path: "/vendor/earnings", color: "#16A34A" },
 ];
@@ -30,7 +29,7 @@ export default function VendorDashboard() {
   // Profile picture state
   const [profilePic, setProfilePic] = useState(LOGO_URL);
 
-  // 🔥 NAYA: Settings Menu aur Animation ka logic
+  // 🔥 Settings Menu aur Animation ka logic
   const [showSettingsMenu, setShowSettingsMenu] = useState(false);
   const spinAnim = useRef(new Animated.Value(0)).current;
 
