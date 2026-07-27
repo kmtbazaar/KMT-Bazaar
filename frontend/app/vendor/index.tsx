@@ -198,13 +198,15 @@ export default function VendorDashboard() {
           const isOnline = st.is_online !== false; 
 
           return (
-            <Pressable 
-              key={st.id} 
-              style={s.storeCard}
-              onPress={() => router.push({ pathname: `/vendor/store/${st.id}`, params: { name: st.name, image: st.image, address: st.address } } as any)}
-            >
-              <Image source={{ uri: st.image }} style={s.storeImg} contentFit="cover" />
-              <View style={{ flex: 1 }}>
+            <View key={st.id} style={s.storeCard}>
+              {/* Sirf Image par click karne se andar ka page khulega */}
+              <Pressable 
+                onPress={() => router.push({ pathname: `/vendor/store/${st.id}`, params: { name: st.name, image: st.image, address: st.address } } as any)}
+              >
+                <Image source={{ uri: st.image }} style={s.storeImg} contentFit="cover" />
+              </Pressable>
+
+              <View style={{ flex: 1, marginLeft: 10 }}>
                 
                 <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
                   <View style={{ flex: 1, marginRight: 8 }}>
@@ -218,12 +220,15 @@ export default function VendorDashboard() {
                           {isOnline ? 'LIVE' : 'OFFLINE'}
                         </Text>
                       </View>
-                      <Switch
-                        value={isOnline}
-                        onValueChange={() => handleToggleOnline(st.id, isOnline)}
-                        trackColor={{ false: "#f87171", true: "#4ade80" }}
-                        thumbColor={"#fff"}
-                      />
+                      {/* Switch ko bada karne ke liye transform scale use kiya gaya hai */}
+                      <View style={{ transform: [{ scaleX: 1.2 }, { scaleY: 1.2 }], marginHorizontal: 4 }}>
+                        <Switch
+                          value={isOnline}
+                          onValueChange={() => handleToggleOnline(st.id, isOnline)}
+                          trackColor={{ false: "#f87171", true: "#4ade80" }}
+                          thumbColor={"#fff"}
+                        />
+                      </View>
                     </View>
                   ) : (
                     <View style={{ backgroundColor: '#fef08a', paddingHorizontal: 6, paddingVertical: 4, borderRadius: 4 }}>
@@ -234,8 +239,7 @@ export default function VendorDashboard() {
 
                 <Text style={s.storeMeta}>★ {st.rating} · {st.delivery_min} min · {st.address}</Text>
               </View>
-              <MaterialCommunityIcons name="chevron-right" size={24} color={COLORS.textMuted} style={{ alignSelf: "center", marginLeft: 4 }} />
-            </Pressable>
+            </View>
           );
         })}
         
@@ -358,7 +362,7 @@ const s = StyleSheet.create({
   kpiLabel: { color: COLORS.textMuted, fontSize: 11, marginTop: 2 },
   sectionTitle: { fontSize: 16, fontWeight: "800", color: COLORS.text },
   addBtnSmall: { backgroundColor: COLORS.brand, width: 32, height: 32, borderRadius: 16, alignItems: "center", justifyContent: "center", ...shadow.soft },
-  storeCard: { flexDirection: "row", gap: 10, padding: 12, backgroundColor: "#fff", borderRadius: RADIUS.md, marginBottom: 8, borderWidth: 1, borderColor: COLORS.border, ...shadow.soft },
+  storeCard: { flexDirection: "row", alignItems: "center", padding: 12, backgroundColor: "#fff", borderRadius: RADIUS.md, marginBottom: 8, borderWidth: 1, borderColor: COLORS.border, ...shadow.soft },
   storeImg: { width: 60, height: 60, borderRadius: 8 },
   storeName: { fontWeight: "800", color: COLORS.text, fontSize: 16 },
   storeMeta: { color: COLORS.textMuted, fontSize: 12, marginTop: 4 },
@@ -370,7 +374,6 @@ const s = StyleSheet.create({
   actionIcon: { width: 44, height: 44, borderRadius: 22, alignItems: "center", justifyContent: "center" },
   actionLabel: { flex: 1, fontWeight: "700", color: COLORS.text },
   
-  // 🔥 NAYA: Menu Styles
   menuOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.1)", alignItems: "flex-end", paddingRight: 20, paddingTop: 80 },
   menuDropdown: { backgroundColor: "#fff", padding: 10, borderRadius: 8, ...shadow.card, minWidth: 140 },
   menuItem: { flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 10, paddingHorizontal: 10 },
