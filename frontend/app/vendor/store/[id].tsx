@@ -15,11 +15,10 @@ import {
 import { Image } from "expo-image";
 import * as ImagePicker from "expo-image-picker";
 import { useLocalSearchParams, useRouter, useFocusEffect } from "expo-router";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { vendorApi } from "@/src/roleApi";
 import { api } from "@/src/api";
 import { COLORS, RADIUS, shadow } from "@/src/theme";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 
 export default function VendorStoreDetail() {
   const router = useRouter();
@@ -301,15 +300,15 @@ export default function VendorStoreDetail() {
       {/* FLOATING HEADER */}
       <View style={s.floatingHeader}>
         <Pressable onPress={() => router.back()} style={s.circleBtn} hitSlop={8}>
-          <MaterialCommunityIcons name="arrow-left" size={22} color="#fff" />
+          <MaterialCommunityIcons name="arrow-left" size={20} color="#fff" />
         </Pressable>
 
         <View style={s.rightActions}>
           <Pressable onPress={handleDeleteStore} style={[s.circleBtn, s.deleteBtn]} hitSlop={8}>
-            <MaterialCommunityIcons name="trash-can-outline" size={20} color="#fff" />
+            <MaterialCommunityIcons name="trash-can-outline" size={18} color="#fff" />
           </Pressable>
           <Pressable onPress={() => setShowSettings(true)} style={s.circleBtn} hitSlop={8}>
-            <MaterialCommunityIcons name="cog" size={22} color="#fff" />
+            <MaterialCommunityIcons name="cog" size={20} color="#fff" />
           </Pressable>
         </View>
       </View>
@@ -319,8 +318,8 @@ export default function VendorStoreDetail() {
         keyExtractor={(p) => p.id}
         refreshing={refreshing}
         onRefresh={onRefresh}
-        contentContainerStyle={{ paddingBottom: 40 }}
-        ItemSeparatorComponent={() => <View style={{ height: 12 }} />}
+        contentContainerStyle={{ paddingBottom: 20 }}
+        ItemSeparatorComponent={() => <View style={{ height: 8 }} />}
         ListHeaderComponent={
           <>
             {/* Banner Image */}
@@ -340,7 +339,7 @@ export default function VendorStoreDetail() {
             <View style={s.listHeaderRow}>
               <Text style={s.listTitle}>Products ({products.length})</Text>
               <Pressable onPress={() => setShowAddModal(true)} style={s.headerAddBtn}>
-                <MaterialCommunityIcons name="plus" size={20} color="#fff" />
+                <MaterialCommunityIcons name="plus" size={18} color="#fff" />
               </Pressable>
             </View>
           </>
@@ -358,10 +357,10 @@ export default function VendorStoreDetail() {
             </View>
             <View style={s.cardActions}>
               <Pressable onPress={() => openEditProduct(item)} hitSlop={8} style={s.editBtn}>
-                <MaterialCommunityIcons name="pencil-outline" size={22} color="#D97706" />
+                <MaterialCommunityIcons name="pencil-outline" size={20} color="#D97706" />
               </Pressable>
               <Pressable onPress={() => handleDelete(item.id, item.name)} hitSlop={8} style={s.editBtn}>
-                <MaterialCommunityIcons name="trash-can-outline" size={20} color="#DC2626" />
+                <MaterialCommunityIcons name="trash-can-outline" size={18} color="#DC2626" />
               </Pressable>
             </View>
           </View>
@@ -369,7 +368,7 @@ export default function VendorStoreDetail() {
       />
 
       {/* SHOP SETTINGS MODAL */}
-      <Modal visible={showSettings} transparent animationType="slide">
+      <Modal visible={showSettings} transparent animationType="fade">
         <View style={s.modalOverlayCenter}>
           <View style={s.modalContentCenter}>
             <Text style={s.modalTitle}>Shop Settings</Text>
@@ -377,30 +376,30 @@ export default function VendorStoreDetail() {
               {editForm.image ? (
                 <Image source={{ uri: editForm.image }} style={s.previewImg} />
               ) : (
-                <Text style={{ color: "#6B7280", fontSize: 13 }}>Change Banner</Text>
+                <Text style={{ color: "#6B7280", fontSize: 12 }}>Change Banner</Text>
               )}
             </Pressable>
             <TextInput
               value={editForm.name}
               onChangeText={(t) => setEditForm({ ...editForm, name: t })}
-              style={s.input}
+              style={s.inputCompact}
               placeholder="Shop Name"
             />
             <TextInput
               value={editForm.address}
               onChangeText={(t) => setEditForm({ ...editForm, address: t })}
-              style={s.input}
+              style={s.inputCompact}
               placeholder="Address"
             />
             <View style={s.modalActions}>
-              <Pressable onPress={() => setShowSettings(false)} style={{ padding: 8 }}>
-                <Text style={{ color: "#374151", fontWeight: "600" }}>Cancel</Text>
+              <Pressable onPress={() => setShowSettings(false)} style={{ padding: 6 }}>
+                <Text style={{ color: "#374151", fontWeight: "600", fontSize: 13 }}>Cancel</Text>
               </Pressable>
               <Pressable onPress={handleUpdateStore} style={s.saveBtnSmall}>
                 {loading ? (
-                  <ActivityIndicator color="#fff" />
+                  <ActivityIndicator color="#fff" size="small" />
                 ) : (
-                  <Text style={{ color: "#fff", fontWeight: "bold", fontSize: 13 }}>Save</Text>
+                  <Text style={{ color: "#fff", fontWeight: "bold", fontSize: 12 }}>Save</Text>
                 )}
               </Pressable>
             </View>
@@ -408,31 +407,31 @@ export default function VendorStoreDetail() {
         </View>
       </Modal>
 
-      {/* ADD PRODUCT MODAL (Exact Screenshot UI) */}
+      {/* ADD PRODUCT MODAL (Optimized Compact Layout) */}
       <Modal visible={showAddModal} transparent animationType="slide">
         <View style={s.modalOverlayBottom}>
           <View style={s.modalContentBottom}>
             <View style={s.dragHandle} />
             <Text style={s.modalTitle}>Add Product</Text>
 
-            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 20 }}>
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 10 }}>
               {/* Product Name */}
               <TextInput
                 placeholder="Name"
                 placeholderTextColor="#9CA3AF"
                 value={form.name}
                 onChangeText={(t) => setForm({ ...form, name: t })}
-                style={[s.input, s.inputHighlighted]}
+                style={[s.inputCompact, s.inputHighlighted]}
               />
 
               {/* Price & MRP Row */}
-              <View style={s.row}>
+              <View style={s.rowCompact}>
                 <TextInput
                   placeholder="Price"
                   placeholderTextColor="#9CA3AF"
                   value={form.price}
                   onChangeText={(t) => setForm({ ...form, price: t })}
-                  style={[s.input, s.flex1]}
+                  style={[s.inputCompact, s.flex1]}
                   keyboardType="numeric"
                 />
                 <TextInput
@@ -440,19 +439,19 @@ export default function VendorStoreDetail() {
                   placeholderTextColor="#9CA3AF"
                   value={form.mrp}
                   onChangeText={(t) => setForm({ ...form, mrp: t })}
-                  style={[s.input, s.flex1]}
+                  style={[s.inputCompact, s.flex1]}
                   keyboardType="numeric"
                 />
               </View>
 
               {/* Stock & Unit Row */}
-              <View style={s.row}>
+              <View style={s.rowCompact}>
                 <TextInput
                   placeholder="Stock"
                   placeholderTextColor="#9CA3AF"
                   value={form.stock}
                   onChangeText={(t) => setForm({ ...form, stock: t })}
-                  style={[s.input, s.flex1]}
+                  style={[s.inputCompact, s.flex1]}
                   keyboardType="numeric"
                 />
                 <TextInput
@@ -460,7 +459,7 @@ export default function VendorStoreDetail() {
                   placeholderTextColor="#9CA3AF"
                   value={form.unit}
                   onChangeText={(t) => setForm({ ...form, unit: t })}
-                  style={[s.input, s.flex1]}
+                  style={[s.inputCompact, s.flex1]}
                 />
               </View>
 
@@ -471,18 +470,18 @@ export default function VendorStoreDetail() {
                   {form.image ? (
                     <Image source={{ uri: form.image }} style={s.previewImg} contentFit="cover" />
                   ) : (
-                    <MaterialCommunityIcons name="image-outline" size={36} color="#9CA3AF" />
+                    <MaterialCommunityIcons name="image-outline" size={28} color="#9CA3AF" />
                   )}
                 </View>
 
                 <View style={s.imagePickerCol}>
-                  <Pressable style={s.pickBtn} onPress={() => pickProductImage(false, false)}>
-                    <MaterialCommunityIcons name="image-multiple-outline" size={20} color="#EA580C" />
+                  <Pressable style={s.pickBtnCompact} onPress={() => pickProductImage(false, false)}>
+                    <MaterialCommunityIcons name="image-multiple-outline" size={16} color="#EA580C" />
                     <Text style={s.pickBtnText}>Gallery</Text>
                   </Pressable>
 
-                  <Pressable style={s.pickBtn} onPress={() => pickProductImage(false, true)}>
-                    <MaterialCommunityIcons name="camera-outline" size={20} color="#EA580C" />
+                  <Pressable style={s.pickBtnCompact} onPress={() => pickProductImage(false, true)}>
+                    <MaterialCommunityIcons name="camera-outline" size={16} color="#EA580C" />
                     <Text style={s.pickBtnText}>Camera</Text>
                   </Pressable>
                 </View>
@@ -494,7 +493,7 @@ export default function VendorStoreDetail() {
                 placeholderTextColor="#9CA3AF"
                 value={form.description}
                 onChangeText={(t) => setForm({ ...form, description: t })}
-                style={[s.input, { height: 75, textAlignVertical: "top" }]}
+                style={[s.inputCompact, { height: 50, textAlignVertical: "top" }]}
                 multiline
               />
 
@@ -522,16 +521,16 @@ export default function VendorStoreDetail() {
               >
                 <MaterialCommunityIcons
                   name={form.trending ? "checkbox-marked" : "checkbox-blank-outline"}
-                  size={24}
+                  size={20}
                   color="#EA580C"
                 />
                 <Text style={s.checkboxLabel}>Mark as trending</Text>
               </Pressable>
 
               {/* Action Buttons Row */}
-              <View style={[s.row, { marginTop: 10 }]}>
+              <View style={[s.rowCompact, { marginTop: 6 }]}>
                 <Pressable
-                  style={[s.actionBtn, s.cancelBtn]}
+                  style={[s.actionBtnCompact, s.cancelBtn]}
                   onPress={() => {
                     setShowAddModal(false);
                     resetAddForm();
@@ -541,12 +540,12 @@ export default function VendorStoreDetail() {
                 </Pressable>
 
                 <Pressable
-                  style={[s.actionBtn, s.createBtn]}
+                  style={[s.actionBtnCompact, s.createBtn]}
                   onPress={handleAddProduct}
                   disabled={loading}
                 >
                   {loading ? (
-                    <ActivityIndicator color="#fff" />
+                    <ActivityIndicator color="#fff" size="small" />
                   ) : (
                     <Text style={s.createBtnText}>Create</Text>
                   )}
@@ -557,31 +556,31 @@ export default function VendorStoreDetail() {
         </View>
       </Modal>
 
-      {/* EDIT PRODUCT MODAL (Exact Screenshot UI) */}
+      {/* EDIT PRODUCT MODAL (Optimized Compact Layout) */}
       <Modal visible={showEditProductModal} transparent animationType="slide">
         <View style={s.modalOverlayBottom}>
           <View style={s.modalContentBottom}>
             <View style={s.dragHandle} />
             <Text style={s.modalTitle}>Edit Product</Text>
 
-            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 20 }}>
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 10 }}>
               {/* Product Name */}
               <TextInput
                 placeholder="Name"
                 placeholderTextColor="#9CA3AF"
                 value={editProductForm.name}
                 onChangeText={(t) => setEditProductForm({ ...editProductForm, name: t })}
-                style={[s.input, s.inputHighlighted]}
+                style={[s.inputCompact, s.inputHighlighted]}
               />
 
               {/* Price & MRP Row */}
-              <View style={s.row}>
+              <View style={s.rowCompact}>
                 <TextInput
                   placeholder="Price"
                   placeholderTextColor="#9CA3AF"
                   value={editProductForm.price}
                   onChangeText={(t) => setEditProductForm({ ...editProductForm, price: t })}
-                  style={[s.input, s.flex1]}
+                  style={[s.inputCompact, s.flex1]}
                   keyboardType="numeric"
                 />
                 <TextInput
@@ -589,19 +588,19 @@ export default function VendorStoreDetail() {
                   placeholderTextColor="#9CA3AF"
                   value={editProductForm.mrp}
                   onChangeText={(t) => setEditProductForm({ ...editProductForm, mrp: t })}
-                  style={[s.input, s.flex1]}
+                  style={[s.inputCompact, s.flex1]}
                   keyboardType="numeric"
                 />
               </View>
 
               {/* Stock & Unit Row */}
-              <View style={s.row}>
+              <View style={s.rowCompact}>
                 <TextInput
                   placeholder="Stock"
                   placeholderTextColor="#9CA3AF"
                   value={editProductForm.stock}
                   onChangeText={(t) => setEditProductForm({ ...editProductForm, stock: t })}
-                  style={[s.input, s.flex1]}
+                  style={[s.inputCompact, s.flex1]}
                   keyboardType="numeric"
                 />
                 <TextInput
@@ -609,7 +608,7 @@ export default function VendorStoreDetail() {
                   placeholderTextColor="#9CA3AF"
                   value={editProductForm.unit}
                   onChangeText={(t) => setEditProductForm({ ...editProductForm, unit: t })}
-                  style={[s.input, s.flex1]}
+                  style={[s.inputCompact, s.flex1]}
                 />
               </View>
 
@@ -624,18 +623,18 @@ export default function VendorStoreDetail() {
                       contentFit="cover"
                     />
                   ) : (
-                    <MaterialCommunityIcons name="image-outline" size={36} color="#9CA3AF" />
+                    <MaterialCommunityIcons name="image-outline" size={28} color="#9CA3AF" />
                   )}
                 </View>
 
                 <View style={s.imagePickerCol}>
-                  <Pressable style={s.pickBtn} onPress={() => pickProductImage(true, false)}>
-                    <MaterialCommunityIcons name="image-multiple-outline" size={20} color="#EA580C" />
+                  <Pressable style={s.pickBtnCompact} onPress={() => pickProductImage(true, false)}>
+                    <MaterialCommunityIcons name="image-multiple-outline" size={16} color="#EA580C" />
                     <Text style={s.pickBtnText}>Gallery</Text>
                   </Pressable>
 
-                  <Pressable style={s.pickBtn} onPress={() => pickProductImage(true, true)}>
-                    <MaterialCommunityIcons name="camera-outline" size={20} color="#EA580C" />
+                  <Pressable style={s.pickBtnCompact} onPress={() => pickProductImage(true, true)}>
+                    <MaterialCommunityIcons name="camera-outline" size={16} color="#EA580C" />
                     <Text style={s.pickBtnText}>Camera</Text>
                   </Pressable>
                 </View>
@@ -647,7 +646,7 @@ export default function VendorStoreDetail() {
                 placeholderTextColor="#9CA3AF"
                 value={editProductForm.description}
                 onChangeText={(t) => setEditProductForm({ ...editProductForm, description: t })}
-                style={[s.input, { height: 75, textAlignVertical: "top" }]}
+                style={[s.inputCompact, { height: 50, textAlignVertical: "top" }]}
                 multiline
               />
 
@@ -677,28 +676,28 @@ export default function VendorStoreDetail() {
               >
                 <MaterialCommunityIcons
                   name={editProductForm.trending ? "checkbox-marked" : "checkbox-blank-outline"}
-                  size={24}
+                  size={20}
                   color="#EA580C"
                 />
                 <Text style={s.checkboxLabel}>Mark as trending</Text>
               </Pressable>
 
               {/* Action Buttons Row */}
-              <View style={[s.row, { marginTop: 10 }]}>
+              <View style={[s.rowCompact, { marginTop: 6 }]}>
                 <Pressable
-                  style={[s.actionBtn, s.cancelBtn]}
+                  style={[s.actionBtnCompact, s.cancelBtn]}
                   onPress={() => setShowEditProductModal(false)}
                 >
                   <Text style={s.cancelBtnText}>Cancel</Text>
                 </Pressable>
 
                 <Pressable
-                  style={[s.actionBtn, s.createBtn]}
+                  style={[s.actionBtnCompact, s.createBtn]}
                   onPress={handleUpdateProduct}
                   disabled={loading}
                 >
                   {loading ? (
-                    <ActivityIndicator color="#fff" />
+                    <ActivityIndicator color="#fff" size="small" />
                   ) : (
                     <Text style={s.createBtnText}>Save Changes</Text>
                   )}
@@ -715,12 +714,12 @@ export default function VendorStoreDetail() {
 const s = StyleSheet.create({
   root: { flex: 1, backgroundColor: "#F9FAFB" },
 
-  // Floating Header
+  // Header Bar
   floatingHeader: {
     position: "absolute",
-    top: 16,
-    left: 16,
-    right: 16,
+    top: 12,
+    left: 12,
+    right: 12,
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
@@ -730,12 +729,12 @@ const s = StyleSheet.create({
   rightActions: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 12,
+    gap: 8,
   },
   circleBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     backgroundColor: "rgba(0,0,0,0.45)",
     alignItems: "center",
     justifyContent: "center",
@@ -749,27 +748,27 @@ const s = StyleSheet.create({
   },
 
   // Store Banner & Card
-  bannerWrap: { width: "100%", height: 210, backgroundColor: "#E2E8F0" },
+  bannerWrap: { width: "100%", height: 180, backgroundColor: "#E2E8F0" },
   bannerImg: { width: "100%", height: "100%" },
   storeDetailsCard: {
     backgroundColor: "#fff",
-    padding: 16,
-    marginHorizontal: 16,
-    marginTop: -24,
+    padding: 12,
+    marginHorizontal: 14,
+    marginTop: -20,
     borderRadius: RADIUS.md,
     borderWidth: 1,
     borderColor: COLORS.border,
     ...shadow.soft,
   },
   storeTitleText: {
-    fontSize: 22,
+    fontSize: 18,
     fontWeight: "900",
     color: COLORS.text,
   },
   storeAddressText: {
-    fontSize: 13,
+    fontSize: 12,
     color: COLORS.textMuted,
-    marginTop: 4,
+    marginTop: 2,
     fontWeight: "500",
   },
 
@@ -778,55 +777,55 @@ const s = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingHorizontal: 20,
-    paddingTop: 16,
-    paddingBottom: 10,
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 8,
   },
-  listTitle: { fontSize: 20, fontWeight: "800", color: "#000" },
+  listTitle: { fontSize: 18, fontWeight: "800", color: "#000" },
   headerAddBtn: {
     backgroundColor: "#EA580C",
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    width: 26,
+    height: 26,
+    borderRadius: 13,
     alignItems: "center",
     justifyContent: "center",
   },
 
-  // Card Design (Exact Match with Screenshot)
+  // Card Design
   card: {
     flexDirection: "row",
     alignItems: "center",
-    padding: 12,
-    marginHorizontal: 16,
+    padding: 10,
+    marginHorizontal: 14,
     backgroundColor: "#fff",
-    borderRadius: 16,
+    borderRadius: 12,
     borderWidth: 1,
     borderColor: "#E5E7EB",
   },
-  img: { width: 60, height: 60, borderRadius: 12, backgroundColor: "#F3F4F6" },
-  cardDetails: { flex: 1, marginLeft: 12 },
-  name: { fontSize: 16, fontWeight: "700", color: "#000" },
-  meta: { fontSize: 13, color: "#6B7280", marginTop: 2 },
-  cardActions: { flexDirection: "row", alignItems: "center", gap: 4 },
-  editBtn: { padding: 6 },
+  img: { width: 50, height: 50, borderRadius: 10, backgroundColor: "#F3F4F6" },
+  cardDetails: { flex: 1, marginLeft: 10 },
+  name: { fontSize: 15, fontWeight: "700", color: "#000" },
+  meta: { fontSize: 12, color: "#6B7280", marginTop: 2 },
+  cardActions: { flexDirection: "row", alignItems: "center", gap: 2 },
+  editBtn: { padding: 4 },
 
-  // Center Modal (Shop Settings)
+  // Center Modal
   modalOverlayCenter: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.5)",
-    justify: "center",
+    justifyContent: "center",
     padding: 20,
   },
   modalContentCenter: {
     backgroundColor: "#fff",
-    padding: 16,
+    padding: 14,
     borderRadius: 16,
     ...shadow.soft,
   },
   bannerPickerBtn: {
-    height: 90,
-    marginBottom: 12,
-    borderRadius: 12,
+    height: 75,
+    marginBottom: 8,
+    borderRadius: 10,
     overflow: "hidden",
     backgroundColor: "#F3F4F6",
     justifyContent: "center",
@@ -838,15 +837,15 @@ const s = StyleSheet.create({
   modalActions: {
     flexDirection: "row",
     justifyContent: "flex-end",
-    gap: 12,
+    gap: 8,
     alignItems: "center",
-    marginTop: 8,
+    marginTop: 6,
   },
   saveBtnSmall: {
     backgroundColor: "#EA580C",
-    paddingHorizontal: 18,
-    paddingVertical: 10,
-    borderRadius: 20,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 16,
   },
 
   // Bottom Sheet Modal
@@ -857,49 +856,49 @@ const s = StyleSheet.create({
   },
   modalContentBottom: {
     backgroundColor: "#fff",
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
-    paddingHorizontal: 20,
-    paddingTop: 12,
-    maxHeight: "88%",
+    borderTopLeftRadius: 22,
+    borderTopRightRadius: 22,
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    maxHeight: "92%",
   },
   dragHandle: {
-    width: 40,
+    width: 36,
     height: 4,
     backgroundColor: "#E5E7EB",
     borderRadius: 2,
     alignSelf: "center",
-    marginBottom: 16,
+    marginBottom: 10,
   },
-  modalTitle: { fontSize: 20, fontWeight: "800", color: "#000", marginBottom: 16 },
+  modalTitle: { fontSize: 18, fontWeight: "800", color: "#000", marginBottom: 10 },
 
-  // Form Inputs
-  row: { flexDirection: "row", gap: 12 },
+  // Compact Form Inputs (Optimized Heights)
+  rowCompact: { flexDirection: "row", gap: 8, marginBottom: 8 },
   flex1: { flex: 1 },
-  input: {
+  inputCompact: {
     backgroundColor: "#F9FAFB",
     borderWidth: 1,
     borderColor: "#E5E7EB",
-    borderRadius: 16,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    fontSize: 15,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    fontSize: 14,
     color: "#000",
-    marginBottom: 12,
+    marginBottom: 8,
   },
   inputHighlighted: {
     borderColor: "#000",
-    borderWidth: 1.5,
+    borderWidth: 1.2,
   },
-  sectionLabel: { fontSize: 15, fontWeight: "700", color: "#000", marginBottom: 10, marginTop: 4 },
+  sectionLabel: { fontSize: 13, fontWeight: "700", color: "#000", marginBottom: 6, marginTop: 2 },
 
-  // Image Upload Row
-  imageSectionRow: { flexDirection: "row", gap: 12, marginBottom: 14 },
+  // Image Upload Row Compact
+  imageSectionRow: { flexDirection: "row", gap: 10, marginBottom: 8 },
   imageBox: {
-    width: 100,
-    height: 100,
+    width: 72,
+    height: 72,
     backgroundColor: "#EFF6FF",
-    borderRadius: 16,
+    borderRadius: 12,
     borderWidth: 1,
     borderColor: "#DBEAFE",
     borderStyle: "dashed",
@@ -908,48 +907,48 @@ const s = StyleSheet.create({
     overflow: "hidden",
   },
   previewImg: { width: "100%", height: "100%" },
-  imagePickerCol: { flex: 1, justifyContent: "space-between" },
-  pickBtn: {
+  imagePickerCol: { flex: 1, justifyContent: "space-between", height: 72 },
+  pickBtnCompact: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: 8,
+    gap: 6,
     backgroundColor: "#FFF7ED",
     borderWidth: 1,
     borderColor: "#FFEDD5",
-    height: 46,
-    borderRadius: 23,
+    height: 33,
+    borderRadius: 16,
   },
-  pickBtnText: { color: "#EA580C", fontWeight: "700", fontSize: 15 },
+  pickBtnText: { color: "#EA580C", fontWeight: "700", fontSize: 13 },
 
   // Categories Chips
-  catContainer: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 14 },
+  catContainer: { flexDirection: "row", flexWrap: "wrap", gap: 6, marginBottom: 8 },
   catChip: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    borderRadius: 14,
     backgroundColor: "#fff",
     borderWidth: 1,
     borderColor: "#E5E7EB",
   },
   catChipActive: { backgroundColor: "#EA580C", borderColor: "#EA580C" },
-  catChipText: { fontSize: 13, color: "#374151", fontWeight: "600" },
+  catChipText: { fontSize: 12, color: "#374151", fontWeight: "600" },
   catChipTextActive: { color: "#fff", fontWeight: "700" },
 
   // Checkbox
-  checkboxRow: { flexDirection: "row", alignItems: "center", gap: 8, marginVertical: 8 },
-  checkboxLabel: { fontSize: 15, fontWeight: "700", color: "#000" },
+  checkboxRow: { flexDirection: "row", alignItems: "center", gap: 6, marginVertical: 4 },
+  checkboxLabel: { fontSize: 13, fontWeight: "700", color: "#000" },
 
-  // Action Buttons
-  actionBtn: {
+  // Action Buttons Compact
+  actionBtnCompact: {
     flex: 1,
-    height: 52,
-    borderRadius: 26,
+    height: 42,
+    borderRadius: 21,
     justifyContent: "center",
     alignItems: "center",
   },
   cancelBtn: { backgroundColor: "#fff", borderWidth: 1, borderColor: "#E5E7EB" },
-  cancelBtnText: { color: "#374151", fontWeight: "700", fontSize: 16 },
+  cancelBtnText: { color: "#374151", fontWeight: "700", fontSize: 14 },
   createBtn: { backgroundColor: "#EA580C" },
-  createBtnText: { color: "#fff", fontWeight: "800", fontSize: 16 },
+  createBtnText: { color: "#fff", fontWeight: "800", fontSize: 14 },
 });
