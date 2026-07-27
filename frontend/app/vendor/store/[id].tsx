@@ -1,11 +1,24 @@
 import React, { useCallback, useState } from "react";
-import { View, Text, StyleSheet, FlatList, Pressable, Modal, TextInput, Alert, ActivityIndicator, ScrollView, Platform } from "react-native";
+import {
+  View,
+  Text,
+  StyleSheet,
+  FlatList,
+  Pressable,
+  Modal,
+  TextInput,
+  Alert,
+  ActivityIndicator,
+  ScrollView,
+  Platform,
+} from "react-native";
 import { Image } from "expo-image";
-import * as ImagePicker from "expo-image-picker"; 
+import * as ImagePicker from "expo-image-picker";
 import { useLocalSearchParams, useRouter, useFocusEffect } from "expo-router";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { vendorApi } from "@/src/roleApi";
-import { api } from "@/src/api"; 
+import { api } from "@/src/api";
 import { COLORS, RADIUS, shadow } from "@/src/theme";
 
 export default function VendorStoreDetail() {
@@ -15,21 +28,45 @@ export default function VendorStoreDetail() {
   const initialName = (params.name as string) || "Store Detail";
   const initialImage = (params.image as string) || "";
   const initialAddress = (params.address as string) || "";
-  
+
   const [products, setProducts] = useState<any[]>([]);
   const [categories, setCategories] = useState<any[]>([]);
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const [showSettings, setShowSettings] = useState(false);
-  const [editForm, setEditForm] = useState({ name: initialName, address: initialAddress, image: initialImage });
+  const [editForm, setEditForm] = useState({
+    name: initialName,
+    address: initialAddress,
+    image: initialImage,
+  });
 
   const [showAddModal, setShowAddModal] = useState(false);
-  const [form, setForm] = useState({ name: "", category_id: "", price: "", mrp: "", unit: "1 pc", stock: "10", image: "", description: "" });
+  const [form, setForm] = useState({
+    name: "",
+    category_id: "",
+    price: "",
+    mrp: "",
+    unit: "1 pc",
+    stock: "10",
+    image: "",
+    description: "",
+    trending: false,
+  });
 
   const [showEditProductModal, setShowEditProductModal] = useState(false);
   const [selectedProductId, setSelectedProductId] = useState<string>("");
-  const [editProductForm, setEditProductForm] = useState({ name: "", category_id: "", price: "", mrp: "", unit: "1 pc", stock: "10", image: "", description: "" });
+  const [editProductForm, setEditProductForm] = useState({
+    name: "",
+    category_id: "",
+    price: "",
+    mrp: "",
+    unit: "1 pc",
+    stock: "10",
+    image: "",
+    description: "",
+    trending: false,
+  });
 
   const load = useCallback(async () => {
     try {
@@ -41,29 +78,61 @@ export default function VendorStoreDetail() {
     }
   }, [id]);
 
-  useFocusEffect(useCallback(() => { load(); }, [load]));
+  useFocusEffect(
+    useCallback(() => {
+      load();
+    }, [load])
+  );
 
-  const onRefresh = async () => { setRefreshing(true); await load(); setRefreshing(false); };
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await load();
+    setRefreshing(false);
+  };
 
-  const pickImage = async () => {
+  const pickBannerImage = async () => {
     let result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images, allowsEditing: true, aspect: [2, 1], quality: 0.6, base64: true,
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [2, 1],
+      quality: 0.6,
+      base64: true,
     });
     if (!result.canceled && result.assets[0].base64) {
-      setEditForm({ ...editForm, image: `data:image/jpeg;base64,${result.assets[0].base64}` });
+      setEditForm({
+        ...editForm,
+        image: `data:image/jpeg;base64,${result.assets[0].base64}`,
+      });
     }
   };
 
-  const pickProductImage = async (isEditMode: boolean) => {
-    let result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images, allowsEditing: true, aspect: [1, 1], quality: 0.6, base64: true,
-    });
+  const pickProductImage = async (isEditMode: boolean, useCamera = false) => {
+    let result;
+    const options: ImagePicker.ImagePickerOptions = {
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.6,
+      base64: true,
+    };
+
+    if (useCamera) {
+      const permission = await ImagePicker.requestCameraPermissionsAsync();
+      if (!permission.granted) {
+        Alert.alert("Permission Required", "Camera access is needed to take a photo.");
+        return;
+      }
+      result = await ImagePicker.launchCameraAsync(options);
+    } else {
+      result = await ImagePicker.launchImageLibraryAsync(options);
+    }
+
     if (!result.canceled && result.assets[0].base64) {
       const b64 = `data:image/jpeg;base64,${result.assets[0].base64}`;
       if (isEditMode) {
-        setEditProductForm({ ...editProductForm, image: b64 });
+        setEditProductForm((prev) => ({ ...prev, image: b64 }));
       } else {
-        setForm({ ...form, image: b64 });
+        setForm((prev) => ({ ...prev, image: b64 }));
       }
     }
   };
@@ -75,11 +144,13 @@ export default function VendorStoreDetail() {
       await vendorApi.updateStore(id, editForm);
       Alert.alert("Success", "Shop details updated!");
       setShowSettings(false);
-    } catch (e) { Alert.alert("Error", "Update failed."); }
-    finally { setLoading(false); }
+    } catch (e) {
+      Alert.alert("Error", "Update failed.");
+    } finally {
+      setLoading(false);
+    }
   };
 
-  // 🔥 Web + Native Safe Store Delete Logic
   const executeStoreDelete = async () => {
     try {
       if (vendorApi.deleteStore) {
@@ -87,38 +158,48 @@ export default function VendorStoreDetail() {
       } else {
         await vendorApi.updateStore(id, { is_deleted: true });
       }
-      if (Platform.OS === 'web') {
+      if (Platform.OS === "web") {
         window.alert("Store deleted successfully.");
       } else {
         Alert.alert("Deleted", "Store has been deleted successfully.");
       }
       router.replace("/vendor");
-    } catch (e: any) { 
+    } catch (e: any) {
       console.log("Delete Store Error:", e);
       const msg = e?.message || "Could not delete store. Please try again.";
-      if (Platform.OS === 'web') window.alert("Error: " + msg);
-      else Alert.alert("Error", msg); 
+      if (Platform.OS === "web") window.alert("Error: " + msg);
+      else Alert.alert("Error", msg);
     }
   };
 
   const handleDeleteStore = () => {
     const warningMsg = `Are you sure you want to permanently delete '${editForm.name}'?\n\nThis action cannot be undone and all associated products will be removed.`;
 
-    if (Platform.OS === 'web') {
+    if (Platform.OS === "web") {
       const confirmed = window.confirm(`⚠️ WARNING: DELETE STORE\n\n${warningMsg}`);
       if (confirmed) {
         executeStoreDelete();
       }
     } else {
-      Alert.alert(
-        "⚠️ Warning: Delete Store", 
-        warningMsg, 
-        [
-          { text: "Cancel", style: "cancel" },
-          { text: "Yes, Delete Store", style: "destructive", onPress: executeStoreDelete }
-        ]
-      );
+      Alert.alert("⚠️ Warning: Delete Store", warningMsg, [
+        { text: "Cancel", style: "cancel" },
+        { text: "Yes, Delete Store", style: "destructive", onPress: executeStoreDelete },
+      ]);
     }
+  };
+
+  const resetAddForm = () => {
+    setForm({
+      name: "",
+      category_id: "",
+      price: "",
+      mrp: "",
+      unit: "1 pc",
+      stock: "10",
+      image: "",
+      description: "",
+      trending: false,
+    });
   };
 
   const handleAddProduct = async () => {
@@ -126,22 +207,38 @@ export default function VendorStoreDetail() {
       Alert.alert("Error", "Name, Price, and Category are required.");
       return;
     }
+    setLoading(true);
     try {
       await vendorApi.createProduct({
-        ...form, store_id: id,
-        price: parseFloat(form.price), mrp: form.mrp ? parseFloat(form.mrp) : parseFloat(form.price), stock: parseInt(form.stock) || 0
+        ...form,
+        store_id: id,
+        price: parseFloat(form.price),
+        mrp: form.mrp ? parseFloat(form.mrp) : parseFloat(form.price),
+        stock: parseInt(form.stock) || 0,
+        image: form.image || "https://images.unsplash.com/photo-1542838132-92c53300491e?w=400&q=80",
       });
       setShowAddModal(false);
-      setForm({ name: "", category_id: "", price: "", mrp: "", unit: "1 pc", stock: "10", image: "", description: "" });
+      resetAddForm();
       load();
-    } catch (e) { Alert.alert("Error", "Could not add product."); }
+    } catch (e) {
+      Alert.alert("Error", "Could not add product.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const openEditProduct = (prod: any) => {
     setSelectedProductId(prod.id);
     setEditProductForm({
-      name: prod.name, category_id: prod.category_id || "", price: String(prod.price), mrp: String(prod.mrp || prod.price),
-      unit: prod.unit || "1 pc", stock: String(prod.stock || 0), image: prod.image || "", description: prod.description || ""
+      name: prod.name,
+      category_id: prod.category_id || "",
+      price: String(prod.price),
+      mrp: String(prod.mrp || prod.price),
+      unit: prod.unit || "1 pc",
+      stock: String(prod.stock || 0),
+      image: prod.image || "",
+      description: prod.description || "",
+      trending: !!prod.trending,
     });
     setShowEditProductModal(true);
   };
@@ -154,40 +251,59 @@ export default function VendorStoreDetail() {
     setLoading(true);
     try {
       await vendorApi.updateProduct(selectedProductId, {
-        ...editProductForm, store_id: id, price: parseFloat(editProductForm.price),
-        mrp: editProductForm.mrp ? parseFloat(editProductForm.mrp) : parseFloat(editProductForm.price), stock: parseInt(editProductForm.stock) || 0
+        ...editProductForm,
+        store_id: id,
+        price: parseFloat(editProductForm.price),
+        mrp: editProductForm.mrp
+          ? parseFloat(editProductForm.mrp)
+          : parseFloat(editProductForm.price),
+        stock: parseInt(editProductForm.stock) || 0,
       });
       Alert.alert("Success", "Product updated!");
       setShowEditProductModal(false);
       load();
-    } catch (e) { Alert.alert("Error", "Failed to update product."); }
-    finally { setLoading(false); }
+    } catch (e) {
+      Alert.alert("Error", "Failed to update product.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleDelete = (prodId: string, prodName: string) => {
-    if (Platform.OS === 'web') {
+    if (Platform.OS === "web") {
       if (window.confirm(`Delete Product: Are you sure you want to delete ${prodName}?`)) {
-        vendorApi.deleteProduct(prodId).then(() => load()).catch(() => window.alert("Delete failed."));
+        vendorApi
+          .deleteProduct(prodId)
+          .then(() => load())
+          .catch(() => window.alert("Delete failed."));
       }
     } else {
       Alert.alert("Delete Product", `Are you sure you want to delete ${prodName}?`, [
         { text: "Cancel", style: "cancel" },
-        { text: "Delete", style: "destructive", onPress: async () => {
-            try { await vendorApi.deleteProduct(prodId); load(); } catch (e) { Alert.alert("Error", "Delete failed."); }
-        }}
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await vendorApi.deleteProduct(prodId);
+              load();
+            } catch (e) {
+              Alert.alert("Error", "Delete failed.");
+            }
+          },
+        },
       ]);
     }
   };
 
   return (
     <View style={s.root}>
-      
-      {/* PERFECTLY PLACED FLOATING HEADER */}
+      {/* FLOATING HEADER */}
       <View style={s.floatingHeader}>
         <Pressable onPress={() => router.back()} style={s.circleBtn} hitSlop={8}>
           <MaterialCommunityIcons name="arrow-left" size={22} color="#fff" />
         </Pressable>
-        
+
         <View style={s.rightActions}>
           <Pressable onPress={handleDeleteStore} style={[s.circleBtn, s.deleteBtn]} hitSlop={8}>
             <MaterialCommunityIcons name="trash-can-outline" size={20} color="#fff" />
@@ -203,7 +319,7 @@ export default function VendorStoreDetail() {
         keyExtractor={(p) => p.id}
         refreshing={refreshing}
         onRefresh={onRefresh}
-        contentContainerStyle={{ paddingBottom: 100 }}
+        contentContainerStyle={{ paddingBottom: 40 }}
         ItemSeparatorComponent={() => <View style={{ height: 12 }} />}
         ListHeaderComponent={
           <>
@@ -220,221 +336,620 @@ export default function VendorStoreDetail() {
               ) : null}
             </View>
 
-            <Text style={s.listTitle}>My Products ({products.length})</Text>
+            {/* Header Title with Right Top Add Button */}
+            <View style={s.listHeaderRow}>
+              <Text style={s.listTitle}>Products ({products.length})</Text>
+              <Pressable onPress={() => setShowAddModal(true)} style={s.headerAddBtn}>
+                <MaterialCommunityIcons name="plus" size={20} color="#fff" />
+              </Pressable>
+            </View>
           </>
         }
         renderItem={({ item }) => (
           <View style={s.card}>
             <Image source={{ uri: item.image }} style={s.img} contentFit="cover" />
-            <View style={{ flex: 1 }}>
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                <Text style={s.name} numberOfLines={2}>{item.name}</Text>
-                <View style={{ flexDirection: 'row', gap: 12 }}>
-                  <Pressable onPress={() => openEditProduct(item)} hitSlop={10}>
-                    <MaterialCommunityIcons name="pencil-outline" size={20} color={COLORS.brand} />
-                  </Pressable>
-                  <Pressable onPress={() => handleDelete(item.id, item.name)} hitSlop={10}>
-                    <MaterialCommunityIcons name="trash-can-outline" size={20} color={COLORS.error} />
-                  </Pressable>
-                </View>
-              </View>
-              <Text style={s.meta}>{item.unit} · Stock: {item.stock}</Text>
-              <Text style={s.price}>₹{item.price}</Text>
+            <View style={s.cardDetails}>
+              <Text style={s.name} numberOfLines={1}>
+                {item.name}
+              </Text>
+              <Text style={s.meta}>
+                {item.unit} · Stock: {item.stock}
+              </Text>
+            </View>
+            <View style={s.cardActions}>
+              <Pressable onPress={() => openEditProduct(item)} hitSlop={8} style={s.editBtn}>
+                <MaterialCommunityIcons name="pencil-outline" size={22} color="#D97706" />
+              </Pressable>
+              <Pressable onPress={() => handleDelete(item.id, item.name)} hitSlop={8} style={s.editBtn}>
+                <MaterialCommunityIcons name="trash-can-outline" size={20} color="#DC2626" />
+              </Pressable>
             </View>
           </View>
         )}
       />
 
-      <Pressable style={s.fab} onPress={() => setShowAddModal(true)}>
-        <MaterialCommunityIcons name="plus" size={30} color="#fff" />
-      </Pressable>
-
       {/* SHOP SETTINGS MODAL */}
       <Modal visible={showSettings} transparent animationType="slide">
-        <View style={s.modalOverlay}>
-          <View style={s.modalContent}>
+        <View style={s.modalOverlayCenter}>
+          <View style={s.modalContentCenter}>
             <Text style={s.modalTitle}>Shop Settings</Text>
-            <Pressable onPress={pickImage} style={s.imagePickerBtn}>
-               {editForm.image ? <Image source={{ uri: editForm.image }} style={s.previewImg} /> : <Text style={{color: COLORS.textMuted, fontSize: 13}}>Change Banner</Text>}
+            <Pressable onPress={pickBannerImage} style={s.bannerPickerBtn}>
+              {editForm.image ? (
+                <Image source={{ uri: editForm.image }} style={s.previewImg} />
+              ) : (
+                <Text style={{ color: "#6B7280", fontSize: 13 }}>Change Banner</Text>
+              )}
             </Pressable>
-            <TextInput value={editForm.name} onChangeText={(t) => setEditForm({...editForm, name: t})} style={s.input} placeholder="Shop Name" />
-            <TextInput value={editForm.address} onChangeText={(t) => setEditForm({...editForm, address: t})} style={s.input} placeholder="Address" />
+            <TextInput
+              value={editForm.name}
+              onChangeText={(t) => setEditForm({ ...editForm, name: t })}
+              style={s.input}
+              placeholder="Shop Name"
+            />
+            <TextInput
+              value={editForm.address}
+              onChangeText={(t) => setEditForm({ ...editForm, address: t })}
+              style={s.input}
+              placeholder="Address"
+            />
             <View style={s.modalActions}>
-                <Pressable onPress={() => setShowSettings(false)} style={{padding: 8}}><Text>Cancel</Text></Pressable>
-                <Pressable onPress={handleUpdateStore} style={s.saveBtnSmall}>
-                    {loading ? <ActivityIndicator color="#fff" /> : <Text style={{color: '#fff', fontWeight: 'bold', fontSize: 13}}>Save</Text>}
-                </Pressable>
+              <Pressable onPress={() => setShowSettings(false)} style={{ padding: 8 }}>
+                <Text style={{ color: "#374151", fontWeight: "600" }}>Cancel</Text>
+              </Pressable>
+              <Pressable onPress={handleUpdateStore} style={s.saveBtnSmall}>
+                {loading ? (
+                  <ActivityIndicator color="#fff" />
+                ) : (
+                  <Text style={{ color: "#fff", fontWeight: "bold", fontSize: 13 }}>Save</Text>
+                )}
+              </Pressable>
             </View>
           </View>
         </View>
       </Modal>
 
-      {/* ADD PRODUCT MODAL */}
+      {/* ADD PRODUCT MODAL (Exact Screenshot UI) */}
       <Modal visible={showAddModal} transparent animationType="slide">
         <View style={s.modalOverlayBottom}>
           <View style={s.modalContentBottom}>
-            <View style={s.modalHeader}><Text style={s.modalTitle}>Add Product</Text><Pressable onPress={() => setShowAddModal(false)}><MaterialCommunityIcons name="close" size={22} /></Pressable></View>
-            <ScrollView showsVerticalScrollIndicator={false}>
-              <Pressable onPress={() => pickProductImage(false)} style={s.prodImgPicker}>
-                {form.image ? <Image source={{uri: form.image}} style={{width:'100%', height:'100%'}}/> : <Text style={{fontSize: 12, color: COLORS.textMuted}}>+ Upload Image</Text>}
+            <View style={s.dragHandle} />
+            <Text style={s.modalTitle}>Add Product</Text>
+
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 20 }}>
+              {/* Product Name */}
+              <TextInput
+                placeholder="Name"
+                placeholderTextColor="#9CA3AF"
+                value={form.name}
+                onChangeText={(t) => setForm({ ...form, name: t })}
+                style={[s.input, s.inputHighlighted]}
+              />
+
+              {/* Price & MRP Row */}
+              <View style={s.row}>
+                <TextInput
+                  placeholder="Price"
+                  placeholderTextColor="#9CA3AF"
+                  value={form.price}
+                  onChangeText={(t) => setForm({ ...form, price: t })}
+                  style={[s.input, s.flex1]}
+                  keyboardType="numeric"
+                />
+                <TextInput
+                  placeholder="MRP"
+                  placeholderTextColor="#9CA3AF"
+                  value={form.mrp}
+                  onChangeText={(t) => setForm({ ...form, mrp: t })}
+                  style={[s.input, s.flex1]}
+                  keyboardType="numeric"
+                />
+              </View>
+
+              {/* Stock & Unit Row */}
+              <View style={s.row}>
+                <TextInput
+                  placeholder="Stock"
+                  placeholderTextColor="#9CA3AF"
+                  value={form.stock}
+                  onChangeText={(t) => setForm({ ...form, stock: t })}
+                  style={[s.input, s.flex1]}
+                  keyboardType="numeric"
+                />
+                <TextInput
+                  placeholder="Unit (e.g. 1 kg)"
+                  placeholderTextColor="#9CA3AF"
+                  value={form.unit}
+                  onChangeText={(t) => setForm({ ...form, unit: t })}
+                  style={[s.input, s.flex1]}
+                />
+              </View>
+
+              {/* Product Image Section */}
+              <Text style={s.sectionLabel}>Product Image</Text>
+              <View style={s.imageSectionRow}>
+                <View style={s.imageBox}>
+                  {form.image ? (
+                    <Image source={{ uri: form.image }} style={s.previewImg} contentFit="cover" />
+                  ) : (
+                    <MaterialCommunityIcons name="image-outline" size={36} color="#9CA3AF" />
+                  )}
+                </View>
+
+                <View style={s.imagePickerCol}>
+                  <Pressable style={s.pickBtn} onPress={() => pickProductImage(false, false)}>
+                    <MaterialCommunityIcons name="image-multiple-outline" size={20} color="#EA580C" />
+                    <Text style={s.pickBtnText}>Gallery</Text>
+                  </Pressable>
+
+                  <Pressable style={s.pickBtn} onPress={() => pickProductImage(false, true)}>
+                    <MaterialCommunityIcons name="camera-outline" size={20} color="#EA580C" />
+                    <Text style={s.pickBtnText}>Camera</Text>
+                  </Pressable>
+                </View>
+              </View>
+
+              {/* Description Input */}
+              <TextInput
+                placeholder="Description"
+                placeholderTextColor="#9CA3AF"
+                value={form.description}
+                onChangeText={(t) => setForm({ ...form, description: t })}
+                style={[s.input, { height: 75, textAlignVertical: "top" }]}
+                multiline
+              />
+
+              {/* Category Chips */}
+              <Text style={s.sectionLabel}>Category</Text>
+              <View style={s.catContainer}>
+                {categories.map((c) => {
+                  const active = form.category_id === c.id;
+                  return (
+                    <Pressable
+                      key={c.id}
+                      style={[s.catChip, active && s.catChipActive]}
+                      onPress={() => setForm({ ...form, category_id: c.id })}
+                    >
+                      <Text style={[s.catChipText, active && s.catChipTextActive]}>{c.name}</Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+
+              {/* Mark as Trending Checkbox */}
+              <Pressable
+                style={s.checkboxRow}
+                onPress={() => setForm({ ...form, trending: !form.trending })}
+              >
+                <MaterialCommunityIcons
+                  name={form.trending ? "checkbox-marked" : "checkbox-blank-outline"}
+                  size={24}
+                  color="#EA580C"
+                />
+                <Text style={s.checkboxLabel}>Mark as trending</Text>
               </Pressable>
-              
-              <Text style={s.labelHeading}>Product Name</Text>
-              <TextInput placeholder="Product Name" value={form.name} onChangeText={(t) => setForm({...form, name: t})} style={s.input} />
-              
-              <Text style={s.labelHeading}>Category</Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 8 }}>
-                {categories.map((c) => (
-                  <Pressable key={c.id} style={[s.chip, form.category_id === c.id && s.chipActive]} onPress={() => setForm({...form, category_id: c.id})}><Text style={[s.chipText, form.category_id === c.id && {color: COLORS.brand}]}>{c.name}</Text></Pressable>
-                ))}
-              </ScrollView>
-              
-              <View style={{flexDirection:'row', gap:8}}>
-                <View style={{flex: 1}}><Text style={s.labelHeading}>Price (₹)</Text><TextInput placeholder="Price" value={form.price} onChangeText={(t) => setForm({...form, price: t})} style={s.input} keyboardType="numeric"/></View>
-                <View style={{flex: 1}}><Text style={s.labelHeading}>MRP (₹)</Text><TextInput placeholder="MRP" value={form.mrp} onChangeText={(t) => setForm({...form, mrp: t})} style={s.input} keyboardType="numeric"/></View>
-              </View>
 
-              <View style={{flexDirection:'row', gap:8}}>
-                <View style={{flex: 1}}><Text style={s.labelHeading}>Unit</Text><TextInput placeholder="Unit" value={form.unit} onChangeText={(t) => setForm({...form, unit: t})} style={s.input}/></View>
-                <View style={{flex: 1}}><Text style={s.labelHeading}>Stock Qty</Text><TextInput placeholder="Stock" value={form.stock} onChangeText={(t) => setForm({...form, stock: t})} style={s.input} keyboardType="numeric"/></View>
-              </View>
+              {/* Action Buttons Row */}
+              <View style={[s.row, { marginTop: 10 }]}>
+                <Pressable
+                  style={[s.actionBtn, s.cancelBtn]}
+                  onPress={() => {
+                    setShowAddModal(false);
+                    resetAddForm();
+                  }}
+                >
+                  <Text style={s.cancelBtnText}>Cancel</Text>
+                </Pressable>
 
-              <Pressable onPress={handleAddProduct} style={s.saveBtnBig}><Text style={{color:'#fff', fontWeight:'800', fontSize: 14}}>Save Product</Text></Pressable>
+                <Pressable
+                  style={[s.actionBtn, s.createBtn]}
+                  onPress={handleAddProduct}
+                  disabled={loading}
+                >
+                  {loading ? (
+                    <ActivityIndicator color="#fff" />
+                  ) : (
+                    <Text style={s.createBtnText}>Create</Text>
+                  )}
+                </Pressable>
+              </View>
             </ScrollView>
           </View>
         </View>
       </Modal>
 
-      {/* EDIT PRODUCT MODAL */}
+      {/* EDIT PRODUCT MODAL (Exact Screenshot UI) */}
       <Modal visible={showEditProductModal} transparent animationType="slide">
         <View style={s.modalOverlayBottom}>
           <View style={s.modalContentBottom}>
-            <View style={s.modalHeader}>
-              <Text style={s.modalTitle}>Edit Product Details</Text>
-              <Pressable onPress={() => setShowEditProductModal(false)}><MaterialCommunityIcons name="close" size={22} /></Pressable>
-            </View>
-            <ScrollView showsVerticalScrollIndicator={false}>
-              <Pressable onPress={() => pickProductImage(true)} style={s.prodImgPicker}>
-                {editProductForm.image ? <Image source={{uri: editProductForm.image}} style={{width:'100%', height:'100%'}}/> : <Text style={{fontSize: 12, color: COLORS.textMuted}}>Change Image</Text>}
-              </Pressable>
-              
-              <Text style={s.labelHeading}>Product Name</Text>
-              <TextInput placeholder="Product Name" value={editProductForm.name} onChangeText={(t) => setEditProductForm({...editProductForm, name: t})} style={s.input} />
-              
-              <View style={{flexDirection:'row', gap:8}}>
-                <View style={{flex: 1}}><Text style={s.labelHeading}>Price (₹)</Text><TextInput value={editProductForm.price} onChangeText={(t) => setEditProductForm({...editProductForm, price: t})} style={s.input} keyboardType="numeric"/></View>
-                <View style={{flex: 1}}><Text style={s.labelHeading}>MRP (₹)</Text><TextInput value={editProductForm.mrp} onChangeText={(t) => setEditProductForm({...editProductForm, mrp: t})} style={s.input} keyboardType="numeric"/></View>
+            <View style={s.dragHandle} />
+            <Text style={s.modalTitle}>Edit Product</Text>
+
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 20 }}>
+              {/* Product Name */}
+              <TextInput
+                placeholder="Name"
+                placeholderTextColor="#9CA3AF"
+                value={editProductForm.name}
+                onChangeText={(t) => setEditProductForm({ ...editProductForm, name: t })}
+                style={[s.input, s.inputHighlighted]}
+              />
+
+              {/* Price & MRP Row */}
+              <View style={s.row}>
+                <TextInput
+                  placeholder="Price"
+                  placeholderTextColor="#9CA3AF"
+                  value={editProductForm.price}
+                  onChangeText={(t) => setEditProductForm({ ...editProductForm, price: t })}
+                  style={[s.input, s.flex1]}
+                  keyboardType="numeric"
+                />
+                <TextInput
+                  placeholder="MRP"
+                  placeholderTextColor="#9CA3AF"
+                  value={editProductForm.mrp}
+                  onChangeText={(t) => setEditProductForm({ ...editProductForm, mrp: t })}
+                  style={[s.input, s.flex1]}
+                  keyboardType="numeric"
+                />
               </View>
 
-              <View style={{flexDirection:'row', gap:8}}>
-                <View style={{flex: 1}}><Text style={s.labelHeading}>Unit</Text><TextInput value={editProductForm.unit} onChangeText={(t) => setEditProductForm({...editProductForm, unit: t})} style={s.input}/></View>
-                <View style={{flex: 1}}><Text style={s.labelHeading}>Stock Qty</Text><TextInput value={editProductForm.stock} onChangeText={(t) => setEditProductForm({...editProductForm, stock: t})} style={s.input} keyboardType="numeric"/></View>
+              {/* Stock & Unit Row */}
+              <View style={s.row}>
+                <TextInput
+                  placeholder="Stock"
+                  placeholderTextColor="#9CA3AF"
+                  value={editProductForm.stock}
+                  onChangeText={(t) => setEditProductForm({ ...editProductForm, stock: t })}
+                  style={[s.input, s.flex1]}
+                  keyboardType="numeric"
+                />
+                <TextInput
+                  placeholder="Unit (e.g. 1 kg)"
+                  placeholderTextColor="#9CA3AF"
+                  value={editProductForm.unit}
+                  onChangeText={(t) => setEditProductForm({ ...editProductForm, unit: t })}
+                  style={[s.input, s.flex1]}
+                />
               </View>
-              
-              <Text style={s.labelHeading}>Description</Text>
-              <TextInput placeholder="Description" value={editProductForm.description} onChangeText={(t) => setEditProductForm({...editProductForm, description: t})} style={[s.input, {height: 44, textAlignVertical: 'top'}]} multiline/>
 
-              <Pressable onPress={handleUpdateProduct} style={s.saveBtnBig}>
-                {loading ? <ActivityIndicator color="#fff" /> : <Text style={{color:'#fff', fontWeight:'800', fontSize: 14}}>Update Changes</Text>}
+              {/* Product Image Section */}
+              <Text style={s.sectionLabel}>Product Image</Text>
+              <View style={s.imageSectionRow}>
+                <View style={s.imageBox}>
+                  {editProductForm.image ? (
+                    <Image
+                      source={{ uri: editProductForm.image }}
+                      style={s.previewImg}
+                      contentFit="cover"
+                    />
+                  ) : (
+                    <MaterialCommunityIcons name="image-outline" size={36} color="#9CA3AF" />
+                  )}
+                </View>
+
+                <View style={s.imagePickerCol}>
+                  <Pressable style={s.pickBtn} onPress={() => pickProductImage(true, false)}>
+                    <MaterialCommunityIcons name="image-multiple-outline" size={20} color="#EA580C" />
+                    <Text style={s.pickBtnText}>Gallery</Text>
+                  </Pressable>
+
+                  <Pressable style={s.pickBtn} onPress={() => pickProductImage(true, true)}>
+                    <MaterialCommunityIcons name="camera-outline" size={20} color="#EA580C" />
+                    <Text style={s.pickBtnText}>Camera</Text>
+                  </Pressable>
+                </View>
+              </View>
+
+              {/* Description Input */}
+              <TextInput
+                placeholder="Description"
+                placeholderTextColor="#9CA3AF"
+                value={editProductForm.description}
+                onChangeText={(t) => setEditProductForm({ ...editProductForm, description: t })}
+                style={[s.input, { height: 75, textAlignVertical: "top" }]}
+                multiline
+              />
+
+              {/* Category Chips */}
+              <Text style={s.sectionLabel}>Category</Text>
+              <View style={s.catContainer}>
+                {categories.map((c) => {
+                  const active = editProductForm.category_id === c.id;
+                  return (
+                    <Pressable
+                      key={c.id}
+                      style={[s.catChip, active && s.catChipActive]}
+                      onPress={() => setEditProductForm({ ...editProductForm, category_id: c.id })}
+                    >
+                      <Text style={[s.catChipText, active && s.catChipTextActive]}>{c.name}</Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+
+              {/* Mark as Trending Checkbox */}
+              <Pressable
+                style={s.checkboxRow}
+                onPress={() =>
+                  setEditProductForm({ ...editProductForm, trending: !editProductForm.trending })
+                }
+              >
+                <MaterialCommunityIcons
+                  name={editProductForm.trending ? "checkbox-marked" : "checkbox-blank-outline"}
+                  size={24}
+                  color="#EA580C"
+                />
+                <Text style={s.checkboxLabel}>Mark as trending</Text>
               </Pressable>
+
+              {/* Action Buttons Row */}
+              <View style={[s.row, { marginTop: 10 }]}>
+                <Pressable
+                  style={[s.actionBtn, s.cancelBtn]}
+                  onPress={() => setShowEditProductModal(false)}
+                >
+                  <Text style={s.cancelBtnText}>Cancel</Text>
+                </Pressable>
+
+                <Pressable
+                  style={[s.actionBtn, s.createBtn]}
+                  onPress={handleUpdateProduct}
+                  disabled={loading}
+                >
+                  {loading ? (
+                    <ActivityIndicator color="#fff" />
+                  ) : (
+                    <Text style={s.createBtnText}>Save Changes</Text>
+                  )}
+                </Pressable>
+              </View>
             </ScrollView>
           </View>
         </View>
       </Modal>
-
     </View>
   );
 }
 
 const s = StyleSheet.create({
-  root: { flex: 1, backgroundColor: COLORS.surfaceSecondary },
-  
-  // 🌟 Clean Header Styles
+  root: { flex: 1, backgroundColor: "#F9FAFB" },
+
+  // Floating Header
   floatingHeader: {
-    position: 'absolute',
-    top: 16, 
+    position: "absolute",
+    top: 16,
     left: 16,
     right: 16,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    zIndex: 1000, 
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    zIndex: 1000,
     elevation: 20,
   },
   rightActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 12,
   },
-  circleBtn: { 
-    width: 40, 
-    height: 40, 
-    borderRadius: 20, 
-    backgroundColor: 'rgba(0,0,0,0.45)', 
-    alignItems: 'center', 
-    justifyContent: 'center',
+  circleBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "rgba(0,0,0,0.45)",
+    alignItems: "center",
+    justifyContent: "center",
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.4)',
-    ...shadow.soft
+    borderColor: "rgba(255,255,255,0.4)",
+    ...shadow.soft,
   },
   deleteBtn: {
-    backgroundColor: '#dc2626',
-    borderColor: '#b91c1c',
+    backgroundColor: "#DC2626",
+    borderColor: "#B91C1C",
   },
 
-  bannerWrap: { width: "100%", height: 210, backgroundColor: '#e2e8f0' },
+  // Store Banner & Card
+  bannerWrap: { width: "100%", height: 210, backgroundColor: "#E2E8F0" },
   bannerImg: { width: "100%", height: "100%" },
-  
   storeDetailsCard: {
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
     padding: 16,
     marginHorizontal: 16,
     marginTop: -24,
     borderRadius: RADIUS.md,
     borderWidth: 1,
     borderColor: COLORS.border,
-    ...shadow.soft
+    ...shadow.soft,
   },
   storeTitleText: {
     fontSize: 22,
-    fontWeight: '900',
+    fontWeight: "900",
     color: COLORS.text,
   },
   storeAddressText: {
     fontSize: 13,
     color: COLORS.textMuted,
     marginTop: 4,
-    fontWeight: '500'
+    fontWeight: "500",
   },
 
-  listTitle: { fontSize: 16, fontWeight: '800', paddingHorizontal: 20, paddingTop: 16, paddingBottom: 10, color: COLORS.text },
-  card: { flexDirection: 'row', gap: 12, padding: 12, marginHorizontal: 20, backgroundColor: '#fff', borderRadius: RADIUS.md, borderWidth: 1, borderColor: COLORS.border, ...shadow.soft },
-  img: { width: 70, height: 70, borderRadius: 8 },
-  name: { fontWeight: '700', fontSize: 14, color: COLORS.text, flex: 1 },
-  meta: { color: COLORS.textMuted, fontSize: 12, marginTop: 2 },
-  price: { color: COLORS.brand, fontWeight: '800', marginTop: 4, fontSize: 15 },
-  fab: { position: "absolute", bottom: 24, right: 24, width: 60, height: 60, borderRadius: 30, backgroundColor: COLORS.brand, alignItems: "center", justifyContent: "center", ...shadow.card },
-  modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "center", padding: 20 },
-  modalContent: { backgroundColor: "#fff", padding: 16, borderRadius: 15, ...shadow.soft },
-  modalTitle: { fontSize: 16, fontWeight: '800', marginBottom: 10 },
-  
-  // Compact Production Input UI
-  input: { backgroundColor: COLORS.surfaceSecondary, paddingHorizontal: 10, paddingVertical: 8, borderRadius: 8, marginBottom: 8, borderWidth: 1, borderColor: COLORS.border, color: COLORS.text, fontSize: 13 },
-  
-  saveBtnSmall: { backgroundColor: COLORS.brand, paddingHorizontal: 16, paddingVertical: 8, borderRadius: RADIUS.pill },
-  modalActions: { flexDirection: 'row', justifyContent: 'flex-end', gap: 16, alignItems: 'center', marginTop: 4 },
-  imagePickerBtn: { height: 80, marginBottom: 12, borderRadius: 8, overflow: 'hidden', backgroundColor: '#f0f0f0', justifyContent: 'center', alignItems: 'center', borderStyle: 'dashed', borderWidth: 1 },
-  previewImg: { width: '100%', height: '100%' },
-  modalOverlayBottom: { flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "flex-end" },
-  modalContentBottom: { backgroundColor: "#fff", borderTopLeftRadius: 20, borderTopRightRadius: 20, paddingHorizontal: 16, paddingTop: 16, paddingBottom: 24, maxHeight: "90%" },
-  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
-  
-  // Compact Product Image Picker (64px height for screen-fit)
-  prodImgPicker: { height: 64, backgroundColor: '#f8fafc', marginBottom: 10, borderRadius: 8, justifyContent: 'center', alignItems: 'center', borderStyle: 'dashed', borderWidth: 1, borderColor: '#cbd5e1' },
-  
-  chip: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, backgroundColor: '#f0f0f0', marginRight: 6 },
-  chipActive: { backgroundColor: COLORS.brand + '22', borderWidth: 1, borderColor: COLORS.brand },
-  chipText: { fontSize: 12 },
-  saveBtnBig: { backgroundColor: COLORS.brand, paddingVertical: 10, borderRadius: 20, alignItems: 'center', marginTop: 8 },
-  labelHeading: { fontSize: 11, fontWeight: '700', color: COLORS.textSecondary, marginBottom: 2 },
+  // List Header Title Row
+  listHeaderRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: 10,
+  },
+  listTitle: { fontSize: 20, fontWeight: "800", color: "#000" },
+  headerAddBtn: {
+    backgroundColor: "#EA580C",
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  // Card Design (Exact Match with Screenshot)
+  card: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 12,
+    marginHorizontal: 16,
+    backgroundColor: "#fff",
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+  },
+  img: { width: 60, height: 60, borderRadius: 12, backgroundColor: "#F3F4F6" },
+  cardDetails: { flex: 1, marginLeft: 12 },
+  name: { fontSize: 16, fontWeight: "700", color: "#000" },
+  meta: { fontSize: 13, color: "#6B7280", marginTop: 2 },
+  cardActions: { flexDirection: "row", alignItems: "center", gap: 4 },
+  editBtn: { padding: 6 },
+
+  // Center Modal (Shop Settings)
+  modalOverlayCenter: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    justify: "center",
+    padding: 20,
+  },
+  modalContentCenter: {
+    backgroundColor: "#fff",
+    padding: 16,
+    borderRadius: 16,
+    ...shadow.soft,
+  },
+  bannerPickerBtn: {
+    height: 90,
+    marginBottom: 12,
+    borderRadius: 12,
+    overflow: "hidden",
+    backgroundColor: "#F3F4F6",
+    justifyContent: "center",
+    alignItems: "center",
+    borderStyle: "dashed",
+    borderWidth: 1,
+    borderColor: "#D1D5DB",
+  },
+  modalActions: {
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    gap: 12,
+    alignItems: "center",
+    marginTop: 8,
+  },
+  saveBtnSmall: {
+    backgroundColor: "#EA580C",
+    paddingHorizontal: 18,
+    paddingVertical: 10,
+    borderRadius: 20,
+  },
+
+  // Bottom Sheet Modal
+  modalOverlayBottom: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.4)",
+    justifyContent: "flex-end",
+  },
+  modalContentBottom: {
+    backgroundColor: "#fff",
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    maxHeight: "88%",
+  },
+  dragHandle: {
+    width: 40,
+    height: 4,
+    backgroundColor: "#E5E7EB",
+    borderRadius: 2,
+    alignSelf: "center",
+    marginBottom: 16,
+  },
+  modalTitle: { fontSize: 20, fontWeight: "800", color: "#000", marginBottom: 16 },
+
+  // Form Inputs
+  row: { flexDirection: "row", gap: 12 },
+  flex1: { flex: 1 },
+  input: {
+    backgroundColor: "#F9FAFB",
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+    borderRadius: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    fontSize: 15,
+    color: "#000",
+    marginBottom: 12,
+  },
+  inputHighlighted: {
+    borderColor: "#000",
+    borderWidth: 1.5,
+  },
+  sectionLabel: { fontSize: 15, fontWeight: "700", color: "#000", marginBottom: 10, marginTop: 4 },
+
+  // Image Upload Row
+  imageSectionRow: { flexDirection: "row", gap: 12, marginBottom: 14 },
+  imageBox: {
+    width: 100,
+    height: 100,
+    backgroundColor: "#EFF6FF",
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "#DBEAFE",
+    borderStyle: "dashed",
+    justifyContent: "center",
+    alignItems: "center",
+    overflow: "hidden",
+  },
+  previewImg: { width: "100%", height: "100%" },
+  imagePickerCol: { flex: 1, justifyContent: "space-between" },
+  pickBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    backgroundColor: "#FFF7ED",
+    borderWidth: 1,
+    borderColor: "#FFEDD5",
+    height: 46,
+    borderRadius: 23,
+  },
+  pickBtnText: { color: "#EA580C", fontWeight: "700", fontSize: 15 },
+
+  // Categories Chips
+  catContainer: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 14 },
+  catChip: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: "#fff",
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+  },
+  catChipActive: { backgroundColor: "#EA580C", borderColor: "#EA580C" },
+  catChipText: { fontSize: 13, color: "#374151", fontWeight: "600" },
+  catChipTextActive: { color: "#fff", fontWeight: "700" },
+
+  // Checkbox
+  checkboxRow: { flexDirection: "row", alignItems: "center", gap: 8, marginVertical: 8 },
+  checkboxLabel: { fontSize: 15, fontWeight: "700", color: "#000" },
+
+  // Action Buttons
+  actionBtn: {
+    flex: 1,
+    height: 52,
+    borderRadius: 26,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  cancelBtn: { backgroundColor: "#fff", borderWidth: 1, borderColor: "#E5E7EB" },
+  cancelBtnText: { color: "#374151", fontWeight: "700", fontSize: 16 },
+  createBtn: { backgroundColor: "#EA580C" },
+  createBtnText: { color: "#fff", fontWeight: "800", fontSize: 16 },
 });
