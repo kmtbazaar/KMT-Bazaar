@@ -333,7 +333,7 @@ const s = StyleSheet.create({
     borderRadius: 22, 
     backgroundColor: 'rgba(0,0,0,0.4)', 
     alignItems: 'center', 
-    justify.content: 'center',
+    justifycontent: 'center',
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.3)'
   },
