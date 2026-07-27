@@ -1,2 +1,2 @@
 
-# login screen ka logo nichey left mai karna hai
+# store id .rsx mai delete button kaam nhi kr raha
