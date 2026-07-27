@@ -1,13 +1,12 @@
 import React, { useCallback, useState } from "react";
-import { View, Text, StyleSheet, FlatList, Pressable, Modal, TextInput, Alert, ActivityIndicator, ScrollView } from "react-native";
+import { View, Text, StyleSheet, FlatList, Pressable, Modal, TextInput, Alert, ActivityIndicator, ScrollView, Platform } from "react-native";
 import { Image } from "expo-image";
 import * as ImagePicker from "expo-image-picker"; 
 import { useLocalSearchParams, useRouter, useFocusEffect } from "expo-router";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { LinearGradient } from "expo-linear-gradient";
 import { vendorApi } from "@/src/roleApi";
 import { api } from "@/src/api"; 
-import { COLORS, RADIUS, SPACING, shadow } from "@/src/theme";
+import { COLORS, RADIUS, shadow } from "@/src/theme";
 
 export default function VendorStoreDetail() {
   const router = useRouter();
@@ -80,34 +79,46 @@ export default function VendorStoreDetail() {
     finally { setLoading(false); }
   };
 
-  // 🔥 UPDATE: Delete Store with strict Warning & proper Error Handling
+  // 🔥 Web + Native Safe Store Delete Logic
+  const executeStoreDelete = async () => {
+    try {
+      if (vendorApi.deleteStore) {
+        await vendorApi.deleteStore(id);
+      } else {
+        await vendorApi.updateStore(id, { is_deleted: true });
+      }
+      if (Platform.OS === 'web') {
+        window.alert("Store deleted successfully.");
+      } else {
+        Alert.alert("Deleted", "Store has been deleted successfully.");
+      }
+      router.replace("/vendor");
+    } catch (e: any) { 
+      console.log("Delete Store Error:", e);
+      const msg = e?.message || "Could not delete store. Please try again.";
+      if (Platform.OS === 'web') window.alert("Error: " + msg);
+      else Alert.alert("Error", msg); 
+    }
+  };
+
   const handleDeleteStore = () => {
-    Alert.alert(
-      "⚠️ Warning: Delete Store", 
-      `Are you sure you want to permanently delete '${editForm.name}'?\n\nThis action cannot be undone and all associated products will be removed.`, 
-      [
-        { text: "Cancel", style: "cancel" },
-        { 
-          text: "Yes, Delete Store", 
-          style: "destructive", 
-          onPress: async () => {
-            try {
-              if (vendorApi.deleteStore) {
-                await vendorApi.deleteStore(id);
-              } else {
-                // Fallback delete handling
-                await vendorApi.updateStore(id, { is_deleted: true });
-              }
-              Alert.alert("Deleted", "Store has been deleted successfully.");
-              router.replace("/vendor");
-            } catch (e: any) { 
-              console.log("Delete Store Error:", e);
-              Alert.alert("Error", e?.message || "Could not delete store. Please try again."); 
-            }
-          }
-        }
-      ]
-    );
+    const warningMsg = `Are you sure you want to permanently delete '${editForm.name}'?\n\nThis action cannot be undone and all associated products will be removed.`;
+
+    if (Platform.OS === 'web') {
+      const confirmed = window.confirm(`⚠️ WARNING: DELETE STORE\n\n${warningMsg}`);
+      if (confirmed) {
+        executeStoreDelete();
+      }
+    } else {
+      Alert.alert(
+        "⚠️ Warning: Delete Store", 
+        warningMsg, 
+        [
+          { text: "Cancel", style: "cancel" },
+          { text: "Yes, Delete Store", style: "destructive", onPress: executeStoreDelete }
+        ]
+      );
+    }
   };
 
   const handleAddProduct = async () => {
@@ -154,29 +165,35 @@ export default function VendorStoreDetail() {
   };
 
   const handleDelete = (prodId: string, prodName: string) => {
-    Alert.alert("Delete Product", `Are you sure you want to delete ${prodName}?`, [
-      { text: "Cancel", style: "cancel" },
-      { text: "Delete", style: "destructive", onPress: async () => {
-          try { await vendorApi.deleteProduct(prodId); load(); } catch (e) { Alert.alert("Error", "Delete failed."); }
-      }}
-    ]);
+    if (Platform.OS === 'web') {
+      if (window.confirm(`Delete Product: Are you sure you want to delete ${prodName}?`)) {
+        vendorApi.deleteProduct(prodId).then(() => load()).catch(() => window.alert("Delete failed."));
+      }
+    } else {
+      Alert.alert("Delete Product", `Are you sure you want to delete ${prodName}?`, [
+        { text: "Cancel", style: "cancel" },
+        { text: "Delete", style: "destructive", onPress: async () => {
+            try { await vendorApi.deleteProduct(prodId); load(); } catch (e) { Alert.alert("Error", "Delete failed."); }
+        }}
+      ]);
+    }
   };
 
   return (
     <View style={s.root}>
       
-      {/* FLOATING HEADER */}
+      {/* PERFECTLY PLACED FLOATING HEADER */}
       <View style={s.floatingHeader}>
-        <Pressable onPress={() => router.back()} style={s.circleBtn}>
-          <MaterialCommunityIcons name="arrow-left" size={24} color="#fff" />
+        <Pressable onPress={() => router.back()} style={s.circleBtn} hitSlop={8}>
+          <MaterialCommunityIcons name="arrow-left" size={22} color="#fff" />
         </Pressable>
         
-        <View style={{ flexDirection: "row", gap: 10 }}>
-          <Pressable onPress={handleDeleteStore} style={[s.circleBtn, { backgroundColor: "rgba(220, 38, 38, 0.8)", borderColor: "rgba(220, 38, 38, 1)" }]}>
-            <MaterialCommunityIcons name="trash-can-outline" size={22} color="#fff" />
+        <View style={s.rightActions}>
+          <Pressable onPress={handleDeleteStore} style={[s.circleBtn, s.deleteBtn]} hitSlop={8}>
+            <MaterialCommunityIcons name="trash-can-outline" size={20} color="#fff" />
           </Pressable>
-          <Pressable onPress={() => setShowSettings(true)} style={s.circleBtn}>
-            <MaterialCommunityIcons name="cog" size={24} color="#fff" />
+          <Pressable onPress={() => setShowSettings(true)} style={s.circleBtn} hitSlop={8}>
+            <MaterialCommunityIcons name="cog" size={22} color="#fff" />
           </Pressable>
         </View>
       </View>
@@ -195,7 +212,7 @@ export default function VendorStoreDetail() {
               <Image source={{ uri: editForm.image }} style={s.bannerImg} contentFit="cover" />
             </View>
 
-            {/* 🔥 NEW: Store Name Box Below Image & Above My Products */}
+            {/* Store Details Card */}
             <View style={s.storeDetailsCard}>
               <Text style={s.storeTitleText}>{editForm.name}</Text>
               {editForm.address ? (
@@ -317,36 +334,47 @@ export default function VendorStoreDetail() {
 const s = StyleSheet.create({
   root: { flex: 1, backgroundColor: COLORS.surfaceSecondary },
   
+  // 🌟 Clean Header Styles
   floatingHeader: {
     position: 'absolute',
-    top: 40,
+    top: 16, 
     left: 16,
     right: 16,
     flexDirection: 'row',
     justifyContent: 'space-between',
-    zIndex: 9999, 
-    elevation: 10,
+    alignItems: 'center',
+    zIndex: 1000, 
+    elevation: 20,
+  },
+  rightActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
   },
   circleBtn: { 
-    width: 44, 
-    height: 44, 
-    borderRadius: 22, 
-    backgroundColor: 'rgba(0,0,0,0.4)', 
+    width: 40, 
+    height: 40, 
+    borderRadius: 20, 
+    backgroundColor: 'rgba(0,0,0,0.45)', 
     alignItems: 'center', 
-    justifycontent: 'center',
+    justifyContent: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.3)'
+    borderColor: 'rgba(255,255,255,0.4)',
+    ...shadow.soft
+  },
+  deleteBtn: {
+    backgroundColor: '#dc2626',
+    borderColor: '#b91c1c',
   },
 
-  bannerWrap: { width: "100%", height: 200, backgroundColor: '#ccc' },
+  bannerWrap: { width: "100%", height: 210, backgroundColor: '#e2e8f0' },
   bannerImg: { width: "100%", height: "100%" },
   
-  // 🔥 Store Details Card (Image ke niche)
   storeDetailsCard: {
     backgroundColor: '#fff',
     padding: 16,
     marginHorizontal: 16,
-    marginTop: -20, // Clean overlap card effect
+    marginTop: -24,
     borderRadius: RADIUS.md,
     borderWidth: 1,
     borderColor: COLORS.border,
