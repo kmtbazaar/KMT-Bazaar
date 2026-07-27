@@ -255,14 +255,14 @@ export default function VendorStoreDetail() {
           <View style={s.modalContent}>
             <Text style={s.modalTitle}>Shop Settings</Text>
             <Pressable onPress={pickImage} style={s.imagePickerBtn}>
-               {editForm.image ? <Image source={{ uri: editForm.image }} style={s.previewImg} /> : <Text style={{color: COLORS.textMuted}}>Change Banner</Text>}
+               {editForm.image ? <Image source={{ uri: editForm.image }} style={s.previewImg} /> : <Text style={{color: COLORS.textMuted, fontSize: 13}}>Change Banner</Text>}
             </Pressable>
             <TextInput value={editForm.name} onChangeText={(t) => setEditForm({...editForm, name: t})} style={s.input} placeholder="Shop Name" />
             <TextInput value={editForm.address} onChangeText={(t) => setEditForm({...editForm, address: t})} style={s.input} placeholder="Address" />
             <View style={s.modalActions}>
-                <Pressable onPress={() => setShowSettings(false)} style={{padding: 10}}><Text>Cancel</Text></Pressable>
+                <Pressable onPress={() => setShowSettings(false)} style={{padding: 8}}><Text>Cancel</Text></Pressable>
                 <Pressable onPress={handleUpdateStore} style={s.saveBtnSmall}>
-                    {loading ? <ActivityIndicator color="#fff" /> : <Text style={{color: '#fff', fontWeight: 'bold'}}>Save</Text>}
+                    {loading ? <ActivityIndicator color="#fff" /> : <Text style={{color: '#fff', fontWeight: 'bold', fontSize: 13}}>Save</Text>}
                 </Pressable>
             </View>
           </View>
@@ -273,18 +273,33 @@ export default function VendorStoreDetail() {
       <Modal visible={showAddModal} transparent animationType="slide">
         <View style={s.modalOverlayBottom}>
           <View style={s.modalContentBottom}>
-            <View style={s.modalHeader}><Text style={s.modalTitle}>Add Product</Text><Pressable onPress={() => setShowAddModal(false)}><MaterialCommunityIcons name="close" size={24} /></Pressable></View>
+            <View style={s.modalHeader}><Text style={s.modalTitle}>Add Product</Text><Pressable onPress={() => setShowAddModal(false)}><MaterialCommunityIcons name="close" size={22} /></Pressable></View>
             <ScrollView showsVerticalScrollIndicator={false}>
-              <Pressable onPress={() => pickProductImage(false)} style={s.prodImgPicker}>{form.image ? <Image source={{uri: form.image}} style={{width:'100%', height:'100%'}}/> : <Text>Select Image</Text>}</Pressable>
+              <Pressable onPress={() => pickProductImage(false)} style={s.prodImgPicker}>
+                {form.image ? <Image source={{uri: form.image}} style={{width:'100%', height:'100%'}}/> : <Text style={{fontSize: 12, color: COLORS.textMuted}}>+ Upload Image</Text>}
+              </Pressable>
+              
+              <Text style={s.labelHeading}>Product Name</Text>
               <TextInput placeholder="Product Name" value={form.name} onChangeText={(t) => setForm({...form, name: t})} style={s.input} />
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12 }}>
+              
+              <Text style={s.labelHeading}>Category</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 8 }}>
                 {categories.map((c) => (
-                  <Pressable key={c.id} style={[s.chip, form.category_id === c.id && s.chipActive]} onPress={() => setForm({...form, category_id: c.id})}><Text style={form.category_id === c.id ? {color: COLORS.brand} : {}}>{c.name}</Text></Pressable>
+                  <Pressable key={c.id} style={[s.chip, form.category_id === c.id && s.chipActive]} onPress={() => setForm({...form, category_id: c.id})}><Text style={[s.chipText, form.category_id === c.id && {color: COLORS.brand}]}>{c.name}</Text></Pressable>
                 ))}
               </ScrollView>
-              <View style={{flexDirection:'row', gap:10}}><TextInput placeholder="Price" value={form.price} onChangeText={(t) => setForm({...form, price: t})} style={[s.input, {flex:1}]} keyboardType="numeric"/><TextInput placeholder="MRP" value={form.mrp} onChangeText={(t) => setForm({...form, mrp: t})} style={[s.input, {flex:1}]} keyboardType="numeric"/></View>
-              <View style={{flexDirection:'row', gap:10}}><TextInput placeholder="Unit" value={form.unit} onChangeText={(t) => setForm({...form, unit: t})} style={[s.input, {flex:1}]}/><TextInput placeholder="Stock" value={form.stock} onChangeText={(t) => setForm({...form, stock: t})} style={[s.input, {flex:1}]} keyboardType="numeric"/></View>
-              <Pressable onPress={handleAddProduct} style={s.saveBtnBig}><Text style={{color:'#fff', fontWeight:'800'}}>Save Product</Text></Pressable>
+              
+              <View style={{flexDirection:'row', gap:8}}>
+                <View style={{flex: 1}}><Text style={s.labelHeading}>Price (₹)</Text><TextInput placeholder="Price" value={form.price} onChangeText={(t) => setForm({...form, price: t})} style={s.input} keyboardType="numeric"/></View>
+                <View style={{flex: 1}}><Text style={s.labelHeading}>MRP (₹)</Text><TextInput placeholder="MRP" value={form.mrp} onChangeText={(t) => setForm({...form, mrp: t})} style={s.input} keyboardType="numeric"/></View>
+              </View>
+
+              <View style={{flexDirection:'row', gap:8}}>
+                <View style={{flex: 1}}><Text style={s.labelHeading}>Unit</Text><TextInput placeholder="Unit" value={form.unit} onChangeText={(t) => setForm({...form, unit: t})} style={s.input}/></View>
+                <View style={{flex: 1}}><Text style={s.labelHeading}>Stock Qty</Text><TextInput placeholder="Stock" value={form.stock} onChangeText={(t) => setForm({...form, stock: t})} style={s.input} keyboardType="numeric"/></View>
+              </View>
+
+              <Pressable onPress={handleAddProduct} style={s.saveBtnBig}><Text style={{color:'#fff', fontWeight:'800', fontSize: 14}}>Save Product</Text></Pressable>
             </ScrollView>
           </View>
         </View>
@@ -296,31 +311,31 @@ export default function VendorStoreDetail() {
           <View style={s.modalContentBottom}>
             <View style={s.modalHeader}>
               <Text style={s.modalTitle}>Edit Product Details</Text>
-              <Pressable onPress={() => setShowEditProductModal(false)}><MaterialCommunityIcons name="close" size={24} /></Pressable>
+              <Pressable onPress={() => setShowEditProductModal(false)}><MaterialCommunityIcons name="close" size={22} /></Pressable>
             </View>
             <ScrollView showsVerticalScrollIndicator={false}>
               <Pressable onPress={() => pickProductImage(true)} style={s.prodImgPicker}>
-                {editProductForm.image ? <Image source={{uri: editProductForm.image}} style={{width:'100%', height:'100%'}}/> : <Text>Change Image</Text>}
+                {editProductForm.image ? <Image source={{uri: editProductForm.image}} style={{width:'100%', height:'100%'}}/> : <Text style={{fontSize: 12, color: COLORS.textMuted}}>Change Image</Text>}
               </Pressable>
               
               <Text style={s.labelHeading}>Product Name</Text>
               <TextInput placeholder="Product Name" value={editProductForm.name} onChangeText={(t) => setEditProductForm({...editProductForm, name: t})} style={s.input} />
               
-              <View style={{flexDirection:'row', gap:10}}>
+              <View style={{flexDirection:'row', gap:8}}>
                 <View style={{flex: 1}}><Text style={s.labelHeading}>Price (₹)</Text><TextInput value={editProductForm.price} onChangeText={(t) => setEditProductForm({...editProductForm, price: t})} style={s.input} keyboardType="numeric"/></View>
                 <View style={{flex: 1}}><Text style={s.labelHeading}>MRP (₹)</Text><TextInput value={editProductForm.mrp} onChangeText={(t) => setEditProductForm({...editProductForm, mrp: t})} style={s.input} keyboardType="numeric"/></View>
               </View>
 
-              <View style={{flexDirection:'row', gap:10}}>
+              <View style={{flexDirection:'row', gap:8}}>
                 <View style={{flex: 1}}><Text style={s.labelHeading}>Unit</Text><TextInput value={editProductForm.unit} onChangeText={(t) => setEditProductForm({...editProductForm, unit: t})} style={s.input}/></View>
                 <View style={{flex: 1}}><Text style={s.labelHeading}>Stock Qty</Text><TextInput value={editProductForm.stock} onChangeText={(t) => setEditProductForm({...editProductForm, stock: t})} style={s.input} keyboardType="numeric"/></View>
               </View>
               
               <Text style={s.labelHeading}>Description</Text>
-              <TextInput placeholder="Description" value={editProductForm.description} onChangeText={(t) => setEditProductForm({...editProductForm, description: t})} style={[s.input, {height: 60}]} multiline/>
+              <TextInput placeholder="Description" value={editProductForm.description} onChangeText={(t) => setEditProductForm({...editProductForm, description: t})} style={[s.input, {height: 44, textAlignVertical: 'top'}]} multiline/>
 
               <Pressable onPress={handleUpdateProduct} style={s.saveBtnBig}>
-                {loading ? <ActivityIndicator color="#fff" /> : <Text style={{color:'#fff', fontWeight:'800'}}>Update Changes</Text>}
+                {loading ? <ActivityIndicator color="#fff" /> : <Text style={{color:'#fff', fontWeight:'800', fontSize: 14}}>Update Changes</Text>}
               </Pressable>
             </ScrollView>
           </View>
@@ -400,19 +415,26 @@ const s = StyleSheet.create({
   price: { color: COLORS.brand, fontWeight: '800', marginTop: 4, fontSize: 15 },
   fab: { position: "absolute", bottom: 24, right: 24, width: 60, height: 60, borderRadius: 30, backgroundColor: COLORS.brand, alignItems: "center", justifyContent: "center", ...shadow.card },
   modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "center", padding: 20 },
-  modalContent: { backgroundColor: "#fff", padding: 20, borderRadius: 15, ...shadow.soft },
-  modalTitle: { fontSize: 18, fontWeight: '800', marginBottom: 16 },
-  input: { backgroundColor: COLORS.surfaceSecondary, padding: 12, borderRadius: 8, marginBottom: 12, borderWidth: 1, borderColor: COLORS.border, color: COLORS.text },
-  saveBtnSmall: { backgroundColor: COLORS.brand, paddingHorizontal: 20, paddingVertical: 10, borderRadius: RADIUS.pill },
-  modalActions: { flexDirection: 'row', justifyContent: 'flex-end', gap: 20, alignItems: 'center' },
-  imagePickerBtn: { height: 100, marginBottom: 15, borderRadius: 8, overflow: 'hidden', backgroundColor: '#f0f0f0', justifyContent: 'center', alignItems: 'center', borderStyle: 'dashed', borderWidth: 1 },
+  modalContent: { backgroundColor: "#fff", padding: 16, borderRadius: 15, ...shadow.soft },
+  modalTitle: { fontSize: 16, fontWeight: '800', marginBottom: 10 },
+  
+  // Compact Production Input UI
+  input: { backgroundColor: COLORS.surfaceSecondary, paddingHorizontal: 10, paddingVertical: 8, borderRadius: 8, marginBottom: 8, borderWidth: 1, borderColor: COLORS.border, color: COLORS.text, fontSize: 13 },
+  
+  saveBtnSmall: { backgroundColor: COLORS.brand, paddingHorizontal: 16, paddingVertical: 8, borderRadius: RADIUS.pill },
+  modalActions: { flexDirection: 'row', justifyContent: 'flex-end', gap: 16, alignItems: 'center', marginTop: 4 },
+  imagePickerBtn: { height: 80, marginBottom: 12, borderRadius: 8, overflow: 'hidden', backgroundColor: '#f0f0f0', justifyContent: 'center', alignItems: 'center', borderStyle: 'dashed', borderWidth: 1 },
   previewImg: { width: '100%', height: '100%' },
   modalOverlayBottom: { flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "flex-end" },
-  modalContentBottom: { backgroundColor: "#fff", borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20, maxHeight: "85%" },
-  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 16 },
-  prodImgPicker: { height: 100, backgroundColor: '#f0f0f0', marginBottom: 12, borderRadius: 8, justifyContent: 'center', alignItems: 'center', borderStyle: 'dashed', borderWidth: 1 },
-  chip: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 12, backgroundColor: '#f0f0f0', marginRight: 8 },
+  modalContentBottom: { backgroundColor: "#fff", borderTopLeftRadius: 20, borderTopRightRadius: 20, paddingHorizontal: 16, paddingTop: 16, paddingBottom: 24, maxHeight: "90%" },
+  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
+  
+  // Compact Product Image Picker (64px height for screen-fit)
+  prodImgPicker: { height: 64, backgroundColor: '#f8fafc', marginBottom: 10, borderRadius: 8, justifyContent: 'center', alignItems: 'center', borderStyle: 'dashed', borderWidth: 1, borderColor: '#cbd5e1' },
+  
+  chip: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, backgroundColor: '#f0f0f0', marginRight: 6 },
   chipActive: { backgroundColor: COLORS.brand + '22', borderWidth: 1, borderColor: COLORS.brand },
-  saveBtnBig: { backgroundColor: COLORS.brand, padding: 14, borderRadius: 25, alignItems: 'center', marginTop: 10 },
-  labelHeading: { fontSize: 12, fontWeight: '700', color: COLORS.textSecondary, marginBottom: 4 },
+  chipText: { fontSize: 12 },
+  saveBtnBig: { backgroundColor: COLORS.brand, paddingVertical: 10, borderRadius: 20, alignItems: 'center', marginTop: 8 },
+  labelHeading: { fontSize: 11, fontWeight: '700', color: COLORS.textSecondary, marginBottom: 2 },
 });
