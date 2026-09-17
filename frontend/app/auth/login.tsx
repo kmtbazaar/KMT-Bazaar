@@ -102,10 +102,10 @@ export default function Login() {
       await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       const user = await login(email.trim(), password);
       if (!user || !user.role) throw new Error("Login failed, no user role returned");
-      
+
       if (user.role === "customer") router.replace("/(tabs)/home" as any);
       else router.replace(`/${user.role}` as any);
-      
+
     } catch (e: any) {
       setError(e.message || "Login failed");
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
@@ -155,7 +155,7 @@ export default function Login() {
 
       <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={{ flex: 1, zIndex: 2 }}>
         <ScrollView contentContainerStyle={s.cardWrapper} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
-          
+
           {/* Solid White Card with Top Gradient Border */}
           <View style={s.card}>
             <LinearGradient
@@ -177,7 +177,7 @@ export default function Login() {
             {tab === "password" ? (
               <>
                 <Field icon="email-outline" placeholder="Email Address" value={email} onChangeText={setEmail} keyboardType="email-address" testID="login-email-input" />
-                
+
                 <View style={s.fieldWrap}>
                   <MaterialCommunityIcons name="lock-outline" size={22} color="#64748B" />
                   <TextInput
@@ -204,31 +204,35 @@ export default function Login() {
                     <Text style={[s.ruleText, /[^A-Za-z0-9]/.test(password) && s.ruleValid]}></Text>
                   </View>
                 )}
-                
+
                 {error && <Text style={s.err} testID="login-error">{error}</Text>}
-                
+
                 <Pressable testID="login-submit-button" onPress={onLogin} style={({ pressed }) => [s.cta, pressed && { opacity: 0.85 }]}>
                   <LinearGradient colors={["#FF6E00", "#E05E00"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={s.ctaGrad}>
                     {loading ? <ActivityIndicator color="#fff" /> : <Text style={s.ctaText}>Login Securely</Text>}
                   </LinearGradient>
                 </Pressable>
-                
+
                 <Pressable onPress={() => router.push("/auth/register" as any)} testID="goto-register">
                   <Text style={s.alt}>New to KMT Bazaar? <Text style={s.altLink}>Create account</Text></Text>
+                </Pressable>
+
+                <Pressable onPress={() => router.push("/auth/forgot-password" as any)} testID="forgot-password">
+                  <Text style={s.forgotPassword}>Forgot Password?</Text>
                 </Pressable>
               </>
             ) : (
               <>
                 <Field icon="cellphone" placeholder="Phone number (10 digits)" value={phone} onChangeText={(v: string) => setPhone(v.replace(/[^0-9]/g, ''))} keyboardType="phone-pad" maxLength={10} testID="otp-phone-input" />
-                
+
                 {otpSent && (
                   <Animated.View entering={FadeInDown.duration(400)}>
                     <Field icon="shield-key-outline" placeholder="Enter 6-digit OTP" value={otp} onChangeText={(v: string) => setOtp(v.replace(/[^0-9]/g, ''))} keyboardType="number-pad" maxLength={6} testID="otp-code-input" />
                   </Animated.View>
                 )}
-                
+
                 {error && <Text style={s.err}>{error}</Text>}
-                
+
                 {!otpSent ? (
                   <Pressable testID="otp-send-button" onPress={onOtpRequest} style={s.cta}>
                     <LinearGradient colors={["#FF6E00", "#E05E00"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={s.ctaGrad}>
@@ -255,7 +259,7 @@ export default function Login() {
               style={s.skyBlueLine}
             />
           </View>
-          
+
         </ScrollView>
       </KeyboardAvoidingView>
 
@@ -291,7 +295,7 @@ function Field({ icon, secure, testID, ...rest }: any) {
 const s = StyleSheet.create({
   root: { flex: 1, backgroundColor: "#050B14" },
   headerBg: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0 },
-  
+
   tilesWrapper: {
     position: "absolute",
     top: 0,
@@ -346,12 +350,12 @@ const s = StyleSheet.create({
   logo: { width: 80, height: 80 },
   appName: { color: "#FFFFFF", fontSize: 26, fontWeight: "900", letterSpacing: 3, marginTop: 10 },
   welcome: { color: "#00B4D8", marginTop: 4, marginBottom: SPACING.lg, fontSize: 14, fontWeight: "600" },
-  
+
   cardWrapper: {
     paddingHorizontal: SPACING.lg,
     paddingBottom: 130,
   },
-  
+
   card: {
     backgroundColor: "#FFFFFF", 
     borderRadius: 24, 
@@ -372,7 +376,7 @@ const s = StyleSheet.create({
     right: 0,
     height: 5,
   },
-  
+
   tabsRow: { 
     flexDirection: "row", 
     backgroundColor: "#F1F5F9", 
@@ -386,7 +390,7 @@ const s = StyleSheet.create({
   tabActive: { backgroundColor: "#FFFFFF", shadowColor: "#000", shadowOpacity: 0.08, shadowRadius: 4, elevation: 2 },
   tabText: { color: "#64748B", fontWeight: "700", fontSize: 13 },
   tabTextActive: { color: "#FF6E00", fontWeight: "800" },
-  
+
   fieldWrap: { 
     flexDirection: "row", 
     alignItems: "center", 
@@ -415,7 +419,7 @@ const s = StyleSheet.create({
   ruleValid: {
     color: "#10B981", 
   },
-  
+
   cta: { 
     marginTop: SPACING.xs, 
     borderRadius: RADIUS.pill, 
@@ -428,8 +432,17 @@ const s = StyleSheet.create({
   },
   ctaGrad: { paddingVertical: 16, alignItems: "center", justifyContent: "center" },
   ctaText: { color: "#FFFFFF", fontSize: 16, fontWeight: "800", letterSpacing: 0.5 },
-  
+
   alt: { textAlign: "center", marginTop: SPACING.lg, color: "#64748B", fontSize: 14 },
   altLink: { color: "#FF6E00", fontWeight: "800", fontSize: 14 },
+
+  forgotPassword: {
+    textAlign: "center",
+    marginTop: 10,
+    color: "#0284C7",
+    fontSize: 13,
+    fontWeight: "800",
+  },
+
   err: { color: "#EF4444", marginTop: 4, marginBottom: 12, fontSize: 13, fontWeight: "600", marginLeft: 4 },
 });
