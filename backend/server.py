@@ -618,12 +618,32 @@ async def get_cart_doc(user_id: str):
 async def expand_cart(cart):
     items = []
     subtotal = 0.0
+
     for item in cart.get("items", []):
-        p = await db.products.find_one({"id": item["product_id"]}, {"_id": 0})
+        p = await db.products.find_one(
+            {"id": item["product_id"]},
+            {"_id": 0}
+        )
+
         if not p:
             continue
+
+        # Product ka store approved hona zaroori hai
+        store = await db.stores.find_one(
+            {
+                "id": p.get("store_id"),
+                "is_approved": True
+            },
+            {"_id": 0, "id": 1}
+        )
+
+        # Store pending/rejected hai toh product cart me nahi dikhega
+        if not store:
+            continue
+
         line_total = p["price"] * item["quantity"]
         subtotal += line_total
+
         items.append({
             "product_id": p["id"],
             "name": p["name"],
@@ -635,9 +655,11 @@ async def expand_cart(cart):
             "unit": p.get("unit", ""),
             "line_total": round(line_total, 2),
         })
+
     delivery_fee = 0 if subtotal >= 199 or subtotal == 0 else 25
     tax = round(subtotal * 0.05, 2)
     total = round(subtotal + delivery_fee + tax, 2)
+
     return {
         "items": items,
         "subtotal": round(subtotal, 2),
