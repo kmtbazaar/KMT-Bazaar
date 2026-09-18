@@ -1,6 +1,18 @@
 import React, { useCallback, useState } from "react";
-import { View, Text, StyleSheet, FlatList, Pressable, Switch, Alert } from "react-native";
-import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
+import {
+  View,
+  Text,
+  StyleSheet,
+  FlatList,
+  Pressable,
+  Switch,
+  Alert,
+} from "react-native";
+import {
+  useFocusEffect,
+  useLocalSearchParams,
+  useRouter,
+} from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { adminApi } from "@/src/roleApi";
@@ -279,12 +291,13 @@ export default function AdminUsers() {
                   android_ripple={{
                     color: "#FCA5A5",
                   }}
-                  onPress={() => {
-                    Alert.alert(
-                      "TEST",
-                      "Delete button is working"
-                    );
-                  }}
+                  onPress={() =>
+                    deleteUser(
+                      item.id,
+                      item.role,
+                      item.name
+                    )
+                  }
                 >
                   <MaterialCommunityIcons
                     name="delete-outline"
