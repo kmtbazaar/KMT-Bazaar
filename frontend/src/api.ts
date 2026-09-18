@@ -127,6 +127,38 @@ export const api = {
     apiFetch<{ token: string; user: User }>("/auth/otp/verify", {
       method: "POST", body: JSON.stringify({ phone, otp, name }),
     }),
+  forgotPassword: (email: string) =>
+    apiFetch<{
+      success: boolean;
+      message: string;
+      debug_otp?: string;
+      expires_in_minutes?: number;
+    }>("/auth/forgot-password", {
+      method: "POST",
+      body: JSON.stringify({ email }),
+    }),
+
+  verifyResetOtp: (email: string, otp: string) =>
+    apiFetch<{
+      success: boolean;
+      message: string;
+    }>("/auth/verify-reset-otp", {
+      method: "POST",
+      body: JSON.stringify({ email, otp }),
+    }),
+
+  resetPassword: (email: string, otp: string, new_password: string) =>
+    apiFetch<{
+      success: boolean;
+      message: string;
+    }>("/auth/reset-password", {
+      method: "POST",
+      body: JSON.stringify({
+        email,
+        otp,
+        new_password,
+      }),
+    }),
   me: () => apiFetch<User>("/auth/me"),
   categories: () => apiFetch<any[]>("/categories"),
   banners: () => apiFetch<any[]>("/banners"),
