@@ -6,8 +6,19 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { adminApi } from "@/src/roleApi";
 import { COLORS, RADIUS, SPACING } from "@/src/theme";
 
-const ROLE_LABEL: Record<string, string> = { customer: "Customer", vendor: "Vendor", delivery: "Delivery", admin: "Admin" };
-const ROLE_COLOR: Record<string, string> = { customer: "#2563EB", vendor: "#F97316", delivery: "#16A34A", admin: "#9333EA" };
+const ROLE_LABEL: Record<string, string> = {
+  customer: "Customer",
+  vendor: "Vendor",
+  delivery: "Delivery",
+  admin: "Admin",
+};
+
+const ROLE_COLOR: Record<string, string> = {
+  customer: "#2563EB",
+  vendor: "#F97316",
+  delivery: "#16A34A",
+  admin: "#9333EA",
+};
 
 export default function AdminUsers() {
   const { role } = useLocalSearchParams<{ role: string }>();
@@ -27,6 +38,7 @@ export default function AdminUsers() {
           const hiddenSeedEmail = email === "vendor@kmtbazaar.com";
           return !isDemo && !hiddenSeedEmail;
         });
+
         setUsers(filteredUsers);
       } else {
         setUsers(list);
@@ -36,21 +48,58 @@ export default function AdminUsers() {
     }
   }, [role]);
 
-  useFocusEffect(useCallback(() => { load(); }, [load]));
+  useFocusEffect(
+    useCallback(() => {
+      load();
+    }, [load])
+  );
 
-  // 🔥 Master Control Toggle (With Suspend/Unsuspend Confirmation)
-  const toggle = async (id: string, currentActive: boolean, userRole: string, name: string) => {
+  // 🔥 Master Control Toggle
+  const toggle = async (
+    id: string,
+    currentActive: boolean,
+    userRole: string,
+    name: string
+  ) => {
     if (userRole === "vendor") {
       if (currentActive !== false) {
-        Alert.alert("Suspend Vendor?", `Are you sure you want to SUSPEND '${name}'? All their stores will go offline immediately.`, [
-          { text: "Cancel", style: "cancel" },
-          { text: "Suspend", style: "destructive", onPress: async () => { await adminApi.toggleUser(id); load(); } }
-        ]);
+        Alert.alert(
+          "Suspend Vendor?",
+          `Are you sure you want to SUSPEND '${name}'? All their stores will go offline immediately.`,
+          [
+            {
+              text: "Cancel",
+              style: "cancel",
+            },
+            {
+              text: "Suspend",
+              style: "destructive",
+              onPress: async () => {
+                await adminApi.toggleUser(id);
+                load();
+              },
+            },
+          ]
+        );
       } else {
-        Alert.alert("Unsuspend Vendor?", `Are you sure you want to UNSUSPEND '${name}' and make them active again?`, [
-          { text: "Cancel", style: "cancel" },
-          { text: "Unsuspend", style: "default", onPress: async () => { await adminApi.toggleUser(id); load(); } }
-        ]);
+        Alert.alert(
+          "Unsuspend Vendor?",
+          `Are you sure you want to UNSUSPEND '${name}' and make them active again?`,
+          [
+            {
+              text: "Cancel",
+              style: "cancel",
+            },
+            {
+              text: "Unsuspend",
+              style: "default",
+              onPress: async () => {
+                await adminApi.toggleUser(id);
+                load();
+              },
+            },
+          ]
+        );
       }
     } else {
       await adminApi.toggleUser(id);
@@ -59,7 +108,11 @@ export default function AdminUsers() {
   };
 
   // 🗑️ Delete User
-  const deleteUser = async (id: string, userRole: string, name: string) => {
+  const deleteUser = async (
+    id: string,
+    userRole: string,
+    name: string
+  ) => {
     const message =
       userRole === "vendor"
         ? `Are you sure you want to DELETE '${name}'?\n\nThis will also delete their stores and products.`
@@ -100,13 +153,26 @@ export default function AdminUsers() {
     );
   };
 
-  const title = role ? `${ROLE_LABEL[role as string] || "Users"}s` : "All Users";
+  const title = role
+    ? `${ROLE_LABEL[role as string] || "Users"}s`
+    : "All Users";
 
   return (
-    <SafeAreaView style={s.root} edges={["top"]} testID="admin-users-screen">
+    <SafeAreaView
+      style={s.root}
+      edges={["top"]}
+      testID="admin-users-screen"
+    >
       <View style={s.header}>
-        <Pressable onPress={() => router.back()} hitSlop={10}>
-          <MaterialCommunityIcons name="arrow-left" size={22} color={COLORS.text} />
+        <Pressable
+          onPress={() => router.back()}
+          hitSlop={10}
+        >
+          <MaterialCommunityIcons
+            name="arrow-left"
+            size={22}
+            color={COLORS.text}
+          />
         </Pressable>
 
         <Text style={s.title}>{title}</Text>
@@ -117,11 +183,20 @@ export default function AdminUsers() {
       <FlatList
         data={users}
         keyExtractor={(u) => u.id}
-        contentContainerStyle={{ padding: SPACING.lg }}
-        ListEmptyComponent={<Text style={s.empty}>No users</Text>}
-        ItemSeparatorComponent={() => <View style={{ height: 10 }} />}
+        contentContainerStyle={{
+          padding: SPACING.lg,
+        }}
+        ListEmptyComponent={
+          <Text style={s.empty}>No users</Text>
+        }
+        ItemSeparatorComponent={() => (
+          <View style={{ height: 10 }} />
+        )}
         renderItem={({ item }) => (
-          <View style={s.card} testID={`user-${item.id}`}>
+          <View
+            style={s.card}
+            testID={`user-${item.id}`}
+          >
             <View
               style={[
                 s.avatar,
@@ -135,7 +210,8 @@ export default function AdminUsers() {
                 style={[
                   s.avatarText,
                   {
-                    color: ROLE_COLOR[item.role] || "#666",
+                    color:
+                      ROLE_COLOR[item.role] || "#666",
                   },
                 ]}
               >
@@ -144,7 +220,9 @@ export default function AdminUsers() {
             </View>
 
             <View style={{ flex: 1 }}>
-              <Text style={s.name}>{item.name}</Text>
+              <Text style={s.name}>
+                {item.name}
+              </Text>
 
               <Text style={s.meta}>
                 {item.email || item.phone}
@@ -163,7 +241,8 @@ export default function AdminUsers() {
                   style={[
                     s.roleText,
                     {
-                      color: ROLE_COLOR[item.role] || "#666",
+                      color:
+                        ROLE_COLOR[item.role] || "#666",
                     },
                   ]}
                 >
@@ -194,10 +273,9 @@ export default function AdminUsers() {
                 testID={`delete-${item.id}`}
                 style={s.deleteButton}
                 onPress={() =>
-                  deleteUser(
-                    item.id,
-                    item.role,
-                    item.name
+                  Alert.alert(
+                    "TEST",
+                    "Delete button is working"
                   )
                 }
               >
