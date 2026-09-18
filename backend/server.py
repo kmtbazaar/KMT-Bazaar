@@ -1765,8 +1765,20 @@ async def seed_db():
     if await db.banners.count_documents({}) == 0:
         await db.banners.insert_many([dict(b) for b in SEED_BANNERS])
     # Stores
-    if await db.stores.count_documents({}) == 0:
-        await db.stores.insert_many([dict(s) for s in SEED_STORES])
+if await db.stores.count_documents({}) == 0:
+    await db.stores.insert_many([dict(s) for s in SEED_STORES])
+
+# Existing demo stores ko approved rakho
+# Sirf un stores ko update karega jisme is_approved field abhi nahi hai.
+await db.stores.update_many(
+    {
+        "id": {"$in": ["st-1", "st-2", "st-3", "st-4"]},
+        "is_approved": {"$exists": False}
+    },
+    {
+        "$set": {"is_approved": True}
+    }
+)
     # Products
     if await db.products.count_documents({}) == 0:
         await db.products.insert_many([dict(p) for p in SEED_PRODUCTS])
