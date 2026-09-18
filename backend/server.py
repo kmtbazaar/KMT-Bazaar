@@ -179,6 +179,9 @@ def verify_password(plain: str, hashed: str) -> bool:
     except Exception:
         return False
 
+def hash_reset_otp(otp: str) -> str:
+    return hashlib.sha256(otp.encode()).hexdigest()
+
 
 def create_token(user_id: str, role: str) -> str:
     payload = {
