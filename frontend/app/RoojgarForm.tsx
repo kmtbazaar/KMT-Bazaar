@@ -21,7 +21,7 @@ import { useNavigation } from "@react-navigation/native";
 const LEATHER_BG_URL = "https://www.transparenttextures.com/patterns/white-diamond-dark.png";
 
 // Backend URL (Isko apne live server.py URL se change kariyega)
-const API_BASE_URL = "http://192.168.1.5:5000/api"; 
+const API_BASE_URL = "https://kmt-bazaar.onrender.com/api";
 
 export default function RoojgarForm() {
   const navigation = useNavigation();
