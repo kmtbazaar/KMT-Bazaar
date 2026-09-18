@@ -821,16 +821,75 @@ async def delete_address(addr_id: str, current=Depends(get_current_user)):
 
 # ------------------ ORDERS ------------------
 @api.post("/orders/checkout")
-async def checkout(data: CheckoutIn, current=Depends(get_current_user)):
+async def checkout(
+    data: CheckoutIn,
+    current=Depends(get_current_user)
+):
     cart = await get_cart_doc(current["id"])
+
     if not cart["items"]:
         raise HTTPException(400, "Cart is empty")
+
+    # Checkout se pehle har product ke store approval ko verify karo
+    for cart_item in cart["items"]:
+        product = await db.products.find_one(
+            {"id": cart_item["product_id"]},
+            {"_id": 0, "id": 1, "store_id": 1}
+        )
+
+        if not product:
+            raise HTTPException(
+                400,
+                "One or more products are no longer available"
+            )
+
+        store = await db.stores.find_one(
+            {
+                "id": product.get("store_id"),
+                "is_approved": True
+            },
+            {"_id": 0, "id": 1}
+        )
+
+        if not store:
+            raise HTTPException(
+                400,
+                "One or more products are no longer available"
+            )
+
     expanded = await expand_cart(cart)
-    addr = await db.addresses.find_one({"id": data.address_id, "user_id": current["id"]}, {"_id": 0})
+
+    if not expanded["items"]:
+        raise HTTPException(
+            400,
+            "One or more products are no longer available"
+        )
+
+    # Safety check: cart ke saare products checkout me hone chahiye
+    if len(expanded["items"]) != len(cart["items"]):
+        raise HTTPException(
+            400,
+            "One or more products are no longer available"
+        )
+
+    addr = await db.addresses.find_one(
+        {
+            "id": data.address_id,
+            "user_id": current["id"]
+        },
+        {"_id": 0}
+    )
+
     if not addr:
         raise HTTPException(400, "Invalid address")
+
     order_id = str(uuid.uuid4())
-    order_no = "KMT" + datetime.now().strftime("%y%m%d") + order_id[:4].upper()
+    order_no = (
+        "KMT"
+        + datetime.now().strftime("%y%m%d")
+        + order_id[:4].upper()
+    )
+
     order = {
         "id": order_id,
         "order_no": order_no,
@@ -842,18 +901,37 @@ async def checkout(data: CheckoutIn, current=Depends(get_current_user)):
         "total": expanded["total"],
         "address": addr,
         "payment_method": data.payment_method,
-        "payment_status": "paid" if data.payment_method == "online" else "pending",
-        "status": "pending",  # pending | accepted | out_for_delivery | delivered | cancelled
+        "payment_status": (
+            "paid"
+            if data.payment_method == "online"
+            else "pending"
+        ),
+        "status": "pending",
         "notes": data.notes,
         "timeline": [
-            {"status": "pending", "at": now_iso(), "label": "Order placed"},
+            {
+                "status": "pending",
+                "at": now_iso(),
+                "label": "Order placed"
+            },
         ],
         "created_at": now_iso(),
     }
+
     await db.orders.insert_one(dict(order))
-    # clear cart
-    await db.carts.update_one({"user_id": current["id"]}, {"$set": {"items": [], "updated_at": now_iso()}})
-    # create notification
+
+    # Clear cart
+    await db.carts.update_one(
+        {"user_id": current["id"]},
+        {
+            "$set": {
+                "items": [],
+                "updated_at": now_iso()
+            }
+        }
+    )
+
+    # Create notification
     await db.notifications.insert_one({
         "id": str(uuid.uuid4()),
         "user_id": current["id"],
@@ -863,7 +941,9 @@ async def checkout(data: CheckoutIn, current=Depends(get_current_user)):
         "read": False,
         "created_at": now_iso(),
     })
+
     order.pop("_id", None)
+
     return order
 
 
