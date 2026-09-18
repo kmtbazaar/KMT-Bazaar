@@ -10,6 +10,8 @@ export const adminApi = {
   stats: () => apiFetch<any>("/admin/stats"),
   users: (role?: string) => apiFetch<any[]>(`/admin/users${role ? `?role=${role}` : ""}`),
   toggleUser: (id: string) => apiFetch(`/admin/users/${id}/toggle`, { method: "POST" }),
+deleteUser: (id: string) =>
+  apiFetch(`/admin/users/${id}`, { method: "DELETE" }),
   orders: (status?: string) => apiFetch<any[]>(`/admin/orders${status ? `?status=${status}` : ""}`),
   updateOrderStatus: (id: string, status: string) =>
     apiFetch(`/admin/orders/${id}/status`, { method: "POST", body: JSON.stringify({ status }) }),
