@@ -677,19 +677,68 @@ async def get_cart(current=Depends(get_current_user)):
 
 
 @api.post("/cart/add")
-async def add_to_cart(item: CartItemIn, current=Depends(get_current_user)):
+async def add_to_cart(
+    item: CartItemIn,
+    current=Depends(get_current_user)
+):
+    # Product exist karta hai ya nahi
+    product = await db.products.find_one(
+        {"id": item.product_id},
+        {"_id": 0}
+    )
+
+    if not product:
+        raise HTTPException(
+            status_code=404,
+            detail="Product not found"
+        )
+
+    # Product jis store ka hai, wo approved hona chahiye
+    store = await db.stores.find_one(
+        {
+            "id": product.get("store_id"),
+            "is_approved": True
+        },
+        {"_id": 0, "id": 1}
+    )
+
+    if not store:
+        raise HTTPException(
+            status_code=400,
+            detail="This product is not available right now"
+        )
+
     cart = await get_cart_doc(current["id"])
+
     found = False
+
     for it in cart["items"]:
-        if it["product_id"] == item.product_id and it.get("variant") == item.variant:
+        if (
+            it["product_id"] == item.product_id
+            and it.get("variant") == item.variant
+        ):
             it["quantity"] += item.quantity
             found = True
             break
-    if not found:
-        cart["items"].append({"product_id": item.product_id, "quantity": item.quantity, "variant": item.variant})
-    await db.carts.update_one({"user_id": current["id"]}, {"$set": {"items": cart["items"], "updated_at": now_iso()}})
-    return await expand_cart(cart)
 
+    if not found:
+        cart["items"].append({
+            "product_id": item.product_id,
+            "quantity": item.quantity,
+            "variant": item.variant
+        })
+
+    await db.carts.update_one(
+        {"user_id": current["id"]},
+        {
+            "$set": {
+                "items": cart["items"],
+                "updated_at": now_iso()
+            }
+        }
+    )
+
+    return await expand_cart(cart)
 
 @api.post("/cart/update")
 async def update_cart(item: CartUpdateIn, current=Depends(get_current_user)):
