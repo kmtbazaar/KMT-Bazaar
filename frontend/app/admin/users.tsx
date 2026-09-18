@@ -58,6 +58,48 @@ export default function AdminUsers() {
     }
   };
 
+  // 🗑️ Delete User
+  const deleteUser = async (id: string, userRole: string, name: string) => {
+    const message =
+      userRole === "vendor"
+        ? `Are you sure you want to DELETE '${name}'?\n\nThis will also delete their stores and products.`
+        : `Are you sure you want to DELETE '${name}'?\n\nThis action cannot be undone.`;
+
+    Alert.alert(
+      "Delete User?",
+      message,
+      [
+        {
+          text: "Cancel",
+          style: "cancel",
+        },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await adminApi.deleteUser(id);
+
+              Alert.alert(
+                "Deleted",
+                `${name} has been deleted successfully.`
+              );
+
+              await load();
+            } catch (e: any) {
+              console.log("Delete user error:", e);
+
+              Alert.alert(
+                "Delete Failed",
+                e?.message || "Unable to delete this user."
+              );
+            }
+          },
+        },
+      ]
+    );
+  };
+
   const title = role ? `${ROLE_LABEL[role as string] || "Users"}s` : "All Users";
 
   return (
@@ -82,32 +124,4 @@ export default function AdminUsers() {
               <Text style={s.name}>{item.name}</Text>
               <Text style={s.meta}>{item.email || item.phone}</Text>
               <View style={[s.rolePill, { backgroundColor: (ROLE_COLOR[item.role] || "#999") + "22" }]}>
-                <Text style={[s.roleText, { color: ROLE_COLOR[item.role] || "#666" }]}>{ROLE_LABEL[item.role] || item.role}</Text>
-              </View>
-            </View>
-            <Switch
-              testID={`toggle-${item.id}`}
-              value={item.active !== false}
-              onValueChange={() => toggle(item.id, item.active !== false, item.role, item.name)}
-              trackColor={{ true: COLORS.success, false: COLORS.borderStrong }}
-            />
-          </View>
-        )}
-      />
-    </SafeAreaView>
-  );
-}
-
-const s = StyleSheet.create({
-  root: { flex: 1, backgroundColor: COLORS.surfaceSecondary },
-  header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: SPACING.lg, paddingVertical: SPACING.md, backgroundColor: "#fff" },
-  title: { fontSize: 18, fontWeight: "800", color: COLORS.text },
-  empty: { textAlign: "center", marginTop: 80, color: COLORS.textMuted },
-  card: { flexDirection: "row", alignItems: "center", gap: 12, backgroundColor: "#fff", padding: 12, borderRadius: RADIUS.md, borderWidth: 1, borderColor: COLORS.border },
-  avatar: { width: 44, height: 44, borderRadius: 22, alignItems: "center", justifyContent: "center" },
-  avatarText: { fontWeight: "800", fontSize: 18 },
-  name: { fontWeight: "700", color: COLORS.text },
-  meta: { color: COLORS.textMuted, fontSize: 12, marginTop: 2 },
-  rolePill: { alignSelf: "flex-start", paddingHorizontal: 8, paddingVertical: 2, borderRadius: RADIUS.pill, marginTop: 6 },
-  roleText: { fontSize: 10, fontWeight: "800", letterSpacing: 0.5 },
-});
+                <Text style={[s.roleText, { color: ROLE_COLOR[item.role] || "#
