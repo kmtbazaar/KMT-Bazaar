@@ -950,6 +950,10 @@ class RoojgarStatusIn(BaseModel):
     status: str
 
 
+class RoojgarStatusIn(BaseModel):
+    status: str
+
+
 @api.post("/admin/roojgar-applications/{application_id}/status")
 async def admin_update_roojgar_status(
     application_id: str,
@@ -958,21 +962,17 @@ async def admin_update_roojgar_status(
 ):
     allowed_statuses = [
         "pending",
-        "approved",
-        "rejected",
-        "completed"
+        "done"
     ]
 
     if data.status not in allowed_statuses:
         raise HTTPException(
             status_code=400,
-            detail="Invalid status"
+            detail="Status must be pending or done"
         )
 
     result = await db.roojgar_applications.update_one(
-        {
-            "id": application_id
-        },
+        {"id": application_id},
         {
             "$set": {
                 "status": data.status
@@ -988,7 +988,8 @@ async def admin_update_roojgar_status(
 
     return {
         "success": True,
-        "message": "Roojgar application status updated"
+        "message": "Roojgar application status updated",
+        "status": data.status
     }
 
 
