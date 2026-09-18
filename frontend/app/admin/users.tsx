@@ -7,6 +7,7 @@ import {
   Pressable,
   Switch,
   Alert,
+  Platform,
 } from "react-native";
 import {
   useFocusEffect,
@@ -127,10 +128,20 @@ export default function AdminUsers() {
     } catch (e: any) {
       console.log("Toggle user error:", e);
 
-      Alert.alert(
-        "Update Failed",
-        e?.message || "Unable to update this user."
-      );
+      if (Platform.OS === "web") {
+        window.alert(
+          `Update Failed:\n\n${
+            e?.message ||
+            "Unable to update this user."
+          }`
+        );
+      } else {
+        Alert.alert(
+          "Update Failed",
+          e?.message ||
+            "Unable to update this user."
+        );
+      }
     }
   };
 
@@ -144,6 +155,56 @@ export default function AdminUsers() {
         ? `Are you sure you want to DELETE '${name}'?\n\nThis will also delete their stores and products.`
         : `Are you sure you want to DELETE '${name}'?\n\nThis action cannot be undone.`;
 
+    /*
+     * WEB / VERCEL
+     *
+     * Alert.alert() web par reliable nahi hota.
+     * Isliye Vercel/web ke liye browser confirm use kar rahe hain.
+     */
+    if (Platform.OS === "web") {
+      const confirmed = window.confirm(
+        `Delete User?\n\n${message}`
+      );
+
+      if (!confirmed) {
+        return;
+      }
+
+      try {
+        console.log(
+          "DELETE USER REQUEST:",
+          id,
+          userRole,
+          name
+        );
+
+        await adminApi.deleteUser(id);
+
+        window.alert(
+          `${name} has been deleted successfully.`
+        );
+
+        await load();
+      } catch (e: any) {
+        console.log(
+          "Delete user error:",
+          e
+        );
+
+        window.alert(
+          `Delete Failed:\n\n${
+            e?.message ||
+            "Unable to delete this user."
+          }`
+        );
+      }
+
+      return;
+    }
+
+    /*
+     * ANDROID / IOS
+     */
     Alert.alert(
       "Delete User?",
       message,
@@ -158,7 +219,7 @@ export default function AdminUsers() {
           onPress: async () => {
             try {
               console.log(
-                "DELETE REQUEST:",
+                "DELETE USER REQUEST:",
                 id,
                 userRole,
                 name
@@ -245,8 +306,8 @@ export default function AdminUsers() {
                 s.avatar,
                 {
                   backgroundColor:
-                    (ROLE_COLOR[item.role] || "#999") +
-                    "22",
+                    (ROLE_COLOR[item.role] ||
+                      "#999") + "22",
                 },
               ]}
             >
@@ -321,7 +382,8 @@ export default function AdminUsers() {
                 }
                 trackColor={{
                   true: COLORS.success,
-                  false: COLORS.borderStrong,
+                  false:
+                    COLORS.borderStrong,
                 }}
               />
 
@@ -336,13 +398,14 @@ export default function AdminUsers() {
                   }}
                   onPress={() => {
                     console.log(
-                      "DELETE BUTTON PRESSED",
+                      "DELETE BUTTON PRESSED:",
                       item.id
                     );
 
-                    Alert.alert(
-                      "TEST",
-                      "Delete button is working"
+                    deleteUser(
+                      item.id,
+                      item.role,
+                      item.name
                     );
                   }}
                   style={({ pressed }) => [
