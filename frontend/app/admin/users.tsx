@@ -35,6 +35,7 @@ const ROLE_COLOR: Record<string, string> = {
 export default function AdminUsers() {
   const { role } = useLocalSearchParams<{ role: string }>();
   const router = useRouter();
+
   const [users, setUsers] = useState<any[]>([]);
 
   const load = useCallback(async () => {
@@ -46,8 +47,13 @@ export default function AdminUsers() {
         const filteredUsers = list.filter((u: any) => {
           const name = (u.name || "").toLowerCase();
           const email = (u.email || "").toLowerCase();
-          const isDemo = name.includes("demo") || email.includes("demo");
-          const hiddenSeedEmail = email === "vendor@kmtbazaar.com";
+
+          const isDemo =
+            name.includes("demo") ||
+            email.includes("demo");
+
+          const hiddenSeedEmail =
+            email === "vendor@kmtbazaar.com";
 
           return !isDemo && !hiddenSeedEmail;
         });
@@ -57,7 +63,7 @@ export default function AdminUsers() {
         setUsers(list);
       }
     } catch (e) {
-      console.log(e);
+      console.log("Load users error:", e);
     }
   }, [role]);
 
@@ -73,49 +79,58 @@ export default function AdminUsers() {
     userRole: string,
     name: string
   ) => {
-    if (userRole === "vendor") {
-      if (currentActive !== false) {
-        Alert.alert(
-          "Suspend Vendor?",
-          `Are you sure you want to SUSPEND '${name}'? All their stores will go offline immediately.`,
-          [
-            {
-              text: "Cancel",
-              style: "cancel",
-            },
-            {
-              text: "Suspend",
-              style: "destructive",
-              onPress: async () => {
-                await adminApi.toggleUser(id);
-                load();
+    try {
+      if (userRole === "vendor") {
+        if (currentActive !== false) {
+          Alert.alert(
+            "Suspend Vendor?",
+            `Are you sure you want to SUSPEND '${name}'? All their stores will go offline immediately.`,
+            [
+              {
+                text: "Cancel",
+                style: "cancel",
               },
-            },
-          ]
-        );
+              {
+                text: "Suspend",
+                style: "destructive",
+                onPress: async () => {
+                  await adminApi.toggleUser(id);
+                  await load();
+                },
+              },
+            ]
+          );
+        } else {
+          Alert.alert(
+            "Unsuspend Vendor?",
+            `Are you sure you want to UNSUSPEND '${name}' and make them active again?`,
+            [
+              {
+                text: "Cancel",
+                style: "cancel",
+              },
+              {
+                text: "Unsuspend",
+                style: "default",
+                onPress: async () => {
+                  await adminApi.toggleUser(id);
+                  await load();
+                },
+              },
+            ]
+          );
+        }
       } else {
-        Alert.alert(
-          "Unsuspend Vendor?",
-          `Are you sure you want to UNSUSPEND '${name}' and make them active again?`,
-          [
-            {
-              text: "Cancel",
-              style: "cancel",
-            },
-            {
-              text: "Unsuspend",
-              style: "default",
-              onPress: async () => {
-                await adminApi.toggleUser(id);
-                load();
-              },
-            },
-          ]
-        );
+        await adminApi.toggleUser(id);
+        await load();
       }
-    } else {
-      await adminApi.toggleUser(id);
-      load();
+    } catch (e: any) {
+      console.log("Toggle user error:", e);
+
+      Alert.alert(
+        "Update Failed",
+        e?.message || "Unable to update this user."
+      );
     }
   };
 
@@ -142,6 +157,13 @@ export default function AdminUsers() {
           style: "destructive",
           onPress: async () => {
             try {
+              console.log(
+                "DELETE REQUEST:",
+                id,
+                userRole,
+                name
+              );
+
               await adminApi.deleteUser(id);
 
               Alert.alert(
@@ -151,11 +173,15 @@ export default function AdminUsers() {
 
               await load();
             } catch (e: any) {
-              console.log("Delete user error:", e);
+              console.log(
+                "Delete user error:",
+                e
+              );
 
               Alert.alert(
                 "Delete Failed",
-                e?.message || "Unable to delete this user."
+                e?.message ||
+                  "Unable to delete this user."
               );
             }
           },
@@ -177,7 +203,8 @@ export default function AdminUsers() {
       <View style={s.header}>
         <Pressable
           onPress={() => router.back()}
-          hitSlop={10}
+          hitSlop={15}
+          style={s.backButton}
         >
           <MaterialCommunityIcons
             name="arrow-left"
@@ -186,19 +213,24 @@ export default function AdminUsers() {
           />
         </Pressable>
 
-        <Text style={s.title}>{title}</Text>
+        <Text style={s.title}>
+          {title}
+        </Text>
 
-        <View style={{ width: 22 }} />
+        <View style={{ width: 44 }} />
       </View>
 
       <FlatList
         data={users}
-        keyExtractor={(u) => u.id}
+        keyExtractor={(u) => String(u.id)}
         contentContainerStyle={{
           padding: SPACING.lg,
+          paddingBottom: 40,
         }}
         ListEmptyComponent={
-          <Text style={s.empty}>No users</Text>
+          <Text style={s.empty}>
+            No users
+          </Text>
         }
         ItemSeparatorComponent={() => (
           <View style={{ height: 10 }} />
@@ -213,7 +245,8 @@ export default function AdminUsers() {
                 s.avatar,
                 {
                   backgroundColor:
-                    (ROLE_COLOR[item.role] || "#999") + "22",
+                    (ROLE_COLOR[item.role] || "#999") +
+                    "22",
                 },
               ]}
             >
@@ -222,20 +255,29 @@ export default function AdminUsers() {
                   s.avatarText,
                   {
                     color:
-                      ROLE_COLOR[item.role] || "#666",
+                      ROLE_COLOR[item.role] ||
+                      "#666",
                   },
                 ]}
               >
-                {(item.name || "?").charAt(0)}
+                {(item.name || "?")
+                  .charAt(0)
+                  .toUpperCase()}
               </Text>
             </View>
 
             <View style={s.userInfo}>
-              <Text style={s.name}>
+              <Text
+                style={s.name}
+                numberOfLines={1}
+              >
                 {item.name}
               </Text>
 
-              <Text style={s.meta}>
+              <Text
+                style={s.meta}
+                numberOfLines={1}
+              >
                 {item.email || item.phone}
               </Text>
 
@@ -244,7 +286,8 @@ export default function AdminUsers() {
                   s.rolePill,
                   {
                     backgroundColor:
-                      (ROLE_COLOR[item.role] || "#999") + "22",
+                      (ROLE_COLOR[item.role] ||
+                        "#999") + "22",
                   },
                 ]}
               >
@@ -253,11 +296,13 @@ export default function AdminUsers() {
                     s.roleText,
                     {
                       color:
-                        ROLE_COLOR[item.role] || "#666",
+                        ROLE_COLOR[item.role] ||
+                        "#666",
                     },
                   ]}
                 >
-                  {ROLE_LABEL[item.role] || item.role}
+                  {ROLE_LABEL[item.role] ||
+                    item.role}
                 </Text>
               </View>
             </View>
@@ -283,27 +328,39 @@ export default function AdminUsers() {
               {item.role !== "admin" && (
                 <Pressable
                   testID={`delete-${item.id}`}
+                  hitSlop={{
+                    top: 15,
+                    bottom: 15,
+                    left: 15,
+                    right: 15,
+                  }}
+                  onPress={() => {
+                    console.log(
+                      "DELETE BUTTON PRESSED",
+                      item.id
+                    );
+
+                    Alert.alert(
+                      "TEST",
+                      "Delete button is working"
+                    );
+                  }}
                   style={({ pressed }) => [
                     s.deleteButton,
-                    pressed && s.deleteButtonPressed,
+                    pressed &&
+                      s.deleteButtonPressed,
                   ]}
-                  hitSlop={10}
-                  android_ripple={{
-                    color: "#FCA5A5",
-                  }}
-                  onPress={() =>
-                    deleteUser(
-                      item.id,
-                      item.role,
-                      item.name
-                    )
-                  }
                 >
-                  <MaterialCommunityIcons
-                    name="delete-outline"
-                    size={26}
-                    color="#DC2626"
-                  />
+                  <View
+                    pointerEvents="none"
+                    style={s.deleteInner}
+                  >
+                    <MaterialCommunityIcons
+                      name="delete-outline"
+                      size={28}
+                      color="#DC2626"
+                    />
+                  </View>
                 </Pressable>
               )}
             </View>
@@ -317,7 +374,8 @@ export default function AdminUsers() {
 const s = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: COLORS.surfaceSecondary,
+    backgroundColor:
+      COLORS.surfaceSecondary,
   },
 
   header: {
@@ -327,6 +385,14 @@ const s = StyleSheet.create({
     paddingHorizontal: SPACING.lg,
     paddingVertical: SPACING.md,
     backgroundColor: "#fff",
+  },
+
+  backButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: "center",
+    justifyContent: "center",
   },
 
   title: {
@@ -398,23 +464,35 @@ const s = StyleSheet.create({
   actions: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 10,
     marginLeft: 8,
   },
 
   deleteButton: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    marginLeft: 10,
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: "#FEE2E2",
     borderWidth: 2,
     borderColor: "#FCA5A5",
+    elevation: 3,
+  },
+
+  deleteInner: {
+    width: 56,
+    height: 56,
+    alignItems: "center",
+    justifyContent: "center",
   },
 
   deleteButtonPressed: {
     opacity: 0.5,
-    transform: [{ scale: 0.95 }],
+    transform: [
+      {
+        scale: 0.94,
+      },
+    ],
   },
 });
