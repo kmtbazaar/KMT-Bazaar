@@ -880,6 +880,80 @@ async def admin_users(role: Optional[str] = None, _=Depends(require_roles("admin
 
 @api.post("/admin/users/{user_id}/toggle")
 async def admin_toggle_user(user_id: str, _=Depends(require_roles("admin"))):
+
+@api.delete("/admin/users/{user_id}")
+async def admin_delete_user(user_id: str, current=Depends(require_roles("admin"))):
+    # User ko database se pehle check karo
+    user = await db.users.find_one({"id": user_id}, {"_id": 0})
+
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    # Admin account ko delete karne se rokna
+    if user.get("role") == Role.ADMIN.value:
+        raise HTTPException(
+            status_code=403,
+            detail="Admin account cannot be deleted"
+        )
+
+    role = user.get("role")
+
+    # ---------------- CUSTOMER CLEANUP ----------------
+    if role == Role.CUSTOMER.value:
+        # Customer ki personal/supporting data delete hogi
+        await db.addresses.delete_many({"user_id": user_id})
+        await db.carts.delete_many({"user_id": user_id})
+        await db.notifications.delete_many({"user_id": user_id})
+        await db.password_reset_otps.delete_many({"email": user.get("email")})
+
+        # Orders ko intentionally delete nahi kar rahe.
+        # Order history business records ke liye safe rahegi.
+
+    # ---------------- VENDOR CLEANUP ----------------
+    elif role == Role.VENDOR.value:
+        # Vendor ke stores find karo
+        stores = await db.stores.find(
+            {"vendor_id": user_id},
+            {"_id": 0, "id": 1}
+        ).to_list(500)
+
+        store_ids = [store["id"] for store in stores]
+
+        # Vendor ke products delete karo
+        if store_ids:
+            await db.products.delete_many({
+                "store_id": {"$in": store_ids}
+            })
+
+        # Vendor ke stores delete karo
+        await db.stores.delete_many({
+            "vendor_id": user_id
+        })
+
+        # Vendor ki supporting data
+        await db.notifications.delete_many({"user_id": user_id})
+        await db.password_reset_otps.delete_many({"email": user.get("email")})
+
+        # Existing orders ko delete nahi kar rahe.
+
+    # ---------------- DELIVERY CLEANUP ----------------
+    elif role == Role.DELIVERY.value:
+        # Delivery boy ki notifications/reset data delete
+        await db.notifications.delete_many({"user_id": user_id})
+        await db.password_reset_otps.delete_many({"email": user.get("email")})
+
+        # Existing orders safe rahenge.
+        # Delivery assignment/order history ko delete nahi kar rahe.
+
+    # ---------------- COMMON USER DELETE ----------------
+    await db.users.delete_one({"id": user_id})
+
+    return {
+        "ok": True,
+        "message": f"{role.title()} deleted successfully",
+        "user_id": user_id,
+        "role": role
+    }
     user = await db.users.find_one({"id": user_id}, {"_id": 0})
     if not user: raise HTTPException(404, "Not found")
     new_state = not user.get("active", True)
