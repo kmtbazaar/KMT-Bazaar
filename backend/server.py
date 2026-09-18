@@ -95,6 +95,21 @@ class OtpVerifyIn(BaseModel):
     name: Optional[str] = None
 
 
+class ForgotPasswordIn(BaseModel):
+    email: EmailStr
+
+
+class VerifyResetOtpIn(BaseModel):
+    email: EmailStr
+    otp: str
+
+
+class ResetPasswordIn(BaseModel):
+    email: EmailStr
+    otp: str
+    new_password: str
+
+
 class UserOut(BaseModel):
     id: str
     name: str
