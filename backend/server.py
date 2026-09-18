@@ -791,8 +791,8 @@ def require_roles(*roles):
         return current
     return _dep
 
-
 # ------------------ ADMIN ------------------
+
 class ProductIn(BaseModel):
     name: str
     category_id: str
@@ -824,7 +824,7 @@ class BannerIn(BaseModel):
 
 
 class OrderStatusIn(BaseModel):
-    status: str  # accepted | out_for_delivery | delivered | cancelled
+    status: str
 
 
 class CommissionIn(BaseModel):
@@ -833,6 +833,92 @@ class CommissionIn(BaseModel):
 
 @api.get("/admin/stats")
 async def admin_stats(_=Depends(require_roles("admin"))):
+    users_count = await db.users.count_documents({"role": "customer"})
+    vendors_count = await db.users.count_documents({"role": "vendor"})
+    delivery_count = await db.users.count_documents({"role": "delivery"})
+    products_count = await db.products.count_documents({})
+    orders_count = await db.orders.count_documents({})
+    pending_count = await db.orders.count_documents({"status": "pending"})
+    delivered_count = await db.orders.count_documents({"status": "delivered"})
+
+    revenue_cursor = db.orders.aggregate([
+        {"$group": {"_id": None, "total": {"$sum": "$total"}}}
+    ])
+
+    rev = 0.0
+
+    async for d in revenue_cursor:
+        rev = round(d.get("total", 0) or 0, 2)
+
+    settings = await db.settings.find_one(
+        {"id": "global"},
+        {"_id": 0}
+    ) or {
+        "commission_percent": 10.0
+    }
+
+    commission = settings.get(
+        "commission_percent",
+        10.0
+    )
+
+    platform_earnings = round(
+        rev * commission / 100,
+        2
+    )
+
+    # Last 7 days chart
+    from datetime import timedelta as _td
+
+    today = datetime.now(timezone.utc).date()
+
+    chart = []
+
+    for i in range(6, -1, -1):
+        d = today - _td(days=i)
+
+        start = datetime(
+            d.year,
+            d.month,
+            d.day,
+            tzinfo=timezone.utc
+        ).isoformat()
+
+        end = (
+            datetime(
+                d.year,
+                d.month,
+                d.day,
+                tzinfo=timezone.utc
+            ) + _td(days=1)
+        ).isoformat()
+
+        count = await db.orders.count_documents({
+            "created_at": {
+                "$gte": start,
+                "$lt": end
+            }
+        })
+
+        chart.append({
+            "day": d.strftime("%a"),
+            "orders": count
+        })
+
+    return {
+        "users": users_count,
+        "vendors": vendors_count,
+        "delivery": delivery_count,
+        "products": products_count,
+        "orders": orders_count,
+        "pending_orders": pending_count,
+        "delivered_orders": delivered_count,
+        "revenue": rev,
+        "platform_earnings": platform_earnings,
+        "commission_percent": commission,
+        "chart": chart,
+    }
+
 
 # ------------------ ADMIN ROOJGAR APPLICATIONS ------------------
 
@@ -848,59 +934,84 @@ async def admin_roojgar_applications(
 
     applications = await db.roojgar_applications.find(
         query,
-        {"_id": 0, "aadhar": 0}
-    ).sort("created_at", -1).to_list(500)
+        {
+            "_id": 0,
+            "aadhar": 0
+        }
+    ).sort(
+        "created_at",
+        -1
+    ).to_list(500)
 
     return applications
-    users_count = await db.users.count_documents({"role": "customer"})
-    vendors_count = await db.users.count_documents({"role": "vendor"})
-    delivery_count = await db.users.count_documents({"role": "delivery"})
-    products_count = await db.products.count_documents({})
-    orders_count = await db.orders.count_documents({})
-    pending_count = await db.orders.count_documents({"status": "pending"})
-    delivered_count = await db.orders.count_documents({"status": "delivered"})
 
-    revenue_cursor = db.orders.aggregate([
-        {"$group": {"_id": None, "total": {"$sum": "$total"}}}
-    ])
-    rev = 0.0
-    async for d in revenue_cursor:
-        rev = round(d.get("total", 0) or 0, 2)
 
-    settings = await db.settings.find_one({"id": "global"}, {"_id": 0}) or {"commission_percent": 10.0}
-    commission = settings.get("commission_percent", 10.0)
-    platform_earnings = round(rev * commission / 100, 2)
+class RoojgarStatusIn(BaseModel):
+    status: str
 
-    # last 7 days
-    from datetime import timedelta as _td
-    today = datetime.now(timezone.utc).date()
-    chart = []
-    for i in range(6, -1, -1):
-        d = today - _td(days=i)
-        start = datetime(d.year, d.month, d.day, tzinfo=timezone.utc).isoformat()
-        end = (datetime(d.year, d.month, d.day, tzinfo=timezone.utc) + _td(days=1)).isoformat()
-        c = await db.orders.count_documents({"created_at": {"$gte": start, "$lt": end}})
-        chart.append({"day": d.strftime("%a"), "orders": c})
+
+@api.post("/admin/roojgar-applications/{application_id}/status")
+async def admin_update_roojgar_status(
+    application_id: str,
+    data: RoojgarStatusIn,
+    _=Depends(require_roles("admin"))
+):
+    allowed_statuses = [
+        "pending",
+        "approved",
+        "rejected",
+        "completed"
+    ]
+
+    if data.status not in allowed_statuses:
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid status"
+        )
+
+    result = await db.roojgar_applications.update_one(
+        {
+            "id": application_id
+        },
+        {
+            "$set": {
+                "status": data.status
+            }
+        }
+    )
+
+    if result.matched_count == 0:
+        raise HTTPException(
+            status_code=404,
+            detail="Roojgar application not found"
+        )
 
     return {
-        "users": users_count, "vendors": vendors_count, "delivery": delivery_count,
-        "products": products_count, "orders": orders_count,
-        "pending_orders": pending_count, "delivered_orders": delivered_count,
-        "revenue": rev, "platform_earnings": platform_earnings, "commission_percent": commission,
-        "chart": chart,
+        "success": True,
+        "message": "Roojgar application status updated"
     }
 
 
 @api.get("/admin/users")
-async def admin_users(role: Optional[str] = None, _=Depends(require_roles("admin"))):
+async def admin_users(
+    role: Optional[str] = None,
+    _=Depends(require_roles("admin"))
+):
     q = {}
+
     if role:
         q["role"] = role
 
     users = await db.users.find(
         q,
-        {"_id": 0, "password": 0}
-    ).sort("created_at", -1).to_list(500)
+        {
+            "_id": 0,
+            "password": 0
+        }
+    ).sort(
+        "created_at",
+        -1
+    ).to_list(500)
 
     return users
 
