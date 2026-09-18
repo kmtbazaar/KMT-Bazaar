@@ -833,6 +833,25 @@ class CommissionIn(BaseModel):
 
 @api.get("/admin/stats")
 async def admin_stats(_=Depends(require_roles("admin"))):
+
+# ------------------ ADMIN ROOJGAR APPLICATIONS ------------------
+
+@api.get("/admin/roojgar-applications")
+async def admin_roojgar_applications(
+    status: Optional[str] = None,
+    _=Depends(require_roles("admin"))
+):
+    query = {}
+
+    if status:
+        query["status"] = status
+
+    applications = await db.roojgar_applications.find(
+        query,
+        {"_id": 0, "aadhar": 0}
+    ).sort("created_at", -1).to_list(500)
+
+    return applications
     users_count = await db.users.count_documents({"role": "customer"})
     vendors_count = await db.users.count_documents({"role": "vendor"})
     delivery_count = await db.users.count_documents({"role": "delivery"})
