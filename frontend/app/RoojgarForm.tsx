@@ -59,7 +59,7 @@ export default function RoojgarForm() {
     { id: "2", name: "Electrician", icon: "⚡" },
     { id: "3", name: "Carpenter", icon: "🪚" },
     { id: "4", name: "Painter", icon: "🎨" },
-    { id: "5", name: "Mason", icon: "🧱" },
+    { id: "5", name: "RajMistri", icon: "🧱" },
     { id: "6", name: "Welder", icon: "🔥" },
     { id: "7", name: "AC Technician", icon: "❄️" },
     { id: "8", name: "Driver", icon: "🚗" },
@@ -70,11 +70,8 @@ export default function RoojgarForm() {
     { id: "13", name: "Gardener", icon: "🌿" },
     { id: "14", name: "Mechanic", icon: "🛠️" },
     { id: "15", name: "Computer Operator", icon: "💻" },
-    { id: "16", name: "Data Entry", icon: "⌨️" },
-    { id: "17", name: "Tailor", icon: "🧵" },
-    { id: "18", name: "Beautician", icon: "💄" },
-    { id: "19", name: "Teacher", icon: "📚" },
-    { id: "20", name: "Other", icon: "📋" },
+    { id: "16", name: "Beautician", icon: "💄" },
+    { id: "17", name: "Other", icon: "📋" },
   ]);
 
   const [loadingCategories, setLoadingCategories] = useState(true);
