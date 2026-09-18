@@ -245,7 +245,38 @@ async def login(data: LoginIn):
         raise HTTPException(status_code=401, detail="Invalid email or password")
     token = create_token(user["id"], user["role"])
     return {"token": token, "user": user_to_out(user)}
+@api.post("/auth/forgot-password")
+async def forgot_password(data: ForgotPasswordIn):
+    user = await db.users.find_one({"email": data.email})
 
+    if not user:
+        raise HTTPException(
+            status_code=404,
+            detail="User not found"
+        )
+
+    otp = f"{secrets.randbelow(900000) + 100000}"
+
+    expires_at = datetime.now(timezone.utc) + timedelta(minutes=10)
+
+    await db.password_reset_otps.delete_many({
+        "email": data.email
+    })
+
+    await db.password_reset_otps.insert_one({
+        "id": str(uuid.uuid4()),
+        "email": data.email,
+        "otp_hash": hash_reset_otp(otp),
+        "expires_at": expires_at,
+        "created_at": datetime.now(timezone.utc),
+    })
+
+    return {
+        "success": True,
+        "message": "OTP generated successfully",
+        "debug_otp": otp,
+        "expires_in_minutes": 10,
+    }
 
 @api.post("/auth/otp/request")
 async def request_otp(data: OtpRequestIn):
