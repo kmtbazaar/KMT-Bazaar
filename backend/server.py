@@ -1032,13 +1032,7 @@ async def admin_delete_user(
         "user_id": user_id,
         "role": role
     }
-    user = await db.users.find_one({"id": user_id}, {"_id": 0})
-    if not user: raise HTTPException(404, "Not found")
-    new_state = not user.get("active", True)
-    await db.users.update_one({"id": user_id}, {"$set": {"active": new_state}})
-    return {"ok": True, "active": new_state}
-
-
+    
 @api.get("/admin/orders")
 async def admin_orders(status: Optional[str] = None, _=Depends(require_roles("admin"))):
     q = {}
