@@ -81,6 +81,12 @@ const ACTIONS = [
     path: "/admin/commission",
     color: "#CA8A04",
   },
+  {
+    icon: "briefcase-account-outline",
+    label: "Roojgar",
+    path: "/admin/roojgar",
+    color: "#7C3AED",
+  },
 ];
 
 export default function AdminDashboard() {
@@ -92,15 +98,10 @@ export default function AdminDashboard() {
 
   const [pendingStores, setPendingStores] = useState<any[]>([]);
 
-  const [roojgarApplications, setRoojgarApplications] = useState<any[]>([]);
-
   const [refreshing, setRefreshing] = useState(false);
 
   /*
    * EXISTING DASHBOARD DATA
-   * This function is intentionally kept separate from Roojgar.
-   * If Roojgar API has any problem, existing stats/orders/revenue
-   * will still remain available.
    */
   const load = useCallback(async () => {
     try {
@@ -116,37 +117,21 @@ export default function AdminDashboard() {
     }
   }, []);
 
-  /*
-   * ROOJGAR DATA
-   * Separate API call so it cannot break existing dashboard stats.
-   */
-  const loadRoojgar = useCallback(async () => {
-    try {
-      const response = await adminApi.roojgarApplications();
-
-      setRoojgarApplications(response || []);
-    } catch (e) {
-      console.log("Roojgar load error:", e);
-      setRoojgarApplications([]);
-    }
-  }, []);
-
   useFocusEffect(
     useCallback(() => {
       load();
-      loadRoojgar();
-    }, [load, loadRoojgar])
+    }, [load])
   );
 
   const onRefresh = async () => {
     setRefreshing(true);
 
-    await Promise.all([load(), loadRoojgar()]);
+    await load();
 
     setRefreshing(false);
   };
 
-  // APPROVE LOGIC
+  // APPROVE STORE
   const handleApproveStore = async (id: string, name: string) => {
     const executeApprove = async () => {
       try {
@@ -192,7 +177,7 @@ export default function AdminDashboard() {
     }
   };
 
-  // REJECT LOGIC
+  // REJECT STORE
   const handleRejectStore = async (id: string, name: string) => {
     const executeReject = async () => {
       try {
@@ -241,73 +226,6 @@ export default function AdminDashboard() {
     }
   };
 
-  // ROOJGAR STATUS UPDATE
-  const handleRoojgarStatus = async (
-    applicationId: string,
-    status: string
-  ) => {
-    try {
-      await adminApi.updateRoojgarStatus(applicationId, status);
-
-      await loadRoojgar();
-
-      if (Platform.OS === "web") {
-        window.alert(`Application status changed to ${status}.`);
-      } else {
-        Alert.alert(
-          "Success",
-          `Application status changed to ${status}.`
-        );
-      }
-    } catch (e) {
-      console.log("Roojgar status update error:", e);
-
-      if (Platform.OS === "web") {
-        window.alert("Could not update Roojgar application.");
-      } else {
-        Alert.alert(
-          "Error",
-          "Could not update Roojgar application."
-        );
-      }
-    }
-  };
-
-  const confirmRoojgarStatus = (
-    application: any,
-    status: string
-  ) => {
-    const applicantName = application?.name || "Applicant";
-
-    if (Platform.OS === "web") {
-      const confirmed = window.confirm(
-        `Change ${applicantName}'s application status to ${status}?`
-      );
-
-      if (confirmed) {
-        handleRoojgarStatus(application.id, status);
-      }
-
-      return;
-    }
-
-    Alert.alert(
-      "Update Application",
-      `Change ${applicantName}'s application status to ${status}?`,
-      [
-        {
-          text: "Cancel",
-          style: "cancel",
-        },
-        {
-          text: "Confirm",
-          onPress: () =>
-            handleRoojgarStatus(application.id, status),
-        },
-      ]
-    );
-  };
-
   const maxChart = Math.max(
     1,
     ...((stats?.chart || []).map((c: any) => c.orders))
@@ -328,7 +246,9 @@ export default function AdminDashboard() {
             />
 
             <View style={{ flex: 1, marginLeft: 10 }}>
-              <Text style={s.headerTitle}>Admin Console</Text>
+              <Text style={s.headerTitle}>
+                Admin Console
+              </Text>
 
               <Text style={s.headerSub}>
                 Hi, {user?.name}
@@ -366,7 +286,7 @@ export default function AdminDashboard() {
           />
         }
       >
-        {/* EXISTING KPI SECTION */}
+        {/* KPI SECTION */}
 
         <View style={s.kpiRow}>
           <KPI
@@ -417,7 +337,7 @@ export default function AdminDashboard() {
           />
         </View>
 
-        {/* EXISTING CHART */}
+        {/* CHART */}
 
         <View style={s.chartCard}>
           <Text style={s.chartTitle}>
@@ -458,7 +378,7 @@ export default function AdminDashboard() {
           </View>
         </View>
 
-        {/* EXISTING PENDING ORDERS */}
+        {/* PENDING ORDERS */}
 
         <Pressable
           testID="pending-orders-shortcut"
@@ -494,7 +414,7 @@ export default function AdminDashboard() {
           />
         </Pressable>
 
-        {/* PENDING STORES LIST */}
+        {/* PENDING STORES */}
 
         {pendingStores &&
           pendingStores.length > 0 && (
@@ -584,205 +504,6 @@ export default function AdminDashboard() {
             </View>
           )}
 
-        {/* ===================================================== */}
-        {/* ROOJGAR APPLICATIONS */}
-        {/* ===================================================== */}
-
-        <View style={s.roojgarHeader}>
-          <View style={{ flex: 1 }}>
-            <Text style={s.section}>
-              Roojgar Applications
-            </Text>
-
-            <Text style={s.roojgarSubtitle}>
-              Job applications submitted from Roojgar form
-            </Text>
-          </View>
-
-          <View style={s.roojgarCount}>
-            <MaterialCommunityIcons
-              name="briefcase-account-outline"
-              size={20}
-              color={COLORS.brand}
-            />
-
-            <Text style={s.roojgarCountText}>
-              {roojgarApplications.length}
-            </Text>
-          </View>
-        </View>
-
-        {roojgarApplications.length === 0 ? (
-          <View style={s.emptyRoojgar}>
-            <View style={s.emptyRoojgarIcon}>
-              <MaterialCommunityIcons
-                name="briefcase-search-outline"
-                size={30}
-                color={COLORS.textMuted}
-              />
-            </View>
-
-            <Text style={s.emptyRoojgarTitle}>
-              No Roojgar Applications
-            </Text>
-
-            <Text style={s.emptyRoojgarText}>
-              New applications submitted from the
-              Roojgar form will appear here.
-            </Text>
-          </View>
-        ) : (
-          roojgarApplications.map(
-            (application: any) => {
-              const status =
-                application?.status || "pending";
-
-              return (
-                <View
-                  key={application.id}
-                  style={s.roojgarCard}
-                >
-                  <View style={s.roojgarCardTop}>
-                    <View style={s.applicantIcon}>
-                      <MaterialCommunityIcons
-                        name="account-outline"
-                        size={24}
-                        color={COLORS.brand}
-                      />
-                    </View>
-
-                    <View
-                      style={{
-                        flex: 1,
-                        marginLeft: 10,
-                      }}
-                    >
-                      <Text
-                        style={s.applicantName}
-                        numberOfLines={1}
-                      >
-                        {application.name ||
-                          "Applicant"}
-                      </Text>
-
-                      <Text style={s.applicationDate}>
-                        {formatApplicationDate(
-                          application.appliedAt ||
-                            application.created_at
-                        )}
-                      </Text>
-                    </View>
-
-                    <StatusBadge status={status} />
-                  </View>
-
-                  <View style={s.applicationDetails}>
-                    <ApplicationDetail
-                      icon="phone-outline"
-                      label="Mobile"
-                      value={
-                        application.mobile ||
-                        "Not provided"
-                      }
-                    />
-
-                    <ApplicationDetail
-                      icon="briefcase-outline"
-                      label="Category"
-                      value={
-                        application.category ||
-                        "Not provided"
-                      }
-                    />
-
-                    <ApplicationDetail
-                      icon="map-marker-outline"
-                      label="Address"
-                      value={
-                        application.address ||
-                        "Not provided"
-                      }
-                    />
-                  </View>
-
-                  {/* Aadhaar intentionally NOT displayed */}
-
-                  <View style={s.roojgarActions}>
-                    <Pressable
-                      style={[
-                        s.statusBtn,
-                        s.approvedStatusBtn,
-                      ]}
-                      onPress={() =>
-                        confirmRoojgarStatus(
-                          application,
-                          "approved"
-                        )
-                      }
-                    >
-                      <MaterialCommunityIcons
-                        name="check-circle-outline"
-                        size={18}
-                        color="#fff"
-                      />
-
-                      <Text style={s.statusBtnText}>
-                        Approve
-                      </Text>
-                    </Pressable>
-
-                    <Pressable
-                      style={[
-                        s.statusBtn,
-                        s.rejectedStatusBtn,
-                      ]}
-                      onPress={() =>
-                        confirmRoojgarStatus(
-                          application,
-                          "rejected"
-                        )
-                      }
-                    >
-                      <MaterialCommunityIcons
-                        name="close-circle-outline"
-                        size={18}
-                        color="#fff"
-                      />
-
-                      <Text style={s.statusBtnText}>
-                        Reject
-                      </Text>
-                    </Pressable>
-
-                    <Pressable
-                      style={[
-                        s.statusBtn,
-                        s.completedStatusBtn,
-                      ]}
-                      onPress={() =>
-                        confirmRoojgarStatus(
-                          application,
-                          "completed"
-                        )
-                      }
-                    >
-                      <MaterialCommunityIcons
-                        name="check-all"
-                        size={18}
-                        color="#fff"
-                      />
-
-                      <Text style={s.statusBtnText}>
-                        Done
-                      </Text>
-                    </Pressable>
-                  </View>
-                </View>
-              );
-            }
-          )
-        )}
-
         {/* QUICK ACTIONS */}
 
         <Text style={s.section}>
@@ -863,97 +584,6 @@ function KPI({
       )}
     </View>
   );
-}
-
-function ApplicationDetail({
-  icon,
-  label,
-  value,
-}: any) {
-  return (
-    <View style={s.detailRow}>
-      <MaterialCommunityIcons
-        name={icon}
-        size={18}
-        color={COLORS.textMuted}
-      />
-
-      <View style={{ flex: 1 }}>
-        <Text style={s.detailLabel}>
-          {label}
-        </Text>
-
-        <Text
-          style={s.detailValue}
-          numberOfLines={2}
-        >
-          {value}
-        </Text>
-      </View>
-    </View>
-  );
-}
-
-function StatusBadge({
-  status,
-}: {
-  status: string;
-}) {
-  let backgroundColor = "#FEF3C7";
-  let textColor = "#92400E";
-
-  if (status === "approved") {
-    backgroundColor = "#DCFCE7";
-    textColor = "#166534";
-  } else if (status === "rejected") {
-    backgroundColor = "#FEE2E2";
-    textColor = "#991B1B";
-  } else if (status === "completed") {
-    backgroundColor = "#DBEAFE";
-    textColor = "#1E40AF";
-  }
-
-  return (
-    <View
-      style={[
-        s.statusBadge,
-        { backgroundColor },
-      ]}
-    >
-      <Text
-        style={[
-          s.statusBadgeText,
-          { color: textColor },
-        ]}
-      >
-        {String(status).toUpperCase()}
-      </Text>
-    </View>
-  );
-}
-
-function formatApplicationDate(
-  dateValue: any
-) {
-  if (!dateValue) {
-    return "Date not available";
-  }
-
-  try {
-    const date = new Date(dateValue);
-
-    if (Number.isNaN(date.getTime())) {
-      return String(dateValue);
-    }
-
-    return date.toLocaleDateString("en-IN", {
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
-    });
-  } catch {
-    return String(dateValue);
-  }
 }
 
 const s = StyleSheet.create({
@@ -1176,177 +806,6 @@ const s = StyleSheet.create({
     color: "#fff",
     fontWeight: "700",
     fontSize: 13,
-  },
-
-  /* ROOJGAR */
-
-  roojgarHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginTop: 6,
-  },
-
-  roojgarSubtitle: {
-    color: COLORS.textMuted,
-    fontSize: 11,
-    marginTop: -8,
-    marginBottom: SPACING.md,
-  },
-
-  roojgarCount: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 5,
-    backgroundColor: "#EDE9FE",
-    paddingHorizontal: 10,
-    paddingVertical: 7,
-    borderRadius: 20,
-    marginTop: SPACING.lg,
-  },
-
-  roojgarCountText: {
-    color: COLORS.brand,
-    fontWeight: "800",
-    fontSize: 14,
-  },
-
-  roojgarCard: {
-    backgroundColor: "#fff",
-    borderRadius: RADIUS.md,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    padding: 14,
-    marginBottom: 10,
-  },
-
-  roojgarCardTop: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-
-  applicantIcon: {
-    width: 46,
-    height: 46,
-    borderRadius: 23,
-    backgroundColor: "#EDE9FE",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-
-  applicantName: {
-    color: COLORS.text,
-    fontSize: 16,
-    fontWeight: "800",
-  },
-
-  applicationDate: {
-    color: COLORS.textMuted,
-    fontSize: 11,
-    marginTop: 3,
-  },
-
-  statusBadge: {
-    paddingHorizontal: 9,
-    paddingVertical: 5,
-    borderRadius: 14,
-  },
-
-  statusBadgeText: {
-    fontSize: 9,
-    fontWeight: "800",
-  },
-
-  applicationDetails: {
-    marginTop: 14,
-    gap: 10,
-  },
-
-  detailRow: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    gap: 9,
-  },
-
-  detailLabel: {
-    color: COLORS.textMuted,
-    fontSize: 9,
-    fontWeight: "600",
-  },
-
-  detailValue: {
-    color: COLORS.text,
-    fontSize: 12,
-    fontWeight: "600",
-    marginTop: 1,
-  },
-
-  roojgarActions: {
-    flexDirection: "row",
-    gap: 7,
-    marginTop: 14,
-    flexWrap: "wrap",
-  },
-
-  statusBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 4,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    borderRadius: 18,
-  },
-
-  approvedStatusBtn: {
-    backgroundColor: COLORS.success,
-  },
-
-  rejectedStatusBtn: {
-    backgroundColor: COLORS.error,
-  },
-
-  completedStatusBtn: {
-    backgroundColor: "#2563EB",
-  },
-
-  statusBtnText: {
-    color: "#fff",
-    fontWeight: "700",
-    fontSize: 11,
-  },
-
-  emptyRoojgar: {
-    backgroundColor: "#fff",
-    borderRadius: RADIUS.md,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    padding: 24,
-    alignItems: "center",
-    marginBottom: 8,
-  },
-
-  emptyRoojgarIcon: {
-    width: 58,
-    height: 58,
-    borderRadius: 29,
-    backgroundColor: COLORS.surfaceSecondary,
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 10,
-  },
-
-  emptyRoojgarTitle: {
-    color: COLORS.text,
-    fontSize: 15,
-    fontWeight: "800",
-  },
-
-  emptyRoojgarText: {
-    color: COLORS.textMuted,
-    fontSize: 11,
-    textAlign: "center",
-    marginTop: 5,
-    lineHeight: 17,
   },
 
   grid: {
