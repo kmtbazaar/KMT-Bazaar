@@ -155,12 +155,6 @@ export default function AdminUsers() {
         ? `Are you sure you want to DELETE '${name}'?\n\nThis will also delete their stores and products.`
         : `Are you sure you want to DELETE '${name}'?\n\nThis action cannot be undone.`;
 
-    /*
-     * WEB / VERCEL
-     *
-     * Alert.alert() web par reliable nahi hota.
-     * Isliye Vercel/web ke liye browser confirm use kar rahe hain.
-     */
     if (Platform.OS === "web") {
       const confirmed = window.confirm(
         `Delete User?\n\n${message}`
@@ -202,9 +196,6 @@ export default function AdminUsers() {
       return;
     }
 
-    /*
-     * ANDROID / IOS
-     */
     Alert.alert(
       "Delete User?",
       message,
@@ -249,6 +240,24 @@ export default function AdminUsers() {
         },
       ]
     );
+  };
+
+  /*
+   * ONLY THE LEFT AVATAR IS CLICKABLE.
+   *
+   * Name, email and card are NOT clickable.
+   */
+  const openUserDetails = (
+    id: string,
+    userRole: string
+  ) => {
+    router.push({
+      pathname: "/admin/user/[id]",
+      params: {
+        id,
+        role: userRole,
+      },
+    });
   };
 
   const title = role
@@ -301,14 +310,28 @@ export default function AdminUsers() {
             style={s.card}
             testID={`user-${item.id}`}
           >
-            <View
-              style={[
+
+            {/* =========================================
+                ONLY THIS AVATAR IS CLICKABLE
+                ========================================= */}
+            <Pressable
+              testID={`avatar-${item.id}`}
+              onPress={() =>
+                openUserDetails(
+                  item.id,
+                  item.role
+                )
+              }
+              hitSlop={8}
+              style={({ pressed }) => [
                 s.avatar,
                 {
                   backgroundColor:
                     (ROLE_COLOR[item.role] ||
                       "#999") + "22",
                 },
+                pressed &&
+                  s.avatarPressed,
               ]}
             >
               <Text
@@ -325,8 +348,11 @@ export default function AdminUsers() {
                   .charAt(0)
                   .toUpperCase()}
               </Text>
-            </View>
+            </Pressable>
 
+            {/* =========================================
+                NAME / EMAIL / ROLE ARE NOT CLICKABLE
+                ========================================= */}
             <View style={s.userInfo}>
               <Text
                 style={s.name}
@@ -368,6 +394,9 @@ export default function AdminUsers() {
               </View>
             </View>
 
+            {/* =========================================
+                SWITCH + DELETE
+                ========================================= */}
             <View style={s.actions}>
               <Switch
                 testID={`toggle-${item.id}`}
@@ -487,6 +516,15 @@ const s = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     marginRight: 12,
+  },
+
+  avatarPressed: {
+    opacity: 0.55,
+    transform: [
+      {
+        scale: 0.94,
+      },
+    ],
   },
 
   avatarText: {
