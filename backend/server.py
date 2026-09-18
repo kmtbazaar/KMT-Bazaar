@@ -245,6 +245,7 @@ async def login(data: LoginIn):
         raise HTTPException(status_code=401, detail="Invalid email or password")
     token = create_token(user["id"], user["role"])
     return {"token": token, "user": user_to_out(user)}
+
 @api.post("/auth/forgot-password")
 async def forgot_password(data: ForgotPasswordIn):
     user = await db.users.find_one({"email": data.email})
@@ -278,6 +279,54 @@ async def forgot_password(data: ForgotPasswordIn):
         "expires_in_minutes": 10,
     }
 
+@api.post("/auth/verify-reset-otp")
+async def verify_reset_otp(data: VerifyResetOtpIn):
+    reset = await db.password_reset_otps.find_one({
+        "email": data.email
+    })
+
+    if not reset:
+        raise HTTPException(
+            status_code=400,
+            detail="OTP not found or expired"
+        )
+
+    expires_at = reset.get("expires_at")
+
+    if not expires_at:
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid OTP"
+        )
+
+    if expires_at.tzinfo is None:
+        expires_at = expires_at.replace(tzinfo=timezone.utc)
+
+    if datetime.now(timezone.utc) > expires_at:
+        await db.password_reset_otps.delete_many({
+            "email": data.email
+        })
+        raise HTTPException(
+            status_code=400,
+            detail="OTP expired"
+        )
+
+    if not (len(data.otp) == 6 and data.otp.isdigit()):
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid OTP"
+        )
+
+    if hash_reset_otp(data.otp) != reset.get("otp_hash"):
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid OTP"
+        )
+
+    return {
+        "success": True,
+        "message": "OTP verified successfully"
+    }
 @api.post("/auth/otp/request")
 async def request_otp(data: OtpRequestIn):
     # Mock: any phone gets OTP 123456 (or any 6-digit accepted on verify)
