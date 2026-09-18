@@ -124,4 +124,4 @@ export default function AdminUsers() {
               <Text style={s.name}>{item.name}</Text>
               <Text style={s.meta}>{item.email || item.phone}</Text>
               <View style={[s.rolePill, { backgroundColor: (ROLE_COLOR[item.role] || "#999") + "22" }]}>
-                <Text style={[s.roleText, { color: ROLE_COLOR[item.role] || "#
+                <Text style={[s.roleText, <Text style={[s.roleText, { color: ROLE_COLOR[item.role] || "#666" }]}>{ROLE_LABEL[item.role] || item.role}</Text>
