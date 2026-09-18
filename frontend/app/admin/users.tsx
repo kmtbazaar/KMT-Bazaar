@@ -36,6 +36,7 @@ export default function AdminUsers() {
           const email = (u.email || "").toLowerCase();
           const isDemo = name.includes("demo") || email.includes("demo");
           const hiddenSeedEmail = email === "vendor@kmtbazaar.com";
+
           return !isDemo && !hiddenSeedEmail;
         });
 
@@ -54,7 +55,6 @@ export default function AdminUsers() {
     }, [load])
   );
 
-  // 🔥 Master Control Toggle
   const toggle = async (
     id: string,
     currentActive: boolean,
@@ -107,7 +107,6 @@ export default function AdminUsers() {
     }
   };
 
-  // 🗑️ Delete User
   const deleteUser = async (
     id: string,
     userRole: string,
@@ -219,7 +218,7 @@ export default function AdminUsers() {
               </Text>
             </View>
 
-            <View style={{ flex: 1 }}>
+            <View style={s.userInfo}>
               <Text style={s.name}>
                 {item.name}
               </Text>
@@ -251,41 +250,50 @@ export default function AdminUsers() {
               </View>
             </View>
 
-            <Switch
-              testID={`toggle-${item.id}`}
-              value={item.active !== false}
-              onValueChange={() =>
-                toggle(
-                  item.id,
-                  item.active !== false,
-                  item.role,
-                  item.name
-                )
-              }
-              trackColor={{
-                true: COLORS.success,
-                false: COLORS.borderStrong,
-              }}
-            />
-
-            {item.role !== "admin" && (
-              <Pressable
-                testID={`delete-${item.id}`}
-                style={s.deleteButton}
-                onPress={() =>
-                  Alert.alert(
-                    "TEST",
-                    "Delete button is working"
+            <View style={s.actions}>
+              <Switch
+                testID={`toggle-${item.id}`}
+                value={item.active !== false}
+                onValueChange={() =>
+                  toggle(
+                    item.id,
+                    item.active !== false,
+                    item.role,
+                    item.name
                   )
                 }
-              >
-                <MaterialCommunityIcons
-                  name="delete-outline"
-                  size={22}
-                  color="#DC2626"
-                />
-              </Pressable>
-            )}
+                trackColor={{
+                  true: COLORS.success,
+                  false: COLORS.borderStrong,
+                }}
+              />
+
+              {item.role !== "admin" && (
+                <Pressable
+                  testID={`delete-${item.id}`}
+                  style={({ pressed }) => [
+                    s.deleteButton,
+                    pressed && s.deleteButtonPressed,
+                  ]}
+                  hitSlop={10}
+                  android_ripple={{
+                    color: "#FCA5A5",
+                  }}
+                  onPress={() => {
+                    Alert.alert(
+                      "TEST",
+                      "Delete button is working"
+                    );
+                  }}
+                >
+                  <MaterialCommunityIcons
+                    name="delete-outline"
+                    size={26}
+                    color="#DC2626"
+                  />
+                </Pressable>
+              )}
+            </View>
           </View>
         )}
       />
@@ -323,7 +331,6 @@ const s = StyleSheet.create({
   card: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 12,
     backgroundColor: "#fff",
     padding: 12,
     borderRadius: RADIUS.md,
@@ -337,11 +344,17 @@ const s = StyleSheet.create({
     borderRadius: 22,
     alignItems: "center",
     justifyContent: "center",
+    marginRight: 12,
   },
 
   avatarText: {
     fontWeight: "800",
     fontSize: 18,
+  },
+
+  userInfo: {
+    flex: 1,
+    minWidth: 0,
   },
 
   name: {
@@ -369,12 +382,26 @@ const s = StyleSheet.create({
     letterSpacing: 0.5,
   },
 
+  actions: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    marginLeft: 8,
+  },
+
   deleteButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 52,
+    height: 52,
+    borderRadius: 26,
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: "#FEE2E2",
+    borderWidth: 2,
+    borderColor: "#FCA5A5",
+  },
+
+  deleteButtonPressed: {
+    opacity: 0.5,
+    transform: [{ scale: 0.95 }],
   },
 });
