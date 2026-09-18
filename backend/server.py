@@ -509,23 +509,69 @@ async def list_stores():
 
 
 @api.get("/products")
-async def list_products(category: Optional[str] = None, q: Optional[str] = None, trending: Optional[bool] = None, limit: int = 50):
-    query = {}
+async def list_products(
+    category: Optional[str] = None,
+    q: Optional[str] = None,
+    trending: Optional[bool] = None,
+    limit: int = 50
+):
+    # Sirf approved stores ke IDs nikalo
+    approved_stores = await db.stores.find(
+        {"is_approved": True},
+        {"_id": 0, "id": 1}
+    ).to_list(500)
+
+    approved_store_ids = [store["id"] for store in approved_stores]
+
+    # Agar koi approved store nahi hai, customer ko koi product nahi dikhega
+    if not approved_store_ids:
+        return []
+
+    query = {
+        "store_id": {"$in": approved_store_ids}
+    }
+
     if category:
         query["category_id"] = category
+
     if trending:
         query["trending"] = True
+
     if q:
         query["name"] = {"$regex": q, "$options": "i"}
-    products = await db.products.find(query, {"_id": 0}).limit(limit).to_list(limit)
+
+    products = await db.products.find(
+        query,
+        {"_id": 0}
+    ).limit(limit).to_list(limit)
+
     return products
 
 
 @api.get("/products/{product_id}")
 async def get_product(product_id: str):
-    p = await db.products.find_one({"id": product_id}, {"_id": 0})
+    # Product pehle find karo
+    p = await db.products.find_one(
+        {"id": product_id},
+        {"_id": 0}
+    )
+
     if not p:
         raise HTTPException(404, "Product not found")
+
+    # Product jis store ka hai, wo approved hona chahiye
+    store = await db.stores.find_one(
+        {
+            "id": p.get("store_id"),
+            "is_approved": True
+        },
+        {"_id": 0, "id": 1}
+    )
+
+    # Store pending/rejected hua toh product customer ko nahi milega
+    if not store:
+        raise HTTPException(404, "Product not found")
+
     return p
 
 
