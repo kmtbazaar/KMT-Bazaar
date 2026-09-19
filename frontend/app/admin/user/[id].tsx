@@ -6,7 +6,6 @@ import {
   FlatList,
   Pressable,
   ActivityIndicator,
-  Platform,
 } from "react-native";
 import {
   useFocusEffect,
@@ -59,13 +58,8 @@ export default function AdminUserDetails() {
         setLoading(true);
         setError("");
 
-        /*
-         * Get users for the selected role.
-         */
         const allUsers =
-          await adminApi.users(
-            role as string
-          );
+          await adminApi.users(role as string);
 
         const list =
           (allUsers || []) as any[];
@@ -78,20 +72,13 @@ export default function AdminUserDetails() {
 
         setUser(foundUser || null);
 
-        /*
-         * Get admin orders.
-         *
-         * Orders are filtered below using the
-         * user ID fields used by the order data.
-         */
         const allOrders =
           await adminApi.orders();
 
         const orderList =
           (allOrders || []) as any[];
 
-        const userId =
-          String(id);
+        const userId = String(id);
 
         const filteredOrders =
           orderList.filter(
@@ -100,6 +87,7 @@ export default function AdminUserDetails() {
                 order.user_id,
                 order.customer_id,
                 order.vendor_id,
+                order.store_owner_id,
                 order.delivery_id,
                 order.deliverer_id,
                 order.assigned_delivery_id,
@@ -109,6 +97,7 @@ export default function AdminUserDetails() {
                 order.vendor?.id,
                 order.delivery?.id,
                 order.deliverer?.id,
+                order.delivery_partner?.id,
               ]
                 .filter(
                   (value) =>
@@ -116,12 +105,14 @@ export default function AdminUserDetails() {
                     value !== null
                 )
                 .map((value) =>
-                  String(value)
+                  String(
+                    typeof value === "object"
+                      ? value.id ?? value._id ?? ""
+                      : value
+                  )
                 );
 
-              return possibleIds.includes(
-                userId
-              );
+              return possibleIds.includes(userId);
             }
           );
 
@@ -220,6 +211,74 @@ export default function AdminUserDetails() {
     );
   };
 
+  const getItems = (
+    order: any
+  ): any[] => {
+    if (Array.isArray(order.items)) {
+      return order.items;
+    }
+
+    if (Array.isArray(order.order_items)) {
+      return order.order_items;
+    }
+
+    if (Array.isArray(order.products)) {
+      return order.products;
+    }
+
+    return [];
+  };
+
+  const getItemName = (
+    item: any
+  ): string => {
+    return (
+      item.product_name ||
+      item.name ||
+      item.title ||
+      item.product?.name ||
+      "Product"
+    );
+  };
+
+  const getItemQuantity = (
+    item: any
+  ): number => {
+    return Number(
+      item.quantity ??
+      item.qty ??
+      1
+    );
+  };
+
+  const getCustomerName = (
+    order: any
+  ): string => {
+    return (
+      order.customer?.name ||
+      order.user?.name ||
+      order.customer_name ||
+      (role === "customer"
+        ? user?.name
+        : "") ||
+      "Not available"
+    );
+  };
+
+  const getCustomerPhone = (
+    order: any
+  ): string => {
+    return (
+      order.customer?.phone ||
+      order.user?.phone ||
+      order.customer_phone ||
+      (role === "customer"
+        ? user?.phone
+        : "") ||
+      "Not available"
+    );
+  };
+
   if (loading) {
     return (
       <SafeAreaView
@@ -228,9 +287,7 @@ export default function AdminUserDetails() {
       >
         <View style={s.header}>
           <Pressable
-            onPress={() =>
-              router.back()
-            }
+            onPress={() => router.back()}
             style={s.backButton}
           >
             <MaterialCommunityIcons
@@ -244,23 +301,13 @@ export default function AdminUserDetails() {
             {roleName} Details
           </Text>
 
-          <View
-            style={{
-              width: 44,
-            }}
-          />
+          <View style={{ width: 44 }} />
         </View>
 
-        <View
-          style={s.loadingBox}
-        >
-          <ActivityIndicator
-            size="large"
-          />
+        <View style={s.loadingBox}>
+          <ActivityIndicator size="large" />
 
-          <Text
-            style={s.loadingText}
-          >
+          <Text style={s.loadingText}>
             Loading details...
           </Text>
         </View>
@@ -276,9 +323,7 @@ export default function AdminUserDetails() {
       >
         <View style={s.header}>
           <Pressable
-            onPress={() =>
-              router.back()
-            }
+            onPress={() => router.back()}
             style={s.backButton}
           >
             <MaterialCommunityIcons
@@ -292,11 +337,7 @@ export default function AdminUserDetails() {
             {roleName} Details
           </Text>
 
-          <View
-            style={{
-              width: 44,
-            }}
-          />
+          <View style={{ width: 44 }} />
         </View>
 
         <View style={s.empty}>
@@ -325,9 +366,7 @@ export default function AdminUserDetails() {
     >
       <View style={s.header}>
         <Pressable
-          onPress={() =>
-            router.back()
-          }
+          onPress={() => router.back()}
           hitSlop={10}
           style={s.backButton}
         >
@@ -342,23 +381,17 @@ export default function AdminUserDetails() {
           {roleName} Details
         </Text>
 
-        <View
-          style={{
-            width: 44,
-          }}
-        />
+        <View style={{ width: 44 }} />
       </View>
 
       <FlatList
         data={orders}
-        keyExtractor={(
-          order,
-          index
-        ) =>
+        keyExtractor={(order, index) =>
           String(
             order.id ||
-              order.order_number ||
-              index
+            order.order_number ||
+            order.order_no ||
+            index
           )
         }
         contentContainerStyle={{
@@ -381,9 +414,7 @@ export default function AdminUserDetails() {
                 <Text
                   style={[
                     s.bigAvatarText,
-                    {
-                      color: roleColor,
-                    },
+                    { color: roleColor },
                   ]}
                 >
                   {(user.name || "?")
@@ -392,11 +423,8 @@ export default function AdminUserDetails() {
                 </Text>
               </View>
 
-              <Text
-                style={s.userName}
-              >
-                {user.name ||
-                  "Unknown User"}
+              <Text style={s.userName}>
+                {user.name || "Unknown User"}
               </Text>
 
               <View
@@ -411,9 +439,7 @@ export default function AdminUserDetails() {
                 <Text
                   style={[
                     s.roleText,
-                    {
-                      color: roleColor,
-                    },
+                    { color: roleColor },
                   ]}
                 >
                   {roleName}
@@ -423,16 +449,12 @@ export default function AdminUserDetails() {
 
             {/* CONTACT DETAILS */}
             <View style={s.infoCard}>
-              <Text
-                style={s.sectionTitle}
-              >
+              <Text style={s.sectionTitle}>
                 Personal Information
               </Text>
 
               <View style={s.infoRow}>
-                <View
-                  style={s.infoIcon}
-                >
+                <View style={s.infoIcon}>
                   <MaterialCommunityIcons
                     name="account-outline"
                     size={21}
@@ -440,28 +462,19 @@ export default function AdminUserDetails() {
                   />
                 </View>
 
-                <View
-                  style={s.infoContent}
-                >
-                  <Text
-                    style={s.infoLabel}
-                  >
+                <View style={s.infoContent}>
+                  <Text style={s.infoLabel}>
                     Name
                   </Text>
 
-                  <Text
-                    style={s.infoValue}
-                  >
-                    {user.name ||
-                      "Not available"}
+                  <Text style={s.infoValue}>
+                    {user.name || "Not available"}
                   </Text>
                 </View>
               </View>
 
               <View style={s.infoRow}>
-                <View
-                  style={s.infoIcon}
-                >
+                <View style={s.infoIcon}>
                   <MaterialCommunityIcons
                     name="phone-outline"
                     size={21}
@@ -469,28 +482,19 @@ export default function AdminUserDetails() {
                   />
                 </View>
 
-                <View
-                  style={s.infoContent}
-                >
-                  <Text
-                    style={s.infoLabel}
-                  >
+                <View style={s.infoContent}>
+                  <Text style={s.infoLabel}>
                     Mobile Number
                   </Text>
 
-                  <Text
-                    style={s.infoValue}
-                  >
-                    {user.phone ||
-                      "Not available"}
+                  <Text style={s.infoValue}>
+                    {user.phone || "Not available"}
                   </Text>
                 </View>
               </View>
 
               <View style={s.infoRow}>
-                <View
-                  style={s.infoIcon}
-                >
+                <View style={s.infoIcon}>
                   <MaterialCommunityIcons
                     name="email-outline"
                     size={21}
@@ -498,28 +502,19 @@ export default function AdminUserDetails() {
                   />
                 </View>
 
-                <View
-                  style={s.infoContent}
-                >
-                  <Text
-                    style={s.infoLabel}
-                  >
+                <View style={s.infoContent}>
+                  <Text style={s.infoLabel}>
                     Email
                   </Text>
 
-                  <Text
-                    style={s.infoValue}
-                  >
-                    {user.email ||
-                      "Not available"}
+                  <Text style={s.infoValue}>
+                    {user.email || "Not available"}
                   </Text>
                 </View>
               </View>
 
               <View style={s.infoRow}>
-                <View
-                  style={s.infoIcon}
-                >
+                <View style={s.infoIcon}>
                   <MaterialCommunityIcons
                     name={
                       user.active === false
@@ -531,12 +526,8 @@ export default function AdminUserDetails() {
                   />
                 </View>
 
-                <View
-                  style={s.infoContent}
-                >
-                  <Text
-                    style={s.infoLabel}
-                  >
+                <View style={s.infoContent}>
+                  <Text style={s.infoLabel}>
                     Account Status
                   </Text>
 
@@ -545,15 +536,13 @@ export default function AdminUserDetails() {
                       s.infoValue,
                       {
                         color:
-                          user.active ===
-                          false
+                          user.active === false
                             ? "#DC2626"
                             : "#16A34A",
                       },
                     ]}
                   >
-                    {user.active ===
-                    false
+                    {user.active === false
                       ? "Inactive"
                       : "Active"}
                   </Text>
@@ -562,12 +551,8 @@ export default function AdminUserDetails() {
             </View>
 
             {/* ORDERS HEADER */}
-            <View
-              style={s.ordersHeader}
-            >
-              <Text
-                style={s.ordersTitle}
-              >
+            <View style={s.ordersHeader}>
+              <Text style={s.ordersTitle}>
                 Orders
               </Text>
 
@@ -583,10 +568,7 @@ export default function AdminUserDetails() {
                 <Text
                   style={[
                     s.orderCountText,
-                    {
-                      color:
-                        roleColor,
-                    },
+                    { color: roleColor },
                   ]}
                 >
                   {orders.length}
@@ -595,43 +577,32 @@ export default function AdminUserDetails() {
             </View>
 
             {error ? (
-              <View
-                style={s.errorBox}
-              >
+              <View style={s.errorBox}>
                 <MaterialCommunityIcons
                   name="alert-circle-outline"
                   size={22}
                   color="#DC2626"
                 />
 
-                <Text
-                  style={s.errorText}
-                >
+                <Text style={s.errorText}>
                   {error}
                 </Text>
               </View>
             ) : null}
 
-            {orders.length === 0 &&
-            !error ? (
-              <View
-                style={s.noOrders}
-              >
+            {orders.length === 0 && !error ? (
+              <View style={s.noOrders}>
                 <MaterialCommunityIcons
                   name="package-variant-closed"
                   size={48}
                   color="#94A3B8"
                 />
 
-                <Text
-                  style={s.noOrdersTitle}
-                >
+                <Text style={s.noOrdersTitle}>
                   No Orders
                 </Text>
 
-                <Text
-                  style={s.noOrdersText}
-                >
+                <Text style={s.noOrdersText}>
                   No orders found for this user.
                 </Text>
               </View>
@@ -639,19 +610,14 @@ export default function AdminUserDetails() {
           </View>
         }
         renderItem={({ item }) => {
-          const status =
-            getOrderStatus(item);
+          const status = getOrderStatus(item);
+          const products = getItems(item);
 
           return (
-            <View
-              style={s.orderCard}
-            >
-              <View
-                style={s.orderTop}
-              >
-                <View
-                  style={s.orderIcon}
-                >
+            <View style={s.orderCard}>
+              {/* ORDER TOP */}
+              <View style={s.orderTop}>
+                <View style={s.orderIcon}>
                   <MaterialCommunityIcons
                     name="package-variant"
                     size={22}
@@ -659,32 +625,65 @@ export default function AdminUserDetails() {
                   />
                 </View>
 
-                <View
-                  style={s.orderMain}
-                >
-                  <Text
-                    style={s.orderId}
-                  >
+                <View style={s.orderMain}>
+                  <Text style={s.orderId}>
                     #{getOrderId(item)}
                   </Text>
 
-                  <Text
-                    style={s.orderDate}
-                  >
+                  <Text style={s.orderDate}>
                     {formatDate(item)}
                   </Text>
                 </View>
 
-                <Text
-                  style={s.orderAmount}
-                >
+                <Text style={s.orderAmount}>
                   {formatAmount(item)}
                 </Text>
               </View>
 
-              <View
-                style={s.orderBottom}
-              >
+              {/* ORDER ITEMS */}
+              <View style={s.orderDetails}>
+                <Text style={s.detailHeading}>
+                  Items
+                </Text>
+
+                {products.length > 0 ? (
+                  products.map(
+                    (product: any, index: number) => (
+                      <Text
+                        key={String(
+                          product.id ||
+                          product.product_id ||
+                          index
+                        )}
+                        style={s.detailText}
+                      >
+                        • {getItemName(product)} ×{" "}
+                        {getItemQuantity(product)}
+                      </Text>
+                    )
+                  )
+                ) : (
+                  <Text style={s.detailText}>
+                    Item details unavailable
+                  </Text>
+                )}
+
+                {/* CUSTOMER DETAILS */}
+                <Text style={s.detailHeading}>
+                  Customer
+                </Text>
+
+                <Text style={s.detailText}>
+                  {getCustomerName(item)}
+                </Text>
+
+                <Text style={s.detailText}>
+                  Phone: {getCustomerPhone(item)}
+                </Text>
+              </View>
+
+              {/* ORDER STATUS */}
+              <View style={s.orderBottom}>
                 <View
                   style={[
                     s.statusPill,
@@ -697,15 +696,10 @@ export default function AdminUserDetails() {
                   <Text
                     style={[
                       s.statusText,
-                      {
-                        color:
-                          roleColor,
-                      },
+                      { color: roleColor },
                     ]}
                   >
-                    {String(
-                      status
-                    ).toUpperCase()}
+                    {String(status).toUpperCase()}
                   </Text>
                 </View>
               </View>
@@ -720,8 +714,7 @@ export default function AdminUserDetails() {
 const s = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor:
-      COLORS.surfaceSecondary,
+    backgroundColor: COLORS.surfaceSecondary,
   },
 
   header: {
@@ -732,8 +725,7 @@ const s = StyleSheet.create({
     paddingVertical: SPACING.md,
     backgroundColor: "#fff",
     borderBottomWidth: 1,
-    borderBottomColor:
-      COLORS.border,
+    borderBottomColor: COLORS.border,
   },
 
   backButton: {
@@ -929,6 +921,27 @@ const s = StyleSheet.create({
     fontSize: 15,
     fontWeight: "900",
     color: COLORS.text,
+  },
+
+  orderDetails: {
+    marginTop: 12,
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: "#F1F5F9",
+  },
+
+  detailHeading: {
+    fontSize: 12,
+    fontWeight: "800",
+    color: COLORS.text,
+    marginTop: 5,
+    marginBottom: 4,
+  },
+
+  detailText: {
+    fontSize: 13,
+    color: COLORS.textMuted,
+    marginBottom: 3,
   },
 
   orderBottom: {
