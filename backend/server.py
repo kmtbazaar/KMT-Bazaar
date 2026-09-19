@@ -1364,12 +1364,97 @@ async def admin_delete_user(
 @api.get("/admin/orders")
 async def admin_orders(status: Optional[str] = None, _=Depends(require_roles("admin"))):
     q = {}
-    if status: q["status"] = status
-    orders = await db.orders.find(q, {"_id": 0}).sort("created_at", -1).to_list(500)
-    # attach customer name
+
+    if status:
+        q["status"] = status
+
+    orders = await db.orders.find(
+        q,
+        {"_id": 0}
+    ).sort("created_at", -1).to_list(500)
+
     for o in orders:
-        u = await db.users.find_one({"id": o.get("user_id")}, {"_id": 0, "name": 1, "email": 1, "phone": 1})
+
+        # Customer
+        u = await db.users.find_one(
+            {"id": o.get("user_id")},
+            {
+                "_id": 0,
+                "id": 1,
+                "name": 1,
+                "email": 1,
+                "phone": 1
+            }
+        )
+
         o["customer"] = u or {}
+
+        # Vendor IDs from order products
+        vendor_ids = []
+
+        for item in o.get("items", []):
+            product_id = item.get("product_id")
+
+            if not product_id:
+                continue
+
+            product = await db.products.find_one(
+                {"id": product_id},
+                {
+                    "_id": 0,
+                    "id": 1,
+                    "store_id": 1
+                }
+            )
+
+            if not product:
+                continue
+
+            store_id = product.get("store_id")
+
+            if not store_id:
+                continue
+
+            store = await db.stores.find_one(
+                {"id": store_id},
+                {
+                    "_id": 0,
+                    "id": 1,
+                    "vendor_id": 1,
+                    "name": 1
+                }
+            )
+
+            if not store:
+                continue
+
+            vendor_id = store.get("vendor_id")
+
+            if vendor_id and str(vendor_id) not in vendor_ids:
+                vendor_ids.append(str(vendor_id))
+
+        o["vendor_ids"] = vendor_ids
+
+        # Vendor details
+        vendors = []
+
+        for vendor_id in vendor_ids:
+            vendor = await db.users.find_one(
+                {"id": vendor_id},
+                {
+                    "_id": 0,
+                    "id": 1,
+                    "name": 1,
+                    "email": 1,
+                    "phone": 1
+                }
+            )
+
+            if vendor:
+                vendors.append(vendor)
+
+        o["vendors"] = vendors
+
     return orders
 
 
