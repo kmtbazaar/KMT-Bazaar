@@ -15,7 +15,13 @@ import CheckoutBar from "@/src/components/CheckoutBar";
 import { COLORS, SPACING } from "@/src/theme";
 
 export default function StoreProducts() {
-  const { id, name } = useLocalSearchParams<{ id: string; name?: string }>();
+  const params = useLocalSearchParams<{
+  id?: string | string[];
+  name?: string | string[];
+}>();
+
+const id = Array.isArray(params.id) ? params.id[0] : params.id;
+const name = Array.isArray(params.name) ? params.name[0] : params.name;
   const router = useRouter();
 
   const [products, setProducts] = useState<any[]>([]);
