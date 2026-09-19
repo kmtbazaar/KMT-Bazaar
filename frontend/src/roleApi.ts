@@ -49,6 +49,8 @@ export const adminApi = {
     apiFetch<any[]>(
       `/admin/orders${status ? `?status=${status}` : ""}`
     ),
+products: () =>
+  apiFetch<any[]>("/admin/products"),
 
   updateOrderStatus: (id: string, status: string) =>
     apiFetch(`/admin/orders/${id}/status`, {
