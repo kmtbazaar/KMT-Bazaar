@@ -239,31 +239,37 @@ export const api = {
     apiFetch<any[]>("/stores"),
 
   products: (
-    params: {
-      category?: string;
-      q?: string;
-      trending?: boolean;
-    } = {}
-  ) => {
-    const qs = new URLSearchParams();
+  params: {
+    category?: string;
+    q?: string;
+    trending?: boolean;
+    store_id?: string;
+  } = {}
+) => {
+  const qs = new URLSearchParams();
 
-    if (params.category) {
-      qs.set("category", params.category);
-    }
+  if (params.category) {
+    qs.set("category", params.category);
+  }
 
-    if (params.q) {
-      qs.set("q", params.q);
-    }
+  if (params.q) {
+    qs.set("q", params.q);
+  }
 
-    if (params.trending) {
-      qs.set("trending", "true");
-    }
+  if (params.trending) {
+    qs.set("trending", "true");
+  }
 
-    return apiFetch<any[]>(
-      `/products?${qs.toString()}`
-    );
-  },
+  if (params.store_id) {
+    qs.set("store_id", params.store_id);
+  }
 
+  const query = qs.toString();
+
+  return apiFetch<any[]>(
+    query ? `/products?${query}` : "/products"
+  );
+},
   product: (id: string) =>
     apiFetch<any>(`/products/${id}`),
 
