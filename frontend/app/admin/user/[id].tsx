@@ -80,27 +80,49 @@ export default function AdminUserDetails() {
 
         const userId = String(id);
 
+        // Collect all possible IDs related to this user/vendor (including store IDs)
+        const targetIds = new Set<string>();
+        targetIds.add(userId);
+
+        if (foundUser) {
+          if (foundUser.store_id) targetIds.add(String(foundUser.store_id));
+          if (foundUser.store?.id) targetIds.add(String(foundUser.store.id));
+          if (foundUser.store?._id) targetIds.add(String(foundUser.store._id));
+          if (foundUser.vendor_id) targetIds.add(String(foundUser.vendor_id));
+          if (foundUser._id) targetIds.add(String(foundUser._id));
+        }
+
         const filteredOrders =
           orderList.filter(
             (order: any) => {
+              // Direct order level IDs
               const possibleIds = [
                 order.user_id,
                 order.customer_id,
                 order.vendor_id,
+                order.store_id,
                 order.store_owner_id,
                 order.delivery_id,
                 order.deliverer_id,
                 order.assigned_delivery_id,
                 order.delivery_partner_id,
                 order.user?.id,
+                order.user?._id,
                 order.customer?.id,
+                order.customer?._id,
                 order.vendor?.id,
+                order.vendor?._id,
+                order.store?.id,
+                order.store?._id,
                 order.delivery?.id,
                 order.deliverer?.id,
-                                order.delivery_partner?.id,
+                order.delivery_partner?.id,
 
                 ...(Array.isArray(order.vendor_ids)
                   ? order.vendor_ids
+                  : []),
+                ...(Array.isArray(order.store_ids)
+                  ? order.store_ids
                   : []),
               ]
                 .filter(
@@ -116,7 +138,37 @@ export default function AdminUserDetails() {
                   )
                 );
 
-              return possibleIds.includes(userId);
+              // Check if any direct order ID matches target IDs
+              const hasDirectMatch = possibleIds.some((pId) => targetIds.has(pId));
+              if (hasDirectMatch) return true;
+
+              // Check items inside the order for vendor / store match
+              const rawItems =
+                order.items ||
+                order.order_items ||
+                order.products ||
+                [];
+
+              if (Array.isArray(rawItems)) {
+                const hasItemMatch = rawItems.some((it: any) => {
+                  if (!it) return false;
+                  const itemVendorId = String(
+                    it.vendor_id ||
+                    it.vendor?.id ||
+                    it.store_id ||
+                    it.store?.id ||
+                    it.store_owner_id ||
+                    it.product?.vendor_id ||
+                    it.product?.store_id ||
+                    ""
+                  );
+                  return itemVendorId && targetIds.has(itemVendorId);
+                });
+
+                if (hasItemMatch) return true;
+              }
+
+              return false;
             }
           );
 
