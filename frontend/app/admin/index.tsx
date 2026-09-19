@@ -13,104 +13,120 @@ import {
 } from "react-native";
 
 import { Image } from "expo-image";
-
 import { useFocusEffect, useRouter } from "expo-router";
-
 import { LinearGradient } from "expo-linear-gradient";
-
 import { SafeAreaView } from "react-native-safe-area-context";
-
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 
-import Animated, { FadeInUp } from "react-native-reanimated";
+import Animated, {
+  FadeInDown,
+  FadeInUp,
+  ZoomIn,
+} from "react-native-reanimated";
 
 import { adminApi } from "@/src/roleApi";
-
 import { useAuth } from "@/src/AuthContext";
-
 import { COLORS, LOGO_URL, RADIUS, SPACING } from "@/src/theme";
 
 const { width } = Dimensions.get("window");
+
+/* =========================================================
+   PRODUCTION ADMIN PALETTE
+========================================================= */
+
+const THEME = {
+  black: "#0B0B0C",
+  blackSoft: "#151517",
+  brown: "#5A3825",
+  brownLight: "#8A5A3B",
+  orange: "#F97316",
+  orangeLight: "#FFF1E8",
+  sky: "#38BDF8",
+  skyLight: "#E0F2FE",
+  white: "#FFFFFF",
+  grey: "#F5F5F4",
+  text: "#171717",
+  muted: "#737373",
+  border: "#E7E5E4",
+  success: "#16A34A",
+  danger: "#DC2626",
+};
 
 const ACTIONS = [
   {
     icon: "account-group-outline",
     label: "Customers",
     path: "/admin/users?role=customer",
-    color: "#2563EB",
+    color: THEME.sky,
   },
   {
     icon: "store-outline",
     label: "Vendors",
     path: "/admin/users?role=vendor",
-    color: "#F97316",
+    color: THEME.orange,
   },
   {
     icon: "moped-outline",
     label: "Delivery Partners",
     path: "/admin/users?role=delivery",
-    color: "#16A34A",
+    color: THEME.success,
   },
   {
     icon: "package-variant",
     label: "Products",
     path: "/admin/products",
-    color: "#9333EA",
+    color: "#8B5CF6",
   },
   {
     icon: "tag-multiple-outline",
     label: "Categories",
     path: "/admin/categories",
-    color: "#DB2777",
+    color: "#EC4899",
   },
   {
     icon: "image-multiple-outline",
     label: "Banners",
     path: "/admin/banners",
-    color: "#0891B2",
+    color: THEME.sky,
   },
   {
     icon: "clipboard-list-outline",
     label: "All Orders",
     path: "/admin/orders",
-    color: "#DC2626",
+    color: THEME.orange,
   },
   {
     icon: "currency-inr",
     label: "Commission",
     path: "/admin/commission",
-    color: "#CA8A04",
+    color: THEME.brownLight,
   },
   {
     icon: "briefcase-account-outline",
     label: "Roojgar",
     path: "/admin/roojgar",
-    color: "#7C3AED",
+    color: THEME.brown,
   },
 ];
 
 export default function AdminDashboard() {
   const router = useRouter();
-
   const { user, logout } = useAuth();
 
   const [stats, setStats] = useState<any>(null);
-
   const [pendingStores, setPendingStores] = useState<any[]>([]);
-
   const [refreshing, setRefreshing] = useState(false);
 
   /*
-   * EXISTING DASHBOARD DATA
+   * EXISTING DATA LOGIC — UNCHANGED
    */
+
   const load = useCallback(async () => {
     try {
       const statsResponse = await adminApi.stats();
-
       setStats(statsResponse);
 
       const storesResponse = await adminApi.stores("pending");
-
       setPendingStores(storesResponse || []);
     } catch (e) {
       console.log("Admin dashboard load error:", e);
@@ -125,13 +141,14 @@ export default function AdminDashboard() {
 
   const onRefresh = async () => {
     setRefreshing(true);
-
     await load();
-
     setRefreshing(false);
   };
 
-  // APPROVE STORE
+  /* =========================================================
+     APPROVE STORE
+  ========================================================= */
+
   const handleApproveStore = async (id: string, name: string) => {
     const executeApprove = async () => {
       try {
@@ -158,9 +175,7 @@ export default function AdminDashboard() {
         `Are you sure you want to approve '${name}' and make it live?`
       );
 
-      if (confirmed) {
-        executeApprove();
-      }
+      if (confirmed) executeApprove();
     } else {
       Alert.alert(
         "Approve Store",
@@ -169,7 +184,6 @@ export default function AdminDashboard() {
           { text: "Cancel", style: "cancel" },
           {
             text: "Approve",
-            style: "default",
             onPress: executeApprove,
           },
         ]
@@ -177,7 +191,10 @@ export default function AdminDashboard() {
     }
   };
 
-  // REJECT STORE
+  /* =========================================================
+     REJECT STORE
+  ========================================================= */
+
   const handleRejectStore = async (id: string, name: string) => {
     const executeReject = async () => {
       try {
@@ -207,9 +224,7 @@ export default function AdminDashboard() {
         `Are you sure you want to REJECT and delete '${name}'?`
       );
 
-      if (confirmed) {
-        executeReject();
-      }
+      if (confirmed) executeReject();
     } else {
       Alert.alert(
         "Reject Store",
@@ -233,25 +248,42 @@ export default function AdminDashboard() {
 
   return (
     <View style={s.root} testID="admin-dashboard">
+      {/* =====================================================
+          HERO HEADER
+      ===================================================== */}
+
       <SafeAreaView edges={["top"]}>
         <LinearGradient
-          colors={[COLORS.brand, COLORS.brandDark]}
+          colors={[THEME.black, THEME.brown, THEME.black]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
           style={s.header}
         >
-          <View style={s.headerTop}>
-            <Image
-              source={{ uri: LOGO_URL }}
-              style={{ width: 36, height: 36 }}
-              contentFit="contain"
-            />
+          <View style={s.orangeGlow} />
 
-            <View style={{ flex: 1, marginLeft: 10 }}>
+          <Animated.View
+            entering={FadeInDown.duration(600)}
+            style={s.headerTop}
+          >
+            <View style={s.logoBox}>
+              <Image
+                source={{ uri: LOGO_URL }}
+                style={s.logo}
+                contentFit="contain"
+              />
+            </View>
+
+            <View style={s.headerText}>
+              <Text style={s.headerEyebrow}>
+                KMT BAZAAR
+              </Text>
+
               <Text style={s.headerTitle}>
                 Admin Console
               </Text>
 
               <Text style={s.headerSub}>
-                Hi, {user?.name}
+                Welcome back, {user?.name || "Admin"}
               </Text>
             </View>
 
@@ -261,113 +293,186 @@ export default function AdminDashboard() {
                 await logout();
                 router.replace("/auth/login");
               }}
+              style={s.logoutButton}
               hitSlop={10}
             >
               <MaterialCommunityIcons
                 name="logout"
-                size={22}
-                color="#fff"
+                size={21}
+                color={THEME.white}
               />
             </Pressable>
-          </View>
+          </Animated.View>
+
+          <Animated.View
+            entering={FadeInUp.delay(200).duration(700)}
+            style={s.liveStatus}
+          >
+            <View style={s.liveDot} />
+
+            <Text style={s.liveText}>
+              Dashboard Live
+            </Text>
+
+            <MaterialCommunityIcons
+              name="shield-check-outline"
+              size={16}
+              color={THEME.sky}
+            />
+          </Animated.View>
         </LinearGradient>
       </SafeAreaView>
 
       <ScrollView
-        contentContainerStyle={{
-          padding: SPACING.lg,
-          paddingBottom: 60,
-        }}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={s.scrollContent}
         refreshControl={
           <RefreshControl
-            tintColor={COLORS.brand}
+            tintColor={THEME.orange}
             refreshing={refreshing}
             onRefresh={onRefresh}
           />
         }
       >
-        {/* KPI SECTION */}
+        {/* ===================================================
+            OVERVIEW
+        =================================================== */}
 
-        <View style={s.kpiRow}>
+        <Animated.View
+          entering={FadeInUp.delay(100).duration(500)}
+        >
+          <View style={s.sectionHeader}>
+            <View>
+              <Text style={s.sectionTitle}>
+                Overview
+              </Text>
+
+              <Text style={s.sectionSub}>
+                Your marketplace at a glance
+              </Text>
+            </View>
+
+            <View style={s.todayBadge}>
+              <MaterialCommunityIcons
+                name="calendar-today"
+                size={14}
+                color={THEME.brown}
+              />
+
+              <Text style={s.todayText}>
+                LIVE
+              </Text>
+            </View>
+          </View>
+        </Animated.View>
+
+        {/* ===================================================
+            KPI CARDS
+        =================================================== */}
+
+        <View style={s.kpiGrid}>
           <KPI
             label="Revenue"
             value={`₹${stats?.revenue ?? 0}`}
             icon="cash-multiple"
-            color={COLORS.success}
+            color={THEME.success}
+            delay={150}
           />
 
           <KPI
             label="Orders"
             value={stats?.orders ?? 0}
             icon="package-variant"
-            color={COLORS.accent}
+            color={THEME.orange}
+            delay={200}
           />
-        </View>
 
-        <View style={s.kpiRow}>
           <KPI
             label="Platform Earnings"
             value={`₹${stats?.platform_earnings ?? 0}`}
             icon="currency-inr"
-            color={COLORS.brand}
+            color={THEME.sky}
             sub={`${stats?.commission_percent ?? 10}% commission`}
+            delay={250}
           />
 
           <KPI
             label="Customers"
             value={stats?.users ?? 0}
             icon="account-multiple"
-            color="#9333EA"
+            color={THEME.brownLight}
+            delay={300}
           />
-        </View>
 
-        <View style={s.kpiRow}>
           <KPI
             label="Vendors"
             value={stats?.vendors ?? 0}
             icon="store"
-            color="#0891B2"
+            color={THEME.orange}
+            delay={350}
           />
 
           <KPI
             label="Delivery"
             value={stats?.delivery ?? 0}
             icon="moped"
-            color="#DB2777"
+            color={THEME.sky}
+            delay={400}
           />
         </View>
 
-        {/* CHART */}
+        {/* ===================================================
+            CHART
+        =================================================== */}
 
-        <View style={s.chartCard}>
-          <Text style={s.chartTitle}>
-            Orders · Last 7 days
-          </Text>
+        <Animated.View
+          entering={FadeInUp.delay(450).duration(600)}
+          style={s.chartCard}
+        >
+          <View style={s.cardHeader}>
+            <View>
+              <Text style={s.cardTitle}>
+                Order Activity
+              </Text>
+
+              <Text style={s.cardSub}>
+                Orders · Last 7 days
+              </Text>
+            </View>
+
+            <View style={s.chartIcon}>
+              <MaterialCommunityIcons
+                name="chart-bar"
+                size={20}
+                color={THEME.orange}
+              />
+            </View>
+          </View>
 
           <View style={s.chartRow}>
             {(stats?.chart || []).map(
               (c: any, i: number) => (
                 <View key={i} style={s.chartCol}>
+                  <Text style={s.chartVal}>
+                    {c.orders}
+                  </Text>
+
                   <View style={s.chartBarWrap}>
                     <Animated.View
-                      entering={FadeInUp.delay(
-                        i * 50
-                      ).springify()}
+                      entering={FadeInUp
+                        .delay(500 + i * 80)
+                        .springify()}
                       style={[
                         s.chartBar,
                         {
                           height: Math.max(
                             8,
-                            (c.orders / maxChart) * 100
+                            (c.orders / maxChart) * 105
                           ),
                         },
                       ]}
                     />
                   </View>
-
-                  <Text style={s.chartVal}>
-                    {c.orders}
-                  </Text>
 
                   <Text style={s.chartDay}>
                     {c.day}
@@ -376,176 +481,282 @@ export default function AdminDashboard() {
               )
             )}
           </View>
-        </View>
+        </Animated.View>
 
-        {/* PENDING ORDERS */}
+        {/* ===================================================
+            PENDING ORDERS
+        =================================================== */}
 
-        <Pressable
-          testID="pending-orders-shortcut"
-          onPress={() =>
-            router.push(
-              "/admin/orders?status=pending"
-            )
-          }
-          style={s.alertCard}
+        <Animated.View
+          entering={FadeInUp.delay(500).duration(600)}
         >
-          <View style={s.alertIcon}>
-            <MaterialCommunityIcons
-              name="alert-circle-outline"
-              size={22}
-              color={COLORS.accent}
-            />
-          </View>
-
-          <View style={{ flex: 1 }}>
-            <Text style={s.alertTitle}>
-              {stats?.pending_orders ?? 0} pending orders
-            </Text>
-
-            <Text style={s.alertSub}>
-              Tap to review &amp; accept
-            </Text>
-          </View>
-
-          <MaterialCommunityIcons
-            name="chevron-right"
-            size={22}
-            color={COLORS.textMuted}
-          />
-        </Pressable>
-
-        {/* PENDING STORES */}
-
-        {pendingStores &&
-          pendingStores.length > 0 && (
-            <View style={{ marginTop: SPACING.md }}>
-              <Text
-                style={[
-                  s.section,
-                  { color: COLORS.error },
-                ]}
-              >
-                Action Required: Store Approvals (
-                {pendingStores.length})
-              </Text>
-
-              {pendingStores.map((st: any) => (
-                <View
-                  key={st.id}
-                  style={s.approveCard}
-                >
-                  <Image
-                    source={{
-                      uri: st.image || LOGO_URL,
-                    }}
-                    style={s.approveImg}
-                    contentFit="cover"
-                  />
-
-                  <View style={{ flex: 1 }}>
-                    <Text style={s.approveName}>
-                      {st.name}
-                    </Text>
-
-                    <Text
-                      style={s.approveMeta}
-                      numberOfLines={1}
-                    >
-                      {st.address}
-                    </Text>
-                  </View>
-
-                  <View
-                    style={{
-                      flexDirection: "row",
-                      gap: 6,
-                    }}
-                  >
-                    <Pressable
-                      onPress={() =>
-                        handleRejectStore(
-                          st.id,
-                          st.name
-                        )
-                      }
-                      style={s.rejectBtn}
-                    >
-                      <MaterialCommunityIcons
-                        name="close-circle-outline"
-                        size={20}
-                        color="#fff"
-                      />
-                    </Pressable>
-
-                    <Pressable
-                      onPress={() =>
-                        handleApproveStore(
-                          st.id,
-                          st.name
-                        )
-                      }
-                      style={s.approveBtn}
-                    >
-                      <MaterialCommunityIcons
-                        name="check-decagram"
-                        size={16}
-                        color="#fff"
-                      />
-
-                      <Text
-                        style={s.approveBtnText}
-                      >
-                        Approve
-                      </Text>
-                    </Pressable>
-                  </View>
-                </View>
-              ))}
-            </View>
-          )}
-
-        {/* QUICK ACTIONS */}
-
-        <Text style={s.section}>
-          Quick Actions
-        </Text>
-
-        <View style={s.grid}>
-          {ACTIONS.map((a) => (
-            <Pressable
-              key={a.label}
-              testID={`admin-action-${a.label}`}
-              onPress={() =>
-                router.push(a.path as any)
-              }
-              style={s.gridItem}
+          <Pressable
+            testID="pending-orders-shortcut"
+            onPress={() =>
+              router.push(
+                "/admin/orders?status=pending"
+              )
+            }
+            style={({ pressed }) => [
+              s.pendingCard,
+              pressed && s.pressed,
+            ]}
+          >
+            <LinearGradient
+              colors={[
+                THEME.brown,
+                THEME.black,
+              ]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={s.pendingGradient}
             >
-              <View
-                style={[
-                  s.gridIcon,
-                  {
-                    backgroundColor:
-                      a.color + "1A",
-                  },
-                ]}
-              >
+              <View style={s.pendingIcon}>
                 <MaterialCommunityIcons
-                  name={a.icon as any}
-                  size={26}
-                  color={a.color}
+                  name="clock-alert-outline"
+                  size={25}
+                  color={THEME.orange}
                 />
               </View>
 
-              <Text style={s.gridLabel}>
-                {a.label}
+              <View style={s.pendingContent}>
+                <Text style={s.pendingTitle}>
+                  {stats?.pending_orders ?? 0} Pending Orders
+                </Text>
+
+                <Text style={s.pendingSub}>
+                  Tap to review & accept orders
+                </Text>
+              </View>
+
+              <View style={s.arrowCircle}>
+                <MaterialCommunityIcons
+                  name="arrow-right"
+                  size={19}
+                  color={THEME.white}
+                />
+              </View>
+            </LinearGradient>
+          </Pressable>
+        </Animated.View>
+
+        {/* ===================================================
+            PENDING STORES
+        =================================================== */}
+
+        {pendingStores &&
+          pendingStores.length > 0 && (
+            <Animated.View
+              entering={FadeInUp.delay(550).duration(600)}
+              style={s.approvalSection}
+            >
+              <View style={s.sectionHeader}>
+                <View style={{ flex: 1 }}>
+                  <Text
+                    style={[
+                      s.sectionTitle,
+                      { color: THEME.brown },
+                    ]}
+                  >
+                    Store Approvals
+                  </Text>
+
+                  <Text style={s.sectionSub}>
+                    Action required · {pendingStores.length} waiting
+                  </Text>
+                </View>
+
+                <View style={s.countBadge}>
+                  <Text style={s.countBadgeText}>
+                    {pendingStores.length}
+                  </Text>
+                </View>
+              </View>
+
+              {pendingStores.map(
+                (st: any, index: number) => (
+                  <Animated.View
+                    key={st.id}
+                    entering={FadeInUp
+                      .delay(600 + index * 80)
+                      .duration(450)}
+                    style={s.approveCard}
+                  >
+                    <Image
+                      source={{
+                        uri: st.image || LOGO_URL,
+                      }}
+                      style={s.approveImg}
+                      contentFit="cover"
+                    />
+
+                    <View style={s.approveInfo}>
+                      <Text
+                        style={s.approveName}
+                        numberOfLines={1}
+                      >
+                        {st.name}
+                      </Text>
+
+                      <View style={s.addressRow}>
+                        <MaterialCommunityIcons
+                          name="map-marker-outline"
+                          size={13}
+                          color={THEME.muted}
+                        />
+
+                        <Text
+                          style={s.approveMeta}
+                          numberOfLines={1}
+                        >
+                          {st.address || "Address unavailable"}
+                        </Text>
+                      </View>
+                    </View>
+
+                    <View style={s.approveActions}>
+                      <Pressable
+                        onPress={() =>
+                          handleRejectStore(
+                            st.id,
+                            st.name
+                          )
+                        }
+                        style={({ pressed }) => [
+                          s.rejectBtn,
+                          pressed && s.pressedSmall,
+                        ]}
+                      >
+                        <MaterialCommunityIcons
+                          name="close"
+                          size={18}
+                          color={THEME.white}
+                        />
+                      </Pressable>
+
+                      <Pressable
+                        onPress={() =>
+                          handleApproveStore(
+                            st.id,
+                            st.name
+                          )
+                        }
+                        style={({ pressed }) => [
+                          s.approveBtn,
+                          pressed && s.pressedSmall,
+                        ]}
+                      >
+                        <MaterialCommunityIcons
+                          name="check"
+                          size={17}
+                          color={THEME.white}
+                        />
+
+                        <Text style={s.approveBtnText}>
+                          Approve
+                        </Text>
+                      </Pressable>
+                    </View>
+                  </Animated.View>
+                )
+              )}
+            </Animated.View>
+          )}
+
+        {/* ===================================================
+            QUICK ACTIONS
+        =================================================== */}
+
+        <Animated.View
+          entering={FadeInUp.delay(650).duration(600)}
+        >
+          <View style={s.sectionHeader}>
+            <View>
+              <Text style={s.sectionTitle}>
+                Quick Actions
               </Text>
-            </Pressable>
-          ))}
+
+              <Text style={s.sectionSub}>
+                Manage your marketplace
+              </Text>
+            </View>
+          </View>
+
+          <View style={s.grid}>
+            {ACTIONS.map((a, index) => (
+              <Animated.View
+                key={a.label}
+                entering={ZoomIn
+                  .delay(700 + index * 60)
+                  .duration(400)}
+                style={s.gridWrapper}
+              >
+                <Pressable
+                  testID={`admin-action-${a.label}`}
+                  onPress={() =>
+                    router.push(a.path as any)
+                  }
+                  style={({ pressed }) => [
+                    s.gridItem,
+                    pressed && s.gridPressed,
+                  ]}
+                >
+                  <View
+                    style={[
+                      s.gridIcon,
+                      {
+                        backgroundColor:
+                          a.color + "18",
+                        borderColor:
+                          a.color + "35",
+                      },
+                    ]}
+                  >
+                    <MaterialCommunityIcons
+                      name={a.icon as any}
+                      size={27}
+                      color={a.color}
+                    />
+                  </View>
+
+                  <Text
+                    style={s.gridLabel}
+                    numberOfLines={2}
+                  >
+                    {a.label}
+                  </Text>
+
+                  <MaterialCommunityIcons
+                    name="chevron-right"
+                    size={15}
+                    color={THEME.muted}
+                    style={s.gridArrow}
+                  />
+                </Pressable>
+              </Animated.View>
+            ))}
+          </View>
+        </Animated.View>
+
+        <View style={s.footer}>
+          <MaterialCommunityIcons
+            name="shield-check-outline"
+            size={16}
+            color={THEME.sky}
+          />
+
+          <Text style={s.footerText}>
+            KMT Bazaar Admin · Secure Management Console
+          </Text>
         </View>
       </ScrollView>
     </View>
   );
 }
+
+/* =========================================================
+   KPI COMPONENT
+========================================================= */
 
 function KPI({
   label,
@@ -553,23 +764,42 @@ function KPI({
   icon,
   color,
   sub,
+  delay = 0,
 }: any) {
   return (
-    <View style={s.kpiCard}>
-      <View
-        style={[
-          s.kpiIcon,
-          { backgroundColor: color + "1A" },
-        ]}
-      >
+    <Animated.View
+      entering={FadeInUp.delay(delay).duration(500)}
+      style={s.kpiCard}
+    >
+      <View style={s.kpiTop}>
+        <View
+          style={[
+            s.kpiIcon,
+            {
+              backgroundColor: color + "16",
+              borderColor: color + "30",
+            },
+          ]}
+        >
+          <MaterialCommunityIcons
+            name={icon}
+            size={20}
+            color={color}
+          />
+        </View>
+
         <MaterialCommunityIcons
-          name={icon}
-          size={20}
-          color={color}
+          name="arrow-top-right"
+          size={15}
+          color={THEME.muted}
         />
       </View>
 
-      <Text style={s.kpiValue}>
+      <Text
+        style={s.kpiValue}
+        numberOfLines={1}
+        adjustsFontSizeToFit
+      >
         {value}
       </Text>
 
@@ -578,26 +808,47 @@ function KPI({
       </Text>
 
       {sub && (
-        <Text style={s.kpiSub}>
+        <Text
+          style={[
+            s.kpiSub,
+            { color },
+          ]}
+        >
           {sub}
         </Text>
       )}
-    </View>
+    </Animated.View>
   );
 }
+
+/* =========================================================
+   STYLES
+========================================================= */
 
 const s = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: COLORS.surfaceSecondary,
+    backgroundColor: THEME.grey,
   },
 
   header: {
-    padding: SPACING.lg,
+    paddingHorizontal: SPACING.lg,
     paddingTop: SPACING.md,
-    paddingBottom: SPACING.lg,
-    borderBottomLeftRadius: 24,
-    borderBottomRightRadius: 24,
+    paddingBottom: 18,
+    borderBottomLeftRadius: 30,
+    borderBottomRightRadius: 30,
+    overflow: "hidden",
+  },
+
+  orangeGlow: {
+    position: "absolute",
+    width: 170,
+    height: 170,
+    borderRadius: 85,
+    backgroundColor: THEME.orange,
+    opacity: 0.08,
+    right: -70,
+    top: -80,
   },
 
   headerTop: {
@@ -605,190 +856,415 @@ const s = StyleSheet.create({
     alignItems: "center",
   },
 
+  logoBox: {
+    width: 48,
+    height: 48,
+    borderRadius: 16,
+    backgroundColor: THEME.white,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.25)",
+  },
+
+  logo: {
+    width: 36,
+    height: 36,
+  },
+
+  headerText: {
+    flex: 1,
+    marginLeft: 12,
+  },
+
+  headerEyebrow: {
+    color: THEME.orange,
+    fontSize: 9,
+    fontWeight: "900",
+    letterSpacing: 2,
+  },
+
   headerTitle: {
-    color: "#fff",
-    fontWeight: "800",
-    fontSize: 18,
+    color: THEME.white,
+    fontSize: 21,
+    fontWeight: "900",
+    marginTop: 1,
   },
 
   headerSub: {
-    color: "rgba(255,255,255,0.8)",
-    fontSize: 12,
-    marginTop: 2,
+    color: "rgba(255,255,255,0.68)",
+    fontSize: 11,
+    marginTop: 3,
   },
 
-  kpiRow: {
-    flexDirection: "row",
-    gap: 10,
-    marginBottom: 10,
-  },
-
-  kpiCard: {
-    flex: 1,
-    backgroundColor: "#fff",
-    padding: 12,
-    borderRadius: RADIUS.md,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-  },
-
-  kpiIcon: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+  logoutButton: {
+    width: 42,
+    height: 42,
+    borderRadius: 14,
     alignItems: "center",
     justifyContent: "center",
+    backgroundColor: "rgba(255,255,255,0.10)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.14)",
+  },
+
+  liveStatus: {
+    alignSelf: "flex-start",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 7,
+    marginTop: 16,
+    paddingHorizontal: 11,
+    paddingVertical: 6,
+    borderRadius: 20,
+    backgroundColor: "rgba(255,255,255,0.08)",
+    borderWidth: 1,
+    borderColor: "rgba(56,189,248,0.20)",
+  },
+
+  liveDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+    backgroundColor: THEME.success,
+  },
+
+  liveText: {
+    color: THEME.white,
+    fontSize: 10,
+    fontWeight: "800",
+  },
+
+  scrollContent: {
+    padding: SPACING.lg,
+    paddingBottom: 70,
+  },
+
+  sectionHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 12,
+  },
+
+  sectionTitle: {
+    color: THEME.text,
+    fontSize: 18,
+    fontWeight: "900",
+  },
+
+  sectionSub: {
+    color: THEME.muted,
+    fontSize: 11,
+    marginTop: 3,
+  },
+
+  todayBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    backgroundColor: THEME.orangeLight,
+    paddingHorizontal: 9,
+    paddingVertical: 6,
+    borderRadius: 12,
+  },
+
+  todayText: {
+    color: THEME.brown,
+    fontSize: 9,
+    fontWeight: "900",
+  },
+
+  kpiGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 10,
     marginBottom: 8,
   },
 
+  kpiCard: {
+    width: (width - SPACING.lg * 2 - 10) / 2,
+    minHeight: 124,
+    backgroundColor: THEME.white,
+    borderRadius: 18,
+    padding: 13,
+    borderWidth: 1,
+    borderColor: THEME.border,
+    shadowColor: "#000",
+    shadowOpacity: 0.05,
+    shadowRadius: 12,
+    shadowOffset: {
+      width: 0,
+      height: 5,
+    },
+    elevation: 2,
+  },
+
+  kpiTop: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+
+  kpiIcon: {
+    width: 37,
+    height: 37,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+  },
+
   kpiValue: {
-    fontWeight: "800",
-    color: COLORS.text,
-    fontSize: 18,
+    color: THEME.text,
+    fontSize: 20,
+    fontWeight: "900",
+    marginTop: 11,
   },
 
   kpiLabel: {
-    color: COLORS.textMuted,
+    color: THEME.muted,
     fontSize: 11,
+    fontWeight: "700",
     marginTop: 2,
   },
 
   kpiSub: {
-    color: COLORS.brand,
-    fontSize: 10,
-    marginTop: 2,
-    fontWeight: "600",
+    fontSize: 9,
+    fontWeight: "800",
+    marginTop: 4,
   },
 
   chartCard: {
-    backgroundColor: "#fff",
-    borderRadius: RADIUS.md,
-    padding: SPACING.md,
-    marginTop: 8,
+    backgroundColor: THEME.white,
+    borderRadius: 20,
+    padding: 16,
+    marginTop: 10,
     borderWidth: 1,
-    borderColor: COLORS.border,
+    borderColor: THEME.border,
+    shadowColor: "#000",
+    shadowOpacity: 0.05,
+    shadowRadius: 12,
+    shadowOffset: {
+      width: 0,
+      height: 5,
+    },
+    elevation: 2,
   },
 
-  chartTitle: {
-    fontWeight: "800",
-    color: COLORS.text,
-    marginBottom: 12,
+  cardHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+
+  cardTitle: {
+    color: THEME.text,
+    fontSize: 16,
+    fontWeight: "900",
+  },
+
+  cardSub: {
+    color: THEME.muted,
+    fontSize: 10,
+    marginTop: 3,
+  },
+
+  chartIcon: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: THEME.orangeLight,
   },
 
   chartRow: {
     flexDirection: "row",
     alignItems: "flex-end",
-    height: 140,
+    height: 165,
+    marginTop: 12,
   },
 
   chartCol: {
     flex: 1,
+    height: "100%",
     alignItems: "center",
-    gap: 4,
+    justifyContent: "flex-end",
+    gap: 5,
   },
 
   chartBarWrap: {
-    height: 100,
+    height: 110,
+    width: "52%",
     justifyContent: "flex-end",
-    width: "70%",
+    backgroundColor: "#F5F5F4",
+    borderRadius: 8,
+    overflow: "hidden",
   },
 
   chartBar: {
-    backgroundColor: COLORS.brand,
-    borderTopLeftRadius: 6,
-    borderTopRightRadius: 6,
     width: "100%",
+    backgroundColor: THEME.orange,
+    borderTopLeftRadius: 8,
+    borderTopRightRadius: 8,
   },
 
   chartVal: {
-    fontSize: 11,
-    color: COLORS.text,
-    fontWeight: "700",
+    color: THEME.brown,
+    fontSize: 10,
+    fontWeight: "900",
   },
 
   chartDay: {
-    fontSize: 10,
-    color: COLORS.textMuted,
+    color: THEME.muted,
+    fontSize: 9,
+    fontWeight: "700",
   },
 
-  alertCard: {
+  pendingCard: {
+    marginTop: 12,
+    borderRadius: 20,
+    overflow: "hidden",
+    shadowColor: THEME.brown,
+    shadowOpacity: 0.18,
+    shadowRadius: 14,
+    shadowOffset: {
+      width: 0,
+      height: 7,
+    },
+    elevation: 4,
+  },
+
+  pendingGradient: {
+    minHeight: 78,
+    padding: 14,
     flexDirection: "row",
     alignItems: "center",
-    gap: 10,
-    backgroundColor: "#fff",
-    padding: 12,
-    marginTop: 12,
-    borderRadius: RADIUS.md,
-    borderWidth: 1,
-    borderColor: COLORS.accent,
+    gap: 12,
   },
 
-  alertIcon: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    backgroundColor: COLORS.accentLight,
+  pendingIcon: {
+    width: 46,
+    height: 46,
+    borderRadius: 15,
+    backgroundColor: "rgba(249,115,22,0.15)",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: "rgba(249,115,22,0.25)",
+  },
+
+  pendingContent: {
+    flex: 1,
+  },
+
+  pendingTitle: {
+    color: THEME.white,
+    fontSize: 14,
+    fontWeight: "900",
+  },
+
+  pendingSub: {
+    color: "rgba(255,255,255,0.62)",
+    fontSize: 10,
+    marginTop: 3,
+  },
+
+  arrowCircle: {
+    width: 35,
+    height: 35,
+    borderRadius: 18,
+    backgroundColor: THEME.orange,
     alignItems: "center",
     justifyContent: "center",
   },
 
-  alertTitle: {
-    fontWeight: "800",
-    color: COLORS.text,
+  approvalSection: {
+    marginTop: 20,
   },
 
-  alertSub: {
-    color: COLORS.textMuted,
+  countBadge: {
+    minWidth: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: THEME.orange,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 8,
+  },
+
+  countBadgeText: {
+    color: THEME.white,
     fontSize: 12,
-    marginTop: 2,
-  },
-
-  section: {
-    fontSize: 16,
-    fontWeight: "800",
-    color: COLORS.text,
-    marginTop: SPACING.lg,
-    marginBottom: SPACING.md,
+    fontWeight: "900",
   },
 
   approveCard: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 12,
-    backgroundColor: "#fff",
-    padding: 12,
-    borderRadius: RADIUS.md,
+    gap: 10,
+    backgroundColor: THEME.white,
+    padding: 11,
+    marginBottom: 9,
+    borderRadius: 18,
     borderWidth: 1,
-    borderColor: COLORS.error + "50",
-    marginBottom: 8,
+    borderColor: "#FED7AA",
     borderLeftWidth: 4,
-    borderLeftColor: COLORS.error,
+    borderLeftColor: THEME.orange,
+    shadowColor: "#000",
+    shadowOpacity: 0.04,
+    shadowRadius: 9,
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    elevation: 1,
   },
 
   approveImg: {
-    width: 44,
-    height: 44,
-    borderRadius: 8,
-    backgroundColor: COLORS.surfaceSecondary,
+    width: 47,
+    height: 47,
+    borderRadius: 13,
+    backgroundColor: THEME.grey,
+  },
+
+  approveInfo: {
+    flex: 1,
+    minWidth: 0,
   },
 
   approveName: {
-    fontWeight: "800",
-    color: COLORS.text,
-    fontSize: 15,
+    color: THEME.text,
+    fontSize: 13,
+    fontWeight: "900",
+  },
+
+  addressRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: 3,
+    gap: 2,
   },
 
   approveMeta: {
-    color: COLORS.textMuted,
-    fontSize: 12,
-    marginTop: 2,
+    flex: 1,
+    color: THEME.muted,
+    fontSize: 10,
+  },
+
+  approveActions: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
   },
 
   rejectBtn: {
-    backgroundColor: COLORS.error,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 20,
+    width: 38,
+    height: 38,
+    borderRadius: 13,
+    backgroundColor: THEME.danger,
+    alignItems: "center",
     justifyContent: "center",
   },
 
@@ -796,16 +1272,16 @@ const s = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
-    backgroundColor: COLORS.success,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 20,
+    backgroundColor: THEME.success,
+    paddingHorizontal: 11,
+    height: 38,
+    borderRadius: 13,
   },
 
   approveBtnText: {
-    color: "#fff",
-    fontWeight: "700",
-    fontSize: 13,
+    color: THEME.white,
+    fontWeight: "900",
+    fontSize: 10,
   },
 
   grid: {
@@ -814,32 +1290,79 @@ const s = StyleSheet.create({
     gap: 10,
   },
 
+  gridWrapper: {
+    width: (width - SPACING.lg * 2 - 20) / 3,
+  },
+
   gridItem: {
-    width:
-      (width - SPACING.lg * 2 - 10 * 2) / 3,
-    aspectRatio: 1,
-    backgroundColor: "#fff",
-    borderRadius: RADIUS.md,
+    minHeight: 128,
+    backgroundColor: THEME.white,
+    borderRadius: 18,
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 1,
-    borderColor: COLORS.border,
-    padding: 8,
-    gap: 8,
+    borderColor: THEME.border,
+    padding: 9,
+    shadowColor: "#000",
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    elevation: 1,
+  },
+
+  gridPressed: {
+    transform: [{ scale: 0.96 }],
+    opacity: 0.88,
   },
 
   gridIcon: {
     width: 48,
     height: 48,
-    borderRadius: 24,
+    borderRadius: 16,
     alignItems: "center",
     justifyContent: "center",
+    borderWidth: 1,
   },
 
   gridLabel: {
-    fontSize: 11,
-    fontWeight: "700",
-    color: COLORS.text,
+    color: THEME.text,
+    fontSize: 10,
+    fontWeight: "800",
     textAlign: "center",
+    marginTop: 8,
+    lineHeight: 13,
+  },
+
+  gridArrow: {
+    position: "absolute",
+    right: 7,
+    top: 7,
+  },
+
+  pressed: {
+    opacity: 0.9,
+  },
+
+  pressedSmall: {
+    transform: [{ scale: 0.94 }],
+    opacity: 0.85,
+  },
+
+  footer: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    marginTop: 28,
+    paddingVertical: 12,
+  },
+
+  footerText: {
+    color: THEME.muted,
+    fontSize: 9,
+    fontWeight: "600",
   },
 });
