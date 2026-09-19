@@ -104,6 +104,37 @@ export default function AdminUserDetails() {
 
         const orderList =
           (allOrders || []) as any[];
+// Vendor products resolve karo
+let vendorProductIds: string[] = [];
+
+if (role === "vendor") {
+  try {
+    const allProducts = await adminApi.products();
+    const productList = (allProducts || []) as any[];
+
+    vendorProductIds = productList
+      .filter((product: any) => {
+        const productStoreId =
+          product.store_id ||
+          product.store?.id ||
+          product.store?._id;
+
+        return (
+          vendorStoreIds.includes(String(productStoreId)) ||
+          String(product.vendor_id || "") === String(id)
+        );
+      })
+      .map((product: any) =>
+        String(product.id || product._id || "")
+      )
+      .filter(Boolean);
+  } catch (productErr) {
+    console.log(
+      "Error loading vendor products:",
+      productErr
+    );
+  }
+}
 
         const userId = String(id);
         const userEmail = String(foundUser?.email || "").trim().toLowerCase();
@@ -114,6 +145,10 @@ export default function AdminUserDetails() {
         const matchIds = new Set<string>();
         matchIds.add(userId);
         vendorStoreIds.forEach((sId) => matchIds.add(String(sId)));
+
+vendorProductIds.forEach((pId) =>
+  matchIds.add(String(pId))
+);
 
         if (foundUser) {
           if (foundUser.store_id) matchIds.add(String(foundUser.store_id));
@@ -165,17 +200,20 @@ export default function AdminUserDetails() {
                     if (!item) return false;
 
                     const itemIds = [
-                      item.vendor_id,
-                      item.store_id,
-                      item.seller_id,
-                      item.store_owner_id,
-                      item.vendor?.id,
-                      item.vendor?._id,
-                      item.store?.id,
-                      item.store?._id,
-                      item.product?.vendor_id,
-                      item.product?.store_id,
-                    ]
+  item.vendor_id,
+  item.store_id,
+  item.seller_id,
+  item.store_owner_id,
+  item.product_id,
+  item.vendor?.id,
+  item.vendor?._id,
+  item.store?.id,
+  item.store?._id,
+  item.product?.id,
+  item.product?._id,
+  item.product?.vendor_id,
+  item.product?.store_id,
+]
                       .filter((v) => v !== undefined && v !== null)
                       .map((v) => String(typeof v === "object" ? v.id ?? v._id ?? "" : v));
 
