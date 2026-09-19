@@ -513,6 +513,7 @@ async def list_products(
     category: Optional[str] = None,
     q: Optional[str] = None,
     trending: Optional[bool] = None,
+    store_id: Optional[str] = None,
     limit: int = 50
 ):
     # Sirf approved stores ke IDs nikalo
@@ -523,22 +524,39 @@ async def list_products(
 
     approved_store_ids = [store["id"] for store in approved_stores]
 
-    # Agar koi approved store nahi hai, customer ko koi product nahi dikhega
+    # Agar koi approved store nahi hai
     if not approved_store_ids:
         return []
 
+    # Base query:
+    # Customer ko sirf approved stores ke products milenge
     query = {
         "store_id": {"$in": approved_store_ids}
     }
 
+    # IMPORTANT:
+    # Agar customer kisi particular store par hai,
+    # to sirf usi store ke products return honge.
+    if store_id:
+        if store_id not in approved_store_ids:
+            return []
+
+        query["store_id"] = store_id
+
+    # Category filter
     if category:
         query["category_id"] = category
 
+    # Trending filter
     if trending:
         query["trending"] = True
 
+    # Search filter
     if q:
-        query["name"] = {"$regex": q, "$options": "i"}
+        query["name"] = {
+            "$regex": q,
+            "$options": "i"
+        }
 
     products = await db.products.find(
         query,
