@@ -1,7 +1,462 @@
-import React,{useCallback,useState}from"react";import{View,Text,StyleSheet,FlatList,Pressable,TextInput}from"react-native";import{Image}from"expo-image";import{useFocusEffect,useLocalSearchParams,useRouter}from"expo-router";import{SafeAreaView}from"react-native-safe-area-context";import{MaterialCommunityIcons}from"@expo/vector-icons";import{adminApi}from"@/src/roleApi";import{COLORS,RADIUS,SPACING}from"@/src/theme";
+import React, { useCallback, useState } from "react";
+import {
+  View,
+  Text,
+  StyleSheet,
+  FlatList,
+  Pressable,
+  TextInput,
+} from "react-native";
+import { Image } from "expo-image";
+import {
+  useFocusEffect,
+  useLocalSearchParams,
+  useRouter,
+} from "expo-router";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { adminApi } from "@/src/roleApi";
+import { COLORS, RADIUS, SPACING } from "@/src/theme";
 
-const STATUSES=[{key:"all",label:"All"},{key:"pending",label:"Pending",color:"#EAB308"},{key:"accepted",label:"Accepted",color:"#2563EB"},{key:"out_for_delivery",label:"Out",color:"#F97316"},{key:"delivered",label:"Delivered",color:"#16A34A"}];const NEXT:Record<string,string>={pending:"accepted",accepted:"out_for_delivery",out_for_delivery:"delivered"};
+const STATUSES = [
+  { key: "all", label: "All" },
+  { key: "pending", label: "Pending", color: "#EAB308" },
+  { key: "accepted", label: "Accepted", color: "#2563EB" },
+  {
+    key: "out_for_delivery",
+    label: "Out",
+    color: "#F97316",
+  },
+  { key: "delivered", label: "Delivered", color: "#16A34A" },
+];
 
-export default function AdminOrders(){const{status:initStatus}=useLocalSearchParams<{status?:string}>();const router=useRouter();const[orders,setOrders]=useState<any[]>([]);const[filter,setFilter]=useState(initStatus||"all");const[search,setSearch]=useState("");const load=useCallback(async()=>{try{setOrders(await adminApi.orders(filter==="all"?undefined:filter))}catch{}},[filter]);useFocusEffect(useCallback(()=>{load()},[load]));const advance=async(o:any)=>{const next=NEXT[o.status];if(!next)return;await adminApi.updateOrderStatus(o.id,next);load()};const visible=orders.filter(o=>!search.trim()||String(o.id||"").toLowerCase().includes(search.toLowerCase())||String(o.order_no||"").toLowerCase().includes(search.toLowerCase()));return <SafeAreaView style={s.root} edges={["top"]} testID="admin-orders-screen"><View style={s.header}><Pressable onPress={()=>router.back()} hitSlop={10}><MaterialCommunityIcons name="arrow-left" size={22} color={COLORS.text}/></Pressable><Text style={s.title}>All Orders</Text><View style={{width:22}}/></View><View style={s.search}><MaterialCommunityIcons name="magnify" size={20} color={COLORS.textMuted}/><TextInput value={search} onChangeText={setSearch} placeholder="Search Order ID" placeholderTextColor={COLORS.textMuted} style={s.input} autoCapitalize="none"/></View><View style={s.chipsWrap}><FlatList horizontal data={STATUSES} showsHorizontalScrollIndicator={false} keyExtractor={c=>c.key} contentContainerStyle={{paddingHorizontal:SPACING.lg,gap:8,paddingVertical:8}} renderItem={({item})=><Pressable testID={`filter-${item.key}`} onPress={()=>setFilter(item.key)} style={[s.chip,filter===item.key&&{backgroundColor:item.color||COLORS.brand,borderColor:item.color||COLORS.brand}]}><Text style={[s.chipText,filter===item.key&&{color:"#fff"}]}>{item.label}</Text></Pressable>}/></View><FlatList data={visible} keyExtractor={o=>String(o.id)} contentContainerStyle={{padding:SPACING.lg,paddingTop:4}} ItemSeparatorComponent={()=> <View style={{height:10}}/>} ListEmptyComponent={<Text style={s.empty}>{search?"Order not found":"No orders"}</Text>} renderItem={({item})=>{const st=STATUSES.find(x=>x.key===item.status);return <Pressable onPress={()=>router.push(`/admin/order/${item.id}`)} style={s.card} testID={`order-row-${item.id}`}><View style={s.cardHead}><Text style={s.orderNo}>#{item.order_no}</Text><View style={[s.statusPill,{borderColor:st?.color||COLORS.brand,backgroundColor:(st?.color||COLORS.brand)+"22"}]}><Text style={[s.statusText,{color:st?.color||COLORS.brand}]}>{st?.label||item.status}</Text></View></View><Text style={s.cust}>{item.customer?.name||"Customer"} · {item.customer?.phone||""}</Text><View style={s.row}>{item.items?.[0]&&<Image source={{uri:item.items[0].image}} style={s.img} contentFit="cover"/>}<View style={{flex:1}}><Text style={s.itemName} numberOfLines={1}>{item.items?.[0]?.name}{item.items?.length>1?` + ${item.items.length-1}`:""}</Text><Text style={s.meta}>{new Date(item.created_at).toLocaleString()}</Text><Text style={s.total}>₹{item.total} · {item.payment_method?.toUpperCase()}</Text></View><MaterialCommunityIcons name="chevron-right" size={22} color={COLORS.textMuted}/></View>{NEXT[item.status]&&<Pressable testID={`advance-${item.id}`} onPress={()=>advance(item)} style={s.actionBtn}><Text style={s.actionText}>Mark as {NEXT[item.status].replace(/_/g," ").toUpperCase()}</Text><MaterialCommunityIcons name="arrow-right" color="#fff" size={16}/></Pressable>}</Pressable>}}/></SafeAreaView>}
+const NEXT: Record<string, string> = {
+  pending: "accepted",
+  accepted: "out_for_delivery",
+  out_for_delivery: "delivered",
+};
 
-const s=StyleSheet.create({root:{flex:1,backgroundColor:COLORS.surfaceSecondary},header:{flexDirection:"row",alignItems:"center",justifyContent:"space-between",paddingHorizontal:SPACING.lg,paddingVertical:SPACING.md,backgroundColor:"#fff"},title:{fontSize:18,fontWeight:"800",color:COLORS.text},search:{margin:SPACING.lg,marginBottom:4,backgroundColor:"#fff",borderWidth:1,borderColor:COLORS.border,borderRadius:RADIUS.md,flexDirection:"row",alignItems:"center",paddingHorizontal:12},input:{flex:1,height:44,marginLeft:8,color:COLORS.text},chipsWrap:{backgroundColor:"#fff",borderBottomWidth:1,borderColor:COLORS.border},chip:{paddingHorizontal:14,paddingVertical:8,borderRadius:RADIUS.pill,borderWidth:1,borderColor:COLORS.border,backgroundColor:"#fff"},chipText:{color:COLORS.textSecondary,fontWeight:"700",fontSize:12},card:{backgroundColor:"#fff",padding:12,borderRadius:RADIUS.md,borderWidth:1,borderColor:COLORS.border},cardHead:{flexDirection:"row",justifyContent:"space-between",alignItems:"center"},orderNo:{fontWeight:"800",color:COLORS.text,fontSize:13},statusPill:{paddingHorizontal:10,paddingVertical:3,borderRadius:RADIUS.pill,borderWidth:1},statusText:{fontWeight:"800",fontSize:11},cust:{color:COLORS.textSecondary,fontSize:12,marginTop:4},row:{flexDirection:"row",gap:10,marginTop:10,alignItems:"center"},img:{width:50,height:50,borderRadius:8,backgroundColor:COLORS.surfaceTertiary},itemName:{fontWeight:"700",color:COLORS.text,fontSize:13},meta:{color:COLORS.textMuted,fontSize:11,marginTop:2},total:{fontWeight:"800",color:COLORS.text,marginTop:4},actionBtn:{marginTop:10,backgroundColor:COLORS.brand,paddingVertical:10,borderRadius:RADIUS.pill,flexDirection:"row",alignItems:"center",justifyContent:"center",gap:6},actionText:{color:"#fff",fontWeight:"800",fontSize:12},empty:{textAlign:"center",marginTop:80,color:COLORS.textMuted}});
+export default function AdminOrders() {
+  const { status: initStatus } =
+    useLocalSearchParams<{ status?: string }>();
+
+  const router = useRouter();
+
+  const [orders, setOrders] = useState<any[]>([]);
+  const [filter, setFilter] = useState(initStatus || "all");
+  const [search, setSearch] = useState("");
+
+  const load = useCallback(async () => {
+    try {
+      const data = await adminApi.orders(
+        filter === "all" ? undefined : filter
+      );
+
+      setOrders(data || []);
+    } catch {}
+  }, [filter]);
+
+  useFocusEffect(
+    useCallback(() => {
+      load();
+    }, [load])
+  );
+
+  const advance = async (order: any) => {
+    const next = NEXT[order.status];
+
+    if (!next) return;
+
+    await adminApi.updateOrderStatus(order.id, next);
+    load();
+  };
+
+  const visible = orders.filter((order) => {
+    const query = search.trim().toLowerCase();
+
+    if (!query) return true;
+
+    return (
+      String(order.id || "")
+        .toLowerCase()
+        .includes(query) ||
+      String(order.order_no || "")
+        .toLowerCase()
+        .includes(query) ||
+      String(order.order_number || "")
+        .toLowerCase()
+        .includes(query)
+    );
+  });
+
+  return (
+    <SafeAreaView
+      style={s.root}
+      edges={["top"]}
+      testID="admin-orders-screen"
+    >
+      <View style={s.header}>
+        <Pressable
+          onPress={() => router.back()}
+          hitSlop={10}
+        >
+          <MaterialCommunityIcons
+            name="arrow-left"
+            size={22}
+            color={COLORS.text}
+          />
+        </Pressable>
+
+        <Text style={s.title}>All Orders</Text>
+
+        <View style={{ width: 22 }} />
+      </View>
+
+      <View style={s.search}>
+        <MaterialCommunityIcons
+          name="magnify"
+          size={20}
+          color={COLORS.textMuted}
+        />
+
+        <TextInput
+          value={search}
+          onChangeText={setSearch}
+          placeholder="Search Order ID"
+          placeholderTextColor={COLORS.textMuted}
+          style={s.input}
+          autoCapitalize="none"
+        />
+      </View>
+
+      <View style={s.chipsWrap}>
+        <FlatList
+          horizontal
+          data={STATUSES}
+          showsHorizontalScrollIndicator={false}
+          keyExtractor={(item) => item.key}
+          contentContainerStyle={{
+            paddingHorizontal: SPACING.lg,
+            gap: 8,
+            paddingVertical: 8,
+          }}
+          renderItem={({ item }) => (
+            <Pressable
+              testID={`filter-${item.key}`}
+              onPress={() => setFilter(item.key)}
+              style={[
+                s.chip,
+                filter === item.key && {
+                  backgroundColor:
+                    item.color || COLORS.brand,
+                  borderColor:
+                    item.color || COLORS.brand,
+                },
+              ]}
+            >
+              <Text
+                style={[
+                  s.chipText,
+                  filter === item.key && {
+                    color: "#fff",
+                  },
+                ]}
+              >
+                {item.label}
+              </Text>
+            </Pressable>
+          )}
+        />
+      </View>
+
+      <FlatList
+        data={visible}
+        keyExtractor={(order) => String(order.id)}
+        contentContainerStyle={{
+          padding: SPACING.lg,
+          paddingTop: 4,
+        }}
+        ItemSeparatorComponent={() => (
+          <View style={{ height: 10 }} />
+        )}
+        ListEmptyComponent={
+          <Text style={s.empty}>
+            {search ? "Order not found" : "No orders"}
+          </Text>
+        }
+        renderItem={({ item }) => {
+          const status = STATUSES.find(
+            (x) => x.key === item.status
+          );
+
+          return (
+            <Pressable
+              onPress={() =>
+                router.push(`/admin/order/${item.id}`)
+              }
+              style={s.card}
+              testID={`order-row-${item.id}`}
+            >
+              <View style={s.cardHead}>
+                <Text style={s.orderNo}>
+                  #{item.order_no}
+                </Text>
+
+                <View
+                  style={[
+                    s.statusPill,
+                    {
+                      borderColor:
+                        status?.color || COLORS.brand,
+                      backgroundColor:
+                        (status?.color ||
+                          COLORS.brand) + "22",
+                    },
+                  ]}
+                >
+                  <Text
+                    style={[
+                      s.statusText,
+                      {
+                        color:
+                          status?.color || COLORS.brand,
+                      },
+                    ]}
+                  >
+                    {status?.label || item.status}
+                  </Text>
+                </View>
+              </View>
+
+              <Text style={s.cust}>
+                {item.customer?.name || "Customer"}
+                {" · "}
+                {item.customer?.phone || ""}
+              </Text>
+
+              <View style={s.row}>
+                {item.items?.[0] && (
+                  <Image
+                    source={{
+                      uri: item.items[0].image,
+                    }}
+                    style={s.img}
+                    contentFit="cover"
+                  />
+                )}
+
+                <View style={{ flex: 1 }}>
+                  <Text
+                    style={s.itemName}
+                    numberOfLines={1}
+                  >
+                    {item.items?.[0]?.name}
+
+                    {item.items?.length > 1
+                      ? ` + ${item.items.length - 1}`
+                      : ""}
+                  </Text>
+
+                  <Text style={s.meta}>
+                    {item.created_at
+                      ? new Date(
+                          item.created_at
+                        ).toLocaleString()
+                      : ""}
+                  </Text>
+
+                  <Text style={s.total}>
+                    ₹{item.total} ·{" "}
+                    {item.payment_method?.toUpperCase()}
+                  </Text>
+                </View>
+
+                <MaterialCommunityIcons
+                  name="chevron-right"
+                  size={22}
+                  color={COLORS.textMuted}
+                />
+              </View>
+
+              {NEXT[item.status] && (
+                <Pressable
+                  testID={`advance-${item.id}`}
+                  onPress={() => advance(item)}
+                  style={s.actionBtn}
+                >
+                  <Text style={s.actionText}>
+                    Mark as{" "}
+                    {NEXT[item.status]
+                      .replace(/_/g, " ")
+                      .toUpperCase()}
+                  </Text>
+
+                  <MaterialCommunityIcons
+                    name="arrow-right"
+                    color="#fff"
+                    size={16}
+                  />
+                </Pressable>
+              )}
+            </Pressable>
+          );
+        }}
+      />
+    </SafeAreaView>
+  );
+}
+
+const s = StyleSheet.create({
+  root: {
+    flex: 1,
+    backgroundColor: COLORS.surfaceSecondary,
+  },
+
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: SPACING.lg,
+    paddingVertical: SPACING.md,
+    backgroundColor: "#fff",
+  },
+
+  title: {
+    fontSize: 18,
+    fontWeight: "800",
+    color: COLORS.text,
+  },
+
+  search: {
+    margin: SPACING.lg,
+    marginBottom: 4,
+    backgroundColor: "#fff",
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: RADIUS.md,
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 12,
+  },
+
+  input: {
+    flex: 1,
+    height: 44,
+    marginLeft: 8,
+    color: COLORS.text,
+  },
+
+  chipsWrap: {
+    backgroundColor: "#fff",
+    borderBottomWidth: 1,
+    borderColor: COLORS.border,
+  },
+
+  chip: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: RADIUS.pill,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    backgroundColor: "#fff",
+  },
+
+  chipText: {
+    color: COLORS.textSecondary,
+    fontWeight: "700",
+    fontSize: 12,
+  },
+
+  card: {
+    backgroundColor: "#fff",
+    padding: 12,
+    borderRadius: RADIUS.md,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+
+  cardHead: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+
+  orderNo: {
+    fontWeight: "800",
+    color: COLORS.text,
+    fontSize: 13,
+  },
+
+  statusPill: {
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+    borderRadius: RADIUS.pill,
+    borderWidth: 1,
+  },
+
+  statusText: {
+    fontWeight: "800",
+    fontSize: 11,
+  },
+
+  cust: {
+    color: COLORS.textSecondary,
+    fontSize: 12,
+    marginTop: 4,
+  },
+
+  row: {
+    flexDirection: "row",
+    gap: 10,
+    marginTop: 10,
+    alignItems: "center",
+  },
+
+  img: {
+    width: 50,
+    height: 50,
+    borderRadius: 8,
+    backgroundColor: COLORS.surfaceTertiary,
+  },
+
+  itemName: {
+    fontWeight: "700",
+    color: COLORS.text,
+    fontSize: 13,
+  },
+
+  meta: {
+    color: COLORS.textMuted,
+    fontSize: 11,
+    marginTop: 2,
+  },
+
+  total: {
+    fontWeight: "800",
+    color: COLORS.text,
+    marginTop: 4,
+  },
+
+  actionBtn: {
+    marginTop: 10,
+    backgroundColor: COLORS.brand,
+    paddingVertical: 10,
+    borderRadius: RADIUS.pill,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+  },
+
+  actionText: {
+    color: "#fff",
+    fontWeight: "800",
+    fontSize: 12,
+  },
+
+  empty: {
+    textAlign: "center",
+    marginTop: 80,
+    color: COLORS.textMuted,
+  },
+});
