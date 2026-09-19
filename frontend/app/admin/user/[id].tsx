@@ -67,10 +67,32 @@ export default function AdminUserDetails() {
         const foundUser =
           list.find(
             (u: any) =>
-              String(u.id) === String(id)
+              String(u.id) === String(id) ||
+              String(u._id) === String(id)
           );
 
         setUser(foundUser || null);
+
+        // Fetch stores to resolve vendor's store IDs
+        let vendorStoreIds: string[] = [];
+        try {
+          const allStores = await adminApi.stores();
+          const storeList = (allStores || []) as any[];
+          const myStores = storeList.filter((st: any) => {
+            const ownerMatch =
+              String(st.owner_id || "") === String(id) ||
+              String(st.user_id || "") === String(id) ||
+              String(st.vendor_id || "") === String(id) ||
+              String(st.owner?.id || "") === String(id) ||
+              String(st.owner?._id || "") === String(id) ||
+              String(st.id || "") === String(id) ||
+              String(st._id || "") === String(id);
+            return ownerMatch;
+          });
+          vendorStoreIds = myStores.map((st: any) => String(st.id || st._id));
+        } catch (storeErr) {
+          console.log("Error loading stores for vendor:", storeErr);
+        }
 
         const allOrders =
           await adminApi.orders();
@@ -80,22 +102,22 @@ export default function AdminUserDetails() {
 
         const userId = String(id);
 
-        // Collect all possible IDs related to this user/vendor (including store IDs)
-        const targetIds = new Set<string>();
-        targetIds.add(userId);
+        // Target match IDs (User ID + Store IDs + Any nested Store references)
+        const matchIds = new Set<string>();
+        matchIds.add(userId);
+        vendorStoreIds.forEach((sId) => matchIds.add(String(sId)));
 
         if (foundUser) {
-          if (foundUser.store_id) targetIds.add(String(foundUser.store_id));
-          if (foundUser.store?.id) targetIds.add(String(foundUser.store.id));
-          if (foundUser.store?._id) targetIds.add(String(foundUser.store._id));
-          if (foundUser.vendor_id) targetIds.add(String(foundUser.vendor_id));
-          if (foundUser._id) targetIds.add(String(foundUser._id));
+          if (foundUser.store_id) matchIds.add(String(foundUser.store_id));
+          if (foundUser.store?.id) matchIds.add(String(foundUser.store.id));
+          if (foundUser.store?._id) matchIds.add(String(foundUser.store._id));
+          if (foundUser.vendor_id) matchIds.add(String(foundUser.vendor_id));
+          if (foundUser._id) matchIds.add(String(foundUser._id));
         }
 
         const filteredOrders =
           orderList.filter(
             (order: any) => {
-              // Direct order level IDs
               const possibleIds = [
                 order.user_id,
                 order.customer_id,
@@ -114,6 +136,8 @@ export default function AdminUserDetails() {
                 order.vendor?._id,
                 order.store?.id,
                 order.store?._id,
+                order.store?.owner_id,
+                order.store?.vendor_id,
                 order.delivery?.id,
                 order.deliverer?.id,
                 order.delivery_partner?.id,
@@ -138,31 +162,34 @@ export default function AdminUserDetails() {
                   )
                 );
 
-              // Check if any direct order ID matches target IDs
-              const hasDirectMatch = possibleIds.some((pId) => targetIds.has(pId));
+              const hasDirectMatch = possibleIds.some((pId) => matchIds.has(pId));
               if (hasDirectMatch) return true;
 
-              // Check items inside the order for vendor / store match
-              const rawItems =
+              // Check in items / order_items / products
+              const itemsList =
                 order.items ||
                 order.order_items ||
                 order.products ||
                 [];
 
-              if (Array.isArray(rawItems)) {
-                const hasItemMatch = rawItems.some((it: any) => {
-                  if (!it) return false;
-                  const itemVendorId = String(
-                    it.vendor_id ||
-                    it.vendor?.id ||
-                    it.store_id ||
-                    it.store?.id ||
-                    it.store_owner_id ||
-                    it.product?.vendor_id ||
-                    it.product?.store_id ||
-                    ""
-                  );
-                  return itemVendorId && targetIds.has(itemVendorId);
+              if (Array.isArray(itemsList)) {
+                const hasItemMatch = itemsList.some((item: any) => {
+                  if (!item) return false;
+                  const itemPossibleIds = [
+                    item.vendor_id,
+                    item.store_id,
+                    item.store_owner_id,
+                    item.vendor?.id,
+                    item.vendor?._id,
+                    item.store?.id,
+                    item.store?._id,
+                    item.product?.vendor_id,
+                    item.product?.store_id,
+                  ]
+                    .filter((v) => v !== undefined && v !== null)
+                    .map((v) => String(typeof v === "object" ? v.id ?? v._id ?? "" : v));
+
+                  return itemPossibleIds.some((iId) => matchIds.has(iId));
                 });
 
                 if (hasItemMatch) return true;
