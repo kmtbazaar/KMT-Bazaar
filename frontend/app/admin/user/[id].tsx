@@ -97,7 +97,11 @@ export default function AdminUserDetails() {
                 order.vendor?.id,
                 order.delivery?.id,
                 order.deliverer?.id,
-                order.delivery_partner?.id,
+                                order.delivery_partner?.id,
+
+                ...(Array.isArray(order.vendor_ids)
+                  ? order.vendor_ids
+                  : []),
               ]
                 .filter(
                   (value) =>
