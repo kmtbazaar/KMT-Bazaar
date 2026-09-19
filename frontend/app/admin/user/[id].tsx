@@ -73,8 +73,9 @@ export default function AdminUserDetails() {
 
         setUser(foundUser || null);
 
-        // Fetch stores to resolve vendor's store IDs
+        // Fetch stores to resolve vendor's store IDs and names
         let vendorStoreIds: string[] = [];
+        let vendorStoreNames: string[] = [];
         try {
           const allStores = await adminApi.stores();
           const storeList = (allStores || []) as any[];
@@ -86,10 +87,14 @@ export default function AdminUserDetails() {
               String(st.owner?.id || "") === String(id) ||
               String(st.owner?._id || "") === String(id) ||
               String(st.id || "") === String(id) ||
-              String(st._id || "") === String(id);
+              String(st._id || "") === String(id) ||
+              (foundUser?.email && String(st.email || "").toLowerCase() === String(foundUser.email).toLowerCase()) ||
+              (foundUser?.phone && String(st.phone || "") === String(foundUser.phone));
             return ownerMatch;
           });
+
           vendorStoreIds = myStores.map((st: any) => String(st.id || st._id));
+          vendorStoreNames = myStores.map((st: any) => String(st.name || "").trim().toLowerCase()).filter(Boolean);
         } catch (storeErr) {
           console.log("Error loading stores for vendor:", storeErr);
         }
@@ -101,6 +106,9 @@ export default function AdminUserDetails() {
           (allOrders || []) as any[];
 
         const userId = String(id);
+        const userEmail = String(foundUser?.email || "").trim().toLowerCase();
+        const userPhone = String(foundUser?.phone || "").trim();
+        const userName = String(foundUser?.name || "").trim().toLowerCase();
 
         // Target match IDs (User ID + Store IDs + Any nested Store references)
         const matchIds = new Set<string>();
@@ -118,12 +126,80 @@ export default function AdminUserDetails() {
         const filteredOrders =
           orderList.filter(
             (order: any) => {
+              if (role === "vendor") {
+                // 1. Check direct ID matches
+                const possibleIds = [
+                  order.vendor_id,
+                  order.store_id,
+                  order.seller_id,
+                  order.store_owner_id,
+                  order.vendor?.id,
+                  order.vendor?._id,
+                  order.store?.id,
+                  order.store?._id,
+                  order.store?.owner_id,
+                  order.store?.vendor_id,
+                  ...(Array.isArray(order.vendor_ids) ? order.vendor_ids : []),
+                  ...(Array.isArray(order.store_ids) ? order.store_ids : []),
+                ]
+                  .filter((v) => v !== undefined && v !== null)
+                  .map((v) => String(typeof v === "object" ? v.id ?? v._id ?? "" : v));
+
+                if (possibleIds.some((pId) => matchIds.has(pId))) {
+                  return true;
+                }
+
+                // 2. Check vendor email, phone, or store name on order level
+                const orderVendorEmail = String(order.vendor_email || order.store_email || order.vendor?.email || order.store?.email || "").trim().toLowerCase();
+                const orderVendorPhone = String(order.vendor_phone || order.store_phone || order.vendor?.phone || order.store?.phone || "").trim();
+                const orderStoreName = String(order.store_name || order.store?.name || "").trim().toLowerCase();
+
+                if (userEmail && orderVendorEmail && orderVendorEmail === userEmail) return true;
+                if (userPhone && orderVendorPhone && orderVendorPhone === userPhone) return true;
+                if (orderStoreName && vendorStoreNames.includes(orderStoreName)) return true;
+
+                // 3. Check items / products inside order
+                const itemsList = order.items || order.order_items || order.products || [];
+                if (Array.isArray(itemsList)) {
+                  const hasItemMatch = itemsList.some((item: any) => {
+                    if (!item) return false;
+
+                    const itemIds = [
+                      item.vendor_id,
+                      item.store_id,
+                      item.seller_id,
+                      item.store_owner_id,
+                      item.vendor?.id,
+                      item.vendor?._id,
+                      item.store?.id,
+                      item.store?._id,
+                      item.product?.vendor_id,
+                      item.product?.store_id,
+                    ]
+                      .filter((v) => v !== undefined && v !== null)
+                      .map((v) => String(typeof v === "object" ? v.id ?? v._id ?? "" : v));
+
+                    if (itemIds.some((iId) => matchIds.has(iId))) return true;
+
+                    const itemVendorEmail = String(item.vendor_email || item.store_email || item.vendor?.email || item.product?.vendor_email || "").trim().toLowerCase();
+                    if (userEmail && itemVendorEmail && itemVendorEmail === userEmail) return true;
+
+                    const itemStoreName = String(item.store_name || item.store?.name || item.product?.store_name || "").trim().toLowerCase();
+                    if (itemStoreName && vendorStoreNames.includes(itemStoreName)) return true;
+
+                    return false;
+                  });
+
+                  if (hasItemMatch) return true;
+                }
+
+                return false;
+              }
+
+              // Customer and Delivery matching
               const possibleIds = [
                 order.user_id,
                 order.customer_id,
-                order.vendor_id,
-                order.store_id,
-                order.store_owner_id,
                 order.delivery_id,
                 order.deliverer_id,
                 order.assigned_delivery_id,
@@ -132,70 +208,14 @@ export default function AdminUserDetails() {
                 order.user?._id,
                 order.customer?.id,
                 order.customer?._id,
-                order.vendor?.id,
-                order.vendor?._id,
-                order.store?.id,
-                order.store?._id,
-                order.store?.owner_id,
-                order.store?.vendor_id,
                 order.delivery?.id,
                 order.deliverer?.id,
                 order.delivery_partner?.id,
-
-                ...(Array.isArray(order.vendor_ids)
-                  ? order.vendor_ids
-                  : []),
-                ...(Array.isArray(order.store_ids)
-                  ? order.store_ids
-                  : []),
               ]
-                .filter(
-                  (value) =>
-                    value !== undefined &&
-                    value !== null
-                )
-                .map((value) =>
-                  String(
-                    typeof value === "object"
-                      ? value.id ?? value._id ?? ""
-                      : value
-                  )
-                );
+                .filter((v) => v !== undefined && v !== null)
+                .map((v) => String(typeof v === "object" ? v.id ?? v._id ?? "" : v));
 
-              const hasDirectMatch = possibleIds.some((pId) => matchIds.has(pId));
-              if (hasDirectMatch) return true;
-
-              // Check in items / order_items / products
-              const itemsList =
-                order.items ||
-                order.order_items ||
-                order.products ||
-                [];
-
-              if (Array.isArray(itemsList)) {
-                const hasItemMatch = itemsList.some((item: any) => {
-                  if (!item) return false;
-                  const itemPossibleIds = [
-                    item.vendor_id,
-                    item.store_id,
-                    item.store_owner_id,
-                    item.vendor?.id,
-                    item.vendor?._id,
-                    item.store?.id,
-                    item.store?._id,
-                    item.product?.vendor_id,
-                    item.product?.store_id,
-                  ]
-                    .filter((v) => v !== undefined && v !== null)
-                    .map((v) => String(typeof v === "object" ? v.id ?? v._id ?? "" : v));
-
-                  return itemPossibleIds.some((iId) => matchIds.has(iId));
-                });
-
-                if (hasItemMatch) return true;
-              }
-
-              return false;
+              return possibleIds.some((pId) => matchIds.has(pId));
             }
           );
 
@@ -1060,7 +1080,6 @@ const s = StyleSheet.create({
     fontSize: 17,
     fontWeight: "800",
     color: COLORS.text,
-    marginTop: 10,
   },
 
   noOrdersText: {
@@ -1098,7 +1117,6 @@ const s = StyleSheet.create({
     fontSize: 18,
     fontWeight: "800",
     color: COLORS.text,
-    marginTop: 12,
   },
 
   emptyText: {
