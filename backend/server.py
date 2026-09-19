@@ -1602,41 +1602,84 @@ async def vendor_delete_product(pid: str, current=Depends(require_roles("vendor"
 @api.get("/vendor/orders")
 async def vendor_orders(current=Depends(require_roles("vendor"))):
     store_ids, _ = await _vendor_store_ids(current["id"])
-    if not store_ids: return []
-    product_ids = [p["id"] async for p in db.products.find({"store_id": {"$in": store_ids}}, {"id": 1})]
-    orders = await db.orders.find({"items.product_id": {"$in": product_ids}}, {"_id": 0}).sort("created_at", -1).to_list(200)
-    # attach customer
+
+    if not store_ids:
+        return []
+
+    # Vendor ke products nikalo
+    products = await db.products.find(
+        {"store_id": {"$in": store_ids}},
+        {"_id": 0, "id": 1}
+    ).to_list(2000)
+
+    product_ids = [p["id"] for p in products if p.get("id")]
+
+    # Orders mein vendor ke products ya stores dono se match karo
+    match_conditions = []
+
+    if product_ids:
+        match_conditions.append({
+            "items.product_id": {"$in": product_ids}
+        })
+
+    match_conditions.append({
+        "items.store_id": {"$in": store_ids}
+    })
+
+    orders = await db.orders.find(
+        {"$or": match_conditions},
+        {"_id": 0}
+    ).sort("created_at", -1).to_list(500)
+
+    result = []
+
     for o in orders:
-        u = await db.users.find_one({"id": o.get("user_id")}, {"_id": 0, "name": 1, "phone": 1})
-        o["customer"] = u or {}
-        # only include vendor's items + their subtotal
-        o["my_items"] = [it for it in o.get("items", []) if it["product_id"] in product_ids]
-        o["my_revenue"] = round(sum(it["line_total"] for it in o["my_items"]), 2)
-    return orders
+        # Sirf current vendor ke items rakho
+        my_items = []
 
+        for item in o.get("items", []):
+            product_id = item.get("product_id")
+            item_store_id = item.get("store_id")
 
-@api.put("/vendor/stores/{store_id}")
-async def vendor_update_store(store_id: str, data: dict, current=Depends(require_roles("vendor"))):
-    update_data = {}
-    if "name" in data: update_data["name"] = data["name"]
-    if "is_online" in data: update_data["is_online"] = data["is_online"]
-    
-    await db.stores.update_one(
-        {"id": store_id, "vendor_id": current["id"]},
-        {"$set": update_data}
-    )
-    return {"ok": True}
+            if product_id in product_ids or item_store_id in store_ids:
+                my_items.append(item)
 
+        # Koi matching item na ho to order skip karo
+        if not my_items:
+            continue
 
-@api.delete("/vendor/stores/{store_id}")
-async def vendor_delete_store(store_id: str, current=Depends(require_roles("vendor"))):
-    # Database se store ko hamesha ke liye delete karna (Sirf wahi store jo is vendor ka ho)
-    res = await db.stores.delete_one({"id": store_id, "vendor_id": current["id"]})
-    
-    if res.deleted_count == 0:
-        raise HTTPException(status_code=404, detail="Store not found or access denied")
-        
-    return {"ok": True, "message": "Store permanently deleted"}
+        # Customer details attach karo
+        user_id = o.get("user_id") or o.get("customer_id")
+        customer = {}
+
+        if user_id:
+            customer = await db.users.find_one(
+                {"id": user_id},
+                {"_id": 0, "name": 1, "phone": 1, "email": 1}
+            ) or {}
+
+        # Vendor ke items ka subtotal calculate karo
+        my_revenue = 0
+
+        for item in my_items:
+            line_total = item.get("line_total")
+
+            if line_total is not None:
+                my_revenue += float(line_total)
+            else:
+                price = float(item.get("price", item.get("unit_price", 0)) or 0)
+                quantity = float(item.get("quantity", item.get("qty", 1)) or 1)
+                my_revenue += price * quantity
+
+        # Frontend ke liye order data
+        vendor_order = dict(o)
+        vendor_order["customer"] = customer
+        vendor_order["my_items"] = my_items
+        vendor_order["my_revenue"] = round(my_revenue, 2)
+
+        result.append(vendor_order)
+
+    return result
 
 
 # ------------------ DELIVERY ------------------
