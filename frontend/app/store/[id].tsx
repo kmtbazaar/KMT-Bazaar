@@ -16,34 +16,82 @@ import { COLORS, SPACING } from "@/src/theme";
 
 export default function StoreProducts() {
   const params = useLocalSearchParams<{
-  id?: string | string[];
-  name?: string | string[];
-}>();
+    id?: string | string[];
+    name?: string | string[];
+  }>();
 
-const id = Array.isArray(params.id) ? params.id[0] : params.id;
-const name = Array.isArray(params.name) ? params.name[0] : params.name;
+  const id = Array.isArray(params.id) ? params.id[0] : params.id;
+  const name = Array.isArray(params.name) ? params.name[0] : params.name;
+
   const router = useRouter();
 
   const [products, setProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    (async () => {
+    let mounted = true;
+
+    const loadProducts = async () => {
+      setLoading(true);
+
       try {
-        // API pass store_id to get only this specific vendor's products
-        const data = await api.products({ store_id: id } as any);
-        setProducts(data || []);
-      } catch (e) {
-        console.error("Failed to load store products:", e);
+        // Store ID missing ho to request mat bhejo
+        if (!id) {
+          console.error("Store ID missing from route");
+
+          if (mounted) {
+            setProducts([]);
+          }
+
+          return;
+        }
+
+        console.log("CUSTOMER SELECTED STORE ID:", id);
+
+        // Backend ko selected store ki ID bhejo
+        const data = await api.products({
+          store_id: id,
+        });
+
+        console.log("PRODUCTS RECEIVED:", data);
+
+        // Safety check: UI mein sirf selected store ke products dikhayein
+        const storeProducts = Array.isArray(data)
+          ? data.filter(
+              (product: any) =>
+                String(product.store_id) === String(id)
+            )
+          : [];
+
+        if (mounted) {
+          setProducts(storeProducts);
+        }
+      } catch (error) {
+        console.error("Failed to load store products:", error);
+
+        if (mounted) {
+          setProducts([]);
+        }
       } finally {
-        setLoading(false);
+        if (mounted) {
+          setLoading(false);
+        }
       }
-    })();
+    };
+
+    loadProducts();
+
+    return () => {
+      mounted = false;
+    };
   }, [id]);
 
-  const renderItem = useCallback(({ item }: { item: any }) => (
-    <ProductCard p={item} compact={true} />
-  ), []);
+  const renderItem = useCallback(
+    ({ item }: { item: any }) => (
+      <ProductCard p={item} compact={true} />
+    ),
+    []
+  );
 
   if (loading) {
     return (
@@ -74,18 +122,18 @@ const name = Array.isArray(params.name) ? params.name[0] : params.name;
         </Text>
       </View>
 
-      {/* 3 Column Store Product Grid */}
+      {/* Selected Store Products Grid */}
       <FlatList
         data={products}
-        keyExtractor={(item) => item.id.toString()}
+        keyExtractor={(item, index) =>
+          String(item.id ?? item._id ?? index)
+        }
         renderItem={renderItem}
         numColumns={3}
         contentContainerStyle={s.listContent}
-
         initialNumToRender={6}
         windowSize={3}
         removeClippedSubviews={true}
-
         ListEmptyComponent={
           <View style={s.empty}>
             <MaterialCommunityIcons
