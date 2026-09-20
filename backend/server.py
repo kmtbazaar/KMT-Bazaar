@@ -411,27 +411,50 @@ async def request_otp(data: OtpRequestIn):
 
 @api.post("/auth/otp/verify", response_model=AuthOut)
 async def verify_otp(data: OtpVerifyIn):
-    # Mock OTP ka existing format validation
+    # Mock OTP ka existing 6-digit format check
     if not (len(data.otp) == 6 and data.otp.isdigit()):
         raise HTTPException(status_code=400, detail="Invalid OTP")
 
-    # Sirf pehle se registered mobile number allow hoga
-    phone = data.phone.strip()
+    # Mobile number ko digits-only format mein normalize karo
+    def normalize_phone(value):
+        digits = "".join(ch for ch in str(value or "") if ch.isdigit())
 
-    user = await db.users.find_one({"phone": phone})
+        # India country code / leading zero ko handle karo
+        if len(digits) == 12 and digits.startswith("91"):
+            digits = digits[2:]
+        elif len(digits) == 11 and digits.startswith("0"):
+            digits = digits[1:]
 
-    # Number registered nahi hai to login reject
+        return digits
+
+    entered_phone = normalize_phone(data.phone)
+
+    if len(entered_phone) != 10:
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid mobile number. Please register now."
+        )
+
+    # Sirf registered customer accounts fetch karo
+    customers = await db.users.find(
+        {"role": Role.CUSTOMER.value},
+        {"_id": 0}
+    ).to_list(5000)
+
+    # Entered number ko saved customer numbers se compare karo
+    user = next(
+        (
+            customer for customer in customers
+            if normalize_phone(customer.get("phone")) == entered_phone
+        ),
+        None
+    )
+
+    # Number registered nahi hai: reject, account create mat karo
     if not user:
         raise HTTPException(
             status_code=404,
-            detail="This mobile number is not registered. Please create an account first."
-        )
-
-    # OTP login sirf customer account ke liye
-    if user.get("role") != Role.CUSTOMER.value:
-        raise HTTPException(
-            status_code=403,
-            detail="Mobile OTP login is only available for customer accounts."
+            detail="Invalid mobile number. Please register now."
         )
 
     # Existing token creation
