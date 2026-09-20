@@ -411,24 +411,36 @@ async def request_otp(data: OtpRequestIn):
 
 @api.post("/auth/otp/verify", response_model=AuthOut)
 async def verify_otp(data: OtpVerifyIn):
+    # Mock OTP ka existing format validation
     if not (len(data.otp) == 6 and data.otp.isdigit()):
         raise HTTPException(status_code=400, detail="Invalid OTP")
-    user = await db.users.find_one({"phone": data.phone})
+
+    # Sirf pehle se registered mobile number allow hoga
+    phone = data.phone.strip()
+
+    user = await db.users.find_one({"phone": phone})
+
+    # Number registered nahi hai to login reject
     if not user:
-        uid = str(uuid.uuid4())
-        user = {
-            "id": uid,
-            "name": data.name or f"User {data.phone[-4:]}",
-            "email": None,
-            "phone": data.phone,
-            "password": "",
-            "role": Role.CUSTOMER.value,
-            "avatar": None,
-            "created_at": now_iso(),
-        }
-        await db.users.insert_one(user)
+        raise HTTPException(
+            status_code=404,
+            detail="This mobile number is not registered. Please create an account first."
+        )
+
+    # OTP login sirf customer account ke liye
+    if user.get("role") != Role.CUSTOMER.value:
+        raise HTTPException(
+            status_code=403,
+            detail="Mobile OTP login is only available for customer accounts."
+        )
+
+    # Existing token creation
     token = create_token(user["id"], user["role"])
-    return {"token": token, "user": user_to_out(user)}
+
+    return {
+        "token": token,
+        "user": user_to_out(user)
+    }
 
 
 @api.get("/auth/me", response_model=UserOut)
