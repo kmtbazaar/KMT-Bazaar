@@ -1,11 +1,12 @@
-import React, { useCallback, useState } from "react";
-import { View, Text, StyleSheet, FlatList, Pressable, Switch, RefreshControl, ScrollView } from "react-native";
+import React, { useCallback, useEffect, useRef, useState } from "react";
+import { Animated, View, Text, StyleSheet, Pressable, Switch, RefreshControl, ScrollView } from "react-native";
 import { Image } from "expo-image";
 import { useFocusEffect, useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { deliveryApi } from "@/src/roleApi";
+import { api } from "@/src/api";
 import { useAuth } from "@/src/AuthContext";
 import { COLORS, LOGO_URL, RADIUS, SPACING } from "@/src/theme";
 
@@ -18,23 +19,142 @@ export default function DeliveryDashboard() {
   const [mine, setMine] = useState<any[]>([]);
   const [tab, setTab] = useState<"available" | "active" | "history">("available");
   const [refreshing, setRefreshing] = useState(false);
+  const [unread, setUnread] = useState(0);
+  const [acceptedId, setAcceptedId] = useState<string | null>(null);
+  const [popupOrder, setPopupOrder] = useState<any | null>(null);
 
-  const load = useCallback(async () => {
+  const previousAvailableIds = useRef<string[]>([]);
+  const availabilityInitialized = useRef(false);
+  const popupOpacity = useRef(new Animated.Value(0)).current;
+  const popupTranslateY = useRef(new Animated.Value(-24)).current;
+  const cardScale = useRef(new Animated.Value(1)).current;
+  const popupTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const loadUnread = useCallback(async () => {
     try {
-      const [me, st, av, my] = await Promise.all([deliveryApi.me(), deliveryApi.stats(), deliveryApi.available(), deliveryApi.my()]);
-      setOnline(!!me.online); setStats(st); setAvailable(av); setMine(my);
+      const result = await api.unreadCount();
+      setUnread(Number(result?.count || 0));
     } catch {}
   }, []);
-  useFocusEffect(useCallback(() => { load(); }, [load]));
+
+  const showIncomingPopup = useCallback((order: any) => {
+    if (popupTimer.current) clearTimeout(popupTimer.current);
+
+    setPopupOrder(order);
+    popupOpacity.setValue(0);
+    popupTranslateY.setValue(-24);
+
+    Animated.parallel([
+      Animated.timing(popupOpacity, { toValue: 1, duration: 220, useNativeDriver: false }),
+      Animated.spring(popupTranslateY, { toValue: 0, friction: 7, tension: 80, useNativeDriver: false }),
+    ]).start();
+
+    popupTimer.current = setTimeout(() => {
+      Animated.parallel([
+        Animated.timing(popupOpacity, { toValue: 0, duration: 180, useNativeDriver: false }),
+        Animated.timing(popupTranslateY, { toValue: -24, duration: 180, useNativeDriver: false }),
+      ]).start(() => setPopupOrder(null));
+    }, 3000);
+  }, [popupOpacity, popupTranslateY]);
+
+  const load = useCallback(async (detectIncoming = true) => {
+    try {
+      const [me, st, av, my] = await Promise.all([
+        deliveryApi.me(),
+        deliveryApi.stats(),
+        deliveryApi.available(),
+        deliveryApi.my(),
+      ]);
+
+      const nextAvailable = Array.isArray(av) ? av : [];
+      const nextIds = nextAvailable.map((o: any) => o.id).filter(Boolean);
+
+      if (detectIncoming && availabilityInitialized.current) {
+        const previous = new Set(previousAvailableIds.current);
+        const incoming = nextAvailable.find((o: any) => o.id && !previous.has(o.id));
+        if (incoming) showIncomingPopup(incoming);
+      }
+
+      previousAvailableIds.current = nextIds;
+      availabilityInitialized.current = true;
+
+      setOnline(!!me.online);
+      setStats(st);
+      setAvailable(nextAvailable);
+      setMine(Array.isArray(my) ? my : []);
+    } catch {}
+  }, [showIncomingPopup]);
+
+  useFocusEffect(
+    useCallback(() => {
+      load(false);
+      loadUnread();
+
+      const refreshTimer = setInterval(() => {
+        load(true);
+        loadUnread();
+      }, 8000);
+
+      return () => {
+        clearInterval(refreshTimer);
+        if (popupTimer.current) {
+          clearTimeout(popupTimer.current);
+          popupTimer.current = null;
+        }
+      };
+    }, [load, loadUnread])
+  );
+
+  useEffect(() => {
+    return () => {
+      if (popupTimer.current) clearTimeout(popupTimer.current);
+    };
+  }, []);
 
   const onToggleOnline = async (v: boolean) => {
-    setOnline(v); await deliveryApi.toggleOnline(v);
+    setOnline(v);
+    await deliveryApi.toggleOnline(v);
+    load(false);
   };
 
-  const onClaim = async (id: string) => { await deliveryApi.claim(id); load(); };
-  const onDeliver = async (id: string) => { await deliveryApi.markDelivered(id); load(); };
+  const onClaim = async (id: string) => {
+    if (!online || acceptedId) return;
 
-  const onRefresh = async () => { setRefreshing(true); await load(); setRefreshing(false); };
+    setAcceptedId(id);
+    cardScale.setValue(0.985);
+
+    Animated.sequence([
+      Animated.spring(cardScale, { toValue: 1.02, friction: 5, tension: 90, useNativeDriver: false }),
+      Animated.spring(cardScale, { toValue: 1, friction: 6, tension: 90, useNativeDriver: false }),
+    ]).start();
+
+    try {
+      await deliveryApi.claim(id);
+      await new Promise((resolve) => setTimeout(resolve, 350));
+      await load(false);
+    } catch {
+      setAcceptedId(null);
+    } finally {
+      setAcceptedId(null);
+    }
+  };
+
+  const onDeliver = async (id: string) => {
+    await deliveryApi.markDelivered(id);
+    load(false);
+  };
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await load(false);
+    await loadUnread();
+    setRefreshing(false);
+  };
+
+  const openNotifications = () => {
+    setUnread(0);
+    router.push("/notifications" as any);
+  };
 
   const active = mine.filter(o => o.status === "out_for_delivery");
   const history = mine.filter(o => o.status === "delivered");
@@ -50,9 +170,19 @@ export default function DeliveryDashboard() {
               <Text style={s.headerTitle}>Delivery Partner</Text>
               <Text style={s.headerSub}>Welcome, {user?.name}</Text>
             </View>
-            <Pressable testID="delivery-logout" onPress={async () => { await logout(); router.replace("/auth/login"); }} hitSlop={10}>
-              <MaterialCommunityIcons name="logout" size={22} color="#fff" />
-            </Pressable>
+            <View style={s.headerActions}>
+              <Pressable testID="delivery-notifications-bell" onPress={openNotifications} hitSlop={10} style={s.bellBtn}>
+                <MaterialCommunityIcons name={unread > 0 ? "bell-ring-outline" : "bell-outline"} size={23} color="#fff" />
+                {unread > 0 && (
+                  <View style={s.badge}>
+                    <Text style={s.badgeText}>{unread > 99 ? "99+" : unread}</Text>
+                  </View>
+                )}
+              </Pressable>
+              <Pressable testID="delivery-logout" onPress={async () => { await logout(); router.replace("/auth/login"); }} hitSlop={10}>
+                <MaterialCommunityIcons name="logout" size={22} color="#fff" />
+              </Pressable>
+            </View>
           </View>
           <View style={s.statusRow}>
             <View>
@@ -69,6 +199,28 @@ export default function DeliveryDashboard() {
           </View>
         </LinearGradient>
       </SafeAreaView>
+
+      {popupOrder && (
+        <Animated.View
+          pointerEvents="none"
+          style={[
+            s.incomingPopup,
+            {
+              opacity: popupOpacity,
+              transform: [{ translateY: popupTranslateY }],
+            },
+          ]}
+        >
+          <View style={s.popupIcon}>
+            <MaterialCommunityIcons name="moped-electric" size={22} color="#fff" />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={s.popupTitle}>New Pickup Available</Text>
+            <Text style={s.popupSub}>Order #{popupOrder.order_no} is ready to accept</Text>
+          </View>
+          <Text style={s.popupAmount}>₹{popupOrder.total}</Text>
+        </Animated.View>
+      )}
 
       <ScrollView
         contentContainerStyle={{ paddingBottom: 40 }}
@@ -104,36 +256,77 @@ export default function DeliveryDashboard() {
             {!online && tab === "available" && <Text style={s.emptySub}>Go online to start accepting orders</Text>}
           </View>
         ) : (
-          <FlatList
-            data={display}
-            scrollEnabled={false}
-            keyExtractor={(o) => o.id}
-            contentContainerStyle={{ padding: SPACING.lg, paddingTop: 8 }}
-            ItemSeparatorComponent={() => <View style={{ height: 10 }} />}
-            renderItem={({ item }) => (
-              <View style={s.card} testID={`delivery-order-${item.id}`}>
-                <View style={s.cardHead}>
-                  <Text style={s.orderNo}>#{item.order_no}</Text>
-                  <Text style={s.total}>₹{item.total}</Text>
-                </View>
-                <Text style={s.cust}><MaterialCommunityIcons name="account" size={12} color={COLORS.textMuted} /> {item.customer?.name} · {item.customer?.phone}</Text>
-                <Text style={s.addr}><MaterialCommunityIcons name="map-marker" size={12} color={COLORS.textMuted} /> {item.address?.line1}, {item.address?.city} - {item.address?.pincode}</Text>
-                <Text style={s.itemsInfo}>{item.items.length} item{item.items.length > 1 ? "s" : ""} · {item.payment_method?.toUpperCase()}</Text>
-                {tab === "available" && (
-                  <Pressable testID={`claim-${item.id}`} onPress={() => onClaim(item.id)} disabled={!online} style={[s.btn, s.btnAccent, !online && { opacity: 0.4 }]}>
-                    <MaterialCommunityIcons name="moped" size={16} color="#fff" />
-                    <Text style={s.btnText}>{online ? "Accept Pickup" : "Go online first"}</Text>
-                  </Pressable>
-                )}
-                {tab === "active" && (
-                  <Pressable testID={`deliver-${item.id}`} onPress={() => onDeliver(item.id)} style={[s.btn, s.btnSuccess]}>
-                    <MaterialCommunityIcons name="check-bold" size={16} color="#fff" />
-                    <Text style={s.btnText}>Mark Delivered</Text>
-                  </Pressable>
-                )}
-              </View>
-            )}
-          />
+          <View style={s.orderList}>
+            {display.map((item: any) => {
+              const isAccepted = acceptedId === item.id;
+
+              return (
+                <Animated.View
+                  key={item.id}
+                  style={[
+                    s.card,
+                    isAccepted && s.cardAccepted,
+                    isAccepted && { transform: [{ scale: cardScale }] },
+                  ]}
+                  testID={`delivery-order-${item.id}`}
+                >
+                  <View style={s.cardHead}>
+                    <View style={s.orderTitleRow}>
+                      <Text style={s.orderNo}>#{item.order_no}</Text>
+                      {isAccepted && (
+                        <View style={s.acceptedPill}>
+                          <MaterialCommunityIcons name="check-circle" size={13} color={COLORS.success} />
+                          <Text style={s.acceptedPillText}>Accepted</Text>
+                        </View>
+                      )}
+                    </View>
+                    <Text style={s.total}>₹{item.total}</Text>
+                  </View>
+
+                  <Text style={s.cust}>
+                    <MaterialCommunityIcons name="account" size={12} color={COLORS.textMuted} /> {item.customer?.name} · {item.customer?.phone}
+                  </Text>
+
+                  <Text style={s.addr}>
+                    <MaterialCommunityIcons name="map-marker" size={12} color={COLORS.textMuted} /> {item.address?.line1}, {item.address?.city} - {item.address?.pincode}
+                  </Text>
+
+                  <Text style={s.itemsInfo}>
+                    {item.items?.length || 0} item{(item.items?.length || 0) > 1 ? "s" : ""} · {item.payment_method?.toUpperCase()}
+                  </Text>
+
+                  {tab === "available" && (
+                    <Pressable
+                      testID={`claim-${item.id}`}
+                      onPress={() => onClaim(item.id)}
+                      disabled={!online || !!acceptedId}
+                      style={[
+                        s.btn,
+                        isAccepted ? s.btnSuccess : s.btnAccent,
+                        (!online || !!acceptedId) && !isAccepted && { opacity: 0.4 },
+                      ]}
+                    >
+                      <MaterialCommunityIcons name={isAccepted ? "check-bold" : "moped"} size={16} color="#fff" />
+                      <Text style={s.btnText}>
+                        {isAccepted ? "Pickup Accepted" : online ? "Accept Pickup" : "Go online first"}
+                      </Text>
+                    </Pressable>
+                  )}
+
+                  {tab === "active" && (
+                    <Pressable
+                      testID={`deliver-${item.id}`}
+                      onPress={() => onDeliver(item.id)}
+                      style={[s.btn, s.btnSuccess]}
+                    >
+                      <MaterialCommunityIcons name="check-bold" size={16} color="#fff" />
+                      <Text style={s.btnText}>Mark Delivered</Text>
+                    </Pressable>
+                  )}
+                </Animated.View>
+              );
+            })}
+          </View>
         )}
       </ScrollView>
     </View>
@@ -155,6 +348,10 @@ const s = StyleSheet.create({
   root: { flex: 1, backgroundColor: COLORS.surfaceSecondary },
   header: { padding: SPACING.lg, paddingBottom: SPACING.xl, borderBottomLeftRadius: 24, borderBottomRightRadius: 24 },
   headerTop: { flexDirection: "row", alignItems: "center" },
+  headerActions: { flexDirection: "row", alignItems: "center", gap: 16 },
+  bellBtn: { width: 28, height: 32, alignItems: "center", justifyContent: "center" },
+  badge: { position: "absolute", top: -4, right: -8, minWidth: 17, height: 17, borderRadius: 9, paddingHorizontal: 4, backgroundColor: COLORS.accent, alignItems: "center", justifyContent: "center", borderWidth: 1.5, borderColor: "#fff" },
+  badgeText: { color: "#fff", fontSize: 9, fontWeight: "900" },
   headerTitle: { color: "#fff", fontWeight: "800", fontSize: 18 },
   headerSub: { color: "rgba(255,255,255,0.85)", fontSize: 12, marginTop: 2 },
   statusRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: 18, padding: 12, backgroundColor: "rgba(255,255,255,0.15)", borderRadius: RADIUS.md },
@@ -178,7 +375,12 @@ const s = StyleSheet.create({
   emptyText: { color: COLORS.textMuted, marginTop: 10, fontWeight: "600" },
   emptySub: { color: COLORS.textMuted, fontSize: 12 },
 
+  orderList: { padding: SPACING.lg, paddingTop: 8, gap: 10 },
   card: { backgroundColor: "#fff", padding: 12, borderRadius: RADIUS.md, borderWidth: 1, borderColor: COLORS.border },
+  cardAccepted: { backgroundColor: "#ECFDF5", borderColor: COLORS.success, borderWidth: 1.5 },
+  orderTitleRow: { flexDirection: "row", alignItems: "center", gap: 8 },
+  acceptedPill: { flexDirection: "row", alignItems: "center", gap: 3, paddingHorizontal: 7, paddingVertical: 3, borderRadius: RADIUS.pill, backgroundColor: "#DCFCE7" },
+  acceptedPillText: { color: COLORS.success, fontSize: 9, fontWeight: "800" },
   cardHead: { flexDirection: "row", justifyContent: "space-between" },
   orderNo: { fontWeight: "800", color: COLORS.text },
   total: { fontWeight: "800", color: COLORS.success, fontSize: 15 },
@@ -189,4 +391,27 @@ const s = StyleSheet.create({
   btnAccent: { backgroundColor: COLORS.accent },
   btnSuccess: { backgroundColor: COLORS.success },
   btnText: { color: "#fff", fontWeight: "800", fontSize: 13 },
+
+  incomingPopup: {
+    position: "absolute",
+    top: 112,
+    left: SPACING.lg,
+    right: SPACING.lg,
+    zIndex: 50,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    padding: 12,
+    borderRadius: RADIUS.md,
+    backgroundColor: "#14532D",
+    shadowColor: "#000",
+    shadowOpacity: 0.22,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 10,
+  },
+  popupIcon: { width: 40, height: 40, borderRadius: 20, backgroundColor: "#22C55E", alignItems: "center", justifyContent: "center" },
+  popupTitle: { color: "#fff", fontWeight: "900", fontSize: 13 },
+  popupSub: { color: "rgba(255,255,255,0.8)", fontSize: 10, marginTop: 2 },
+  popupAmount: { color: "#fff", fontWeight: "900", fontSize: 13 },
 });
