@@ -2354,39 +2354,37 @@ async def root():
 @api.post("/ai/chat")
 async def ai_chat(req: AIChatRequest):
     try:
-        print("==== BHEJA GAYA MODEL NAAM HAI: ====", GEMINI_MODEL)
         if not GEMINI_API_KEY:
             raise HTTPException(
                 status_code=500,
                 detail="GEMINI_API_KEY not configured"
             )
 
-        response = gemini_client.chat.completions.create(
-            model="gemini-1.5-flash",
-            messages=[
-                {
-                    "role": "system",
-                    "content": (
-                        "You are KMT Bazaar AI Assistant. "
-                        "Help customers with products, orders, sellers, "
-                        "delivery and general shopping questions."
-                    ),
-                },
-                {
-                    "role": "user",
-                    "content": req.message,
-                },
-            ],
+        response = await asyncio.to_thread(
+            gemini_client.models.generate_content,
+            model=GEMINI_MODEL,
+            contents=req.message,
+            config=types.GenerateContentConfig(
+                system_instruction=(
+                    "You are KMT Bazaar AI Assistant. "
+                    "Help customers with products, orders, sellers, "
+                    "delivery and general shopping questions. "
+                    "Be concise, friendly and useful."
+                )
+            ),
         )
 
         return {
-            "message": response.choices[0].message.content
+            "message": response.text or "Sorry, I could not generate a response."
         }
 
+    except HTTPException:
+        raise
     except Exception as e:
+        logging.exception("AI chat failed")
         raise HTTPException(
             status_code=500,
-            detail=str(e),
+            detail=f"AI service error: {str(e)}",
         )
 @api.get("/test-db")
 async def test_db():
