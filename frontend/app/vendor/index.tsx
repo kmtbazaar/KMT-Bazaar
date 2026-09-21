@@ -1,4 +1,4 @@
-import React, { useCallback, useState, useRef } from "react";
+import React, { useCallback, useEffect, useState, useRef } from "react";
 import { View, Text, StyleSheet, Pressable, ScrollView, RefreshControl, TextInput, Modal, Alert, Switch, Animated } from "react-native";
 import { Image } from "expo-image";
 import * as ImagePicker from "expo-image-picker"; 
@@ -21,6 +21,8 @@ export default function VendorDashboard() {
   const { user, logout } = useAuth();
   const [stats, setStats] = useState<any>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [pendingOrder, setPendingOrder] = useState<any | null>(null);
+  const [decisionBusy, setDecisionBusy] = useState(false);
   
   const [showCreateStore, setShowCreateStore] = useState(false);
   const [storeForm, setStoreForm] = useState({ name: "", address: "", image: "", category_id: "cat-grocery" }); 
@@ -60,6 +62,39 @@ export default function VendorDashboard() {
   }, []);
   
   useFocusEffect(useCallback(() => { load(); }, [load]));
+
+  const checkPendingOrder = useCallback(async () => {
+    try {
+      const pending = await vendorApi.pendingOrders();
+      if (pending?.length) {
+        setPendingOrder((current: any) => current || pending[0]);
+      }
+    } catch {}
+  }, []);
+
+  useEffect(() => {
+    checkPendingOrder();
+    const timer = setInterval(checkPendingOrder, 8000);
+    return () => clearInterval(timer);
+  }, [checkPendingOrder]);
+
+  const handleOrderDecision = async (accepted: boolean) => {
+    if (!pendingOrder || decisionBusy) return;
+    setDecisionBusy(true);
+    try {
+      if (accepted) {
+        await vendorApi.acceptOrder(pendingOrder.id);
+      } else {
+        await vendorApi.rejectOrder(pendingOrder.id);
+      }
+      setPendingOrder(null);
+      await load();
+    } catch (e) {
+      Alert.alert("Error", accepted ? "Could not accept this order." : "Could not reject this order.");
+    } finally {
+      setDecisionBusy(false);
+    }
+  };
 
   const onRefresh = async () => { setRefreshing(true); await load(); setRefreshing(false); };
 
@@ -264,6 +299,52 @@ export default function VendorDashboard() {
         </View>
       </ScrollView>
 
+      {/* --- NEW ORDER DECISION POPUP --- */}
+      <Modal visible={!!pendingOrder} transparent animationType="fade" onRequestClose={() => {}}>
+        <View style={s.orderModalOverlay}>
+          <View style={s.orderModal}>
+            <View style={s.orderModalIcon}>
+              <MaterialCommunityIcons name="clipboard-alert-outline" size={30} color="#fff" />
+            </View>
+            <Text style={s.orderModalTitle}>New Order Received</Text>
+            <Text style={s.orderModalSub}>A customer order is waiting for your decision.</Text>
+
+            {pendingOrder && (
+              <View style={s.orderSummary}>
+                <View>
+                  <Text style={s.orderSummaryLabel}>Order</Text>
+                  <Text style={s.orderSummaryValue}>#{pendingOrder.order_no}</Text>
+                </View>
+                <View style={{ alignItems: "flex-end" }}>
+                  <Text style={s.orderSummaryLabel}>Total</Text>
+                  <Text style={s.orderSummaryValue}>₹{pendingOrder.total}</Text>
+                </View>
+              </View>
+            )}
+
+            <View style={s.orderDecisionRow}>
+              <Pressable
+                disabled={decisionBusy}
+                onPress={() => handleOrderDecision(false)}
+                style={[s.rejectBtn, decisionBusy && { opacity: 0.5 }]}
+              >
+                <MaterialCommunityIcons name="close" size={18} color="#fff" />
+                <Text style={s.decisionText}>Reject</Text>
+              </Pressable>
+
+              <Pressable
+                disabled={decisionBusy}
+                onPress={() => handleOrderDecision(true)}
+                style={[s.acceptOrderBtn, decisionBusy && { opacity: 0.5 }]}
+              >
+                <MaterialCommunityIcons name="check" size={18} color="#fff" />
+                <Text style={s.decisionText}>Accept Order</Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
       {/* --- SETTINGS DROP MENU (LOGOUT) --- */}
       <Modal visible={showSettingsMenu} transparent animationType="fade">
         <Pressable style={s.menuOverlay} onPress={() => setShowSettingsMenu(false)}>
@@ -377,6 +458,19 @@ const s = StyleSheet.create({
   menuDropdown: { backgroundColor: "#fff", padding: 10, borderRadius: 8, ...shadow.card, minWidth: 140 },
   menuItem: { flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 10, paddingHorizontal: 10 },
   menuTextLogout: { color: "#EF4444", fontWeight: "800", fontSize: 15 },
+
+  orderModalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.55)", justifyContent: "center", alignItems: "center", padding: SPACING.xl },
+  orderModal: { width: "100%", maxWidth: 430, backgroundColor: "#fff", borderRadius: RADIUS.lg, padding: SPACING.xl, ...shadow.card, alignItems: "center" },
+  orderModalIcon: { width: 58, height: 58, borderRadius: 29, backgroundColor: COLORS.accent, alignItems: "center", justifyContent: "center", marginBottom: 12 },
+  orderModalTitle: { fontSize: 20, fontWeight: "900", color: COLORS.text },
+  orderModalSub: { color: COLORS.textMuted, fontSize: 12, textAlign: "center", marginTop: 5 },
+  orderSummary: { width: "100%", marginTop: 18, padding: 13, borderRadius: RADIUS.md, backgroundColor: COLORS.surfaceSecondary, flexDirection: "row", justifyContent: "space-between" },
+  orderSummaryLabel: { color: COLORS.textMuted, fontSize: 10, fontWeight: "700" },
+  orderSummaryValue: { color: COLORS.text, fontSize: 15, fontWeight: "900", marginTop: 2 },
+  orderDecisionRow: { width: "100%", flexDirection: "row", gap: 10, marginTop: 18 },
+  rejectBtn: { flex: 1, backgroundColor: "#DC2626", paddingVertical: 12, borderRadius: RADIUS.pill, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 5 },
+  acceptOrderBtn: { flex: 1, backgroundColor: COLORS.success, paddingVertical: 12, borderRadius: RADIUS.pill, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 5 },
+  decisionText: { color: "#fff", fontWeight: "900", fontSize: 13 },
 
   modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "center", padding: SPACING.xl },
   modalContent: { backgroundColor: "#fff", padding: SPACING.xl, borderRadius: RADIUS.lg, ...shadow.soft },
