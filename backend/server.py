@@ -1376,155 +1376,137 @@ async def admin_delete_user(
     
 @api.get("/admin/orders")
 async def admin_orders(
-status: Optional[str] = None,
-_=Depends(require_roles("admin"))
+    status: Optional[str] = None,
+    _=Depends(require_roles("admin"))
 ):
-# 1. Orders ek hi query mein fetch karo
-query = {}
-if status:
-query["status"] = status
+    query = {}
+    if status:
+        query["status"] = status
 
-```
-orders = await db.orders.find(
-    query,
-    {"_id": 0}
-).sort("created_at", -1).to_list(500)
+    orders = await db.orders.find(
+        query,
+        {"_id": 0}
+    ).sort("created_at", -1).to_list(500)
 
-if not orders:
-    return []
+    if not orders:
+        return []
 
-# 2. Sabhi customer IDs collect karo
-customer_ids = list({
-    o.get("user_id")
-    for o in orders
-    if o.get("user_id")
-})
+    # Batch-fetch all related data instead of querying once per order/item.
+    customer_ids = list({
+        o.get("user_id")
+        for o in orders
+        if o.get("user_id")
+    })
 
-# 3. Sabhi product IDs collect karo
-product_ids = list({
-    item.get("product_id")
-    for o in orders
-    for item in o.get("items", [])
-    if item.get("product_id")
-})
+    product_ids = list({
+        item.get("product_id")
+        for o in orders
+        for item in o.get("items", [])
+        if item.get("product_id")
+    })
 
-# 4. Batch mein customers fetch karo
-customers = await db.users.find(
-    {"id": {"$in": customer_ids}},
-    {
-        "_id": 0,
-        "id": 1,
-        "name": 1,
-        "email": 1,
-        "phone": 1
+    customers = await db.users.find(
+        {"id": {"$in": customer_ids}},
+        {
+            "_id": 0,
+            "id": 1,
+            "name": 1,
+            "email": 1,
+            "phone": 1
+        }
+    ).to_list(None) if customer_ids else []
+
+    customer_map = {
+        u["id"]: u for u in customers
     }
-).to_list(None) if customer_ids else []
 
-customer_map = {
-    u["id"]: u for u in customers
-}
+    products = await db.products.find(
+        {"id": {"$in": product_ids}},
+        {
+            "_id": 0,
+            "id": 1,
+            "store_id": 1
+        }
+    ).to_list(None) if product_ids else []
 
-# 5. Batch mein products fetch karo
-products = await db.products.find(
-    {"id": {"$in": product_ids}},
-    {
-        "_id": 0,
-        "id": 1,
-        "store_id": 1
+    product_map = {
+        p["id"]: p for p in products
     }
-).to_list(None) if product_ids else []
 
-product_map = {
-    p["id"]: p for p in products
-}
+    store_ids = list({
+        p.get("store_id")
+        for p in products
+        if p.get("store_id")
+    })
 
-# 6. Store IDs collect karo
-store_ids = list({
-    p.get("store_id")
-    for p in products
-    if p.get("store_id")
-})
+    stores = await db.stores.find(
+        {"id": {"$in": store_ids}},
+        {
+            "_id": 0,
+            "id": 1,
+            "vendor_id": 1,
+            "name": 1
+        }
+    ).to_list(None) if store_ids else []
 
-# 7. Batch mein stores fetch karo
-stores = await db.stores.find(
-    {"id": {"$in": store_ids}},
-    {
-        "_id": 0,
-        "id": 1,
-        "vendor_id": 1,
-        "name": 1
+    store_map = {
+        s["id"]: s for s in stores
     }
-).to_list(None) if store_ids else []
 
-store_map = {
-    s["id"]: s for s in stores
-}
+    vendor_ids = list({
+        s.get("vendor_id")
+        for s in stores
+        if s.get("vendor_id")
+    })
 
-# 8. Vendor IDs collect karo
-vendor_ids = list({
-    s.get("vendor_id")
-    for s in stores
-    if s.get("vendor_id")
-})
+    vendors = await db.users.find(
+        {"id": {"$in": vendor_ids}},
+        {
+            "_id": 0,
+            "id": 1,
+            "name": 1,
+            "email": 1,
+            "phone": 1
+        }
+    ).to_list(None) if vendor_ids else []
 
-# 9. Batch mein vendors fetch karo
-vendors = await db.users.find(
-    {"id": {"$in": vendor_ids}},
-    {
-        "_id": 0,
-        "id": 1,
-        "name": 1,
-        "email": 1,
-        "phone": 1
+    vendor_map = {
+        v["id"]: v for v in vendors
     }
-).to_list(None) if vendor_ids else []
 
-vendor_map = {
-    v["id"]: v for v in vendors
-}
-
-# 10. Orders ko response ke liye enrich karo
-for order in orders:
-
-    # Customer details
-    order["customer"] = customer_map.get(
-        order.get("user_id"), {}
-    )
-
-    # Vendor IDs for this order
-    order_vendor_ids = []
-
-    for item in order.get("items", []):
-
-        product = product_map.get(
-            item.get("product_id")
+    for order in orders:
+        order["customer"] = customer_map.get(
+            order.get("user_id"),
+            {}
         )
 
-        if not product:
-            continue
+        order_vendor_ids = []
 
-        store = store_map.get(
-            product.get("store_id")
-        )
+        for item in order.get("items", []):
+            product = product_map.get(item.get("product_id"))
 
-        if not store:
-            continue
+            if not product:
+                continue
 
-        vendor_id = store.get("vendor_id")
+            store = store_map.get(product.get("store_id"))
 
-        if vendor_id and vendor_id not in order_vendor_ids:
-            order_vendor_ids.append(vendor_id)
+            if not store:
+                continue
 
-    order["vendor_ids"] = order_vendor_ids
+            vendor_id = store.get("vendor_id")
 
-    # Vendor details
-    order["vendors"] = [
-        vendor_map[vid]
-        for vid in order_vendor_ids
-        if vid in vendor_map
-    ]
+            if vendor_id and vendor_id not in order_vendor_ids:
+                order_vendor_ids.append(vendor_id)
 
-return orders
+        order["vendor_ids"] = order_vendor_ids
+        order["vendors"] = [
+            vendor_map[vid]
+            for vid in order_vendor_ids
+            if vid in vendor_map
+        ]
+
+    return orders
+
 
 @api.post("/admin/orders/{order_id}/status")
 async def admin_update_order(order_id: str, data: OrderStatusIn, _=Depends(require_roles("admin"))):
