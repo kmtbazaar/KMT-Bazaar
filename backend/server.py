@@ -1672,39 +1672,50 @@ async def vendor_create_store(data: StoreIn, current=Depends(require_roles("vend
 
 @api.get("/vendor/stats")
 async def vendor_stats(current=Depends(require_roles("vendor"))):
-    # 🔥 FIX: Database se live check karo ki Admin ne vendor ko suspend (active: false) toh nahi kiya
-    user_doc = await db.users.find_one({"id": current["id"]}, {"_id": 0, "active": 1})
+    user_doc, store_data = await asyncio.gather(
+        db.users.find_one({"id": current["id"]}, {"_id": 0, "active": 1}),
+        _vendor_store_ids(current["id"])
+    )
     is_active = user_doc.get("active", True) if user_doc else False
+    store_ids, stores = store_data
 
-    store_ids, stores = await _vendor_store_ids(current["id"])
-    products_count = await db.products.count_documents({"store_id": {"$in": store_ids}}) if store_ids else 0
-    
-    # orders that contain at least one of my products
-    if store_ids:
-        product_ids = [p["id"] async for p in db.products.find({"store_id": {"$in": store_ids}}, {"id": 1})]
-    else:
-        product_ids = []
-        
-    orders = await db.orders.find({"items.product_id": {"$in": product_ids}}, {"_id": 0}).to_list(500) if product_ids else []
-    revenue = 0.0; pending = 0; delivered = 0
-    
+    if not store_ids:
+        return {
+            "stores": stores, "products": 0, "orders": 0, "pending": 0,
+            "delivered": 0, "revenue": 0, "commission_percent": 10.0,
+            "payout": 0, "is_suspended": not is_active
+        }
+
+    products, products_count, settings = await asyncio.gather(
+        db.products.find({"store_id": {"$in": store_ids}}, {"_id": 0, "id": 1}).to_list(2000),
+        db.products.count_documents({"store_id": {"$in": store_ids}}),
+        db.settings.find_one({"id": "global"}, {"_id": 0})
+    )
+    product_ids = [p["id"] for p in products if p.get("id")]
+    orders = await db.orders.find(
+        {"items.product_id": {"$in": product_ids}},
+        {"_id": 0}
+    ).to_list(500) if product_ids else []
+
+    product_id_set = set(product_ids)
+    revenue = 0.0
+    pending = 0
+    delivered = 0
     for o in orders:
         for it in o.get("items", []):
-            if it["product_id"] in product_ids:
-                revenue += it.get("line_total", 0)
-        if o.get("status") == "pending": pending += 1
-        if o.get("status") == "delivered": delivered += 1
-        
-    settings = await db.settings.find_one({"id": "global"}, {"_id": 0}) or {}
-    commission = settings.get("commission_percent", 10.0)
+            if it.get("product_id") in product_id_set:
+                revenue += float(it.get("line_total", 0) or 0)
+        pending += o.get("status") == "pending"
+        delivered += o.get("status") == "delivered"
+
+    commission = (settings or {}).get("commission_percent", 10.0)
     payout = round(revenue * (1 - commission / 100), 2)
-    
+
     return {
         "stores": stores, "products": products_count,
         "orders": len(orders), "pending": pending, "delivered": delivered,
-        "revenue": round(revenue, 2), "commission_percent": commission, "payout": payout,
-        # 🔥 NAYA: Realtime suspension flag sent to frontend
-        "is_suspended": not is_active 
+        "revenue": round(revenue, 2), "commission_percent": commission,
+        "payout": payout, "is_suspended": not is_active
     }
 
 
@@ -1784,6 +1795,14 @@ async def vendor_orders(current=Depends(require_roles("vendor"))):
         {"_id": 0}
     ).sort("created_at", -1).to_list(500)
 
+    # Fetch all customers in one indexed query instead of one query per order.
+    customer_ids = list({o.get("user_id") or o.get("customer_id") for o in orders if o.get("user_id") or o.get("customer_id")})
+    customers = await db.users.find(
+        {"id": {"$in": customer_ids}},
+        {"_id": 0, "id": 1, "name": 1, "phone": 1, "email": 1}
+    ).to_list(None) if customer_ids else []
+    customer_map = {u["id"]: u for u in customers}
+
     result = []
 
     for o in orders:
@@ -1803,13 +1822,7 @@ async def vendor_orders(current=Depends(require_roles("vendor"))):
 
         # Customer details attach karo
         user_id = o.get("user_id") or o.get("customer_id")
-        customer = {}
-
-        if user_id:
-            customer = await db.users.find_one(
-                {"id": user_id},
-                {"_id": 0, "name": 1, "phone": 1, "email": 1}
-            ) or {}
+        customer = customer_map.get(user_id, {})
 
         # Vendor ke items ka subtotal calculate karo
         my_revenue = 0
