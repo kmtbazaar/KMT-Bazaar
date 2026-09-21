@@ -1,3 +1,4 @@
+import asyncio
 import hashlib
 import secrets
 import os
@@ -2084,6 +2085,33 @@ SEED_PRODUCTS = [
 ]
 
 
+async def ensure_db_indexes():
+    """Create the indexes used by the four panels and common customer APIs."""
+    await asyncio.gather(
+        db.users.create_index("id", unique=True),
+        db.users.create_index("email", unique=True, sparse=True),
+        db.users.create_index([("role", 1), ("phone", 1)]),
+        db.stores.create_index("id", unique=True),
+        db.stores.create_index([("vendor_id", 1), ("is_approved", 1)]),
+        db.stores.create_index("is_approved"),
+        db.products.create_index("id", unique=True),
+        db.products.create_index("store_id"),
+        db.products.create_index([("store_id", 1), ("category_id", 1)]),
+        db.products.create_index([("store_id", 1), ("trending", 1)]),
+        db.orders.create_index("id", unique=True),
+        db.orders.create_index([("user_id", 1), ("created_at", -1)]),
+        db.orders.create_index([("status", 1), ("created_at", -1)]),
+        db.orders.create_index([("delivery_id", 1), ("created_at", -1)]),
+        db.orders.create_index("items.product_id"),
+        db.addresses.create_index([("user_id", 1), ("created_at", -1)]),
+        db.carts.create_index("user_id", unique=True),
+        db.notifications.create_index([("user_id", 1), ("created_at", -1)]),
+        db.notifications.create_index([("user_id", 1), ("read", 1)]),
+        db.settings.create_index("id", unique=True),
+        db.roojgar_applications.create_index([("status", 1), ("created_at", -1)]),
+    )
+
+
 async def seed_db():
     # Seed admin
     if not await db.users.find_one({"email": "admin@kmtbazaar.com"}):
@@ -2236,6 +2264,7 @@ async def seed_db():
 
 @app.on_event("startup")
 async def on_startup():
+    await ensure_db_indexes()
     await seed_db()
     logging.info("KMT Bazaar API ready. Seed completed.")
 
