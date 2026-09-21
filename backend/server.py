@@ -1642,6 +1642,10 @@ async def _vendor_store_ids(vendor_id: str):
     return [s["id"] for s in stores], stores
 
 
+class OnlineIn(BaseModel):
+    online: bool
+
+
 class StoreIn(BaseModel):
     name: str
     address: str
@@ -1864,10 +1868,6 @@ async def vendor_orders(current=Depends(require_roles("vendor"))):
 
 
 # ------------------ DELIVERY ------------------
-class OnlineIn(BaseModel):
-    online: bool
-
-
 @api.post("/delivery/online")
 async def delivery_online(data: OnlineIn, current=Depends(require_roles("delivery"))):
     await db.users.update_one({"id": current["id"]}, {"$set": {"online": data.online}})
