@@ -1415,101 +1415,156 @@ async def admin_delete_user(
     }
     
 @api.get("/admin/orders")
-async def admin_orders(status: Optional[str] = None, _=Depends(require_roles("admin"))):
-    q = {}
+async def admin_orders(
+status: Optional[str] = None,
+_=Depends(require_roles("admin"))
+):
+# 1. Orders ek hi query mein fetch karo
+query = {}
+if status:
+query["status"] = status
 
-    if status:
-        q["status"] = status
+```
+orders = await db.orders.find(
+    query,
+    {"_id": 0}
+).sort("created_at", -1).to_list(500)
 
-    orders = await db.orders.find(
-        q,
-        {"_id": 0}
-    ).sort("created_at", -1).to_list(500)
+if not orders:
+    return []
 
-    for o in orders:
+# 2. Sabhi customer IDs collect karo
+customer_ids = list({
+    o.get("user_id")
+    for o in orders
+    if o.get("user_id")
+})
 
-        # Customer
-        u = await db.users.find_one(
-            {"id": o.get("user_id")},
-            {
-                "_id": 0,
-                "id": 1,
-                "name": 1,
-                "email": 1,
-                "phone": 1
-            }
+# 3. Sabhi product IDs collect karo
+product_ids = list({
+    item.get("product_id")
+    for o in orders
+    for item in o.get("items", [])
+    if item.get("product_id")
+})
+
+# 4. Batch mein customers fetch karo
+customers = await db.users.find(
+    {"id": {"$in": customer_ids}},
+    {
+        "_id": 0,
+        "id": 1,
+        "name": 1,
+        "email": 1,
+        "phone": 1
+    }
+).to_list(None) if customer_ids else []
+
+customer_map = {
+    u["id"]: u for u in customers
+}
+
+# 5. Batch mein products fetch karo
+products = await db.products.find(
+    {"id": {"$in": product_ids}},
+    {
+        "_id": 0,
+        "id": 1,
+        "store_id": 1
+    }
+).to_list(None) if product_ids else []
+
+product_map = {
+    p["id"]: p for p in products
+}
+
+# 6. Store IDs collect karo
+store_ids = list({
+    p.get("store_id")
+    for p in products
+    if p.get("store_id")
+})
+
+# 7. Batch mein stores fetch karo
+stores = await db.stores.find(
+    {"id": {"$in": store_ids}},
+    {
+        "_id": 0,
+        "id": 1,
+        "vendor_id": 1,
+        "name": 1
+    }
+).to_list(None) if store_ids else []
+
+store_map = {
+    s["id"]: s for s in stores
+}
+
+# 8. Vendor IDs collect karo
+vendor_ids = list({
+    s.get("vendor_id")
+    for s in stores
+    if s.get("vendor_id")
+})
+
+# 9. Batch mein vendors fetch karo
+vendors = await db.users.find(
+    {"id": {"$in": vendor_ids}},
+    {
+        "_id": 0,
+        "id": 1,
+        "name": 1,
+        "email": 1,
+        "phone": 1
+    }
+).to_list(None) if vendor_ids else []
+
+vendor_map = {
+    v["id"]: v for v in vendors
+}
+
+# 10. Orders ko response ke liye enrich karo
+for order in orders:
+
+    # Customer details
+    order["customer"] = customer_map.get(
+        order.get("user_id"), {}
+    )
+
+    # Vendor IDs for this order
+    order_vendor_ids = []
+
+    for item in order.get("items", []):
+
+        product = product_map.get(
+            item.get("product_id")
         )
 
-        o["customer"] = u or {}
+        if not product:
+            continue
 
-        # Vendor IDs from order products
-        vendor_ids = []
+        store = store_map.get(
+            product.get("store_id")
+        )
 
-        for item in o.get("items", []):
-            product_id = item.get("product_id")
+        if not store:
+            continue
 
-            if not product_id:
-                continue
+        vendor_id = store.get("vendor_id")
 
-            product = await db.products.find_one(
-                {"id": product_id},
-                {
-                    "_id": 0,
-                    "id": 1,
-                    "store_id": 1
-                }
-            )
+        if vendor_id and vendor_id not in order_vendor_ids:
+            order_vendor_ids.append(vendor_id)
 
-            if not product:
-                continue
+    order["vendor_ids"] = order_vendor_ids
 
-            store_id = product.get("store_id")
+    # Vendor details
+    order["vendors"] = [
+        vendor_map[vid]
+        for vid in order_vendor_ids
+        if vid in vendor_map
+    ]
 
-            if not store_id:
-                continue
-
-            store = await db.stores.find_one(
-                {"id": store_id},
-                {
-                    "_id": 0,
-                    "id": 1,
-                    "vendor_id": 1,
-                    "name": 1
-                }
-            )
-
-            if not store:
-                continue
-
-            vendor_id = store.get("vendor_id")
-
-            if vendor_id and str(vendor_id) not in vendor_ids:
-                vendor_ids.append(str(vendor_id))
-
-        o["vendor_ids"] = vendor_ids
-
-        # Vendor details
-        vendors = []
-
-        for vendor_id in vendor_ids:
-            vendor = await db.users.find_one(
-                {"id": vendor_id},
-                {
-                    "_id": 0,
-                    "id": 1,
-                    "name": 1,
-                    "email": 1,
-                    "phone": 1
-                }
-            )
-
-            if vendor:
-                vendors.append(vendor)
-
-        o["vendors"] = vendors
-
-    return orders
-
+return orders
 
 @api.post("/admin/orders/{order_id}/status")
 async def admin_update_order(order_id: str, data: OrderStatusIn, _=Depends(require_roles("admin"))):
