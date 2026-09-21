@@ -123,7 +123,8 @@ export default function VendorDashboard() {
     });
 
     try {
-      await vendorApi.updateStore(storeId, { is_online: newVal });
+      await vendorApi.setStoreOnline(storeId, newVal);
+      await load();
     } catch (error) {
       Alert.alert("Error", "Could not update store status.");
       setStats((prev: any) => {
