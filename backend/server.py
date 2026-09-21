@@ -435,19 +435,17 @@ async def verify_otp(data: OtpVerifyIn):
             detail="Invalid mobile number. Please register now."
         )
 
-    # Sirf registered customer accounts fetch karo
-    customers = await db.users.find(
-        {"role": Role.CUSTOMER.value},
-        {"_id": 0}
-    ).to_list(5000)
+    # Indexed direct lookup — poori customer collection memory mein load mat karo.
+    # Existing accounts ke stored phone formats ko support karne ke liye
+    # exact normalized lookup ke saath common Indian formats bhi check karo.
+    phone_candidates = [entered_phone, "0" + entered_phone, "91" + entered_phone, "+91" + entered_phone]
 
-    # Entered number ko saved customer numbers se compare karo
-    user = next(
-        (
-            customer for customer in customers
-            if normalize_phone(customer.get("phone")) == entered_phone
-        ),
-        None
+    user = await db.users.find_one(
+        {
+            "role": Role.CUSTOMER.value,
+            "phone": {"$in": phone_candidates}
+        },
+        {"_id": 0}
     )
 
     # Number registered nahi hai: reject, account create mat karo
