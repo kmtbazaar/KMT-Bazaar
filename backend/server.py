@@ -75,6 +75,21 @@ def now_iso():
     return datetime.now(timezone.utc).isoformat()
 
 
+# Keep order documents small. Product images may be base64/data URIs.
+MAX_ORDER_IMAGE_CHARS = 2048
+
+
+def sanitize_order_image(value):
+    if not isinstance(value, str):
+        return ""
+    value = value.strip()
+    if not value or value.startswith(("data:", "blob:")):
+        return ""
+    if len(value) > MAX_ORDER_IMAGE_CHARS:
+        return ""
+    return value
+
+
 class RegisterIn(BaseModel):
     name: str
     email: EmailStr
@@ -699,7 +714,7 @@ async def expand_cart(cart):
         items.append({
             "product_id": p["id"],
             "name": p["name"],
-            "image": p.get("image"),
+            "image": sanitize_order_image(p.get("image")),
             "price": p["price"],
             "mrp": p.get("mrp", p["price"]),
             "quantity": item["quantity"],
@@ -2216,7 +2231,7 @@ async def seed_db():
                     lt = p["price"] * qty
                     subtotal += lt
                     items.append({
-                        "product_id": p["id"], "name": p["name"], "image": p.get("image"),
+                        "product_id": p["id"], "name": p["name"], "image": sanitize_order_image(p.get("image")),
                         "price": p["price"], "mrp": p.get("mrp", p["price"]), "quantity": qty,
                         "variant": None, "unit": p.get("unit", ""), "line_total": round(lt, 2),
                     })
