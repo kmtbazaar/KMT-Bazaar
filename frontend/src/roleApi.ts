@@ -123,6 +123,12 @@ export const vendorApi = {
       body: JSON.stringify(data),
     }),
 
+  setStoreOnline: (id: string, online: boolean) =>
+    apiFetch("/vendor/stores/" + id + "/online", {
+      method: "POST",
+      body: JSON.stringify({ online }),
+    }),
+
   deleteStore: (id: string) =>
     apiFetch("/vendor/stores/" + id, {
       method: "DELETE",
