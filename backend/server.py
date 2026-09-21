@@ -1947,19 +1947,102 @@ async def delivery_stats(current=Depends(require_roles("delivery"))):
     }
 
 
-# Auto-accept pending orders (admin/vendor would do this; for demo we expose vendor endpoint)
+# Vendor order decision flow
+@api.get("/vendor/pending-orders")
+async def vendor_pending_orders(current=Depends(require_roles("vendor"))):
+    store_ids, _ = await _vendor_store_ids(current["id"])
+    if not store_ids:
+        return []
+
+    products = await db.products.find(
+        {"store_id": {"$in": store_ids}},
+        {"_id": 0, "id": 1}
+    ).to_list(2000)
+
+    product_ids = [p["id"] for p in products if p.get("id")]
+
+    match_conditions = []
+    if product_ids:
+        match_conditions.append({"items.product_id": {"$in": product_ids}})
+    match_conditions.append({"items.store_id": {"$in": store_ids}})
+
+    orders = await db.orders.find(
+        {
+            "status": "pending",
+            "$or": match_conditions
+        },
+        {
+            "_id": 0,
+            "id": 1,
+            "order_no": 1,
+            "total": 1,
+            "status": 1,
+            "created_at": 1
+        }
+    ).sort("created_at", -1).to_list(20)
+
+    return orders
+
+
 @api.post("/vendor/orders/{order_id}/accept")
 async def vendor_accept(order_id: str, current=Depends(require_roles("vendor"))):
     o = await db.orders.find_one({"id": order_id}, {"_id": 0})
-    if not o: raise HTTPException(404, "Not found")
+    if not o:
+        raise HTTPException(404, "Not found")
+
     timeline = o.get("timeline", [])
-    timeline.append({"status": "accepted", "at": now_iso(), "label": "Accepted by vendor"})
-    await db.orders.update_one({"id": order_id}, {"$set": {"status": "accepted", "timeline": timeline}})
-    await db.notifications.insert_one({
-        "id": str(uuid.uuid4()), "user_id": o["user_id"], "title": "Order accepted",
-        "body": f"Your order {o['order_no']} has been accepted by the vendor.", "type": "order",
-        "read": False, "created_at": now_iso(),
+    timeline.append({
+        "status": "accepted",
+        "at": now_iso(),
+        "label": "Accepted by vendor"
     })
+
+    await db.orders.update_one(
+        {"id": order_id},
+        {"$set": {"status": "accepted", "timeline": timeline}}
+    )
+
+    await db.notifications.insert_one({
+        "id": str(uuid.uuid4()),
+        "user_id": o["user_id"],
+        "title": "Order accepted",
+        "body": f"Your order {o['order_no']} has been accepted by the vendor.",
+        "type": "order",
+        "read": False,
+        "created_at": now_iso(),
+    })
+
+    return {"ok": True}
+
+
+@api.post("/vendor/orders/{order_id}/reject")
+async def vendor_reject(order_id: str, current=Depends(require_roles("vendor"))):
+    o = await db.orders.find_one({"id": order_id}, {"_id": 0})
+    if not o:
+        raise HTTPException(404, "Not found")
+
+    timeline = o.get("timeline", [])
+    timeline.append({
+        "status": "rejected",
+        "at": now_iso(),
+        "label": "Rejected by vendor"
+    })
+
+    await db.orders.update_one(
+        {"id": order_id},
+        {"$set": {"status": "rejected", "timeline": timeline}}
+    )
+
+    await db.notifications.insert_one({
+        "id": str(uuid.uuid4()),
+        "user_id": o["user_id"],
+        "title": "Order rejected",
+        "body": f"Your order {o['order_no']} has been rejected by the vendor.",
+        "type": "order",
+        "read": False,
+        "created_at": now_iso(),
+    })
+
     return {"ok": True}
 
 
