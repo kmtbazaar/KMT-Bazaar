@@ -151,6 +151,9 @@ export const vendorApi = {
   orders: () =>
     apiFetch<any[]>("/vendor/orders"),
 
+  pendingOrders: () =>
+    apiFetch<any[]>("/vendor/pending-orders"),
+
   acceptOrder: (id: string) =>
     apiFetch("/vendor/orders/" + id + "/accept", {
       method: "POST",
