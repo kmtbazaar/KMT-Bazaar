@@ -1667,6 +1667,24 @@ async def vendor_create_store(data: StoreIn, current=Depends(require_roles("vend
     return doc
 
 
+@api.post("/vendor/stores/{store_id}/online")
+async def vendor_store_online(
+    store_id: str,
+    data: OnlineIn,
+    current=Depends(require_roles("vendor"))
+):
+    # Sirf current vendor ki apni store ka status update hoga.
+    result = await db.stores.update_one(
+        {"id": store_id, "vendor_id": current["id"]},
+        {"$set": {"is_online": data.online}}
+    )
+
+    if result.matched_count == 0:
+        raise HTTPException(404, "Store not found or not owned by vendor")
+
+    return {"ok": True, "is_online": data.online}
+
+
 @api.get("/vendor/stats")
 async def vendor_stats(current=Depends(require_roles("vendor"))):
     user_doc, store_data = await asyncio.gather(
