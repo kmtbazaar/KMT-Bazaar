@@ -1868,11 +1868,20 @@ async def delivery_me(current=Depends(require_roles("delivery"))):
 @api.get("/delivery/available")
 async def delivery_available(current=Depends(require_roles("delivery"))):
     """Orders ready for pickup: status=accepted and no delivery partner assigned."""
-    orders = await db.orders.find({"status": "accepted", "delivery_id": {"$in": [None, ""]}},
-                                  {"_id": 0}).sort("created_at", -1).to_list(50)
+    orders = await db.orders.find(
+        {"status": "accepted", "delivery_id": {"$in": [None, ""]}},
+        {"_id": 0}
+    ).sort("created_at", -1).to_list(50)
+
+    customer_ids = list({o.get("user_id") for o in orders if o.get("user_id")})
+    customers = await db.users.find(
+        {"id": {"$in": customer_ids}},
+        {"_id": 0, "id": 1, "name": 1, "phone": 1}
+    ).to_list(None) if customer_ids else []
+    customer_map = {u["id"]: u for u in customers}
+
     for o in orders:
-        u = await db.users.find_one({"id": o.get("user_id")}, {"_id": 0, "name": 1, "phone": 1})
-        o["customer"] = u or {}
+        o["customer"] = customer_map.get(o.get("user_id"), {})
     return orders
 
 
@@ -1909,10 +1918,20 @@ async def delivery_mark_delivered(order_id: str, current=Depends(require_roles("
 
 @api.get("/delivery/my")
 async def delivery_my(current=Depends(require_roles("delivery"))):
-    orders = await db.orders.find({"delivery_id": current["id"]}, {"_id": 0}).sort("created_at", -1).to_list(200)
+    orders = await db.orders.find(
+        {"delivery_id": current["id"]},
+        {"_id": 0}
+    ).sort("created_at", -1).to_list(200)
+
+    customer_ids = list({o.get("user_id") for o in orders if o.get("user_id")})
+    customers = await db.users.find(
+        {"id": {"$in": customer_ids}},
+        {"_id": 0, "id": 1, "name": 1, "phone": 1}
+    ).to_list(None) if customer_ids else []
+    customer_map = {u["id"]: u for u in customers}
+
     for o in orders:
-        u = await db.users.find_one({"id": o.get("user_id")}, {"_id": 0, "name": 1, "phone": 1})
-        o["customer"] = u or {}
+        o["customer"] = customer_map.get(o.get("user_id"), {})
     return orders
 
 
