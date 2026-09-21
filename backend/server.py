@@ -1090,7 +1090,7 @@ async def admin_stats(_=Depends(require_roles("admin"))):
         db.orders.count_documents({}),
         db.orders.count_documents({"status": "pending"}),
         db.orders.count_documents({"status": "delivered"}),
-        db.orders.aggregate([{"$group": {"_id": None, "total": {"$sum": "$total"}}]).to_list(1),
+        db.orders.aggregate([{"$group": {"_id": None, "total": {"$sum": "$total"}}}]).to_list(1),
         db.settings.find_one({"id": "global"}, {"_id": 0}),
     )
 
