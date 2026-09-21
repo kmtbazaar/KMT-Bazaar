@@ -1082,77 +1082,38 @@ class CommissionIn(BaseModel):
 
 @api.get("/admin/stats")
 async def admin_stats(_=Depends(require_roles("admin"))):
-    users_count = await db.users.count_documents({"role": "customer"})
-    vendors_count = await db.users.count_documents({"role": "vendor"})
-    delivery_count = await db.users.count_documents({"role": "delivery"})
-    products_count = await db.products.count_documents({})
-    orders_count = await db.orders.count_documents({})
-    pending_count = await db.orders.count_documents({"status": "pending"})
-    delivered_count = await db.orders.count_documents({"status": "delivered"})
-
-    revenue_cursor = db.orders.aggregate([
-        {"$group": {"_id": None, "total": {"$sum": "$total"}}}
-    ])
-
-    rev = 0.0
-
-    async for d in revenue_cursor:
-        rev = round(d.get("total", 0) or 0, 2)
-
-    settings = await db.settings.find_one(
-        {"id": "global"},
-        {"_id": 0}
-    ) or {
-        "commission_percent": 10.0
-    }
-
-    commission = settings.get(
-        "commission_percent",
-        10.0
+    users_count, vendors_count, delivery_count, products_count, orders_count, pending_count, delivered_count, revenue_doc, settings = await asyncio.gather(
+        db.users.count_documents({"role": "customer"}),
+        db.users.count_documents({"role": "vendor"}),
+        db.users.count_documents({"role": "delivery"}),
+        db.products.count_documents({}),
+        db.orders.count_documents({}),
+        db.orders.count_documents({"status": "pending"}),
+        db.orders.count_documents({"status": "delivered"}),
+        db.orders.aggregate([{"$group": {"_id": None, "total": {"$sum": "$total"}}]).to_list(1),
+        db.settings.find_one({"id": "global"}, {"_id": 0}),
     )
 
-    platform_earnings = round(
-        rev * commission / 100,
-        2
-    )
+    rev = round((revenue_doc[0].get("total", 0) if revenue_doc else 0) or 0, 2)
+    settings = settings or {"commission_percent": 10.0}
+    commission = settings.get("commission_percent", 10.0)
+    platform_earnings = round(rev * commission / 100, 2)
 
-    # Last 7 days chart
+    # Last 7 days: run all seven indexed counts concurrently.
     from datetime import timedelta as _td
-
     today = datetime.now(timezone.utc).date()
-
-    chart = []
-
+    day_queries = []
     for i in range(6, -1, -1):
         d = today - _td(days=i)
+        start = datetime(d.year, d.month, d.day, tzinfo=timezone.utc).isoformat()
+        end = (datetime(d.year, d.month, d.day, tzinfo=timezone.utc) + _td(days=1)).isoformat()
+        day_queries.append(db.orders.count_documents({"created_at": {"$gte": start, "$lt": end}}))
 
-        start = datetime(
-            d.year,
-            d.month,
-            d.day,
-            tzinfo=timezone.utc
-        ).isoformat()
-
-        end = (
-            datetime(
-                d.year,
-                d.month,
-                d.day,
-                tzinfo=timezone.utc
-            ) + _td(days=1)
-        ).isoformat()
-
-        count = await db.orders.count_documents({
-            "created_at": {
-                "$gte": start,
-                "$lt": end
-            }
-        })
-
-        chart.append({
-            "day": d.strftime("%a"),
-            "orders": count
-        })
+    day_counts = await asyncio.gather(*day_queries)
+    chart = [
+        {"day": (today - _td(days=i)).strftime("%a"), "orders": count}
+        for i, count in zip(range(6, -1, -1), day_counts)
+    ]
 
     return {
         "users": users_count,
