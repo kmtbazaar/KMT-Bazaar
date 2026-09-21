@@ -1689,6 +1689,33 @@ async def vendor_store_online(
     return {"ok": True, "is_online": data.online}
 
 
+@api.delete("/vendor/stores/{store_id}")
+async def vendor_delete_store(
+    store_id: str,
+    current=Depends(require_roles("vendor"))
+):
+    # Sirf current vendor ki apni store delete hogi.
+    store = await db.stores.find_one(
+        {"id": store_id, "vendor_id": current["id"]},
+        {"_id": 0, "id": 1}
+    )
+
+    if not store:
+        raise HTTPException(
+            status_code=404,
+            detail="Store not found or not owned by vendor"
+        )
+
+    # Store ke products remove karo. Existing orders ko intentionally preserve karte hain.
+    await db.products.delete_many({"store_id": store_id})
+    await db.stores.delete_one({"id": store_id, "vendor_id": current["id"]})
+
+    return {
+        "ok": True,
+        "message": "Store and its products deleted successfully"
+    }
+
+
 @api.get("/vendor/stats")
 async def vendor_stats(current=Depends(require_roles("vendor"))):
     user_doc, store_data = await asyncio.gather(
