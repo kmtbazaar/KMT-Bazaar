@@ -2,7 +2,7 @@ export const askAI = async (prompt: string) => {
   try {
     const backendUrl = (
       process.env.EXPO_PUBLIC_BACKEND_URL ||
-      "https://kmt-bazaar.onrender.com"
+      "https://kmtbazaar.tech"
     ).replace(/\/$/, "");
 
     const controller = new AbortController();
