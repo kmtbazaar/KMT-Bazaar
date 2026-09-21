@@ -1,3 +1,4 @@
+import asyncio
 import hashlib
 import secrets
 import os
@@ -435,19 +436,17 @@ async def verify_otp(data: OtpVerifyIn):
             detail="Invalid mobile number. Please register now."
         )
 
-    # Sirf registered customer accounts fetch karo
-    customers = await db.users.find(
-        {"role": Role.CUSTOMER.value},
-        {"_id": 0}
-    ).to_list(5000)
+    # Indexed direct lookup — poori customer collection memory mein load mat karo.
+    # Existing accounts ke stored phone formats ko support karne ke liye
+    # exact normalized lookup ke saath common Indian formats bhi check karo.
+    phone_candidates = [entered_phone, "0" + entered_phone, "91" + entered_phone, "+91" + entered_phone]
 
-    # Entered number ko saved customer numbers se compare karo
-    user = next(
-        (
-            customer for customer in customers
-            if normalize_phone(customer.get("phone")) == entered_phone
-        ),
-        None
+    user = await db.users.find_one(
+        {
+            "role": Role.CUSTOMER.value,
+            "phone": {"$in": phone_candidates}
+        },
+        {"_id": 0}
     )
 
     # Number registered nahi hai: reject, account create mat karo
@@ -1083,77 +1082,38 @@ class CommissionIn(BaseModel):
 
 @api.get("/admin/stats")
 async def admin_stats(_=Depends(require_roles("admin"))):
-    users_count = await db.users.count_documents({"role": "customer"})
-    vendors_count = await db.users.count_documents({"role": "vendor"})
-    delivery_count = await db.users.count_documents({"role": "delivery"})
-    products_count = await db.products.count_documents({})
-    orders_count = await db.orders.count_documents({})
-    pending_count = await db.orders.count_documents({"status": "pending"})
-    delivered_count = await db.orders.count_documents({"status": "delivered"})
-
-    revenue_cursor = db.orders.aggregate([
-        {"$group": {"_id": None, "total": {"$sum": "$total"}}}
-    ])
-
-    rev = 0.0
-
-    async for d in revenue_cursor:
-        rev = round(d.get("total", 0) or 0, 2)
-
-    settings = await db.settings.find_one(
-        {"id": "global"},
-        {"_id": 0}
-    ) or {
-        "commission_percent": 10.0
-    }
-
-    commission = settings.get(
-        "commission_percent",
-        10.0
+    users_count, vendors_count, delivery_count, products_count, orders_count, pending_count, delivered_count, revenue_doc, settings = await asyncio.gather(
+        db.users.count_documents({"role": "customer"}),
+        db.users.count_documents({"role": "vendor"}),
+        db.users.count_documents({"role": "delivery"}),
+        db.products.count_documents({}),
+        db.orders.count_documents({}),
+        db.orders.count_documents({"status": "pending"}),
+        db.orders.count_documents({"status": "delivered"}),
+        db.orders.aggregate([{"$group": {"_id": None, "total": {"$sum": "$total"}}]).to_list(1),
+        db.settings.find_one({"id": "global"}, {"_id": 0}),
     )
 
-    platform_earnings = round(
-        rev * commission / 100,
-        2
-    )
+    rev = round((revenue_doc[0].get("total", 0) if revenue_doc else 0) or 0, 2)
+    settings = settings or {"commission_percent": 10.0}
+    commission = settings.get("commission_percent", 10.0)
+    platform_earnings = round(rev * commission / 100, 2)
 
-    # Last 7 days chart
+    # Last 7 days: run all seven indexed counts concurrently.
     from datetime import timedelta as _td
-
     today = datetime.now(timezone.utc).date()
-
-    chart = []
-
+    day_queries = []
     for i in range(6, -1, -1):
         d = today - _td(days=i)
+        start = datetime(d.year, d.month, d.day, tzinfo=timezone.utc).isoformat()
+        end = (datetime(d.year, d.month, d.day, tzinfo=timezone.utc) + _td(days=1)).isoformat()
+        day_queries.append(db.orders.count_documents({"created_at": {"$gte": start, "$lt": end}}))
 
-        start = datetime(
-            d.year,
-            d.month,
-            d.day,
-            tzinfo=timezone.utc
-        ).isoformat()
-
-        end = (
-            datetime(
-                d.year,
-                d.month,
-                d.day,
-                tzinfo=timezone.utc
-            ) + _td(days=1)
-        ).isoformat()
-
-        count = await db.orders.count_documents({
-            "created_at": {
-                "$gte": start,
-                "$lt": end
-            }
-        })
-
-        chart.append({
-            "day": d.strftime("%a"),
-            "orders": count
-        })
+    day_counts = await asyncio.gather(*day_queries)
+    chart = [
+        {"day": (today - _td(days=i)).strftime("%a"), "orders": count}
+        for i, count in zip(range(6, -1, -1), day_counts)
+    ]
 
     return {
         "users": users_count,
@@ -1712,39 +1672,50 @@ async def vendor_create_store(data: StoreIn, current=Depends(require_roles("vend
 
 @api.get("/vendor/stats")
 async def vendor_stats(current=Depends(require_roles("vendor"))):
-    # 🔥 FIX: Database se live check karo ki Admin ne vendor ko suspend (active: false) toh nahi kiya
-    user_doc = await db.users.find_one({"id": current["id"]}, {"_id": 0, "active": 1})
+    user_doc, store_data = await asyncio.gather(
+        db.users.find_one({"id": current["id"]}, {"_id": 0, "active": 1}),
+        _vendor_store_ids(current["id"])
+    )
     is_active = user_doc.get("active", True) if user_doc else False
+    store_ids, stores = store_data
 
-    store_ids, stores = await _vendor_store_ids(current["id"])
-    products_count = await db.products.count_documents({"store_id": {"$in": store_ids}}) if store_ids else 0
-    
-    # orders that contain at least one of my products
-    if store_ids:
-        product_ids = [p["id"] async for p in db.products.find({"store_id": {"$in": store_ids}}, {"id": 1})]
-    else:
-        product_ids = []
-        
-    orders = await db.orders.find({"items.product_id": {"$in": product_ids}}, {"_id": 0}).to_list(500) if product_ids else []
-    revenue = 0.0; pending = 0; delivered = 0
-    
+    if not store_ids:
+        return {
+            "stores": stores, "products": 0, "orders": 0, "pending": 0,
+            "delivered": 0, "revenue": 0, "commission_percent": 10.0,
+            "payout": 0, "is_suspended": not is_active
+        }
+
+    products, products_count, settings = await asyncio.gather(
+        db.products.find({"store_id": {"$in": store_ids}}, {"_id": 0, "id": 1}).to_list(2000),
+        db.products.count_documents({"store_id": {"$in": store_ids}}),
+        db.settings.find_one({"id": "global"}, {"_id": 0})
+    )
+    product_ids = [p["id"] for p in products if p.get("id")]
+    orders = await db.orders.find(
+        {"items.product_id": {"$in": product_ids}},
+        {"_id": 0}
+    ).to_list(500) if product_ids else []
+
+    product_id_set = set(product_ids)
+    revenue = 0.0
+    pending = 0
+    delivered = 0
     for o in orders:
         for it in o.get("items", []):
-            if it["product_id"] in product_ids:
-                revenue += it.get("line_total", 0)
-        if o.get("status") == "pending": pending += 1
-        if o.get("status") == "delivered": delivered += 1
-        
-    settings = await db.settings.find_one({"id": "global"}, {"_id": 0}) or {}
-    commission = settings.get("commission_percent", 10.0)
+            if it.get("product_id") in product_id_set:
+                revenue += float(it.get("line_total", 0) or 0)
+        pending += o.get("status") == "pending"
+        delivered += o.get("status") == "delivered"
+
+    commission = (settings or {}).get("commission_percent", 10.0)
     payout = round(revenue * (1 - commission / 100), 2)
-    
+
     return {
         "stores": stores, "products": products_count,
         "orders": len(orders), "pending": pending, "delivered": delivered,
-        "revenue": round(revenue, 2), "commission_percent": commission, "payout": payout,
-        # 🔥 NAYA: Realtime suspension flag sent to frontend
-        "is_suspended": not is_active 
+        "revenue": round(revenue, 2), "commission_percent": commission,
+        "payout": payout, "is_suspended": not is_active
     }
 
 
@@ -1824,6 +1795,14 @@ async def vendor_orders(current=Depends(require_roles("vendor"))):
         {"_id": 0}
     ).sort("created_at", -1).to_list(500)
 
+    # Fetch all customers in one indexed query instead of one query per order.
+    customer_ids = list({o.get("user_id") or o.get("customer_id") for o in orders if o.get("user_id") or o.get("customer_id")})
+    customers = await db.users.find(
+        {"id": {"$in": customer_ids}},
+        {"_id": 0, "id": 1, "name": 1, "phone": 1, "email": 1}
+    ).to_list(None) if customer_ids else []
+    customer_map = {u["id"]: u for u in customers}
+
     result = []
 
     for o in orders:
@@ -1843,13 +1822,7 @@ async def vendor_orders(current=Depends(require_roles("vendor"))):
 
         # Customer details attach karo
         user_id = o.get("user_id") or o.get("customer_id")
-        customer = {}
-
-        if user_id:
-            customer = await db.users.find_one(
-                {"id": user_id},
-                {"_id": 0, "name": 1, "phone": 1, "email": 1}
-            ) or {}
+        customer = customer_map.get(user_id, {})
 
         # Vendor ke items ka subtotal calculate karo
         my_revenue = 0
@@ -1895,11 +1868,20 @@ async def delivery_me(current=Depends(require_roles("delivery"))):
 @api.get("/delivery/available")
 async def delivery_available(current=Depends(require_roles("delivery"))):
     """Orders ready for pickup: status=accepted and no delivery partner assigned."""
-    orders = await db.orders.find({"status": "accepted", "delivery_id": {"$in": [None, ""]}},
-                                  {"_id": 0}).sort("created_at", -1).to_list(50)
+    orders = await db.orders.find(
+        {"status": "accepted", "delivery_id": {"$in": [None, ""]}},
+        {"_id": 0}
+    ).sort("created_at", -1).to_list(50)
+
+    customer_ids = list({o.get("user_id") for o in orders if o.get("user_id")})
+    customers = await db.users.find(
+        {"id": {"$in": customer_ids}},
+        {"_id": 0, "id": 1, "name": 1, "phone": 1}
+    ).to_list(None) if customer_ids else []
+    customer_map = {u["id"]: u for u in customers}
+
     for o in orders:
-        u = await db.users.find_one({"id": o.get("user_id")}, {"_id": 0, "name": 1, "phone": 1})
-        o["customer"] = u or {}
+        o["customer"] = customer_map.get(o.get("user_id"), {})
     return orders
 
 
@@ -1936,10 +1918,20 @@ async def delivery_mark_delivered(order_id: str, current=Depends(require_roles("
 
 @api.get("/delivery/my")
 async def delivery_my(current=Depends(require_roles("delivery"))):
-    orders = await db.orders.find({"delivery_id": current["id"]}, {"_id": 0}).sort("created_at", -1).to_list(200)
+    orders = await db.orders.find(
+        {"delivery_id": current["id"]},
+        {"_id": 0}
+    ).sort("created_at", -1).to_list(200)
+
+    customer_ids = list({o.get("user_id") for o in orders if o.get("user_id")})
+    customers = await db.users.find(
+        {"id": {"$in": customer_ids}},
+        {"_id": 0, "id": 1, "name": 1, "phone": 1}
+    ).to_list(None) if customer_ids else []
+    customer_map = {u["id"]: u for u in customers}
+
     for o in orders:
-        u = await db.users.find_one({"id": o.get("user_id")}, {"_id": 0, "name": 1, "phone": 1})
-        o["customer"] = u or {}
+        o["customer"] = customer_map.get(o.get("user_id"), {})
     return orders
 
 
@@ -2084,6 +2076,33 @@ SEED_PRODUCTS = [
      "image": "https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=600&q=80",
      "description": "Lightweight running shoes with cushioned sole."},
 ]
+
+
+async def ensure_db_indexes():
+    """Create the indexes used by the four panels and common customer APIs."""
+    await asyncio.gather(
+        db.users.create_index("id", unique=True),
+        db.users.create_index("email", unique=True, sparse=True),
+        db.users.create_index([("role", 1), ("phone", 1)]),
+        db.stores.create_index("id", unique=True),
+        db.stores.create_index([("vendor_id", 1), ("is_approved", 1)]),
+        db.stores.create_index("is_approved"),
+        db.products.create_index("id", unique=True),
+        db.products.create_index("store_id"),
+        db.products.create_index([("store_id", 1), ("category_id", 1)]),
+        db.products.create_index([("store_id", 1), ("trending", 1)]),
+        db.orders.create_index("id", unique=True),
+        db.orders.create_index([("user_id", 1), ("created_at", -1)]),
+        db.orders.create_index([("status", 1), ("created_at", -1)]),
+        db.orders.create_index([("delivery_id", 1), ("created_at", -1)]),
+        db.orders.create_index("items.product_id"),
+        db.addresses.create_index([("user_id", 1), ("created_at", -1)]),
+        db.carts.create_index("user_id", unique=True),
+        db.notifications.create_index([("user_id", 1), ("created_at", -1)]),
+        db.notifications.create_index([("user_id", 1), ("read", 1)]),
+        db.settings.create_index("id", unique=True),
+        db.roojgar_applications.create_index([("status", 1), ("created_at", -1)]),
+    )
 
 
 async def seed_db():
@@ -2238,6 +2257,7 @@ async def seed_db():
 
 @app.on_event("startup")
 async def on_startup():
+    await ensure_db_indexes()
     await seed_db()
     logging.info("KMT Bazaar API ready. Seed completed.")
 
