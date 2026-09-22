@@ -4,10 +4,11 @@ import { Image } from "expo-image";
 import * as ImagePicker from "expo-image-picker";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { COLORS, RADIUS, SPACING } from "@/src/theme";
+import { uploadImageAsset } from "@/src/api";
 
 interface Props {
   value?: string;
-  onChange: (dataUri: string) => void;
+  onChange: (imageUrl: string) => void;
   label?: string;
   aspect?: [number, number]; // crop aspect
   testID?: string;
@@ -40,20 +41,19 @@ export default function ImageUploader({ value, onChange, label = "Photo", aspect
         allowsEditing: true,
         aspect,
         quality: 0.7,
-        base64: true,
       };
       const result = source === "library"
         ? await ImagePicker.launchImageLibraryAsync(opts)
         : await ImagePicker.launchCameraAsync(opts);
       if (result.canceled || !result.assets?.length) return;
       const a = result.assets[0];
-      // Prefer base64 from picker; build data URI
-      let dataUri = a.uri;
-      if (a.base64) {
-        const mime = a.mimeType || "image/jpeg";
-        dataUri = `data:${mime};base64,${a.base64}`;
-      }
-      onChange(dataUri);
+      const imageUrl = await uploadImageAsset({
+        uri: a.uri,
+        fileName: a.fileName,
+        mimeType: a.mimeType,
+        file: a.file,
+      });
+      onChange(imageUrl);
     } catch (e: any) {
       setErr(e.message || "Failed to pick image");
     } finally {
