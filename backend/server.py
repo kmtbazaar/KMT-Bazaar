@@ -24,7 +24,7 @@ from motor.motor_asyncio import AsyncIOMotorClient
 import os
 import logging
 from pathlib import Path
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr, Field, field_validator
 from typing import List, Optional, Dict, Any
 import uuid
 from datetime import datetime, timezone, timedelta
@@ -186,6 +186,13 @@ class CheckoutIn(BaseModel):
     payment_method: str  # cod | online
     notes: Optional[str] = ""
 
+    @field_validator("payment_method")
+    @classmethod
+    def validate_payment_method(cls, value):
+        if value not in {"cod", "online"}:
+            raise ValueError("Invalid payment method")
+        return value
+
 
 class AIChatRequest(BaseModel):
     message: str
@@ -287,11 +294,14 @@ async def login(data: LoginIn):
 async def forgot_password(data: ForgotPasswordIn):
     user = await db.users.find_one({"email": data.email})
 
+    # Do not reveal whether an email is registered.
+    # A real email/SMS provider should deliver the reset OTP.
     if not user:
-        raise HTTPException(
-            status_code=404,
-            detail="User not found"
-        )
+        return {
+            "success": True,
+            "message": "If the account exists, a reset OTP has been sent.",
+            "expires_in_minutes": 10,
+        }
 
     otp = f"{secrets.randbelow(900000) + 100000}"
 
@@ -309,10 +319,10 @@ async def forgot_password(data: ForgotPasswordIn):
         "created_at": datetime.now(timezone.utc),
     })
 
+    # Development-only OTP visibility is intentionally disabled in production.
     return {
         "success": True,
-        "message": "OTP generated successfully",
-        "debug_otp": otp,
+        "message": "If the account exists, a reset OTP has been sent.",
         "expires_in_minutes": 10,
     }
 
@@ -956,11 +966,9 @@ async def checkout(
         "total": expanded["total"],
         "address": addr,
         "payment_method": data.payment_method,
-        "payment_status": (
-            "paid"
-            if data.payment_method == "online"
-            else "pending"
-        ),
+        # Online payment is not marked paid until a payment gateway
+        # webhook verifies the transaction.
+        "payment_status": "pending",
         "status": "pending",
         "notes": data.notes,
         "timeline": [
