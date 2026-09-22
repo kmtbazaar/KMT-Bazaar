@@ -16,7 +16,7 @@ import { Image } from "expo-image";
 import * as ImagePicker from "expo-image-picker";
 import { useLocalSearchParams, useRouter, useFocusEffect } from "expo-router";
 import { vendorApi } from "@/src/roleApi";
-import { api } from "@/src/api";
+import { api, uploadImageAsset } from "@/src/api";
 import { COLORS, RADIUS, shadow } from "@/src/theme";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 
@@ -95,13 +95,20 @@ export default function VendorStoreDetail() {
       allowsEditing: true,
       aspect: [2, 1],
       quality: 0.6,
-      base64: true,
     });
-    if (!result.canceled && result.assets[0].base64) {
-      setEditForm({
-        ...editForm,
-        image: `data:image/jpeg;base64,${result.assets[0].base64}`,
-      });
+    if (!result.canceled && result.assets[0]) {
+      try {
+        setLoading(true);
+        const imageUrl = await uploadImageAsset(result.assets[0]);
+        setEditForm({
+          ...editForm,
+          image: imageUrl,
+        });
+      } catch (e: any) {
+        Alert.alert("Upload failed", e?.message || "Could not upload banner.");
+      } finally {
+        setLoading(false);
+      }
     }
   };
 
@@ -112,7 +119,6 @@ export default function VendorStoreDetail() {
       allowsEditing: true,
       aspect: [1, 1],
       quality: 0.6,
-      base64: true,
     };
 
     if (useCamera) {
@@ -126,12 +132,19 @@ export default function VendorStoreDetail() {
       result = await ImagePicker.launchImageLibraryAsync(options);
     }
 
-    if (!result.canceled && result.assets[0].base64) {
-      const b64 = `data:image/jpeg;base64,${result.assets[0].base64}`;
-      if (isEditMode) {
-        setEditProductForm((prev) => ({ ...prev, image: b64 }));
-      } else {
-        setForm((prev) => ({ ...prev, image: b64 }));
+    if (!result.canceled && result.assets[0]) {
+      try {
+        setLoading(true);
+        const imageUrl = await uploadImageAsset(result.assets[0]);
+        if (isEditMode) {
+          setEditProductForm((prev) => ({ ...prev, image: imageUrl }));
+        } else {
+          setForm((prev) => ({ ...prev, image: imageUrl }));
+        }
+      } catch (e: any) {
+        Alert.alert("Upload failed", e?.message || "Could not upload product image.");
+      } finally {
+        setLoading(false);
       }
     }
   };
