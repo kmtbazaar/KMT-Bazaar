@@ -7,7 +7,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { vendorApi } from "@/src/roleApi";
-import { api } from "@/src/api"; 
+import { api, uploadImageAsset } from "@/src/api"; 
 import { useAuth } from "@/src/AuthContext";
 import { COLORS, LOGO_URL, RADIUS, SPACING, shadow } from "@/src/theme";
 
@@ -104,10 +104,14 @@ export default function VendorDashboard() {
       allowsEditing: true,
       aspect: [1, 1],
       quality: 0.6,
-      base64: true,
     });
-    if (!result.canceled && result.assets[0].base64) {
-      setProfilePic(`data:image/jpeg;base64,${result.assets[0].base64}`);
+    if (!result.canceled && result.assets[0]) {
+      try {
+        const imageUrl = await uploadImageAsset(result.assets[0]);
+        setProfilePic(imageUrl);
+      } catch (e: any) {
+        Alert.alert("Upload failed", e?.message || "Could not upload profile image.");
+      }
     }
   };
 
@@ -143,11 +147,15 @@ export default function VendorDashboard() {
       allowsEditing: true,
       aspect: [2, 1], 
       quality: 0.6,
-      base64: true,
     });
 
-    if (!result.canceled && result.assets[0].base64) {
-      setStoreForm({ ...storeForm, image: `data:image/jpeg;base64,${result.assets[0].base64}` });
+    if (!result.canceled && result.assets[0]) {
+      try {
+        const imageUrl = await uploadImageAsset(result.assets[0]);
+        setStoreForm({ ...storeForm, image: imageUrl });
+      } catch (e: any) {
+        Alert.alert("Upload failed", e?.message || "Could not upload store banner.");
+      }
     }
   };
 
