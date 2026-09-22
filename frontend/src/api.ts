@@ -3,7 +3,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const BASE =
   process.env.EXPO_PUBLIC_BACKEND_URL ||
-  "https://kmt-bazaar.onrender.com";
+  "https://kmtbazaar.tech";
 
 export const API = `${BASE}/api`;
 
@@ -139,6 +139,64 @@ export async function apiFetch<T = any>(
 
   return json as T;
 }
+
+export async function uploadImageAsset(asset: {
+  uri: string;
+  fileName?: string | null;
+  mimeType?: string | null;
+  file?: any;
+}): Promise<string> {
+  const token = await getToken();
+  const formData = new FormData();
+
+  if (Platform.OS === "web") {
+    let webFile = asset.file;
+
+    if (!webFile) {
+      const blob = await (await fetch(asset.uri)).blob();
+      const name = asset.fileName || `image-${Date.now()}.jpg`;
+      webFile = new File([blob], name, {
+        type: asset.mimeType || blob.type || "image/jpeg",
+      });
+    }
+
+    formData.append("file", webFile);
+  } else {
+    formData.append("file", {
+      uri: asset.uri,
+      name: asset.fileName || `image-${Date.now()}.jpg`,
+      type: asset.mimeType || "image/jpeg",
+    } as any);
+  }
+
+  const response = await fetch(`${API}/uploads/image`, {
+    method: "POST",
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    body: formData,
+  });
+
+  const text = await response.text();
+  let data: any = null;
+
+  try {
+    data = text ? JSON.parse(text) : null;
+  } catch {
+    data = null;
+  }
+
+  if (!response.ok) {
+    throw new Error(
+      data?.detail || data?.message || `Image upload failed (HTTP ${response.status})`
+    );
+  }
+
+  if (!data?.url) {
+    throw new Error("Image upload succeeded but no URL was returned.");
+  }
+
+  return data.url;
+}
+
 
 export const api = {
   login: (email: string, password: string) =>
