@@ -81,7 +81,7 @@ function ProductModal({ visible, onClose, onSaved, edit, categories }: any) {
     const payload = {
       name: f.name, price: parseFloat(f.price) || 0, mrp: parseFloat(f.mrp) || parseFloat(f.price) || 0,
       stock: parseInt(f.stock) || 0, unit: f.unit, image: f.image, description: f.description,
-      category_id: f.category_id, trending: f.trending,
+      category_id: f.category_id, trending: f.trending, store_id: edit?.store_id || null,
     };
     if (edit) await adminApi.updateProduct(edit.id, payload);
     else await adminApi.createProduct(payload);
