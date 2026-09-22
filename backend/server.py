@@ -3,7 +3,7 @@ import hashlib
 import secrets
 import os
 from dotenv import load_dotenv
-from fastapi import FastAPI, APIRouter, HTTPException, Depends, status
+from fastapi import FastAPI, APIRouter, HTTPException, Depends, status, File, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from google import genai
@@ -29,11 +29,18 @@ from typing import List, Optional, Dict, Any
 import uuid
 from datetime import datetime, timezone, timedelta
 from passlib.context import CryptContext
+from PIL import Image, ImageOps
+import io
 import jwt
 from enum import Enum
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
+
+UPLOAD_DIR = Path(os.getenv("UPLOAD_DIR", "/var/www/kmt-bazaar/uploads"))
+PUBLIC_BASE_URL = os.getenv("PUBLIC_BASE_URL", "https://kmtbazaar.tech").rstrip("/")
+MAX_UPLOAD_BYTES = 8 * 1024 * 1024
+MAX_IMAGE_SIZE = (1600, 1600)
 
 mongo_url = os.environ['MONGO_URL']
 client = AsyncIOMotorClient(mongo_url)
@@ -1054,6 +1061,64 @@ def require_roles(*roles):
             raise HTTPException(status_code=403, detail="Forbidden")
         return current
     return _dep
+
+
+@api.post("/uploads/image")
+async def upload_image(
+    file: UploadFile = File(...),
+    current=Depends(require_roles("admin", "vendor"))
+):
+    if not file.content_type or file.content_type.lower() not in {
+        "image/jpeg",
+        "image/png",
+        "image/webp",
+    }:
+        raise HTTPException(
+            status_code=400,
+            detail="Only JPG, PNG or WebP images are allowed"
+        )
+
+    try:
+        raw = await file.read(MAX_UPLOAD_BYTES + 1)
+        if len(raw) > MAX_UPLOAD_BYTES:
+            raise HTTPException(
+                status_code=413,
+                detail="Image is too large. Maximum size is 8 MB."
+            )
+
+        image = Image.open(io.BytesIO(raw))
+        image = ImageOps.exif_transpose(image)
+        image.thumbnail(MAX_IMAGE_SIZE, Image.Resampling.LANCZOS)
+
+        if image.mode not in ("RGB", "RGBA"):
+            image = image.convert("RGBA" if "A" in image.getbands() else "RGB")
+
+        UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+        filename = f"{uuid.uuid4().hex}.webp"
+        output_path = UPLOAD_DIR / filename
+
+        image.save(
+            output_path,
+            format="WEBP",
+            quality=82,
+            method=6
+        )
+
+        return {
+            "url": f"{PUBLIC_BASE_URL}/uploads/{filename}",
+            "filename": filename,
+            "size": output_path.stat().st_size,
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.exception("Image upload failed")
+        raise HTTPException(
+            status_code=400,
+            detail=f"Image upload failed: {str(e)}"
+        )
+    
 
 # ------------------ ADMIN ------------------
 
