@@ -17,7 +17,7 @@ import { useFocusEffect, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { vendorApi } from "@/src/roleApi";
-import { api } from "@/src/api";
+import { api, uploadImageAsset } from "@/src/api";
 import { COLORS, RADIUS, SPACING, shadow } from "@/src/theme";
 
 export default function VendorProducts() {
@@ -70,7 +70,6 @@ export default function VendorProducts() {
       allowsEditing: true,
       aspect: [1, 1],
       quality: 0.6,
-      base64: true,
     };
 
     if (useCamera) {
@@ -84,9 +83,16 @@ export default function VendorProducts() {
       result = await ImagePicker.launchImageLibraryAsync(options);
     }
 
-    if (!result.canceled && result.assets[0].base64) {
-      const base64Image = `data:image/jpeg;base64,${result.assets[0].base64}`;
-      setForm({ ...form, image: base64Image });
+    if (!result.canceled && result.assets[0]) {
+      try {
+        setLoading(true);
+        const imageUrl = await uploadImageAsset(result.assets[0]);
+        setForm({ ...form, image: imageUrl });
+      } catch (e: any) {
+        Alert.alert("Upload failed", e?.message || "Could not upload image.");
+      } finally {
+        setLoading(false);
+      }
     }
   };
 
