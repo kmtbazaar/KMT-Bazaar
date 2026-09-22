@@ -23,8 +23,12 @@ function RoleRouteGuard({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    if (isAuthRoute || isPublicRoute) {
+    if (isAuthRoute) {
       router.replace(user.role === "customer" ? "/(tabs)/home" : (`/${user.role}` as any));
+      return;
+    }
+
+    if (isPublicRoute) {
       return;
     }
 
