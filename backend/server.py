@@ -1605,6 +1605,11 @@ async def admin_update_order(order_id: str, data: OrderStatusIn, _=Depends(requi
     return {"ok": True}
 
 
+@api.get("/admin/products")
+async def admin_list_products(_=Depends(require_roles("admin"))):
+    return await db.products.find({}, {"_id": 0}).to_list(500)
+
+
 @api.post("/admin/products")
 async def admin_create_product(data: ProductIn, _=Depends(require_roles("admin"))):
     pid = "p-" + uuid.uuid4().hex[:8]
