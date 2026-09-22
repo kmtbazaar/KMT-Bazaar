@@ -62,9 +62,17 @@ security = HTTPBearer(auto_error=False)
 app = FastAPI(title="KMT Bazaar API")
 api = APIRouter(prefix="/api")
 
+ALLOWED_ORIGINS = [
+    "https://kmtbazaar.tech",
+    "https://www.kmtbazaar.tech",
+    "http://localhost:8081",
+    "http://localhost:8082",
+    "http://localhost:19006",
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -227,6 +235,8 @@ async def get_current_user(creds: Optional[HTTPAuthorizationCredentials] = Depen
     user = await db.users.find_one({"id": payload["sub"]}, {"_id": 0, "password": 0})
     if not user:
         raise HTTPException(status_code=401, detail="User not found")
+    if user.get("active", True) is False:
+        raise HTTPException(status_code=403, detail="Account is suspended")
     return user
 
 
@@ -244,6 +254,8 @@ def user_to_out(u: dict) -> dict:
 # ------------------ AUTH ROUTES ------------------
 @api.post("/auth/register", response_model=AuthOut)
 async def register(data: RegisterIn):
+    if data.role == Role.ADMIN:
+        raise HTTPException(status_code=403, detail="Admin accounts cannot be created through public registration")
     existing = await db.users.find_one({"email": data.email})
     if existing:
         raise HTTPException(status_code=400, detail="Email already registered")
@@ -647,37 +659,6 @@ async def get_product(product_id: str):
         raise HTTPException(404, "Product not found")
 
     return p
-
-
-class AIChatRequest(BaseModel):
-    message: str
-
-@app.post("/api/ai/chat")  # (Agar aapka /ai/chat hai toh wahi rehne dein)
-async def ai_chat(req: AIChatRequest):
-    try:
-        if not GEMINI_API_KEY:
-            raise HTTPException(status_code=500, detail="GEMINI_API_KEY not configured")
-
-        # Naya aur fast tarika (gemini_client ka use karke)
-        response = gemini_client.models.generate_content(
-          model='gemini-flash-latest',
-            contents=req.message,
-            config=types.GenerateContentConfig(
-                system_instruction=(
-                    "You are KMT Bazaar AI Assistant. "
-                    "Help customers with products, orders, sellers, "
-                    "delivery and general shopping questions."
-                )
-            )
-        )
-
-        return {
-            "message": response.text
-        }
-        
-    except Exception as e:
-        print("==== API ERROR ====", str(e))
-        raise HTTPException(status_code=500, detail=str(e))
 
 
 # ------------------ CART ------------------
@@ -1590,8 +1571,13 @@ async def admin_orders(
 
 @api.post("/admin/orders/{order_id}/status")
 async def admin_update_order(order_id: str, data: OrderStatusIn, _=Depends(require_roles("admin"))):
+    allowed_statuses = {"pending", "accepted", "rejected", "out_for_delivery", "delivered"}
+    if data.status not in allowed_statuses:
+        raise HTTPException(400, "Invalid order status")
+
     o = await db.orders.find_one({"id": order_id}, {"_id": 0})
-    if not o: raise HTTPException(404, "Order not found")
+    if not o:
+        raise HTTPException(404, "Order not found")
     timeline = o.get("timeline", [])
     timeline.append({"status": data.status, "at": now_iso(), "label": data.status.replace("_", " ").title()})
     await db.orders.update_one({"id": order_id}, {"$set": {"status": data.status, "timeline": timeline}})
@@ -1999,14 +1985,40 @@ async def delivery_available(current=Depends(require_roles("delivery"))):
 
 @api.post("/delivery/orders/{order_id}/claim")
 async def delivery_claim(order_id: str, current=Depends(require_roles("delivery"))):
-    o = await db.orders.find_one({"id": order_id}, {"_id": 0})
-    if not o: raise HTTPException(404, "Not found")
-    if o.get("delivery_id"): raise HTTPException(400, "Already claimed")
+    o = await db.orders.find_one(
+        {"id": order_id, "status": "accepted"},
+        {"_id": 0}
+    )
+    if not o:
+        raise HTTPException(404, "Order not available for pickup")
+    if o.get("delivery_id"):
+        raise HTTPException(400, "Already claimed")
+
     timeline = o.get("timeline", [])
-    timeline.append({"status": "out_for_delivery", "at": now_iso(), "label": "Out for Delivery"})
-    await db.orders.update_one({"id": order_id}, {"$set": {
-        "delivery_id": current["id"], "status": "out_for_delivery", "timeline": timeline,
-    }})
+    timeline.append({
+        "status": "out_for_delivery",
+        "at": now_iso(),
+        "label": "Out for Delivery"
+    })
+
+    result = await db.orders.update_one(
+        {
+            "id": order_id,
+            "status": "accepted",
+            "$or": [
+                {"delivery_id": {"$exists": False}},
+                {"delivery_id": None},
+                {"delivery_id": ""}
+            ]
+        },
+        {"$set": {
+            "delivery_id": current["id"],
+            "status": "out_for_delivery",
+            "timeline": timeline,
+        }}
+    )
+    if result.matched_count == 0:
+        raise HTTPException(409, "Order was already claimed")
     await db.notifications.insert_one({
         "id": str(uuid.uuid4()), "user_id": o["user_id"], "title": "Out for delivery",
         "body": f"Your order {o['order_no']} is on the way!", "type": "delivery", "read": False, "created_at": now_iso(),
@@ -2016,7 +2028,14 @@ async def delivery_claim(order_id: str, current=Depends(require_roles("delivery"
 
 @api.post("/delivery/orders/{order_id}/delivered")
 async def delivery_mark_delivered(order_id: str, current=Depends(require_roles("delivery"))):
-    o = await db.orders.find_one({"id": order_id, "delivery_id": current["id"]}, {"_id": 0})
+    o = await db.orders.find_one(
+        {
+            "id": order_id,
+            "delivery_id": current["id"],
+            "status": "out_for_delivery"
+        },
+        {"_id": 0}
+    )
     if not o: raise HTTPException(404, "Not assigned to you")
     timeline = o.get("timeline", [])
     timeline.append({"status": "delivered", "at": now_iso(), "label": "Delivered"})
@@ -2101,9 +2120,29 @@ async def vendor_pending_orders(current=Depends(require_roles("vendor"))):
 
 @api.post("/vendor/orders/{order_id}/accept")
 async def vendor_accept(order_id: str, current=Depends(require_roles("vendor"))):
+    store_ids, _ = await _vendor_store_ids(current["id"])
+    if not store_ids:
+        raise HTTPException(404, "Order not found")
+
+    vendor_products = await db.products.find(
+        {"store_id": {"$in": store_ids}},
+        {"_id": 0, "id": 1}
+    ).to_list(2000)
+    vendor_product_ids = {p["id"] for p in vendor_products if p.get("id")}
+
     o = await db.orders.find_one({"id": order_id}, {"_id": 0})
     if not o:
         raise HTTPException(404, "Not found")
+
+    owns_item = any(
+        item.get("product_id") in vendor_product_ids
+        or item.get("store_id") in store_ids
+        for item in o.get("items", [])
+    )
+    if not owns_item:
+        raise HTTPException(403, "You cannot accept this order")
+    if o.get("status") != "pending":
+        raise HTTPException(409, "Order is no longer pending")
 
     timeline = o.get("timeline", [])
     timeline.append({
@@ -2112,10 +2151,12 @@ async def vendor_accept(order_id: str, current=Depends(require_roles("vendor")))
         "label": "Accepted by vendor"
     })
 
-    await db.orders.update_one(
-        {"id": order_id},
+    result = await db.orders.update_one(
+        {"id": order_id, "status": "pending"},
         {"$set": {"status": "accepted", "timeline": timeline}}
     )
+    if result.matched_count == 0:
+        raise HTTPException(409, "Order is no longer pending")
 
     await db.notifications.insert_one({
         "id": str(uuid.uuid4()),
@@ -2132,9 +2173,29 @@ async def vendor_accept(order_id: str, current=Depends(require_roles("vendor")))
 
 @api.post("/vendor/orders/{order_id}/reject")
 async def vendor_reject(order_id: str, current=Depends(require_roles("vendor"))):
+    store_ids, _ = await _vendor_store_ids(current["id"])
+    if not store_ids:
+        raise HTTPException(404, "Order not found")
+
+    vendor_products = await db.products.find(
+        {"store_id": {"$in": store_ids}},
+        {"_id": 0, "id": 1}
+    ).to_list(2000)
+    vendor_product_ids = {p["id"] for p in vendor_products if p.get("id")}
+
     o = await db.orders.find_one({"id": order_id}, {"_id": 0})
     if not o:
         raise HTTPException(404, "Not found")
+
+    owns_item = any(
+        item.get("product_id") in vendor_product_ids
+        or item.get("store_id") in store_ids
+        for item in o.get("items", [])
+    )
+    if not owns_item:
+        raise HTTPException(403, "You cannot reject this order")
+    if o.get("status") != "pending":
+        raise HTTPException(409, "Order is no longer pending")
 
     timeline = o.get("timeline", [])
     timeline.append({
@@ -2143,10 +2204,12 @@ async def vendor_reject(order_id: str, current=Depends(require_roles("vendor")))
         "label": "Rejected by vendor"
     })
 
-    await db.orders.update_one(
-        {"id": order_id},
+    result = await db.orders.update_one(
+        {"id": order_id, "status": "pending"},
         {"$set": {"status": "rejected", "timeline": timeline}}
     )
+    if result.matched_count == 0:
+        raise HTTPException(409, "Order is no longer pending")
 
     await db.notifications.insert_one({
         "id": str(uuid.uuid4()),
@@ -2502,19 +2565,13 @@ async def ai_chat(req: AIChatRequest):
             detail=f"AI service error: {str(e)}",
         )
 @api.get("/test-db")
-async def test_db():
+async def test_db(_=Depends(require_roles("admin"))):
     return {"users": await db.users.count_documents({}), "orders": await db.orders.count_documents({})}
 
 
 
 app.include_router(api)
-app.add_middleware(
-    CORSMiddleware,
-    allow_credentials=True,
-    allow_origins=["*"],
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+# CORS is configured once above with the production and local development origins.
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
