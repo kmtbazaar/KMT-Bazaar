@@ -18,6 +18,7 @@ import { useLocalSearchParams, useRouter, useFocusEffect } from "expo-router";
 import { vendorApi } from "@/src/roleApi";
 import { api, uploadImageAsset } from "@/src/api";
 import { COLORS, RADIUS, shadow } from "@/src/theme";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 
 export default function VendorStoreDetail() {
@@ -309,7 +310,7 @@ export default function VendorStoreDetail() {
   };
 
   return (
-    <View style={s.root}>
+    <SafeAreaView style={s.root} edges={["top", "bottom"]}>
       {/* FLOATING HEADER */}
       <View style={s.floatingHeader}>
         <Pressable onPress={() => router.back()} style={s.circleBtn} hitSlop={8}>
@@ -720,7 +721,7 @@ export default function VendorStoreDetail() {
           </View>
         </View>
       </Modal>
-    </View>
+    </SafeAreaView>
   );
 }
 
