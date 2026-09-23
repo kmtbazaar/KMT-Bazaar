@@ -439,7 +439,7 @@ const s = StyleSheet.create({
 
   tilesWrapper: {
     position: "absolute",
-    top: 52,
+    top: Platform.OS === "web" ? 0 : 52,
     left: 0,
     right: 0,
     height: 330,
