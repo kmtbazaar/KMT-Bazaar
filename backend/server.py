@@ -601,6 +601,35 @@ async def verify_otp(data: OtpVerifyIn):
 async def me(current=Depends(get_current_user)):
     return user_to_out(current)
 
+# ------------------ ROOJGAR CATEGORIES ------------------
+
+@api.get("/roojgar-categories")
+async def roojgar_categories():
+    return {
+        "categories": [
+            {"id": "1", "name": "Plumber", "icon": "🔧"},
+            {"id": "2", "name": "Electrician", "icon": "⚡"},
+            {"id": "3", "name": "Carpenter", "icon": "🪚"},
+            {"id": "4", "name": "Painter", "icon": "🎨"},
+            {"id": "5", "name": "RajMistri", "icon": "🧱"},
+            {"id": "6", "name": "Welder", "icon": "🔥"},
+            {"id": "7", "name": "AC Technician", "icon": "❄️"},
+            {"id": "8", "name": "Driver", "icon": "🚗"},
+            {"id": "9", "name": "Delivery Boy", "icon": "🛵"},
+            {"id": "10", "name": "Cook", "icon": "👨‍🍳"},
+            {"id": "11", "name": "House Maid", "icon": "🧹"},
+            {"id": "12", "name": "Security Guard", "icon": "🛡️"},
+            {"id": "13", "name": "Gardener", "icon": "🌿"},
+            {"id": "14", "name": "Mechanic", "icon": "🛠️"},
+            {"id": "15", "name": "Computer Operator", "icon": "💻"},
+            {"id": "16", "name": "Data Entry", "icon": "⌨️"},
+            {"id": "17", "name": "Tailor", "icon": "🧵"},
+            {"id": "18", "name": "Beautician", "icon": "💄"},
+            {"id": "19", "name": "Teacher", "icon": "📚"},
+            {"id": "20", "name": "Other", "icon": "📋"},
+        ]
+    }
+
 # --- NAYA AVATAR UPDATE CODE (Safe Block) ---
 class AvatarUpdateIn(BaseModel):
     avatar: str
