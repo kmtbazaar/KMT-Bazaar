@@ -366,16 +366,6 @@ export default function Login() {
                   <Text style={s.forgotPassword}>Forgot Password?</Text>
                 </Pressable>
 
-                <Pressable
-                  onPress={() => {
-                    setAccountChecked(false);
-                    setRegistered(false);
-                    setPassword("");
-                    setError(null);
-                  }}
-                >
-                  <Text style={s.changeLink}>Change email/mobile</Text>
-                </Pressable>
               </>
             ) : null}
 
@@ -464,7 +454,7 @@ const s = StyleSheet.create({
 
   topContent: {
     alignItems: "center",
-    paddingTop: 175,
+    paddingTop: 150,
     zIndex: 2,
   },
 
@@ -584,14 +574,6 @@ const s = StyleSheet.create({
     color: "#64748B",
     fontSize: 13,
     lineHeight: 18,
-  },
-
-  changeLink: {
-    textAlign: "center",
-    marginTop: SPACING.md,
-    color: "#0284C7",
-    fontSize: 13,
-    fontWeight: "800",
   },
 
   forgotPassword: {
