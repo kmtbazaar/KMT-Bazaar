@@ -2241,17 +2241,58 @@ async def vendor_pending_orders(current=Depends(require_roles("vendor"))):
             "status": "pending",
             "$or": match_conditions
         },
-        {
-            "_id": 0,
-            "id": 1,
-            "order_no": 1,
-            "total": 1,
-            "status": 1,
-            "created_at": 1
-        }
+        {"_id": 0}
     ).sort("created_at", -1).to_list(20)
 
-    return orders
+    customer_ids = list({
+        o.get("user_id") or o.get("customer_id")
+        for o in orders
+        if o.get("user_id") or o.get("customer_id")
+    })
+    customers = await db.users.find(
+        {"id": {"$in": customer_ids}},
+        {"_id": 0, "id": 1, "name": 1, "phone": 1, "email": 1}
+    ).to_list(None) if customer_ids else []
+    customer_map = {u["id"]: u for u in customers}
+
+    enriched = []
+    for o in orders:
+        my_items = [
+            item for item in o.get("items", [])
+            if item.get("product_id") in product_ids
+            or item.get("store_id") in store_ids
+        ]
+        if not my_items:
+            continue
+
+        user_id = o.get("user_id") or o.get("customer_id")
+        customer = customer_map.get(user_id, {})
+        vendor_total = 0.0
+        for item in my_items:
+            if item.get("line_total") is not None:
+                vendor_total += float(item.get("line_total") or 0)
+            else:
+                price = float(item.get("price", item.get("unit_price", 0)) or 0)
+                quantity = float(item.get("quantity", item.get("qty", 1)) or 1)
+                vendor_total += price * quantity
+
+        enriched.append({
+            "id": o.get("id"),
+            "order_no": o.get("order_no"),
+            "total": o.get("total"),
+            "status": o.get("status"),
+            "created_at": o.get("created_at"),
+            "customer": customer,
+            "my_items": my_items,
+            "my_revenue": round(vendor_total, 2),
+            "subtotal": o.get("subtotal"),
+            "delivery_fee": o.get("delivery_fee"),
+            "tax": o.get("tax"),
+            "payment_method": o.get("payment_method"),
+            "address": o.get("address"),
+        })
+
+    return enriched
 
 
 @api.post("/vendor/orders/{order_id}/accept")
