@@ -311,22 +311,6 @@ export default function VendorStoreDetail() {
 
   return (
     <SafeAreaView style={s.root} edges={["top", "bottom"]}>
-      {/* FLOATING HEADER */}
-      <View style={s.floatingHeader}>
-        <Pressable onPress={() => router.back()} style={s.circleBtn} hitSlop={8}>
-          <MaterialCommunityIcons name="arrow-left" size={20} color="#fff" />
-        </Pressable>
-
-        <View style={s.rightActions}>
-          <Pressable onPress={handleDeleteStore} style={[s.circleBtn, s.deleteBtn]} hitSlop={8}>
-            <MaterialCommunityIcons name="trash-can-outline" size={18} color="#fff" />
-          </Pressable>
-          <Pressable onPress={() => setShowSettings(true)} style={s.circleBtn} hitSlop={8}>
-            <MaterialCommunityIcons name="cog" size={20} color="#fff" />
-          </Pressable>
-        </View>
-      </View>
-
       <FlatList
         data={products}
         keyExtractor={(p) => p.id}
@@ -336,9 +320,17 @@ export default function VendorStoreDetail() {
         ItemSeparatorComponent={() => <View style={{ height: 8 }} />}
         ListHeaderComponent={
           <>
-            {/* Banner Image */}
+            {/* Banner Image + Store Controls */}
             <View style={s.bannerWrap}>
               <Image source={{ uri: editForm.image }} style={s.bannerImg} contentFit="cover" />
+
+              <Pressable onPress={() => router.back()} style={[s.bannerCircleBtn, s.bannerBackBtn]} hitSlop={8}>
+                <MaterialCommunityIcons name="arrow-left" size={20} color="#fff" />
+              </Pressable>
+
+              <Pressable onPress={() => setShowSettings(true)} style={[s.bannerCircleBtn, s.bannerSettingsBtn]} hitSlop={8}>
+                <MaterialCommunityIcons name="cog" size={20} color="#fff" />
+              </Pressable>
             </View>
 
             {/* Store Details Card */}
@@ -417,6 +409,11 @@ export default function VendorStoreDetail() {
                 )}
               </Pressable>
             </View>
+
+            <Pressable onPress={handleDeleteStore} style={s.deleteStoreAction}>
+              <MaterialCommunityIcons name="trash-can-outline" size={18} color="#DC2626" />
+              <Text style={s.deleteStoreActionText}>Delete Store</Text>
+            </Pressable>
           </View>
         </View>
       </Modal>
@@ -728,41 +725,32 @@ export default function VendorStoreDetail() {
 const s = StyleSheet.create({
   root: { flex: 1, backgroundColor: "#F9FAFB" },
 
-  // Header Bar
-  floatingHeader: {
+  // Store Banner & Controls
+  bannerWrap: {
+    width: "100%",
+    height: 180,
+    backgroundColor: "#E2E8F0",
+    position: "relative",
+  },
+  bannerCircleBtn: {
     position: "absolute",
     top: 12,
-    left: 12,
-    right: 12,
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    zIndex: 1000,
-    elevation: 20,
-  },
-  rightActions: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
-  circleBtn: {
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: "rgba(0,0,0,0.45)",
+    backgroundColor: "rgba(0,0,0,0.48)",
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.4)",
+    borderColor: "rgba(255,255,255,0.45)",
     ...shadow.soft,
   },
-  deleteBtn: {
-    backgroundColor: "#DC2626",
-    borderColor: "#B91C1C",
+  bannerBackBtn: {
+    left: 12,
   },
-
-  // Store Banner & Card
-  bannerWrap: { width: "100%", height: 180, backgroundColor: "#E2E8F0" },
+  bannerSettingsBtn: {
+    right: 12,
+  },
   bannerImg: { width: "100%", height: "100%" },
   storeDetailsCard: {
     backgroundColor: "#fff",
@@ -860,6 +848,23 @@ const s = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: 16,
+  },
+  deleteStoreAction: {
+    marginTop: 10,
+    height: 42,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#FECACA",
+    backgroundColor: "#FEF2F2",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 7,
+  },
+  deleteStoreActionText: {
+    color: "#DC2626",
+    fontSize: 13,
+    fontWeight: "800",
   },
 
   // Bottom Sheet Modal
