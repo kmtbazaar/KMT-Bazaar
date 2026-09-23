@@ -23,6 +23,8 @@ export default function VendorDashboard() {
   const [refreshing, setRefreshing] = useState(false);
   const [pendingOrder, setPendingOrder] = useState<any | null>(null);
   const [decisionBusy, setDecisionBusy] = useState(false);
+  const [decisionAction, setDecisionAction] = useState<"accept" | "reject" | null>(null);
+  const [showOrderDetails, setShowOrderDetails] = useState(false);
   
   const [showCreateStore, setShowCreateStore] = useState(false);
   const [storeForm, setStoreForm] = useState({ name: "", address: "", image: "", category_id: "cat-grocery" }); 
@@ -81,18 +83,21 @@ export default function VendorDashboard() {
   const handleOrderDecision = async (accepted: boolean) => {
     if (!pendingOrder || decisionBusy) return;
     setDecisionBusy(true);
+    setDecisionAction(accepted ? "accept" : "reject");
     try {
       if (accepted) {
         await vendorApi.acceptOrder(pendingOrder.id);
       } else {
         await vendorApi.rejectOrder(pendingOrder.id);
       }
+      setShowOrderDetails(false);
       setPendingOrder(null);
       await load();
     } catch (e) {
       Alert.alert("Error", accepted ? "Could not accept this order." : "Could not reject this order.");
     } finally {
       setDecisionBusy(false);
+      setDecisionAction(null);
     }
   };
 
@@ -315,41 +320,184 @@ export default function VendorDashboard() {
             <View style={s.orderModalIcon}>
               <MaterialCommunityIcons name="clipboard-alert-outline" size={30} color="#fff" />
             </View>
+
             <Text style={s.orderModalTitle}>New Order Received</Text>
             <Text style={s.orderModalSub}>A customer order is waiting for your decision.</Text>
 
             {pendingOrder && (
-              <View style={s.orderSummary}>
-                <View>
-                  <Text style={s.orderSummaryLabel}>Order</Text>
-                  <Text style={s.orderSummaryValue}>#{pendingOrder.order_no}</Text>
+              <>
+                <View style={s.orderCustomerRow}>
+                  <View style={s.customerAvatar}>
+                    <MaterialCommunityIcons name="account" size={20} color={COLORS.accent} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={s.orderSummaryLabel}>Customer</Text>
+                    <Text style={s.orderCustomerName} numberOfLines={1}>
+                      {pendingOrder.customer?.name || "KMT Customer"}
+                    </Text>
+                  </View>
                 </View>
-                <View style={{ alignItems: "flex-end" }}>
-                  <Text style={s.orderSummaryLabel}>Total</Text>
-                  <Text style={s.orderSummaryValue}>₹{pendingOrder.total}</Text>
+
+                <View style={s.orderSummary}>
+                  <View>
+                    <Text style={s.orderSummaryLabel}>Order ID</Text>
+                    <Text style={s.orderSummaryValue}>#{pendingOrder.order_no}</Text>
+                  </View>
+                  <View style={{ alignItems: "flex-end" }}>
+                    <Text style={s.orderSummaryLabel}>Total</Text>
+                    <Text style={s.orderSummaryValue}>₹{pendingOrder.total}</Text>
+                  </View>
                 </View>
-              </View>
+
+                <Pressable
+                  onPress={() => setShowOrderDetails(true)}
+                  disabled={decisionBusy}
+                  style={[s.viewOrderBtn, decisionBusy && { opacity: 0.5 }]}
+                >
+                  <MaterialCommunityIcons name="eye-outline" size={18} color={COLORS.accent} />
+                  <Text style={s.viewOrderText}>View Order</Text>
+                </Pressable>
+              </>
             )}
 
             <View style={s.orderDecisionRow}>
               <Pressable
                 disabled={decisionBusy}
                 onPress={() => handleOrderDecision(false)}
-                style={[s.rejectBtn, decisionBusy && { opacity: 0.5 }]}
+                style={[s.rejectBtn, decisionBusy && { opacity: 0.65 }]}
               >
-                <MaterialCommunityIcons name="close" size={18} color="#fff" />
-                <Text style={s.decisionText}>Reject</Text>
+                {decisionAction === "reject" ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <MaterialCommunityIcons name="close" size={18} color="#fff" />
+                )}
+                <Text style={s.decisionText}>
+                  {decisionAction === "reject" ? "Rejecting..." : "Reject"}
+                </Text>
               </Pressable>
 
               <Pressable
                 disabled={decisionBusy}
                 onPress={() => handleOrderDecision(true)}
-                style={[s.acceptOrderBtn, decisionBusy && { opacity: 0.5 }]}
+                style={[s.acceptOrderBtn, decisionBusy && { opacity: 0.65 }]}
               >
-                <MaterialCommunityIcons name="check" size={18} color="#fff" />
-                <Text style={s.decisionText}>Accept Order</Text>
+                {decisionAction === "accept" ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <MaterialCommunityIcons name="check" size={18} color="#fff" />
+                )}
+                <Text style={s.decisionText}>
+                  {decisionAction === "accept" ? "Accepting..." : "Accept Order"}
+                </Text>
               </Pressable>
             </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* --- FULL ORDER DETAILS --- */}
+      <Modal visible={showOrderDetails && !!pendingOrder} transparent animationType="slide" onRequestClose={() => setShowOrderDetails(false)}>
+        <View style={s.orderDetailOverlay}>
+          <View style={s.orderDetailModal}>
+            <View style={s.orderDetailHeader}>
+              <View>
+                <Text style={s.orderDetailTitle}>Order Details</Text>
+                <Text style={s.orderDetailSub}>#{pendingOrder?.order_no}</Text>
+              </View>
+              <Pressable onPress={() => setShowOrderDetails(false)} style={s.detailCloseBtn}>
+                <MaterialCommunityIcons name="close" size={20} color={COLORS.text} />
+              </Pressable>
+            </View>
+
+            {pendingOrder && (
+              <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 12 }}>
+                <View style={s.detailCustomerCard}>
+                  <Text style={s.orderSummaryLabel}>Customer</Text>
+                  <Text style={s.orderCustomerName}>{pendingOrder.customer?.name || "KMT Customer"}</Text>
+                  {!!pendingOrder.customer?.phone && (
+                    <Text style={s.detailMuted}>{pendingOrder.customer.phone}</Text>
+                  )}
+                  {!!pendingOrder.customer?.email && (
+                    <Text style={s.detailMuted}>{pendingOrder.customer.email}</Text>
+                  )}
+                </View>
+
+                <Text style={s.detailSectionTitle}>Items</Text>
+
+                {(pendingOrder.my_items || []).map((item: any, index: number) => (
+                  <View key={(item.product_id || item.name || "item") + index} style={s.detailItemRow}>
+                    <Image
+                      source={{ uri: item.image }}
+                      style={s.detailItemImage}
+                      contentFit="cover"
+                    />
+                    <View style={{ flex: 1 }}>
+                      <Text style={s.detailItemName} numberOfLines={2}>{item.name || "Product"}</Text>
+                      <Text style={s.detailMuted}>Qty {item.quantity || item.qty || 1}</Text>
+                    </View>
+                    <Text style={s.detailItemPrice}>₹{item.line_total ?? ((item.price || item.unit_price || 0) * (item.quantity || item.qty || 1))}</Text>
+                  </View>
+                ))}
+
+                <View style={s.detailTotals}>
+                  <DetailLine label="Subtotal" value={pendingOrder.subtotal} />
+                  <DetailLine label="Delivery" value={pendingOrder.delivery_fee} />
+                  <DetailLine label="Tax" value={pendingOrder.tax} />
+                  <View style={s.detailGrandRow}>
+                    <Text style={s.detailGrandLabel}>Total</Text>
+                    <Text style={s.detailGrandValue}>₹{pendingOrder.total}</Text>
+                  </View>
+                </View>
+
+                {!!pendingOrder.payment_method && (
+                  <View style={s.detailInfoRow}>
+                    <Text style={s.orderSummaryLabel}>Payment</Text>
+                    <Text style={s.detailInfoValue}>{String(pendingOrder.payment_method).toUpperCase()}</Text>
+                  </View>
+                )}
+
+                {!!pendingOrder.address && (
+                  <View style={s.detailAddressCard}>
+                    <Text style={s.orderSummaryLabel}>Delivery Address</Text>
+                    <Text style={s.detailAddressText}>
+                      {typeof pendingOrder.address === "string"
+                        ? pendingOrder.address
+                        : [pendingOrder.address.full_name, pendingOrder.address.line1, pendingOrder.address.line2, pendingOrder.address.city, pendingOrder.address.state, pendingOrder.address.pincode]
+                            .filter(Boolean)
+                            .join(", ")}
+                    </Text>
+                  </View>
+                )}
+
+                <View style={s.orderDecisionRow}>
+                  <Pressable
+                    disabled={decisionBusy}
+                    onPress={() => handleOrderDecision(false)}
+                    style={[s.rejectBtn, decisionBusy && { opacity: 0.65 }]}
+                  >
+                    {decisionAction === "reject" ? (
+                      <ActivityIndicator size="small" color="#fff" />
+                    ) : (
+                      <MaterialCommunityIcons name="close" size={18} color="#fff" />
+                    )}
+                    <Text style={s.decisionText}>{decisionAction === "reject" ? "Rejecting..." : "Reject"}</Text>
+                  </Pressable>
+
+                  <Pressable
+                    disabled={decisionBusy}
+                    onPress={() => handleOrderDecision(true)}
+                    style={[s.acceptOrderBtn, decisionBusy && { opacity: 0.65 }]}
+                  >
+                    {decisionAction === "accept" ? (
+                      <ActivityIndicator size="small" color="#fff" />
+                    ) : (
+                      <MaterialCommunityIcons name="check" size={18} color="#fff" />
+                    )}
+                    <Text style={s.decisionText}>{decisionAction === "accept" ? "Accepting..." : "Accept Order"}</Text>
+                  </Pressable>
+                </View>
+              </ScrollView>
+            )}
           </View>
         </View>
       </Modal>
@@ -422,6 +570,16 @@ export default function VendorDashboard() {
   );
 }
 
+function DetailLine({ label, value }: { label: string; value: any }) {
+  const amount = Number(value ?? 0);
+  return (
+    <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 6 }}>
+      <Text style={{ color: COLORS.textMuted, fontSize: 12 }}>{label}</Text>
+      <Text style={{ color: COLORS.text, fontSize: 12, fontWeight: "700" }}>₹{Number.isFinite(amount) ? amount : 0}</Text>
+    </View>
+  );
+}
+
 function KPI({ label, value, icon, color }: any) {
   return (
     <View style={s.kpiCard}>
@@ -473,13 +631,40 @@ const s = StyleSheet.create({
   orderModalIcon: { width: 58, height: 58, borderRadius: 29, backgroundColor: COLORS.accent, alignItems: "center", justifyContent: "center", marginBottom: 12 },
   orderModalTitle: { fontSize: 20, fontWeight: "900", color: COLORS.text },
   orderModalSub: { color: COLORS.textMuted, fontSize: 12, textAlign: "center", marginTop: 5 },
-  orderSummary: { width: "100%", marginTop: 18, padding: 13, borderRadius: RADIUS.md, backgroundColor: COLORS.surfaceSecondary, flexDirection: "row", justifyContent: "space-between" },
+  orderCustomerRow: { width: "100%", marginTop: 16, flexDirection: "row", alignItems: "center", gap: 10, padding: 12, borderRadius: RADIUS.md, backgroundColor: COLORS.surfaceSecondary },
+  customerAvatar: { width: 38, height: 38, borderRadius: 19, backgroundColor: "#FFEDD5", alignItems: "center", justifyContent: "center" },
+  orderCustomerName: { color: COLORS.text, fontSize: 15, fontWeight: "900", marginTop: 2 },
+  orderSummary: { width: "100%", marginTop: 10, padding: 13, borderRadius: RADIUS.md, backgroundColor: COLORS.surfaceSecondary, flexDirection: "row", justifyContent: "space-between" },
   orderSummaryLabel: { color: COLORS.textMuted, fontSize: 10, fontWeight: "700" },
   orderSummaryValue: { color: COLORS.text, fontSize: 15, fontWeight: "900", marginTop: 2 },
+  viewOrderBtn: { width: "100%", marginTop: 10, paddingVertical: 11, borderRadius: RADIUS.pill, borderWidth: 1, borderColor: "#FED7AA", backgroundColor: "#FFF7ED", flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 7 },
+  viewOrderText: { color: COLORS.accent, fontSize: 13, fontWeight: "900" },
   orderDecisionRow: { width: "100%", flexDirection: "row", gap: 10, marginTop: 18 },
   rejectBtn: { flex: 1, backgroundColor: "#DC2626", paddingVertical: 12, borderRadius: RADIUS.pill, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 5 },
   acceptOrderBtn: { flex: 1, backgroundColor: COLORS.success, paddingVertical: 12, borderRadius: RADIUS.pill, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 5 },
   decisionText: { color: "#fff", fontWeight: "900", fontSize: 13 },
+
+  orderDetailOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.55)", justifyContent: "flex-end" },
+  orderDetailModal: { maxHeight: "92%", backgroundColor: "#fff", borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingHorizontal: SPACING.lg, paddingTop: SPACING.lg, paddingBottom: 8 },
+  orderDetailHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 12 },
+  orderDetailTitle: { fontSize: 19, fontWeight: "900", color: COLORS.text },
+  orderDetailSub: { color: COLORS.textMuted, fontSize: 12, marginTop: 2, fontWeight: "700" },
+  detailCloseBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: COLORS.surfaceSecondary, alignItems: "center", justifyContent: "center" },
+  detailCustomerCard: { backgroundColor: COLORS.surfaceSecondary, borderRadius: RADIUS.md, padding: 12, marginBottom: 14 },
+  detailMuted: { color: COLORS.textMuted, fontSize: 12, marginTop: 2 },
+  detailSectionTitle: { color: COLORS.text, fontSize: 14, fontWeight: "900", marginBottom: 8 },
+  detailItemRow: { flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: COLORS.border },
+  detailItemImage: { width: 46, height: 46, borderRadius: 8, backgroundColor: COLORS.surfaceSecondary },
+  detailItemName: { color: COLORS.text, fontSize: 13, fontWeight: "800" },
+  detailItemPrice: { color: COLORS.text, fontSize: 13, fontWeight: "900" },
+  detailTotals: { marginTop: 12, padding: 12, backgroundColor: COLORS.surfaceSecondary, borderRadius: RADIUS.md },
+  detailGrandRow: { marginTop: 8, paddingTop: 8, borderTopWidth: 1, borderTopColor: COLORS.border, flexDirection: "row", justifyContent: "space-between" },
+  detailGrandLabel: { color: COLORS.text, fontSize: 15, fontWeight: "900" },
+  detailGrandValue: { color: COLORS.accent, fontSize: 16, fontWeight: "900" },
+  detailInfoRow: { marginTop: 10, padding: 12, borderRadius: RADIUS.md, backgroundColor: "#F8FAFC", flexDirection: "row", justifyContent: "space-between" },
+  detailInfoValue: { color: COLORS.text, fontSize: 12, fontWeight: "900" },
+  detailAddressCard: { marginTop: 10, padding: 12, borderRadius: RADIUS.md, backgroundColor: "#F8FAFC" },
+  detailAddressText: { color: COLORS.text, fontSize: 12, lineHeight: 18, marginTop: 4 },
 
   modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "center", padding: SPACING.xl },
   modalContent: { backgroundColor: "#fff", padding: SPACING.xl, borderRadius: RADIUS.lg, ...shadow.soft },
