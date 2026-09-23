@@ -2,6 +2,7 @@ import React, { useEffect } from "react";
 import { Stack, useRouter, useSegments } from "expo-router";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
+import { StatusBar } from "expo-status-bar";
 
 import { AuthProvider, useAuth } from "@/src/AuthContext";
 import { CartProvider } from "@/src/CartContext";
@@ -65,6 +66,7 @@ export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
+        <StatusBar style="light" translucent={false} backgroundColor="#0284C7" />
         <AuthProvider>
           <CartProvider>
             <RoleRouteGuard>
