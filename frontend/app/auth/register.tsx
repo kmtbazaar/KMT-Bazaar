@@ -10,7 +10,7 @@ KeyboardAvoidingView,
 Platform,
 ActivityIndicator,
 } from "react-native";
-import { useRouter } from "expo-router";
+import { useRouter, useLocalSearchParams } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -26,10 +26,11 @@ const ROLES = [
 export default function Register() {
 const router = useRouter();
 const { register } = useAuth();
+const params = useLocalSearchParams<{ email?: string; phone?: string }>();
 
 const [name, setName] = useState("");
-const [email, setEmail] = useState("");
-const [phone, setPhone] = useState("");
+const [email, setEmail] = useState(params.email || "");
+const [phone, setPhone] = useState(params.phone || "");
 const [password, setPassword] = useState("");
 const [confirmPassword, setConfirmPassword] = useState("");
 const [role, setRole] = useState("customer");
