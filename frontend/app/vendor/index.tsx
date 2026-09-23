@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState, useRef } from "react";
-import { View, Text, StyleSheet, Pressable, ScrollView, RefreshControl, TextInput, Modal, Alert, Switch, Animated, BackHandler } from "react-native";
+import { View, Text, StyleSheet, Pressable, ScrollView, RefreshControl, TextInput, Modal, Alert, Switch, Animated, BackHandler, ActivityIndicator } from "react-native";
 import { Image } from "expo-image";
 import * as ImagePicker from "expo-image-picker"; 
 import { useFocusEffect, useRouter } from "expo-router";
@@ -25,6 +25,8 @@ export default function VendorDashboard() {
   const [decisionBusy, setDecisionBusy] = useState(false);
   const [decisionAction, setDecisionAction] = useState<"accept" | "reject" | null>(null);
   const [showOrderDetails, setShowOrderDetails] = useState(false);
+  const [pendingCount, setPendingCount] = useState(0);
+  const [dismissedPendingId, setDismissedPendingId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!pendingOrder) return;
@@ -32,6 +34,7 @@ export default function VendorDashboard() {
       if (showOrderDetails) {
         setShowOrderDetails(false);
       } else {
+        setDismissedPendingId(pendingOrder.id);
         setPendingOrder(null);
       }
       return true;
@@ -81,17 +84,43 @@ export default function VendorDashboard() {
   const checkPendingOrder = useCallback(async () => {
     try {
       const pending = await vendorApi.pendingOrders();
-      if (pending?.length) {
-        setPendingOrder((current: any) => current || pending[0]);
+      setPendingCount(pending?.length || 0);
+
+      if (!pending?.length) {
+        setPendingOrder(null);
+        setDismissedPendingId(null);
+        return;
       }
+
+      setPendingOrder((current: any) => {
+        if (current) return current;
+        if (pending[0]?.id === dismissedPendingId) return null;
+        return pending[0];
+      });
     } catch {}
-  }, []);
+  }, [dismissedPendingId]);
 
   useEffect(() => {
     checkPendingOrder();
     const timer = setInterval(checkPendingOrder, 8000);
     return () => clearInterval(timer);
   }, [checkPendingOrder]);
+
+  const openPendingOrders = async () => {
+    try {
+      const pending = await vendorApi.pendingOrders();
+      setPendingCount(pending?.length || 0);
+      if (pending?.length) {
+        setDismissedPendingId(null);
+        setShowOrderDetails(false);
+        setPendingOrder(pending[0]);
+      } else {
+        setPendingOrder(null);
+      }
+    } catch (e) {
+      Alert.alert("Error", "Could not load pending orders.");
+    }
+  };
 
   const handleOrderDecision = async (accepted: boolean) => {
     if (!pendingOrder || decisionBusy) return;
@@ -105,6 +134,8 @@ export default function VendorDashboard() {
       }
       setShowOrderDetails(false);
       setPendingOrder(null);
+      setPendingCount((count) => Math.max(0, count - 1));
+      setDismissedPendingId(null);
       await load();
     } catch (e) {
       Alert.alert("Error", accepted ? "Could not accept this order." : "Could not reject this order.");
@@ -216,8 +247,13 @@ export default function VendorDashboard() {
             {/* 🔥 Right Side: Notification Icon + Animated Settings Icon */}
             <View style={{ flex: 1, flexDirection: "row", justifyContent: "flex-end", alignItems: "center", gap: 14 }}>
               
-              <Pressable onPress={() => router.push("/vendor/orders" as any)} hitSlop={10}>
+              <Pressable onPress={openPendingOrders} hitSlop={10} style={{ position: "relative" }}>
                 <MaterialCommunityIcons name="bell-outline" size={28} color="#fff" />
+                {pendingCount > 0 ? (
+                  <View style={s.pendingBadge}>
+                    <Text style={s.pendingBadgeText}>{pendingCount > 9 ? "9+" : pendingCount}</Text>
+                  </View>
+                ) : null}
               </Pressable>
 
               <Pressable onPress={handleSettingsPress} hitSlop={10}>
@@ -327,7 +363,16 @@ export default function VendorDashboard() {
       </ScrollView>
 
       {/* --- NEW ORDER DECISION POPUP --- */}
-      <Modal visible={!!pendingOrder} transparent animationType="fade" onRequestClose={() => setPendingOrder(null)}>
+      <Modal
+        visible={!!pendingOrder}
+        transparent
+        animationType="fade"
+        onRequestClose={() => {
+          setDismissedPendingId(pendingOrder?.id || null);
+          setPendingOrder(null);
+          setShowOrderDetails(false);
+        }}
+      >
         <View style={s.orderModalOverlay}>
           <View style={s.orderModal}>
             <View style={s.orderModalIcon}>
@@ -612,6 +657,25 @@ const s = StyleSheet.create({
   headerTop: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   
   headerTitle: { color: "#fff", fontWeight: "800", fontSize: 18 },
+  pendingBadge: {
+    position: "absolute",
+    top: -6,
+    right: -9,
+    minWidth: 18,
+    height: 18,
+    paddingHorizontal: 4,
+    borderRadius: 9,
+    backgroundColor: "#DC2626",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 2,
+    borderColor: COLORS.accent,
+  },
+  pendingBadgeText: {
+    color: "#fff",
+    fontSize: 9,
+    fontWeight: "900",
+  },
   headerSub: { color: "rgba(255,255,255,0.85)", fontSize: 12, marginTop: 2 },
   bigStat: { color: "#fff", fontSize: 36, fontWeight: "800", marginTop: 18 },
   bigLabel: { color: "rgba(255,255,255,0.85)", fontSize: 12 },
