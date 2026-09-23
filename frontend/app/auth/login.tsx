@@ -456,6 +456,7 @@ const s = StyleSheet.create({
     alignItems: "center",
     paddingTop: 150,
     zIndex: 2,
+    transform: [{ translateY: 18 }],
   },
 
   cardWrapper: {
