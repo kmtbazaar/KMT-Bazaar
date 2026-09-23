@@ -8,6 +8,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from google import genai
 from google.genai import types
+from google.oauth2 import id_token as google_id_token
+from google.auth.transport import requests as google_requests
 load_dotenv()
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 if GEMINI_API_KEY:
@@ -52,6 +54,7 @@ JWT_EXPIRE_MIN = 60 * 24 * 30  # 30 days
 
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
+GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID", "")
 
 gemini_client = genai.Client(api_key=GEMINI_API_KEY)
 
@@ -120,6 +123,10 @@ class LoginIn(BaseModel):
 
 class IdentifierCheckIn(BaseModel):
     identifier: str
+
+
+class GoogleLoginIn(BaseModel):
+    credential: str
 
 
 class OtpRequestIn(BaseModel):
@@ -315,6 +322,61 @@ async def login(data: LoginIn):
         raise HTTPException(status_code=401, detail="Invalid email/mobile or password")
     token = create_token(user["id"], user["role"])
     return {"token": token, "user": user_to_out(user)}
+
+@api.post("/auth/google", response_model=AuthOut)
+async def google_login(data: GoogleLoginIn):
+    if not GOOGLE_CLIENT_ID:
+        raise HTTPException(status_code=503, detail="Google sign-in is not configured")
+
+    try:
+        info = google_id_token.verify_oauth2_token(
+            data.credential,
+            google_requests.Request(),
+            GOOGLE_CLIENT_ID,
+        )
+    except Exception:
+        raise HTTPException(status_code=401, detail="Invalid Google sign-in")
+
+    email = str(info.get("email", "")).strip().lower()
+    google_sub = str(info.get("sub", "")).strip()
+    name = str(info.get("name", "")).strip() or "KMT Customer"
+
+    if not email or not google_sub or not info.get("email_verified"):
+        raise HTTPException(status_code=401, detail="Google account email is not verified")
+
+    user = await db.users.find_one({"email": email})
+
+    if user:
+        if user.get("role") != Role.CUSTOMER.value:
+            raise HTTPException(status_code=403, detail="Please use your KMT account login for this account")
+        if user.get("active", True) is False:
+            raise HTTPException(status_code=403, detail="Account is suspended")
+        if user.get("google_sub") and user.get("google_sub") != google_sub:
+            raise HTTPException(status_code=409, detail="This email is linked to another Google account")
+        await db.users.update_one(
+            {"id": user["id"]},
+            {"$set": {"google_sub": google_sub, "name": name or user.get("name", "")}},
+        )
+        user["google_sub"] = google_sub
+        user["name"] = name or user.get("name", "")
+    else:
+        uid = str(uuid.uuid4())
+        user = {
+            "id": uid,
+            "name": name,
+            "email": email,
+            "phone": None,
+            "password": hash_password(secrets.token_urlsafe(32)),
+            "role": Role.CUSTOMER.value,
+            "avatar": info.get("picture"),
+            "google_sub": google_sub,
+            "created_at": now_iso(),
+        }
+        await db.users.insert_one(dict(user))
+
+    token = create_token(user["id"], user["role"])
+    return {"token": token, "user": user_to_out(user)}
+
 
 @api.post("/auth/forgot-password")
 async def forgot_password(data: ForgotPasswordIn):
