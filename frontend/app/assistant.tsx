@@ -11,7 +11,7 @@ import {
   Text,
   TextInput,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 
 import BotHeader from "../components/BotHeader";
@@ -27,6 +27,7 @@ type Message = {
 
 export default function AssistantScreen() {
   const scrollRef = useRef<ScrollView>(null);
+  const insets = useSafeAreaInsets();
   const [input, setInput] = useState("");
   const [typing, setTyping] = useState(false);
 
@@ -80,13 +81,13 @@ export default function AssistantScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
+    <SafeAreaView style={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom }]} edges={[]}>
       {/* 1. PATLA HEADER */}
       <BotHeader />
 
       <KeyboardAvoidingView
         style={{ flex: 1 }}
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
       >
         <ScrollView
           ref={scrollRef}
