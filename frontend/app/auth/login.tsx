@@ -450,13 +450,13 @@ const s = StyleSheet.create({
   loginContent: {
     flex: 1,
     zIndex: 2,
+    transform: [{ translateY: 18 }],
   },
 
   topContent: {
     alignItems: "center",
     paddingTop: 150,
     zIndex: 2,
-    transform: [{ translateY: 18 }],
   },
 
   cardWrapper: {
