@@ -20,7 +20,7 @@ import { useNavigation } from "@react-navigation/native";
 const LEATHER_BG_URL =
   "https://www.transparenttextures.com/patterns/white-diamond-dark.png";
 
-const API_BASE_URL = "https://kmt-bazaar.onrender.com/api";
+const API_BASE_URL = "https://kmtbazaar.tech/api";
 
 const DEFAULT_CATEGORIES = [
   { id: "1", name: "Plumber", icon: "🔧" },
