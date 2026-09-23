@@ -86,16 +86,8 @@ export default function Index() {
                 onPress={() => router.replace("/auth/login")}
               >
                 <View style={styles.primaryGradientBtn}>
-                  <Text style={styles.primaryBtnText}>Login</Text>
+                  <Text style={styles.primaryBtnText}>Let's get started</Text>
                 </View>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                activeOpacity={0.8}
-                style={styles.secondaryBtn}
-                onPress={() => router.replace("/auth/register")}
-              >
-                <Text style={styles.secondaryBtnText}>Create Account</Text>
               </TouchableOpacity>
             </View>
 
@@ -228,17 +220,5 @@ const styles = StyleSheet.create({
     fontSize: 17,
     fontWeight: "700",
   },
-  secondaryBtn: {
-    backgroundColor: "transparent",
-    borderWidth: 1.5,
-    borderColor: "rgba(250, 249, 246, 0.3)",
-    paddingVertical: 15,
-    borderRadius: 16,
-    alignItems: "center",
-  },
-  secondaryBtnText: {
-    color: "#FAF9F6",
-    fontSize: 16,
-    fontWeight: "600",
-  },
+
 });
