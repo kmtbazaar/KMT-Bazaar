@@ -1732,6 +1732,17 @@ async def admin_delete_cat(cid: str, _=Depends(require_roles("admin"))):
     return {"ok": True}
 
 
+@api.put("/admin/categories/{cid}")
+async def admin_update_cat(cid: str, data: CategoryIn, _=Depends(require_roles("admin"))):
+    result = await db.categories.update_one(
+        {"id": cid},
+        {"$set": data.dict()}
+    )
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Category not found")
+    return await db.categories.find_one({"id": cid}, {"_id": 0})
+
+
 @api.post("/admin/banners")
 async def admin_create_banner(data: BannerIn, _=Depends(require_roles("admin"))):
     bid = "ban-" + uuid.uuid4().hex[:6]
@@ -1745,6 +1756,17 @@ async def admin_create_banner(data: BannerIn, _=Depends(require_roles("admin")))
 async def admin_delete_banner(bid: str, _=Depends(require_roles("admin"))):
     await db.banners.delete_one({"id": bid})
     return {"ok": True}
+
+
+@api.put("/admin/banners/{bid}")
+async def admin_update_banner(bid: str, data: BannerIn, _=Depends(require_roles("admin"))):
+    result = await db.banners.update_one(
+        {"id": bid},
+        {"$set": data.dict()}
+    )
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Banner not found")
+    return await db.banners.find_one({"id": bid}, {"_id": 0})
 
 
 @api.get("/admin/commission")
