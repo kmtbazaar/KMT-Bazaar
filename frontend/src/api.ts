@@ -199,11 +199,17 @@ export async function uploadImageAsset(asset: {
 
 
 export const api = {
-  login: (email: string, password: string) =>
+  checkIdentifier: (identifier: string) =>
+    apiFetch<{ exists: boolean }>("/auth/check-identifier", {
+      method: "POST",
+      body: JSON.stringify({ identifier }),
+    }),
+
+  login: (identifier: string, password: string) =>
     apiFetch<{ token: string; user: User }>("/auth/login", {
       method: "POST",
       body: JSON.stringify({
-        email,
+        identifier,
         password,
       }),
     }),
