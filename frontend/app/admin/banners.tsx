@@ -14,16 +14,36 @@ export default function AdminBanners() {
   const router = useRouter();
   const [banners, setBanners] = useState<any[]>([]);
   const [modal, setModal] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [f, setF] = useState({ title: "", subtitle: "", cta: "Shop Now", image: "", color: "#2563EB", order: "99" });
 
   const load = useCallback(async () => { try { setBanners(await api.banners()); } catch {} }, []);
   useFocusEffect(useCallback(() => { load(); }, [load]));
 
   const save = async () => {
-    await adminApi.createBanner({ ...f, order: parseInt(f.order) || 99 });
+    const data = { ...f, order: parseInt(f.order) || 99 };
+    if (editingId) {
+      await adminApi.updateBanner(editingId, data);
+    } else {
+      await adminApi.createBanner(data);
+    }
     setModal(false);
+    setEditingId(null);
     setF({ title: "", subtitle: "", cta: "Shop Now", image: "", color: "#2563EB", order: "99" });
     load();
+  };
+
+  const editBanner = (item: any) => {
+    setEditingId(item.id);
+    setF({
+      title: item.title || "",
+      subtitle: item.subtitle || "",
+      cta: item.cta || "Shop Now",
+      image: item.image || "",
+      color: item.color || "#2563EB",
+      order: String(item.order ?? 99),
+    });
+    setModal(true);
   };
 
   return (
@@ -49,9 +69,14 @@ export default function AdminBanners() {
               <Text style={s.bTitle}>{item.title}</Text>
               <View style={[s.bCta, { backgroundColor: item.color }]}><Text style={s.bCtaText}>{item.cta}</Text></View>
             </View>
-            <Pressable testID={`del-banner-${item.id}`} onPress={async () => { await adminApi.deleteBanner(item.id); load(); }} style={s.delBtn}>
-              <MaterialCommunityIcons name="trash-can-outline" size={18} color="#fff" />
-            </Pressable>
+            <View style={s.cardActions}>
+              <Pressable testID={`edit-banner-${item.id}`} onPress={() => editBanner(item)} style={s.editBtn}>
+                <MaterialCommunityIcons name="pencil-outline" size={17} color="#fff" />
+              </Pressable>
+              <Pressable testID={`del-banner-${item.id}`} onPress={async () => { await adminApi.deleteBanner(item.id); load(); }} style={s.delBtn}>
+                <MaterialCommunityIcons name="trash-can-outline" size={17} color="#fff" />
+              </Pressable>
+            </View>
           </View>
         )}
       />
@@ -59,7 +84,7 @@ export default function AdminBanners() {
         <View style={ms.backdrop}>
           <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={ms.sheet}>
             <View style={ms.handle} />
-            <Text style={ms.title}>Add Banner</Text>
+            <Text style={ms.title}>{editingId ? "Edit Banner" : "Add Banner"}</Text>
             <Input ph="Title" v={f.title} oc={(v: string) => setF({ ...f, title: v })} testID="bf-title" />
             <Input ph="Subtitle" v={f.subtitle} oc={(v: string) => setF({ ...f, subtitle: v })} testID="bf-sub" />
             <Input ph="CTA text" v={f.cta} oc={(v: string) => setF({ ...f, cta: v })} testID="bf-cta" />
@@ -70,7 +95,7 @@ export default function AdminBanners() {
             </View>
             <View style={{ flexDirection: "row", gap: 8, marginTop: 8 }}>
               <Pressable onPress={() => setModal(false)} style={[ms.btn, ms.btnGhost]}><Text style={ms.btnGhostText}>Cancel</Text></Pressable>
-              <Pressable testID="bf-save" onPress={save} style={[ms.btn, ms.btnPrimary]}><Text style={ms.btnText}>Create</Text></Pressable>
+              <Pressable testID="bf-save" onPress={save} style={[ms.btn, ms.btnPrimary]}><Text style={ms.btnText}>{editingId ? "Save Changes" : "Create"}</Text></Pressable>
             </View>
           </KeyboardAvoidingView>
         </View>
@@ -107,5 +132,7 @@ const s = StyleSheet.create({
   bTitle: { color: "#fff", fontSize: 22, fontWeight: "800", marginTop: 4 },
   bCta: { marginTop: 10, paddingHorizontal: 12, paddingVertical: 6, borderRadius: RADIUS.pill, alignSelf: "flex-start" },
   bCtaText: { color: "#fff", fontWeight: "700", fontSize: 12 },
-  delBtn: { position: "absolute", top: 12, right: 12, width: 32, height: 32, borderRadius: 16, backgroundColor: "rgba(220,38,38,0.85)", alignItems: "center", justifyContent: "center" },
+  cardActions: { position: "absolute", top: 12, right: 12, flexDirection: "row", gap: 6 },
+  editBtn: { width: 32, height: 32, borderRadius: 16, backgroundColor: "rgba(2,132,199,0.9)", alignItems: "center", justifyContent: "center" },
+  delBtn: { width: 32, height: 32, borderRadius: 16, backgroundColor: "rgba(220,38,38,0.85)", alignItems: "center", justifyContent: "center" },
 });
