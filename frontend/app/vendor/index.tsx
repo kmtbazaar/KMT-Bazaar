@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState, useRef } from "react";
-import { View, Text, StyleSheet, Pressable, ScrollView, RefreshControl, TextInput, Modal, Alert, Switch, Animated } from "react-native";
+import { View, Text, StyleSheet, Pressable, ScrollView, RefreshControl, TextInput, Modal, Alert, Switch, Animated, BackHandler } from "react-native";
 import { Image } from "expo-image";
 import * as ImagePicker from "expo-image-picker"; 
 import { useFocusEffect, useRouter } from "expo-router";
@@ -25,6 +25,19 @@ export default function VendorDashboard() {
   const [decisionBusy, setDecisionBusy] = useState(false);
   const [decisionAction, setDecisionAction] = useState<"accept" | "reject" | null>(null);
   const [showOrderDetails, setShowOrderDetails] = useState(false);
+
+  useEffect(() => {
+    if (!pendingOrder) return;
+    const sub = BackHandler.addEventListener("hardwareBackPress", () => {
+      if (showOrderDetails) {
+        setShowOrderDetails(false);
+      } else {
+        setPendingOrder(null);
+      }
+      return true;
+    });
+    return () => sub.remove();
+  }, [pendingOrder, showOrderDetails]);
   
   const [showCreateStore, setShowCreateStore] = useState(false);
   const [storeForm, setStoreForm] = useState({ name: "", address: "", image: "", category_id: "cat-grocery" }); 
@@ -314,7 +327,7 @@ export default function VendorDashboard() {
       </ScrollView>
 
       {/* --- NEW ORDER DECISION POPUP --- */}
-      <Modal visible={!!pendingOrder} transparent animationType="fade" onRequestClose={() => {}}>
+      <Modal visible={!!pendingOrder} transparent animationType="fade" onRequestClose={() => setPendingOrder(null)}>
         <View style={s.orderModalOverlay}>
           <View style={s.orderModal}>
             <View style={s.orderModalIcon}>
