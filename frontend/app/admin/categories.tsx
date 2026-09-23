@@ -13,6 +13,7 @@ export default function AdminCategories() {
   const router = useRouter();
   const [cats, setCats] = useState<any[]>([]);
   const [modal, setModal] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [f, setF] = useState({ name: "", icon: "tag", color: "#2563EB", image: "" });
 
   const load = useCallback(async () => { try { setCats(await api.categories()); } catch {} }, []);
@@ -20,8 +21,21 @@ export default function AdminCategories() {
 
   const onDelete = async (id: string) => { await adminApi.deleteCategory(id); load(); };
   const save = async () => {
-    await adminApi.createCategory(f);
-    setModal(false); setF({ name: "", icon: "tag", color: "#2563EB", image: "" }); load();
+    if (editingId) {
+      await adminApi.updateCategory(editingId, f);
+    } else {
+      await adminApi.createCategory(f);
+    }
+    setModal(false);
+    setEditingId(null);
+    setF({ name: "", icon: "tag", color: "#2563EB", image: "" });
+    load();
+  };
+
+  const editCategory = (item: any) => {
+    setEditingId(item.id);
+    setF({ name: item.name || "", icon: item.icon || "tag", color: item.color || "#2563EB", image: item.image || "" });
+    setModal(true);
   };
 
   return (
@@ -45,9 +59,14 @@ export default function AdminCategories() {
             <Image source={{ uri: item.image }} style={s.img} contentFit="cover" />
             <Text style={s.name}>{item.name}</Text>
             <View style={[s.colorDot, { backgroundColor: item.color }]} />
-            <Pressable testID={`del-cat-${item.id}`} onPress={() => onDelete(item.id)} style={s.delBtn}>
-              <MaterialCommunityIcons name="trash-can-outline" size={16} color={COLORS.error} />
-            </Pressable>
+            <View style={s.cardActions}>
+              <Pressable testID={`edit-cat-${item.id}`} onPress={() => editCategory(item)} style={s.editBtn}>
+                <MaterialCommunityIcons name="pencil-outline" size={16} color={COLORS.brand} />
+              </Pressable>
+              <Pressable testID={`del-cat-${item.id}`} onPress={() => onDelete(item.id)} style={s.delBtn}>
+                <MaterialCommunityIcons name="trash-can-outline" size={16} color={COLORS.error} />
+              </Pressable>
+            </View>
           </View>
         )}
       />
@@ -55,14 +74,14 @@ export default function AdminCategories() {
         <View style={ms.backdrop}>
           <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={ms.sheet}>
             <View style={ms.handle} />
-            <Text style={ms.title}>Add Category</Text>
+            <Text style={ms.title}>{editingId ? "Edit Category" : "Add Category"}</Text>
             <Input ph="Name" v={f.name} oc={(v: string) => setF({ ...f, name: v })} testID="cf-name" />
             <Input ph="Icon (MaterialCommunityIcons name)" v={f.icon} oc={(v: string) => setF({ ...f, icon: v })} testID="cf-icon" />
             <Input ph="Color (#RRGGBB)" v={f.color} oc={(v: string) => setF({ ...f, color: v })} testID="cf-color" />
             <ImageUploader value={f.image} onChange={(uri) => setF({ ...f, image: uri })} label="Category Image" aspect={[1, 1]} testID="cf-image" />
             <View style={{ flexDirection: "row", gap: 8, marginTop: 8 }}>
               <Pressable onPress={() => setModal(false)} style={[ms.btn, ms.btnGhost]}><Text style={ms.btnGhostText}>Cancel</Text></Pressable>
-              <Pressable testID="cf-save" onPress={save} style={[ms.btn, ms.btnPrimary]}><Text style={ms.btnText}>Create</Text></Pressable>
+              <Pressable testID="cf-save" onPress={save} style={[ms.btn, ms.btnPrimary]}><Text style={ms.btnText}>{editingId ? "Save Changes" : "Create"}</Text></Pressable>
             </View>
           </KeyboardAvoidingView>
         </View>
@@ -96,5 +115,7 @@ const s = StyleSheet.create({
   img: { width: 70, height: 70, borderRadius: 35, backgroundColor: COLORS.surfaceTertiary },
   name: { fontWeight: "700", color: COLORS.text, marginTop: 8 },
   colorDot: { width: 24, height: 6, borderRadius: 3, marginTop: 6 },
-  delBtn: { position: "absolute", top: 8, right: 8, padding: 4 },
+  cardActions: { position: "absolute", top: 8, right: 8, flexDirection: "row", gap: 4 },
+  editBtn: { padding: 4 },
+  delBtn: { padding: 4 },
 });
