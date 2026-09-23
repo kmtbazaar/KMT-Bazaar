@@ -1,8 +1,15 @@
 import AIAssistant from "../../components/AIAssistant";
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import {
-  View, Text, TextInput, Pressable, StyleSheet,
-  KeyboardAvoidingView, Platform, ActivityIndicator, Dimensions
+  View,
+  Text,
+  TextInput,
+  Pressable,
+  StyleSheet,
+  Keyboard,
+  Platform,
+  ActivityIndicator,
+  Dimensions,
 } from "react-native";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
@@ -10,23 +17,29 @@ import { LinearGradient } from "expo-linear-gradient";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
-import Animated, { 
-  FadeInDown, 
-  ZoomIn, 
-  useSharedValue, 
-  useAnimatedStyle, 
-  withRepeat, 
-  withTiming, 
-  withSequence, 
-  Easing 
+import Animated, {
+  FadeInDown,
+  ZoomIn,
+  useSharedValue,
+  useAnimatedStyle,
+  withRepeat,
+  withTiming,
+  withSequence,
+  Easing,
 } from "react-native-reanimated";
 import { useAuth } from "@/src/AuthContext";
-import { COLORS, LOGO_URL, RADIUS, SPACING } from "@/src/theme";
+import { api } from "@/src/api";
+import { LOGO_URL, RADIUS, SPACING } from "@/src/theme";
 
 const { width } = Dimensions.get("window");
 
-// Animated Background Tile Component
-function AnimatedTile({ delay = 0, color = "#00B4D8" }: { delay?: number; color?: string }) {
+function AnimatedTile({
+  delay = 0,
+  color = "#00B4D8",
+}: {
+  delay?: number;
+  color?: string;
+}) {
   const opacity = useSharedValue(0.15);
   const scale = useSharedValue(0.95);
 
@@ -60,85 +73,143 @@ function AnimatedTile({ delay = 0, color = "#00B4D8" }: { delay?: number; color?
     transform: [{ scale: scale.value }],
   }));
 
-  return (
-    <Animated.View style={[s.tile, { backgroundColor: color }, animatedStyle]} />
-  );
+  return <Animated.View style={[s.tile, { backgroundColor: color }, animatedStyle]} />;
 }
 
 export default function Login() {
   const router = useRouter();
-  const { login, loginOtp } = useAuth();
+  const { login } = useAuth();
   const insets = useSafeAreaInsets();
-  const [tab, setTab] = useState<"password" | "otp">("password");
-  const [email, setEmail] = useState("");
+
+  const [loginType, setLoginType] = useState<"email" | "mobile">("email");
+  const [identifier, setIdentifier] = useState("");
+  const [accountChecked, setAccountChecked] = useState(false);
+  const [registered, setRegistered] = useState(false);
   const [password, setPassword] = useState("");
-  const [phone, setPhone] = useState("");
-  const [otp, setOtp] = useState("");
-  const [otpSent, setOtpSent] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
+  const keyboardShift = useSharedValue(0);
 
-  // Production-grade Password Validation Checker
-  const validatePassword = (pass: string) => {
-    const isLengthValid = pass.length >= 8;
-    const hasUpperCase = /[A-Z]/.test(pass);
-    const hasNumber = /[0-9]/.test(pass);
-    const hasSymbol = /[^A-Za-z0-9]/.test(pass);
-    return isLengthValid && hasUpperCase && hasNumber && hasSymbol;
+  useEffect(() => {
+    const showEvent = Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow";
+    const hideEvent = Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide";
+
+    const showSub = Keyboard.addListener(showEvent, (event) => {
+      const height = event.endCoordinates?.height || 280;
+      const shift = Math.min(Math.max(height * 0.42, 95), 150);
+      keyboardShift.value = withTiming(-shift, { duration: 220 });
+    });
+
+    const hideSub = Keyboard.addListener(hideEvent, () => {
+      keyboardShift.value = withTiming(0, { duration: 180 });
+    });
+
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
+
+  const keyboardContentStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: keyboardShift.value }],
+  }));
+
+  const switchLoginType = (type: "email" | "mobile") => {
+    setLoginType(type);
+    setIdentifier("");
+    setAccountChecked(false);
+    setRegistered(false);
+    setPassword("");
+    setError(null);
+  };
+
+  const onContinue = async () => {
+    const value =
+      loginType === "email"
+        ? identifier.trim().toLowerCase()
+        : identifier.replace(/[^0-9]/g, "");
+
+    if (loginType === "email") {
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
+        setError("Enter a valid email address");
+        return;
+      }
+    } else if (!/^[0-9]{10}$/.test(value)) {
+      setError("Enter a valid 10-digit mobile number");
+      return;
+    }
+
+    setError(null);
+    setLoading(true);
+
+    try {
+      const result = await api.checkIdentifier(value);
+      setAccountChecked(true);
+      setRegistered(result.exists);
+
+      if (!result.exists) {
+        const param =
+          loginType === "email"
+            ? `email=${encodeURIComponent(value)}`
+            : `phone=${encodeURIComponent(value)}`;
+
+        router.push(`/auth/register?${param}` as any);
+      }
+    } catch (e: any) {
+      setError(e?.message || "Could not check account");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const onLogin = async () => {
-    if (!email || !password) {
-      setError("Please fill in both email and password");
+    if (!password) {
+      setError("Please enter your password");
       return;
     }
-    if (!validatePassword(password)) {
-      setError("Password must be 8+ chars with uppercase, number & symbol.");
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      return;
-    }
-    setError(null); setLoading(true);
+
+    setError(null);
+    setLoading(true);
+
     try {
       await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-      const user = await login(email.trim(), password);
-      if (!user || !user.role) throw new Error("Login failed, no user role returned");
 
-      if (user.role === "customer") router.replace("/(tabs)/home" as any);
-      else router.replace(`/${user.role}` as any);
+      const value =
+        loginType === "email"
+          ? identifier.trim().toLowerCase()
+          : identifier.replace(/[^0-9]/g, "");
 
+      const user = await login(value, password);
+
+      if (!user || !user.role) {
+        throw new Error("Login failed, no user role returned");
+      }
+
+      if (user.role === "customer") {
+        router.replace("/(tabs)/home" as any);
+      } else {
+        router.replace(`/${user.role}` as any);
+      }
     } catch (e: any) {
-      setError(e.message || "Login failed");
+      setError(e?.message || "Login failed");
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-    } finally { setLoading(false); }
-  };
-
-  const onOtpRequest = async () => {
-    if (phone.length < 10) { setError("Enter a valid 10-digit phone number"); return; }
-    setError(null);
-    setOtpSent(true);
-    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-  };
-
-  const onOtpVerify = async () => {
-    if (!otp) { setError("Please enter the OTP"); return; }
-    setError(null); setLoading(true);
-    try {
-      const user = await loginOtp(phone, otp);
-      if (!user || !user.role) throw new Error("Login failed, no user role returned");
-      router.replace(user.role === "customer" ? "/(tabs)/home" : `/${user.role}` as any);
-    } catch (e: any) {
-      setError(e.message || "Invalid OTP");
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-    } finally { setLoading(false); }
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
-    <SafeAreaView style={[s.root, { paddingTop: insets.top, paddingBottom: insets.bottom }]} edges={[]} testID="login-screen">
-      {/* Dark Ambient Background Gradient */}
-      <LinearGradient colors={["#050B14", "#0A1224", "#000000"]} style={s.headerBg} />
+    <SafeAreaView
+      style={[s.root, { paddingTop: insets.top, paddingBottom: insets.bottom }]}
+      edges={[]}
+      testID="login-screen"
+    >
+      <LinearGradient
+        colors={["#050B14", "#0A1224", "#000000"]}
+        style={s.headerBg}
+      />
 
-      {/* Animated Environment Tiles & Glowing Flashes */}
       <View style={s.tilesWrapper} pointerEvents="none">
         <AnimatedTile delay={0} color="#00B4D8" />
         <AnimatedTile delay={600} color="#FF6E00" />
@@ -148,16 +219,23 @@ export default function Login() {
         <AnimatedTile delay={1500} color="#FF6E00" />
       </View>
 
-      <View style={{ alignItems: "center", paddingTop: 180, zIndex: 2 }}>
-        {/* Animated Text Header (Logo aur Line yahan se hata di gayi hai) */}
-        <Animated.Text entering={FadeInDown.delay(200).springify()} style={s.appName}>KMT BAZAAR</Animated.Text>
-        <Animated.Text entering={FadeInDown.delay(350).springify()} style={s.welcome}>Welcome back, login to continue</Animated.Text>
-      </View>
+      <Animated.View style={[s.loginContent, keyboardContentStyle]}>
+        <View style={s.topContent}>
+          <Animated.Text
+            entering={FadeInDown.delay(200).springify()}
+            style={s.appName}
+          >
+            KMT BAZAAR
+          </Animated.Text>
+          <Animated.Text
+            entering={FadeInDown.delay(350).springify()}
+            style={s.welcome}
+          >
+            Welcome back, login to continue
+          </Animated.Text>
+        </View>
 
-      <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "position"} keyboardVerticalOffset={insets.top} style={{ flex: 1, zIndex: 2 }}>
         <View style={s.cardWrapper}>
-
-          {/* Solid White Card with Top Gradient Border */}
           <View style={s.card}>
             <LinearGradient
               colors={["#00B4D8", "#FF6E00"]}
@@ -167,18 +245,77 @@ export default function Login() {
             />
 
             <View style={s.tabsRow}>
-              <Pressable testID="tab-password" onPress={() => setTab("password")} style={[s.tab, tab === "password" && s.tabActive]}>
-                <Text style={[s.tabText, tab === "password" && s.tabTextActive]}>Email & Password</Text>
+              <Pressable
+                testID="login-type-email"
+                onPress={() => switchLoginType("email")}
+                style={[s.tab, loginType === "email" && s.tabActive]}
+              >
+                <MaterialCommunityIcons
+                  name="email-outline"
+                  size={18}
+                  color={loginType === "email" ? "#FF6E00" : "#64748B"}
+                />
+                <Text style={[s.tabText, loginType === "email" && s.tabTextActive]}>
+                  Email
+                </Text>
               </Pressable>
-              <Pressable testID="tab-otp" onPress={() => setTab("otp")} style={[s.tab, tab === "otp" && s.tabActive]}>
-                <Text style={[s.tabText, tab === "otp" && s.tabTextActive]}>Mobile OTP</Text>
+
+              <Pressable
+                testID="login-type-mobile"
+                onPress={() => switchLoginType("mobile")}
+                style={[s.tab, loginType === "mobile" && s.tabActive]}
+              >
+                <MaterialCommunityIcons
+                  name="cellphone"
+                  size={18}
+                  color={loginType === "mobile" ? "#FF6E00" : "#64748B"}
+                />
+                <Text style={[s.tabText, loginType === "mobile" && s.tabTextActive]}>
+                  Mobile
+                </Text>
               </Pressable>
             </View>
 
-            {tab === "password" ? (
-              <>
-                <Field icon="email-outline" placeholder="Email Address" value={email} onChangeText={setEmail} keyboardType="email-address" testID="login-email-input" />
+            <Field
+              icon={loginType === "email" ? "email-outline" : "cellphone"}
+              placeholder={
+                loginType === "email" ? "Email address" : "10-digit mobile number"
+              }
+              value={identifier}
+              onChangeText={(value: string) => {
+                setIdentifier(
+                  loginType === "mobile"
+                    ? value.replace(/[^0-9]/g, "").slice(0, 10)
+                    : value
+                );
+                setAccountChecked(false);
+                setRegistered(false);
+                setPassword("");
+                setError(null);
+              }}
+              keyboardType={loginType === "email" ? "email-address" : "phone-pad"}
+              maxLength={loginType === "mobile" ? 10 : undefined}
+              testID="login-identifier-input"
+            />
 
+            {!accountChecked ? (
+              <Pressable
+                testID="login-continue-button"
+                onPress={onContinue}
+                disabled={loading}
+                style={[s.cta, loading && { opacity: 0.7 }]}
+              >
+                <LinearGradient
+                  colors={["#FF6E00", "#E05E00"]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={s.ctaGrad}
+                >
+                  {loading ? <ActivityIndicator color="#fff" /> : <Text style={s.ctaText}>Continue</Text>}
+                </LinearGradient>
+              </Pressable>
+            ) : registered ? (
+              <>
                 <View style={s.fieldWrap}>
                   <MaterialCommunityIcons name="lock-outline" size={22} color="#64748B" />
                   <TextInput
@@ -191,67 +328,70 @@ export default function Login() {
                     placeholderTextColor="#94A3B8"
                     style={s.input}
                   />
-                  <Pressable onPress={() => setShowPassword(!showPassword)}>
-                    <MaterialCommunityIcons name={showPassword ? "eye-off-outline" : "eye-outline"} size={22} color="#64748B" />
+                  <Pressable onPress={() => setShowPassword(!showPassword)} hitSlop={10}>
+                    <MaterialCommunityIcons
+                      name={showPassword ? "eye-off-outline" : "eye-outline"}
+                      size={22}
+                      color="#64748B"
+                    />
                   </Pressable>
                 </View>
 
-                {/* Password Rule Hint */}
-                {password.length > 0 && (
-                  <View style={s.ruleBox}>
-                    <Text style={[s.ruleText, password.length >= 8 && s.ruleValid]}></Text>
-                    <Text style={[s.ruleText, /[A-Z]/.test(password) && s.ruleValid]}></Text>
-                    <Text style={[s.ruleText, /[0-9]/.test(password) && s.ruleValid]}></Text>
-                    <Text style={[s.ruleText, /[^A-Za-z0-9]/.test(password) && s.ruleValid]}></Text>
-                  </View>
-                )}
-
                 {error && <Text style={s.err} testID="login-error">{error}</Text>}
 
-                <Pressable testID="login-submit-button" onPress={onLogin} style={({ pressed }) => [s.cta, pressed && { opacity: 0.85 }]}>
-                  <LinearGradient colors={["#FF6E00", "#E05E00"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={s.ctaGrad}>
+                <Pressable
+                  testID="login-submit-button"
+                  onPress={onLogin}
+                  disabled={loading}
+                  style={({ pressed }) => [
+                    s.cta,
+                    pressed && { opacity: 0.85 },
+                    loading && { opacity: 0.7 },
+                  ]}
+                >
+                  <LinearGradient
+                    colors={["#FF6E00", "#E05E00"]}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={s.ctaGrad}
+                  >
                     {loading ? <ActivityIndicator color="#fff" /> : <Text style={s.ctaText}>Login Securely</Text>}
                   </LinearGradient>
                 </Pressable>
 
-                <Pressable onPress={() => router.push("/auth/register" as any)} testID="goto-register">
-                  <Text style={s.alt}>New to KMT Bazaar? <Text style={s.altLink}>Create account</Text></Text>
-                </Pressable>
-
-                <Pressable onPress={() => router.push("/auth/forgot-password" as any)} testID="forgot-password">
+                <Pressable
+                  onPress={() => router.push("/auth/forgot-password" as any)}
+                  testID="forgot-password"
+                >
                   <Text style={s.forgotPassword}>Forgot Password?</Text>
                 </Pressable>
+
+                <Pressable
+                  onPress={() => {
+                    setAccountChecked(false);
+                    setRegistered(false);
+                    setPassword("");
+                    setError(null);
+                  }}
+                >
+                  <Text style={s.changeLink}>Change email/mobile</Text>
+                </Pressable>
               </>
-            ) : (
-              <>
-                <Field icon="cellphone" placeholder="Phone number (10 digits)" value={phone} onChangeText={(v: string) => setPhone(v.replace(/[^0-9]/g, ''))} keyboardType="phone-pad" maxLength={10} testID="otp-phone-input" />
+            ) : null}
 
-                {otpSent && (
-                  <Animated.View entering={FadeInDown.duration(400)}>
-                    <Field icon="shield-key-outline" placeholder="Enter 6-digit OTP" value={otp} onChangeText={(v: string) => setOtp(v.replace(/[^0-9]/g, ''))} keyboardType="number-pad" maxLength={6} testID="otp-code-input" />
-                  </Animated.View>
-                )}
+            {accountChecked && !registered && (
+              <Text style={s.alt}>
+                Account not found. Opening sign up...
+              </Text>
+            )}
 
-                {error && <Text style={s.err}>{error}</Text>}
-
-                {!otpSent ? (
-                  <Pressable testID="otp-send-button" onPress={onOtpRequest} style={s.cta}>
-                    <LinearGradient colors={["#FF6E00", "#E05E00"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={s.ctaGrad}>
-                      <Text style={s.ctaText}>Send OTP</Text>
-                    </LinearGradient>
-                  </Pressable>
-                ) : (
-                  <Pressable testID="otp-verify-button" onPress={onOtpVerify} style={s.cta}>
-                    <LinearGradient colors={["#00B4D8", "#0077B6"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={s.ctaGrad}>
-                      {loading ? <ActivityIndicator color="#fff" /> : <Text style={s.ctaText}>Verify & Continue</Text>}
-                    </LinearGradient>
-                  </Pressable>
-                )}
-              </>
+            {!accountChecked && (
+              <Text style={s.alt}>
+                Login with your registered email or mobile number.
+              </Text>
             )}
           </View>
 
-          {/* Sky Blue Accent Header Bar - Moved below the Card */}
           <View style={s.skyBlueBanner}>
             <LinearGradient
               colors={["transparent", "#00B4D8", "transparent"]}
@@ -260,19 +400,19 @@ export default function Login() {
               style={s.skyBlueLine}
             />
           </View>
-
         </View>
-      </KeyboardAvoidingView>
+      </Animated.View>
 
-      {/* Shifted Logo to Left Bottom Corner */}
-      <Animated.View entering={ZoomIn.duration(700).springify()} style={s.bottomLeftLogoContainer}>
+      <Animated.View
+        entering={ZoomIn.duration(700).springify()}
+        style={s.bottomLeftLogoContainer}
+      >
         <View style={s.logoGlowContainer}>
           <Image source={{ uri: LOGO_URL }} style={s.logo} contentFit="contain" />
         </View>
       </Animated.View>
 
       <AIAssistant />
-
     </SafeAreaView>
   );
 }
@@ -302,7 +442,7 @@ const s = StyleSheet.create({
     top: 52,
     left: 0,
     right: 0,
-    height: 380,
+    height: 330,
     flexDirection: "row",
     flexWrap: "wrap",
     justifyContent: "space-around",
@@ -317,12 +457,167 @@ const s = StyleSheet.create({
     marginVertical: 8,
   },
 
+  loginContent: {
+    flex: 1,
+    zIndex: 2,
+  },
+
+  topContent: {
+    alignItems: "center",
+    paddingTop: 175,
+    zIndex: 2,
+  },
+
+  cardWrapper: {
+    paddingHorizontal: SPACING.lg,
+    paddingBottom: 25,
+  },
+
+  card: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 24,
+    padding: SPACING.xl,
+    paddingBottom: 28,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.25,
+    shadowRadius: 16,
+    elevation: 10,
+    overflow: "hidden",
+    position: "relative",
+  },
+
+  cardTopBorder: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 5,
+  },
+
+  tabsRow: {
+    flexDirection: "row",
+    backgroundColor: "#F1F5F9",
+    borderRadius: RADIUS.pill,
+    padding: 4,
+    marginBottom: SPACING.lg,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+  },
+
+  tab: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 7,
+    paddingVertical: 10,
+    borderRadius: RADIUS.pill,
+  },
+
+  tabActive: {
+    backgroundColor: "#FFFFFF",
+    shadowColor: "#000",
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+
+  tabText: {
+    color: "#64748B",
+    fontWeight: "700",
+    fontSize: 13,
+  },
+
+  tabTextActive: {
+    color: "#FF6E00",
+    fontWeight: "800",
+  },
+
+  fieldWrap: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    backgroundColor: "#F8FAFC",
+    borderRadius: RADIUS.lg,
+    paddingHorizontal: 16,
+    marginBottom: SPACING.md,
+    borderWidth: 1.5,
+    borderColor: "#E2E8F0",
+  },
+
+  input: {
+    flex: 1,
+    paddingVertical: 14,
+    fontSize: 15,
+    color: "#0F172A",
+    fontWeight: "500",
+  },
+
+  cta: {
+    marginTop: SPACING.xs,
+    borderRadius: RADIUS.pill,
+    overflow: "hidden",
+    shadowColor: "#FF6E00",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.35,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+
+  ctaGrad: {
+    paddingVertical: 16,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  ctaText: {
+    color: "#FFFFFF",
+    fontSize: 16,
+    fontWeight: "800",
+    letterSpacing: 0.5,
+  },
+
+  alt: {
+    textAlign: "center",
+    marginTop: SPACING.lg,
+    color: "#64748B",
+    fontSize: 13,
+    lineHeight: 18,
+  },
+
+  changeLink: {
+    textAlign: "center",
+    marginTop: SPACING.md,
+    color: "#0284C7",
+    fontSize: 13,
+    fontWeight: "800",
+  },
+
+  forgotPassword: {
+    textAlign: "center",
+    marginTop: 10,
+    color: "#0284C7",
+    fontSize: 13,
+    fontWeight: "800",
+  },
+
+  err: {
+    color: "#EF4444",
+    marginTop: 4,
+    marginBottom: 12,
+    fontSize: 13,
+    fontWeight: "600",
+    marginLeft: 4,
+  },
+
   skyBlueBanner: {
     width: "100%",
     height: 2,
-    marginTop: SPACING.xl, // Style changed so gap looks correct below the card
+    marginTop: SPACING.lg,
     alignItems: "center",
   },
+
   skyBlueLine: {
     width: "80%",
     height: "100%",
@@ -348,102 +643,25 @@ const s = StyleSheet.create({
     shadowRadius: 12,
     elevation: 8,
   },
-  logo: { width: 80, height: 80 },
-  appName: { color: "#FFFFFF", fontSize: 26, fontWeight: "900", letterSpacing: 3, marginTop: 10 },
-  welcome: { color: "#00B4D8", marginTop: 4, marginBottom: SPACING.lg, fontSize: 14, fontWeight: "600" },
 
-  cardWrapper: {
-    paddingHorizontal: SPACING.lg,
-    paddingBottom: 130,
+  logo: {
+    width: 80,
+    height: 80,
   },
 
-  card: {
-    backgroundColor: "#FFFFFF", 
-    borderRadius: 24, 
-    padding: SPACING.xl, 
-    paddingBottom: 35,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 12 },
-    shadowOpacity: 0.25,
-    shadowRadius: 16,
-    elevation: 10,
-    overflow: "hidden",
-    position: "relative",
-  },
-  cardTopBorder: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    height: 5,
+  appName: {
+    color: "#FFFFFF",
+    fontSize: 26,
+    fontWeight: "900",
+    letterSpacing: 3,
+    marginTop: 10,
   },
 
-  tabsRow: { 
-    flexDirection: "row", 
-    backgroundColor: "#F1F5F9", 
-    borderRadius: RADIUS.pill, 
-    padding: 4, 
-    marginBottom: SPACING.xl, 
-    borderWidth: 1, 
-    borderColor: "#E2E8F0" 
-  },
-  tab: { flex: 1, paddingVertical: 10, alignItems: "center", borderRadius: RADIUS.pill },
-  tabActive: { backgroundColor: "#FFFFFF", shadowColor: "#000", shadowOpacity: 0.08, shadowRadius: 4, elevation: 2 },
-  tabText: { color: "#64748B", fontWeight: "700", fontSize: 13 },
-  tabTextActive: { color: "#FF6E00", fontWeight: "800" },
-
-  fieldWrap: { 
-    flexDirection: "row", 
-    alignItems: "center", 
-    gap: 12, 
-    backgroundColor: "#F8FAFC", 
-    borderRadius: RADIUS.lg, 
-    paddingHorizontal: 16, 
-    marginBottom: SPACING.md, 
-    borderWidth: 1.5, 
-    borderColor: "#E2E8F0" 
-  },
-  input: { flex: 1, paddingVertical: 14, fontSize: 15, color: "#0F172A", fontWeight: "500" },
-
-  ruleBox: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 8,
-    marginBottom: SPACING.md,
-    paddingHorizontal: 4,
-  },
-  ruleText: {
-    fontSize: 11,
-    color: "#94A3B8",
+  welcome: {
+    color: "#00B4D8",
+    marginTop: 4,
+    marginBottom: SPACING.lg,
+    fontSize: 14,
     fontWeight: "600",
   },
-  ruleValid: {
-    color: "#10B981", 
-  },
-
-  cta: { 
-    marginTop: SPACING.xs, 
-    borderRadius: RADIUS.pill, 
-    overflow: "hidden", 
-    shadowColor: "#FF6E00", 
-    shadowOffset: { width: 0, height: 4 }, 
-    shadowOpacity: 0.35, 
-    shadowRadius: 8, 
-    elevation: 5 
-  },
-  ctaGrad: { paddingVertical: 16, alignItems: "center", justifyContent: "center" },
-  ctaText: { color: "#FFFFFF", fontSize: 16, fontWeight: "800", letterSpacing: 0.5 },
-
-  alt: { textAlign: "center", marginTop: SPACING.lg, color: "#64748B", fontSize: 14 },
-  altLink: { color: "#FF6E00", fontWeight: "800", fontSize: 14 },
-
-  forgotPassword: {
-    textAlign: "center",
-    marginTop: 10,
-    color: "#0284C7",
-    fontSize: 13,
-    fontWeight: "800",
-  },
-
-  err: { color: "#EF4444", marginTop: 4, marginBottom: 12, fontSize: 13, fontWeight: "600", marginLeft: 4 },
 });
