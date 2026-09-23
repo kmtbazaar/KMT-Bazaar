@@ -7,6 +7,7 @@ interface AuthCtx {
   login: (email: string, password: string) => Promise<User>;
   register: (data: { name: string; email: string; phone?: string; password: string; role?: string }) => Promise<User>;
   loginOtp: (phone: string, otp: string, name?: string) => Promise<User>;
+  googleLogin: (credential: string) => Promise<User>;
   logout: () => Promise<void>;
   refresh: () => Promise<void>;
   updateAddress: (addressData: any) => Promise<void>; // <-- Naya add kiya hai
@@ -44,6 +45,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const r = await api.otpVerify(phone, otp, name);
     await setToken(r.token); await setUser(r.user); setU(r.user); return r.user;
   };
+  const googleLogin = async (credential: string) => {
+    const r = await api.googleLogin(credential);
+    await setToken(r.token); await setUser(r.user); setU(r.user); return r.user;
+  };
   const logout = async () => { await clearAuth(); setU(null); };
 
   // <-- Naya function add kiya hai
@@ -58,7 +63,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   return (
     // <-- updateAddress ko Provider mein add kiya hai
-    <Ctx.Provider value={{ user, loading, login, register, loginOtp, logout, refresh: bootstrap, updateAddress }}>
+    <Ctx.Provider value={{ user, loading, login, register, loginOtp, googleLogin, logout, refresh: bootstrap, updateAddress }}>
       {children}
     </Ctx.Provider>
   );
@@ -72,6 +77,7 @@ export const useAuth = () => {
   login: async () => { throw new Error("Auth not ready"); },
   register: async () => { throw new Error("Auth not ready"); },
   loginOtp: async () => { throw new Error("Auth not ready"); },
+  googleLogin: async () => { throw new Error("Auth not ready"); },
   logout: async () => {},
   refresh: async () => {},
   updateAddress: async () => {}, // <-- Fallback mein add kiya hai
