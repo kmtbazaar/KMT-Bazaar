@@ -8,7 +8,7 @@ import { Image } from "expo-image";
 import { useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
 import Animated, { 
   FadeInDown, 
@@ -68,6 +68,7 @@ function AnimatedTile({ delay = 0, color = "#00B4D8" }: { delay?: number; color?
 export default function Login() {
   const router = useRouter();
   const { login, loginOtp } = useAuth();
+  const insets = useSafeAreaInsets();
   const [tab, setTab] = useState<"password" | "otp">("password");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -133,7 +134,7 @@ export default function Login() {
   };
 
   return (
-    <View style={s.root} testID="login-screen">
+    <SafeAreaView style={[s.root, { paddingTop: insets.top, paddingBottom: insets.bottom }]} edges={[]} testID="login-screen">
       {/* Dark Ambient Background Gradient */}
       <LinearGradient colors={["#050B14", "#0A1224", "#000000"]} style={s.headerBg} />
 
@@ -147,13 +148,13 @@ export default function Login() {
         <AnimatedTile delay={1500} color="#FF6E00" />
       </View>
 
-      <SafeAreaView edges={["top"]} style={{ alignItems: "center", paddingTop: 180, zIndex: 2 }}>
+      <View style={{ alignItems: "center", paddingTop: 180, zIndex: 2 }}>
         {/* Animated Text Header (Logo aur Line yahan se hata di gayi hai) */}
         <Animated.Text entering={FadeInDown.delay(200).springify()} style={s.appName}>KMT BAZAAR</Animated.Text>
         <Animated.Text entering={FadeInDown.delay(350).springify()} style={s.welcome}>Welcome back, login to continue</Animated.Text>
-      </SafeAreaView>
+      </View>
 
-      <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={{ flex: 1, zIndex: 2 }}>
+      <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} keyboardVerticalOffset={0} style={{ flex: 1, zIndex: 2 }}>
         <ScrollView contentContainerStyle={s.cardWrapper} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
 
           {/* Solid White Card with Top Gradient Border */}
@@ -272,7 +273,7 @@ export default function Login() {
 
       <AIAssistant />
 
-    </View>
+    </SafeAreaView>
   );
 }
 
