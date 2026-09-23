@@ -43,7 +43,8 @@ function RoleRouteGuard({ children }: { children: React.ReactNode }) {
       first === "category" ||
       first === "store" ||
       first === "product" ||
-      first === "search";
+      first === "search" ||
+      first === "RoojgarForm";
 
     const allowed =
       user.role === "admin"
