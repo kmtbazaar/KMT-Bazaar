@@ -13,8 +13,6 @@ import {
 } from "react-native";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
-import * as AuthSession from "expo-auth-session";
-import * as WebBrowser from "expo-web-browser";
 import { LinearGradient } from "expo-linear-gradient";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
@@ -35,7 +33,6 @@ import { LOGO_URL, RADIUS, SPACING } from "@/src/theme";
 
 const { width } = Dimensions.get("window");
 const GOOGLE_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID || "";
-WebBrowser.maybeCompleteAuthSession();
 
 function AnimatedTile({
   delay = 0,
@@ -95,18 +92,6 @@ export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const keyboardShift = useSharedValue(0);
-
-  const googleDiscovery = AuthSession.useAutoDiscovery("https://accounts.google.com");
-  const [googleRequest, googleResponse, promptGoogleAsync] = AuthSession.useAuthRequest(
-    {
-      clientId: GOOGLE_CLIENT_ID || "google-client-id-not-configured",
-      responseType: AuthSession.ResponseType.IdToken,
-      scopes: ["openid", "profile", "email"],
-      redirectUri: Platform.OS === "web" ? "https://kmtbazaar.tech/auth/login" : AuthSession.makeRedirectUri({ scheme: "kmt-bazaar", path: "auth/login" }),
-      usePKCE: false,
-    },
-    googleDiscovery
-  );
 
   useEffect(() => {
     const showEvent = Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow";
@@ -180,47 +165,89 @@ export default function Login() {
     }
   };
 
+  const finishGoogleLogin = async (credential: string) => {
+    if (!credential) {
+      setError("Google sign-in did not return an ID token");
+      return;
+    }
+
+    setGoogleLoading(true);
+    setError(null);
+
+    try {
+      const user = await googleLogin(credential);
+      if (!user?.role) throw new Error("Google login failed");
+
+      if (user.role === "customer") {
+        router.replace("/(tabs)/home" as any);
+      } else {
+        router.replace(`/${user.role}` as any);
+      }
+    } catch (e: any) {
+      setError(e?.message || "Google sign-in failed");
+    } finally {
+      setGoogleLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const finishGoogleLogin = async () => {
-      if (googleResponse?.type !== "success") return;
-      const idToken = googleResponse.params?.id_token;
-      if (!idToken) {
-        setError("Google sign-in did not return an ID token");
+    if (Platform.OS !== "web" || !GOOGLE_CLIENT_ID) return;
+
+    const initializeGoogle = () => {
+      const google = (globalThis as any).google;
+      if (!google?.accounts?.id) {
+        setError("Google sign-in could not load.");
         return;
       }
-      setGoogleLoading(true);
-      setError(null);
-      try {
-        const user = await googleLogin(idToken);
-        if (!user?.role) throw new Error("Google login failed");
-        if (user.role === "customer") router.replace("/(tabs)/home" as any);
-        else router.replace(`/${user.role}` as any);
-      } catch (e: any) {
-        setError(e?.message || "Google sign-in failed");
-      } finally {
-        setGoogleLoading(false);
-      }
+
+      google.accounts.id.initialize({
+        client_id: GOOGLE_CLIENT_ID,
+        auto_select: false,
+        callback: (response: any) => {
+          finishGoogleLogin(response?.credential || "");
+        },
+      });
     };
-    finishGoogleLogin();
-  }, [googleResponse]);
+
+    const existing = document.getElementById("google-gsi-script");
+    if (existing) {
+      if ((globalThis as any).google?.accounts?.id) initializeGoogle();
+      return;
+    }
+
+    const script = document.createElement("script");
+    script.id = "google-gsi-script";
+    script.src = "https://accounts.google.com/gsi/client";
+    script.async = true;
+    script.defer = true;
+    script.onload = initializeGoogle;
+    document.head.appendChild(script);
+  }, []);
 
   const onGoogleLogin = async () => {
     if (Platform.OS !== "web") {
       setError("Google login is enabled for the KMT Bazaar website. Native app Google login needs a separate Android/iOS client ID.");
       return;
     }
+
     if (!GOOGLE_CLIENT_ID) {
       setError("Google login is not configured yet.");
       return;
     }
-    if (!googleRequest) return;
-    setGoogleLoading(true);
-    try {
-      await promptGoogleAsync();
-    } catch (e: any) {
-      setGoogleLoading(false);
-      setError(e?.message || "Could not open Google sign-in");
+
+    const google = (globalThis as any).google;
+    if (!google?.accounts?.id) {
+      setError("Google sign-in is still loading. Please tap again.");
+      return;
     }
+
+    setGoogleLoading(true);
+    google.accounts.id.prompt((notification: any) => {
+      if (notification?.isNotDisplayed?.() || notification?.isSkippedMoment?.()) {
+        setGoogleLoading(false);
+        setError("Google account chooser could not be opened. Please allow pop-ups and try again.");
+      }
+    });
   };
 
   const onLogin = async () => {
@@ -450,7 +477,7 @@ export default function Login() {
               <Pressable
                 testID="google-login-button"
                 onPress={onGoogleLogin}
-                disabled={googleLoading || (Platform.OS === "web" && !googleRequest)}
+                disabled={googleLoading}
                 style={[s.googleButton, googleLoading && { opacity: 0.7 }]}
               >
                 <MaterialCommunityIcons name="google" size={20} color="#4285F4" />
