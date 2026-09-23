@@ -82,7 +82,7 @@ function AnimatedTile({
 
 export default function Login() {
   const router = useRouter();
-  const { login } = useAuth();
+  const { login, googleLogin } = useAuth();
   const insets = useSafeAreaInsets();
 
   const [loginType, setLoginType] = useState<"email" | "mobile">("email");
@@ -191,8 +191,7 @@ export default function Login() {
       setGoogleLoading(true);
       setError(null);
       try {
-        const result = await api.googleLogin(idToken);
-        const user = result.user;
+        const user = await googleLogin(idToken);
         if (!user?.role) throw new Error("Google login failed");
         if (user.role === "customer") router.replace("/(tabs)/home" as any);
         else router.replace(`/${user.role}` as any);
