@@ -114,8 +114,12 @@ class RegisterIn(BaseModel):
 
 
 class LoginIn(BaseModel):
-    email: EmailStr
+    identifier: str
     password: str
+
+
+class IdentifierCheckIn(BaseModel):
+    identifier: str
 
 
 class OtpRequestIn(BaseModel):
@@ -263,9 +267,11 @@ def user_to_out(u: dict) -> dict:
 async def register(data: RegisterIn):
     if data.role == Role.ADMIN:
         raise HTTPException(status_code=403, detail="Admin accounts cannot be created through public registration")
-    existing = await db.users.find_one({"email": data.email})
+    existing = await db.users.find_one({"$or": [{"email": data.email}, {"phone": data.phone}]})
     if existing:
-        raise HTTPException(status_code=400, detail="Email already registered")
+        if existing.get("email") == data.email:
+            raise HTTPException(status_code=400, detail="Email already registered")
+        raise HTTPException(status_code=400, detail="Mobile number already registered")
     uid = str(uuid.uuid4())
     user_doc = {
         "id": uid,
@@ -282,11 +288,31 @@ async def register(data: RegisterIn):
     return {"token": token, "user": user_to_out(user_doc)}
 
 
+@api.post("/auth/check-identifier")
+async def check_identifier(data: IdentifierCheckIn):
+    value = data.identifier.strip()
+    if "@" in value:
+        value = value.lower()
+        if " " in value:
+            raise HTTPException(status_code=400, detail="Enter a valid email or 10-digit mobile number")
+    else:
+        value = "".join(ch for ch in value if ch.isdigit())
+        if len(value) != 10:
+            raise HTTPException(status_code=400, detail="Enter a valid email or 10-digit mobile number")
+    user = await db.users.find_one({"$or": [{"email": value}, {"phone": value}]}, {"_id": 0, "id": 1})
+    return {"exists": bool(user)}
+
+
 @api.post("/auth/login", response_model=AuthOut)
 async def login(data: LoginIn):
-    user = await db.users.find_one({"email": data.email})
+    value = data.identifier.strip()
+    if "@" in value:
+        value = value.lower()
+    else:
+        value = "".join(ch for ch in value if ch.isdigit())
+    user = await db.users.find_one({"$or": [{"email": value}, {"phone": value}]})
     if not user or not verify_password(data.password, user.get("password", "")):
-        raise HTTPException(status_code=401, detail="Invalid email or password")
+        raise HTTPException(status_code=401, detail="Invalid email/mobile or password")
     token = create_token(user["id"], user["role"])
     return {"token": token, "user": user_to_out(user)}
 
