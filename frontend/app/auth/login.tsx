@@ -450,7 +450,7 @@ const s = StyleSheet.create({
   loginContent: {
     flex: 1,
     zIndex: 2,
-    transform: [{ translateY: 18 }],
+    paddingTop: 18,
   },
 
   topContent: {
