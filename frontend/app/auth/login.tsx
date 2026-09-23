@@ -1,7 +1,7 @@
 import AIAssistant from "../../components/AIAssistant";
 import React, { useState, useEffect } from "react";
 import {
-  View, Text, TextInput, Pressable, StyleSheet, ScrollView,
+  View, Text, TextInput, Pressable, StyleSheet,
   KeyboardAvoidingView, Platform, ActivityIndicator, Dimensions
 } from "react-native";
 import { Image } from "expo-image";
@@ -154,8 +154,8 @@ export default function Login() {
         <Animated.Text entering={FadeInDown.delay(350).springify()} style={s.welcome}>Welcome back, login to continue</Animated.Text>
       </View>
 
-      <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} keyboardVerticalOffset={0} style={{ flex: 1, zIndex: 2 }}>
-        <ScrollView contentContainerStyle={s.cardWrapper} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+      <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "position"} keyboardVerticalOffset={insets.top} style={{ flex: 1, zIndex: 2 }}>
+        <View style={s.cardWrapper}>
 
           {/* Solid White Card with Top Gradient Border */}
           <View style={s.card}>
@@ -261,7 +261,7 @@ export default function Login() {
             />
           </View>
 
-        </ScrollView>
+        </View>
       </KeyboardAvoidingView>
 
       {/* Shifted Logo to Left Bottom Corner */}
@@ -299,7 +299,7 @@ const s = StyleSheet.create({
 
   tilesWrapper: {
     position: "absolute",
-    top: 0,
+    top: 52,
     left: 0,
     right: 0,
     height: 380,
