@@ -436,11 +436,12 @@ export default function Login() {
             )}
 
             {!accountChecked && (
-              <Text style={s.alt}>
-                Login with your registered email or mobile number.
-              </Text>
+              <>
+                <Text style={s.alt}>
+                  Login with your registered email or mobile number.
+                </Text>
 
-              <View style={s.googleDivider}>
+                <View style={s.googleDivider}>
                 <View style={s.googleLine} />
                 <Text style={s.googleOr}>OR</Text>
                 <View style={s.googleLine} />
@@ -455,6 +456,7 @@ export default function Login() {
                 <MaterialCommunityIcons name="google" size={20} color="#4285F4" />
                 <Text style={s.googleText}>{googleLoading ? "Connecting..." : "Continue with Google"}</Text>
               </Pressable>
+              </>
             )}
           </View>
 
