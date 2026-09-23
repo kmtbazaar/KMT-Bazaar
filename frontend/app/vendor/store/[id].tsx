@@ -734,7 +734,7 @@ const s = StyleSheet.create({
   },
   bannerCircleBtn: {
     position: "absolute",
-    top: 12,
+    top: 28,
     width: 36,
     height: 36,
     borderRadius: 18,
