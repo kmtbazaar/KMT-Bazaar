@@ -81,6 +81,12 @@ products: () =>
       body: JSON.stringify(data),
     }),
 
+  updateCategory: (id: string, data: any) =>
+    apiFetch(`/admin/categories/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    }),
+
   deleteCategory: (id: string) =>
     apiFetch(`/admin/categories/${id}`, {
       method: "DELETE",
@@ -89,6 +95,12 @@ products: () =>
   createBanner: (data: any) =>
     apiFetch("/admin/banners", {
       method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  updateBanner: (id: string, data: any) =>
+    apiFetch(`/admin/banners/${id}`, {
+      method: "PUT",
       body: JSON.stringify(data),
     }),
 
