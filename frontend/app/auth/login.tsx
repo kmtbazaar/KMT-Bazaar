@@ -231,7 +231,7 @@ export default function Login() {
             entering={FadeInDown.delay(350).springify()}
             style={s.welcome}
           >
-            Welcome back, login to continue
+            Login or Sign up
           </Animated.Text>
         </View>
 
@@ -567,6 +567,44 @@ const s = StyleSheet.create({
     fontSize: 16,
     fontWeight: "800",
     letterSpacing: 0.5,
+  },
+
+  googleDivider: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    marginTop: SPACING.lg,
+  },
+
+  googleLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: "#E2E8F0",
+  },
+
+  googleOr: {
+    color: "#94A3B8",
+    fontSize: 11,
+    fontWeight: "800",
+  },
+
+  googleButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 10,
+    marginTop: SPACING.md,
+    paddingVertical: 13,
+    borderRadius: RADIUS.pill,
+    borderWidth: 1.5,
+    borderColor: "#E2E8F0",
+    backgroundColor: "#FFFFFF",
+  },
+
+  googleText: {
+    color: "#334155",
+    fontSize: 14,
+    fontWeight: "800",
   },
 
   alt: {
