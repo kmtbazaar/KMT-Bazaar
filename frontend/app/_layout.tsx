@@ -34,10 +34,15 @@ function RoleRouteGuard({ children }: { children: React.ReactNode }) {
 
     const customerShared =
       first === "checkout" ||
+      first === "cart" ||
       first === "orders" ||
       first === "addresses" ||
       first === "notifications" ||
-      first === "profile";
+      first === "profile" ||
+      first === "category" ||
+      first === "store" ||
+      first === "product" ||
+      first === "search";
 
     const allowed =
       user.role === "admin"
