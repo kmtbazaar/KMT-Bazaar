@@ -16,6 +16,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
+import { apiFetch } from "@/src/api";
 
 const LEATHER_BG_URL =
   "https://www.transparenttextures.com/patterns/white-diamond-dark.png";
@@ -84,15 +85,7 @@ export default function RoojgarForm() {
 
   const fetchCategories = async () => {
     try {
-      const response = await fetch(
-        `${API_BASE_URL}/roojgar-categories`
-      );
-
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`);
-      }
-
-      const data = await response.json();
+      const data = await apiFetch<{ categories?: any[] }>("/roojgar-categories");
 
       if (
         data &&
@@ -169,45 +162,24 @@ export default function RoojgarForm() {
         controller.abort();
       }, 30000);
 
-      const response = await fetch(
-        `${API_BASE_URL}/submit-roojgar`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(formData),
-          signal: controller.signal,
-        }
-      );
+      const result = await apiFetch<{
+        success?: boolean;
+        message?: string;
+        data?: any;
+      }>("/submit-roojgar", {
+        method: "POST",
+        body: JSON.stringify(formData),
+        signal: controller.signal,
+      });
 
       clearTimeout(timeout);
 
-      const responseText = await response.text();
+      console.log("Roojgar submit response:", result);
 
-      let result: any = null;
-
-      try {
-        result = responseText
-          ? JSON.parse(responseText)
-          : null;
-      } catch {
-        result = null;
-      }
-
-      console.log(
-        "Roojgar submit response:",
-        response.status,
-        result
-      );
-
-      if (!response.ok) {
-        const errorMessage =
-          result?.detail ||
-          result?.message ||
-          "Application submit nahi ho payi.";
-
-        throw new Error(errorMessage);
+      if (!result?.success) {
+        throw new Error(
+          result?.message || "Application submit nahi ho payi."
+        );
       }
 
       // IMPORTANT:
@@ -223,17 +195,17 @@ export default function RoojgarForm() {
     } catch (error: any) {
       console.log("Roojgar Submit Error:", error);
 
-      if (error?.name === "AbortError") {
-        Alert.alert(
-          "Server Timeout",
-          "Server response nahi de raha hai. Kripya thodi der baad dobara try karein."
-        );
+      const title = error?.name === "AbortError"
+        ? "Server Timeout"
+        : "Submit Failed";
+      const message = error?.name === "AbortError"
+        ? "Server response nahi de raha hai. Kripya thodi der baad dobara try karein."
+        : (error?.message || "Server se connect nahi ho paya. Kripya thodi der baad try karein.");
+
+      if (Platform.OS === "web") {
+        window.alert(message);
       } else {
-        Alert.alert(
-          "Submit Failed",
-          error?.message ||
-            "Server se connect nahi ho paya. Kripya thodi der baad try karein."
-        );
+        Alert.alert(title, message);
       }
     } finally {
       setIsSubmitting(false);
