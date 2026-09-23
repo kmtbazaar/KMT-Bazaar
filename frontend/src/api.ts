@@ -199,6 +199,12 @@ export async function uploadImageAsset(asset: {
 
 
 export const api = {
+  googleLogin: (credential: string) =>
+    apiFetch<{ token: string; user: User }>("/auth/google", {
+      method: "POST",
+      body: JSON.stringify({ credential }),
+    }),
+
   checkIdentifier: (identifier: string) =>
     apiFetch<{ exists: boolean }>("/auth/check-identifier", {
       method: "POST",
