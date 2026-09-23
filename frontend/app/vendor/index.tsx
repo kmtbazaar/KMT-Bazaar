@@ -25,22 +25,21 @@ export default function VendorDashboard() {
   const [decisionBusy, setDecisionBusy] = useState(false);
   const [decisionAction, setDecisionAction] = useState<"accept" | "reject" | null>(null);
   const [showOrderDetails, setShowOrderDetails] = useState(false);
+  const [showPendingPopup, setShowPendingPopup] = useState(false);
   const [pendingCount, setPendingCount] = useState(0);
-  const [dismissedPendingId, setDismissedPendingId] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!pendingOrder) return;
+    if (!pendingOrder || !showPendingPopup) return;
     const sub = BackHandler.addEventListener("hardwareBackPress", () => {
       if (showOrderDetails) {
         setShowOrderDetails(false);
       } else {
-        setDismissedPendingId(pendingOrder.id);
-        setPendingOrder(null);
+        setShowPendingPopup(false);
       }
       return true;
     });
     return () => sub.remove();
-  }, [pendingOrder, showOrderDetails]);
+  }, [pendingOrder, showPendingPopup, showOrderDetails]);
   
   const [showCreateStore, setShowCreateStore] = useState(false);
   const [storeForm, setStoreForm] = useState({ name: "", address: "", image: "", category_id: "cat-grocery" }); 
@@ -88,17 +87,17 @@ export default function VendorDashboard() {
 
       if (!pending?.length) {
         setPendingOrder(null);
-        setDismissedPendingId(null);
+        setShowPendingPopup(false);
         return;
       }
 
-      setPendingOrder((current: any) => {
-        if (current) return current;
-        if (pending[0]?.id === dismissedPendingId) return null;
-        return pending[0];
+      setPendingOrder((current: any) => current || pending[0]);
+      setShowPendingPopup((visible) => {
+        if (pendingOrder?.id && visible === false) return false;
+        return visible;
       });
     } catch {}
-  }, [dismissedPendingId]);
+  }, [pendingOrder?.id]);
 
   useEffect(() => {
     checkPendingOrder();
@@ -111,11 +110,12 @@ export default function VendorDashboard() {
       const pending = await vendorApi.pendingOrders();
       setPendingCount(pending?.length || 0);
       if (pending?.length) {
-        setDismissedPendingId(null);
         setShowOrderDetails(false);
         setPendingOrder(pending[0]);
+        setShowPendingPopup(true);
       } else {
         setPendingOrder(null);
+        setShowPendingPopup(false);
       }
     } catch (e) {
       Alert.alert("Error", "Could not load pending orders.");
@@ -133,9 +133,9 @@ export default function VendorDashboard() {
         await vendorApi.rejectOrder(pendingOrder.id);
       }
       setShowOrderDetails(false);
+      setShowPendingPopup(false);
       setPendingOrder(null);
       setPendingCount((count) => Math.max(0, count - 1));
-      setDismissedPendingId(null);
       await load();
     } catch (e) {
       Alert.alert("Error", accepted ? "Could not accept this order." : "Could not reject this order.");
@@ -364,12 +364,11 @@ export default function VendorDashboard() {
 
       {/* --- NEW ORDER DECISION POPUP --- */}
       <Modal
-        visible={!!pendingOrder}
+        visible={showPendingPopup && !!pendingOrder}
         transparent
         animationType="fade"
         onRequestClose={() => {
-          setDismissedPendingId(pendingOrder?.id || null);
-          setPendingOrder(null);
+          setShowPendingPopup(false);
           setShowOrderDetails(false);
         }}
       >
