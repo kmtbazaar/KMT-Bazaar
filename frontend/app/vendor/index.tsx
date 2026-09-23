@@ -40,6 +40,34 @@ export default function VendorDashboard() {
     });
     return () => sub.remove();
   }, [pendingOrder, showPendingPopup, showOrderDetails]);
+
+  useEffect(() => {
+    if (Platform.OS !== "web" || !pendingOrder || !showPendingPopup) return;
+
+    window.history.pushState(
+      { ...(window.history.state || {}), kmtVendorPendingPopup: true },
+      "",
+      window.location.href
+    );
+
+    const onPopState = () => {
+      setShowOrderDetails(false);
+      setShowPendingPopup(false);
+    };
+
+    window.addEventListener("popstate", onPopState);
+    return () => window.removeEventListener("popstate", onPopState);
+  }, [pendingOrder?.id, showPendingPopup]);
+
+  const closePendingPopup = () => {
+    if (Platform.OS === "web" && window.history.state?.kmtVendorPendingPopup) {
+      window.history.back();
+      return;
+    }
+
+    setShowOrderDetails(false);
+    setShowPendingPopup(false);
+  };
   
   const [showCreateStore, setShowCreateStore] = useState(false);
   const [storeForm, setStoreForm] = useState({ name: "", address: "", image: "", category_id: "cat-grocery" }); 
@@ -91,13 +119,12 @@ export default function VendorDashboard() {
         return;
       }
 
-      setPendingOrder((current: any) => current || pending[0]);
-      setShowPendingPopup((visible) => {
-        if (pendingOrder?.id && visible === false) return false;
-        return visible;
-      });
+      if (!pendingOrder) {
+        setPendingOrder(pending[0]);
+        setShowPendingPopup(true);
+      }
     } catch {}
-  }, [pendingOrder?.id]);
+  }, [pendingOrder]);
 
   useEffect(() => {
     checkPendingOrder();
@@ -132,8 +159,12 @@ export default function VendorDashboard() {
       } else {
         await vendorApi.rejectOrder(pendingOrder.id);
       }
-      setShowOrderDetails(false);
-      setShowPendingPopup(false);
+      if (Platform.OS === "web" && window.history.state?.kmtVendorPendingPopup) {
+        window.history.back();
+      } else {
+        setShowOrderDetails(false);
+        setShowPendingPopup(false);
+      }
       setPendingOrder(null);
       setPendingCount((count) => Math.max(0, count - 1));
       await load();
@@ -367,10 +398,7 @@ export default function VendorDashboard() {
         visible={showPendingPopup && !!pendingOrder}
         transparent
         animationType="fade"
-        onRequestClose={() => {
-          setShowPendingPopup(false);
-          setShowOrderDetails(false);
-        }}
+        onRequestClose={closePendingPopup}
       >
         <View style={s.orderModalOverlay}>
           <View style={s.orderModal}>
