@@ -16,7 +16,7 @@
       }
     },
     "android": {
-      "edgeToEdgeEnabled": true,
+      "edgeToEdgeEnabled": false,
       "permissions": ["CAMERA", "READ_MEDIA_IMAGES"]
     },
     "web": {
@@ -24,7 +24,7 @@
       "output": "single",
       "name": "KMT Bazaar",
       "shortName": "KMT Bazaar",
-      "favicon": "./assets/images/favicon.png"
+      "favicon": "./assets/images/splash-icon.png"
     },
     "plugins": [
       "expo-router",
