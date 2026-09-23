@@ -13,6 +13,8 @@ import {
 } from "react-native";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
+import * as AuthSession from "expo-auth-session";
+import * as WebBrowser from "expo-web-browser";
 import { LinearGradient } from "expo-linear-gradient";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
@@ -32,6 +34,8 @@ import { api } from "@/src/api";
 import { LOGO_URL, RADIUS, SPACING } from "@/src/theme";
 
 const { width } = Dimensions.get("window");
+const GOOGLE_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID || "";
+WebBrowser.maybeCompleteAuthSession();
 
 function AnimatedTile({
   delay = 0,
@@ -89,7 +93,20 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
   const keyboardShift = useSharedValue(0);
+
+  const googleDiscovery = AuthSession.useAutoDiscovery("https://accounts.google.com");
+  const [googleRequest, googleResponse, promptGoogleAsync] = AuthSession.useAuthRequest(
+    {
+      clientId: GOOGLE_CLIENT_ID || "google-client-id-not-configured",
+      responseType: AuthSession.ResponseType.IdToken,
+      scopes: ["openid", "profile", "email"],
+      redirectUri: Platform.OS === "web" ? "https://kmtbazaar.tech/auth/login" : AuthSession.makeRedirectUri({ scheme: "kmt-bazaar", path: "auth/login" }),
+      usePKCE: false,
+    },
+    googleDiscovery
+  );
 
   useEffect(() => {
     const showEvent = Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow";
@@ -160,6 +177,50 @@ export default function Login() {
       setError(e?.message || "Could not check account");
     } finally {
       setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    const finishGoogleLogin = async () => {
+      if (googleResponse?.type !== "success") return;
+      const idToken = googleResponse.params?.id_token;
+      if (!idToken) {
+        setError("Google sign-in did not return an ID token");
+        return;
+      }
+      setGoogleLoading(true);
+      setError(null);
+      try {
+        const result = await api.googleLogin(idToken);
+        const user = result.user;
+        if (!user?.role) throw new Error("Google login failed");
+        if (user.role === "customer") router.replace("/(tabs)/home" as any);
+        else router.replace(`/${user.role}` as any);
+      } catch (e: any) {
+        setError(e?.message || "Google sign-in failed");
+      } finally {
+        setGoogleLoading(false);
+      }
+    };
+    finishGoogleLogin();
+  }, [googleResponse]);
+
+  const onGoogleLogin = async () => {
+    if (Platform.OS !== "web") {
+      setError("Google login is enabled for the KMT Bazaar website. Native app Google login needs a separate Android/iOS client ID.");
+      return;
+    }
+    if (!GOOGLE_CLIENT_ID) {
+      setError("Google login is not configured yet.");
+      return;
+    }
+    if (!googleRequest) return;
+    setGoogleLoading(true);
+    try {
+      await promptGoogleAsync();
+    } catch (e: any) {
+      setGoogleLoading(false);
+      setError(e?.message || "Could not open Google sign-in");
     }
   };
 
@@ -379,6 +440,22 @@ export default function Login() {
               <Text style={s.alt}>
                 Login with your registered email or mobile number.
               </Text>
+
+              <View style={s.googleDivider}>
+                <View style={s.googleLine} />
+                <Text style={s.googleOr}>OR</Text>
+                <View style={s.googleLine} />
+              </View>
+
+              <Pressable
+                testID="google-login-button"
+                onPress={onGoogleLogin}
+                disabled={googleLoading || (Platform.OS === "web" && !googleRequest)}
+                style={[s.googleButton, googleLoading && { opacity: 0.7 }]}
+              >
+                <MaterialCommunityIcons name="google" size={20} color="#4285F4" />
+                <Text style={s.googleText}>{googleLoading ? "Connecting..." : "Continue with Google"}</Text>
+              </Pressable>
             )}
           </View>
 
