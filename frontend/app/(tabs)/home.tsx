@@ -56,6 +56,7 @@ export default function Home() {
   const [trending, setTrending] = useState<any[]>([]);
   const [unread, setUnread] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
+  const [bannerIndex, setBannerIndex] = useState(0);
 
   // Dynamic Address Fallback State
   const [selectedAddress, setSelectedAddress] = useState<string>("Home · Karmatar");
@@ -117,6 +118,18 @@ export default function Home() {
   }, []);
 
   useEffect(() => { load(); }, [load]);
+
+  // Automatic banner carousel
+  useEffect(() => {
+    if (banners.length < 2) {
+      setBannerIndex(0);
+      return;
+    }
+    const interval = setInterval(() => {
+      setBannerIndex((prev) => (prev + 1) % banners.length);
+    }, 3000);
+    return () => clearInterval(interval);
+  }, [banners.length]);
 
   // Search placeholder animation timer
   useEffect(() => {
@@ -256,6 +269,11 @@ export default function Home() {
           decelerationRate="fast"
           contentContainerStyle={{ paddingHorizontal: SPACING.lg, paddingTop: SPACING.md, paddingBottom: SPACING.sm, gap: 12 }}
           keyExtractor={(it) => String(it.id)}
+          ref={(ref) => {
+            if (banners.length > 1 && ref && typeof (ref as any).scrollToIndex === "function") {
+              try { (ref as any).scrollToIndex({ index: bannerIndex, animated: true }); } catch {}
+            }
+          }}
           renderItem={({ item }) => (
             <Pressable testID={`banner-${item.id}`} onPress={() => router.push(`/category/${item.category_id}` as any)} style={s.banner}>
               <Image source={{ uri: item.image }} style={s.bannerImg} contentFit="cover" />
