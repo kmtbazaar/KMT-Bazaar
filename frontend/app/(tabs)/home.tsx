@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useRef } from "react";
 import { View, Text, ScrollView, StyleSheet, Pressable, FlatList, Dimensions, RefreshControl, Platform } from "react-native";
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
@@ -56,7 +56,7 @@ export default function Home() {
   const [trending, setTrending] = useState<any[]>([]);
   const [unread, setUnread] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
-  const [bannerIndex, setBannerIndex] = useState(0);
+  const [bannerIndex, setBannerIndex] = useState(0);\n  const bannerListRef = useRef<FlatList<any>>(null);
 
   // Dynamic Address Fallback State
   const [selectedAddress, setSelectedAddress] = useState<string>("Home · Karmatar");
@@ -127,9 +127,15 @@ export default function Home() {
     }
     const interval = setInterval(() => {
       setBannerIndex((prev) => (prev + 1) % banners.length);
-    }, 3000);
+    }, 5000);
     return () => clearInterval(interval);
   }, [banners.length]);
+
+  useEffect(() => {
+    if (banners.length > 1) {
+      bannerListRef.current?.scrollToIndex({ index: bannerIndex, animated: true });
+    }
+  }, [bannerIndex, banners.length]);
 
   // Search placeholder animation timer
   useEffect(() => {
@@ -269,11 +275,7 @@ export default function Home() {
           decelerationRate="fast"
           contentContainerStyle={{ paddingHorizontal: SPACING.lg, paddingTop: SPACING.md, paddingBottom: SPACING.sm, gap: 12 }}
           keyExtractor={(it) => String(it.id)}
-          ref={(ref) => {
-            if (banners.length > 1 && ref && typeof (ref as any).scrollToIndex === "function") {
-              try { (ref as any).scrollToIndex({ index: bannerIndex, animated: true }); } catch {}
-            }
-          }}
+          ref={bannerListRef}
           renderItem={({ item }) => (
             <Pressable testID={`banner-${item.id}`} onPress={() => item.page_type === "travel" ? router.push(`/banner/${item.id}` as any) : router.push(`/category/${item.category_id}` as any)} style={s.banner}>
               <Image source={{ uri: item.image }} style={s.bannerImg} contentFit="cover" />
