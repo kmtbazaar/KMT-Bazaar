@@ -15,7 +15,7 @@ export default function AdminBanners() {
   const [banners, setBanners] = useState<any[]>([]);
   const [modal, setModal] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [f, setF] = useState({ title: "", subtitle: "", cta: "Shop Now", image: "", color: "#2563EB", order: "99" });
+  const [f, setF] = useState({ title: "", subtitle: "", cta: "Shop Now", image: "", color: "#2563EB", order: "99", page_type: "category" });
 
   const load = useCallback(async () => { try { setBanners(await api.banners()); } catch {} }, []);
   useFocusEffect(useCallback(() => { load(); }, [load]));
@@ -29,7 +29,7 @@ export default function AdminBanners() {
     }
     setModal(false);
     setEditingId(null);
-    setF({ title: "", subtitle: "", cta: "Shop Now", image: "", color: "#2563EB", order: "99" });
+    setF({ title: "", subtitle: "", cta: "Shop Now", image: "", color: "#2563EB", order: "99", page_type: "category" });
     load();
   };
 
@@ -42,6 +42,7 @@ export default function AdminBanners() {
       image: item.image || "",
       color: item.color || "#2563EB",
       order: String(item.order ?? 99),
+      page_type: item.page_type || "category",
     });
     setModal(true);
   };
@@ -73,6 +74,7 @@ export default function AdminBanners() {
               <Pressable testID={`edit-banner-${item.id}`} onPress={() => editBanner(item)} style={s.editBtn}>
                 <MaterialCommunityIcons name="pencil-outline" size={17} color="#fff" />
               </Pressable>
+              {item.page_type === "travel" && <Pressable onPress={() => router.push({ pathname: "/admin/banner-page/[id]", params: { id: item.id } } as any)} style={s.customBtn}><MaterialCommunityIcons name="palette-outline" size={17} color="#fff" /></Pressable>}
               <Pressable testID={`del-banner-${item.id}`} onPress={async () => { await adminApi.deleteBanner(item.id); load(); }} style={s.delBtn}>
                 <MaterialCommunityIcons name="trash-can-outline" size={17} color="#fff" />
               </Pressable>
@@ -89,6 +91,7 @@ export default function AdminBanners() {
             <Input ph="Subtitle" v={f.subtitle} oc={(v: string) => setF({ ...f, subtitle: v })} testID="bf-sub" />
             <Input ph="CTA text" v={f.cta} oc={(v: string) => setF({ ...f, cta: v })} testID="bf-cta" />
             <ImageUploader value={f.image} onChange={(uri) => setF({ ...f, image: uri })} label="Banner Image" aspect={[16, 9]} testID="bf-image" />
+            <Input ph="Page type (category / travel)" v={f.page_type} oc={(v: string) => setF({ ...f, page_type: v })} testID="bf-page-type" />
             <View style={{ flexDirection: "row", gap: 8 }}>
               <View style={{ flex: 1 }}><Input ph="Color #" v={f.color} oc={(v: string) => setF({ ...f, color: v })} testID="bf-color" /></View>
               <View style={{ flex: 1 }}><Input ph="Order" v={f.order} oc={(v: string) => setF({ ...f, order: v })} testID="bf-order" /></View>
@@ -135,4 +138,5 @@ const s = StyleSheet.create({
   cardActions: { position: "absolute", top: 12, right: 12, flexDirection: "row", gap: 6 },
   editBtn: { width: 32, height: 32, borderRadius: 16, backgroundColor: "rgba(2,132,199,0.9)", alignItems: "center", justifyContent: "center" },
   delBtn: { width: 32, height: 32, borderRadius: 16, backgroundColor: "rgba(220,38,38,0.85)", alignItems: "center", justifyContent: "center" },
+  customBtn: { width: 32, height: 32, borderRadius: 16, backgroundColor: "rgba(124,58,237,0.9)", alignItems: "center", justifyContent: "center" },
 });
