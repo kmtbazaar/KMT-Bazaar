@@ -305,6 +305,33 @@ export const api = {
   banners: () =>
     apiFetch<any[]>("/banners"),
 
+  bannerPage: (bannerId: string) =>
+    apiFetch<any>(`/banner-pages/${bannerId}`),
+
+  travelCart: () =>
+    apiFetch<any>("/travel-cart"),
+
+  travelCartAdd: (data: any) =>
+    apiFetch<any>("/travel-cart/add", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  travelCartUpdate: (data: any) =>
+    apiFetch<any>("/travel-cart/update", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  travelCartClear: () =>
+    apiFetch("/travel-cart/clear", { method: "DELETE" }),
+
+  travelCheckout: (data: any) =>
+    apiFetch<any>("/travel-bookings/checkout", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
   stores: () =>
     apiFetch<any[]>("/stores"),
 
