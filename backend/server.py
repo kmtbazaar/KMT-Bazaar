@@ -1160,6 +1160,196 @@ async def unread_count(current=Depends(get_current_user)):
     return {"count": c}
 
 
+# ------------------ TRAVEL / BANNER PAGES ------------------
+
+@api.get("/travel/pages/{slug}")
+async def get_travel_page(slug: str):
+    page = await db.travel_pages.find_one({"slug": slug}, {"_id": 0})
+    if not page:
+        raise HTTPException(status_code=404, detail="Travel page not found")
+
+    packages = await db.travel_packages.find(
+        {"page_id": page["id"], "active": True},
+        {"_id": 0}
+    ).sort("created_at", -1).to_list(100)
+
+    return {**page, "packages": packages}
+
+
+@api.get("/admin/travel/pages")
+async def admin_travel_pages(_=Depends(require_roles("admin"))):
+    return await db.travel_pages.find({}, {"_id": 0}).sort("created_at", -1).to_list(200)
+
+
+@api.post("/admin/travel/pages")
+async def admin_create_travel_page(data: TravelPageIn, _=Depends(require_roles("admin"))):
+    existing = await db.travel_pages.find_one({"slug": data.slug})
+    if existing:
+        raise HTTPException(status_code=409, detail="Page slug already exists")
+
+    page = {
+        "id": "travel-" + uuid.uuid4().hex[:10],
+        **data.dict(),
+        "created_at": now_iso(),
+        "updated_at": now_iso(),
+    }
+    await db.travel_pages.insert_one(dict(page))
+    return page
+
+
+@api.put("/admin/travel/pages/{page_id}")
+async def admin_update_travel_page(page_id: str, data: TravelPageIn, _=Depends(require_roles("admin"))):
+    existing = await db.travel_pages.find_one({"slug": data.slug, "id": {"$ne": page_id}})
+    if existing:
+        raise HTTPException(status_code=409, detail="Page slug already exists")
+
+    result = await db.travel_pages.update_one(
+        {"id": page_id},
+        {"$set": {**data.dict(), "updated_at": now_iso()}}
+    )
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Travel page not found")
+
+    return await db.travel_pages.find_one({"id": page_id}, {"_id": 0})
+
+
+@api.delete("/admin/travel/pages/{page_id}")
+async def admin_delete_travel_page(page_id: str, _=Depends(require_roles("admin"))):
+    result = await db.travel_pages.delete_one({"id": page_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Travel page not found")
+    await db.travel_packages.delete_many({"page_id": page_id})
+    return {"ok": True}
+
+
+@api.post("/admin/travel/packages")
+async def admin_create_travel_package(data: TravelPackageIn, _=Depends(require_roles("admin"))):
+    page = await db.travel_pages.find_one({"id": data.page_id}, {"_id": 0, "id": 1})
+    if not page:
+        raise HTTPException(status_code=404, detail="Travel page not found")
+
+    package = {
+        "id": "pkg-" + uuid.uuid4().hex[:10],
+        **data.dict(),
+        "active": True,
+        "created_at": now_iso(),
+        "updated_at": now_iso(),
+    }
+    await db.travel_packages.insert_one(dict(package))
+    return package
+
+
+@api.put("/admin/travel/packages/{package_id}")
+async def admin_update_travel_package(package_id: str, data: TravelPackageIn, _=Depends(require_roles("admin"))):
+    result = await db.travel_packages.update_one(
+        {"id": package_id},
+        {"$set": {**data.dict(), "updated_at": now_iso()}}
+    )
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Travel package not found")
+    return await db.travel_packages.find_one({"id": package_id}, {"_id": 0})
+
+
+@api.delete("/admin/travel/packages/{package_id}")
+async def admin_delete_travel_package(package_id: str, _=Depends(require_roles("admin"))):
+    result = await db.travel_packages.delete_one({"id": package_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Travel package not found")
+    await db.travel_carts.update_many(
+        {"items.package_id": package_id},
+        {"$pull": {"items": {"package_id": package_id}}}
+    )
+    return {"ok": True}
+
+
+@api.get("/travel/cart")
+async def get_travel_cart(current=Depends(get_current_user)):
+    cart = await db.travel_carts.find_one({"user_id": current["id"]}, {"_id": 0})
+    if not cart:
+        return {"items": [], "total": 0}
+
+    ids = [i.get("package_id") for i in cart.get("items", []) if i.get("package_id")]
+    packages = await db.travel_packages.find(
+        {"id": {"$in": ids}, "active": True},
+        {"_id": 0}
+    ).to_list(100) if ids else []
+
+    package_map = {p["id"]: p for p in packages}
+    items = []
+    total = 0
+
+    for item in cart.get("items", []):
+        p = package_map.get(item.get("package_id"))
+        if not p:
+            continue
+        qty = max(1, int(item.get("quantity", 1)))
+        line_total = round(float(p.get("price", 0)) * qty, 2)
+        total += line_total
+        items.append({
+            "package": p,
+            "quantity": qty,
+            "line_total": line_total,
+        })
+
+    return {"items": items, "total": round(total, 2)}
+
+
+@api.post("/travel/cart/add")
+async def add_travel_cart(item: TravelCartItemIn, current=Depends(get_current_user)):
+    if item.quantity < 1:
+        raise HTTPException(status_code=400, detail="Quantity must be at least 1")
+
+    package = await db.travel_packages.find_one(
+        {"id": item.package_id, "active": True},
+        {"_id": 0}
+    )
+    if not package:
+        raise HTTPException(status_code=404, detail="Travel package not found")
+
+    cart = await db.travel_carts.find_one({"user_id": current["id"]}) or {
+        "user_id": current["id"],
+        "items": [],
+        "updated_at": now_iso(),
+    }
+
+    found = False
+    for it in cart["items"]:
+        if it.get("package_id") == item.package_id:
+            it["quantity"] = int(it.get("quantity", 1)) + item.quantity
+            found = True
+            break
+
+    if not found:
+        cart["items"].append({"package_id": item.package_id, "quantity": item.quantity})
+
+    cart["updated_at"] = now_iso()
+    await db.travel_carts.update_one(
+        {"user_id": current["id"]},
+        {"$set": {"items": cart["items"], "updated_at": cart["updated_at"]}},
+        upsert=True
+    )
+    return await get_travel_cart(current)
+
+
+@api.delete("/travel/cart/{package_id}")
+async def remove_travel_cart(package_id: str, current=Depends(get_current_user)):
+    await db.travel_carts.update_one(
+        {"user_id": current["id"]},
+        {"$pull": {"items": {"package_id": package_id}}}
+    )
+    return await get_travel_cart(current)
+
+
+@api.delete("/travel/cart")
+async def clear_travel_cart(current=Depends(get_current_user)):
+    await db.travel_carts.update_one(
+        {"user_id": current["id"]},
+        {"$set": {"items": [], "updated_at": now_iso()}},
+        upsert=True
+    )
+    return {"items": [], "total": 0}
+
+
 # ------------------ ROLE GUARDS ------------------
 def require_roles(*roles):
     async def _dep(current=Depends(get_current_user)):
@@ -1256,6 +1446,37 @@ class BannerIn(BaseModel):
     color: str = "#2563EB"
     order: int = 99
     category_id: Optional[str] = None
+    target_type: str = "category"
+    target_slug: Optional[str] = None
+
+
+class TravelPageIn(BaseModel):
+    name: str
+    slug: str
+    subtitle: str = ""
+    cover_image: str = ""
+    description: str = ""
+    theme_color: str = "#2563EB"
+
+
+class TravelPackageIn(BaseModel):
+    page_id: str
+    title: str
+    location: str = ""
+    duration: str = ""
+    price: float = 0
+    mrp: Optional[float] = None
+    cover_image: str = ""
+    flight_image: str = ""
+    gallery: List[str] = []
+    hotel: str = ""
+    inclusions: List[str] = []
+    description: str = ""
+
+
+class TravelCartItemIn(BaseModel):
+    package_id: str
+    quantity: int = 1
 
 
 class OrderStatusIn(BaseModel):
@@ -2588,6 +2809,11 @@ async def ensure_db_indexes():
         db.notifications.create_index([("user_id", 1), ("read", 1)]),
         db.settings.create_index("id", unique=True),
         db.roojgar_applications.create_index([("status", 1), ("created_at", -1)]),
+        db.travel_pages.create_index("id", unique=True),
+        db.travel_pages.create_index("slug", unique=True),
+        db.travel_packages.create_index("id", unique=True),
+        db.travel_packages.create_index([("page_id", 1), ("active", 1)]),
+        db.travel_carts.create_index("user_id", unique=True),
     )
 
 
@@ -2685,6 +2911,67 @@ async def seed_db():
     if vendor2:
         await db.stores.update_many({"id": {"$in": ["st-2", "st-3"]}}, {"$set": {"vendor_id": vendor2["id"]}})
         await db.products.update_many({"store_id": {"$in": ["st-2", "st-3"]}}, {"$set": {"vendor_id": vendor2["id"]}})
+
+    # Seed reusable YatraSphere Holiday page if it does not exist
+    travel_page = await db.travel_pages.find_one({"slug": "yatasphere-holiday"})
+    if not travel_page:
+        travel_page = {
+            "id": "travel-yatasphere",
+            "name": "YatraSphere Holiday",
+            "slug": "yatasphere-holiday",
+            "subtitle": "Curated holiday packages",
+            "cover_image": "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?w=1400&q=85",
+            "description": "Plan your next holiday with curated travel packages, hotel stays and flight information.",
+            "theme_color": "#2563EB",
+            "created_at": now_iso(),
+            "updated_at": now_iso(),
+        }
+        await db.travel_pages.insert_one(dict(travel_page))
+
+    if not await db.travel_packages.find_one({"page_id": travel_page["id"]}):
+        await db.travel_packages.insert_many([
+            {
+                "id": "pkg-shimla-45",
+                "page_id": travel_page["id"],
+                "title": "Shimla 4 Nights / 5 Days",
+                "location": "Shimla, Himachal Pradesh",
+                "duration": "5 Days / 4 Nights",
+                "price": 18999,
+                "mrp": 22999,
+                "cover_image": "https://images.unsplash.com/photo-1605649487212-47bdab064df7?w=900&q=85",
+                "flight_image": "https://images.unsplash.com/photo-1436491865332-7a61a109cc05?w=900&q=85",
+                "gallery": [],
+                "hotel": "3★ Hotel with breakfast",
+                "inclusions": ["Hotel stay", "Breakfast", "Airport/Bus transfer", "Sightseeing"],
+                "description": "Scenic Shimla holiday package with stay, transfers and sightseeing.",
+                "active": True,
+                "created_at": now_iso(),
+                "updated_at": now_iso(),
+            },
+            {
+                "id": "pkg-manali-45",
+                "page_id": travel_page["id"],
+                "title": "Manali 4 Nights / 5 Days",
+                "location": "Manali, Himachal Pradesh",
+                "duration": "5 Days / 4 Nights",
+                "price": 20999,
+                "mrp": 25999,
+                "cover_image": "https://images.unsplash.com/photo-1626621341517-bbf3d9990a23?w=900&q=85",
+                "flight_image": "https://images.unsplash.com/photo-1436491865332-7a61a109cc05?w=900&q=85",
+                "gallery": [],
+                "hotel": "3★ Hotel with breakfast",
+                "inclusions": ["Hotel stay", "Breakfast", "Local transfers", "Sightseeing"],
+                "description": "Mountain getaway with hotel stay, transfers and sightseeing.",
+                "active": True,
+                "created_at": now_iso(),
+                "updated_at": now_iso(),
+            },
+        ])
+
+    await db.banners.update_many(
+        {"title": {"$regex": "yatasphere|yatra.?sphere", "$options": "i"}},
+        {"$set": {"target_type": "custom_page", "target_slug": "yatasphere-holiday"}}
+    )
 
     # Default settings
     if not await db.settings.find_one({"id": "global"}):
