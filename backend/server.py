@@ -114,6 +114,7 @@ class RegisterIn(BaseModel):
     phone: Optional[str] = None
     password: str
     role: Role = Role.CUSTOMER
+    vendor_type: Optional[str] = None
 
 
 class LoginIn(BaseModel):
@@ -161,6 +162,7 @@ class UserOut(BaseModel):
     phone: Optional[str] = None
     role: Role
     avatar: Optional[str] = None
+    vendor_type: Optional[str] = None
 
 
 class AuthOut(BaseModel):
@@ -303,6 +305,7 @@ def user_to_out(u: dict) -> dict:
         "phone": u.get("phone"),
         "role": u.get("role", "customer"),
         "avatar": u.get("avatar"),
+        "vendor_type": u.get("vendor_type"),
     }
 
 
@@ -317,6 +320,12 @@ async def register(data: RegisterIn):
             raise HTTPException(status_code=400, detail="Email already registered")
         raise HTTPException(status_code=400, detail="Mobile number already registered")
     uid = str(uuid.uuid4())
+    vendor_type = None
+    if data.role == Role.VENDOR:
+        vendor_type = (data.vendor_type or "store").strip().lower()
+        if vendor_type not in {"store", "service"}:
+            raise HTTPException(status_code=400, detail="Invalid vendor type")
+
     user_doc = {
         "id": uid,
         "name": data.name,
@@ -324,6 +333,7 @@ async def register(data: RegisterIn):
         "phone": data.phone,
         "password": hash_password(data.password),
         "role": data.role.value,
+        "vendor_type": vendor_type,
         "avatar": None,
         "created_at": now_iso(),
     }
@@ -1672,6 +1682,14 @@ async def admin_update_roojgar_status(
     }
 
 
+@api.get("/admin/vendor-services")
+async def admin_vendor_services(_=Depends(require_roles("admin"))):
+    return await db.users.find(
+        {"role": Role.VENDOR.value, "vendor_type": "service"},
+        {"_id": 0, "password": 0}
+    ).sort("created_at", -1).to_list(500)
+
+
 @api.get("/admin/users")
 async def admin_users(
     role: Optional[str] = None,
@@ -2414,6 +2432,122 @@ async def vendor_stats(current=Depends(require_roles("vendor"))):
         "revenue": round(revenue, 2), "commission_percent": commission,
         "payout": payout, "is_suspended": not is_active
     }
+
+
+async def require_service_vendor(current=Depends(require_roles("vendor"))):
+    user = await db.users.find_one(
+        {"id": current["id"]},
+        {"_id": 0, "vendor_type": 1}
+    )
+    if not user or user.get("vendor_type") != "service":
+        raise HTTPException(status_code=403, detail="Service vendor access required")
+    return current
+
+
+@api.get("/vendor/service/banners")
+async def vendor_service_banners(current=Depends(require_service_vendor)):
+    banners = await db.banners.find(
+        {"page_type": "travel"},
+        {"_id": 0}
+    ).sort("order", 1).to_list(100)
+
+    for banner in banners:
+        banner["page"] = await db.banner_pages.find_one(
+            {"banner_id": banner["id"]},
+            {"_id": 0}
+        ) or {}
+
+        banner["my_packages"] = await db.travel_packages.find(
+            {
+                "banner_id": banner["id"],
+                "vendor_id": current["id"],
+            },
+            {"_id": 0}
+        ).sort("created_at", -1).to_list(100)
+
+    return banners
+
+
+@api.post("/vendor/service/banners/{banner_id}/packages")
+async def vendor_create_service_package(
+    banner_id: str,
+    data: TravelPackageIn,
+    current=Depends(require_service_vendor)
+):
+    banner = await db.banners.find_one(
+        {"id": banner_id, "page_type": "travel"},
+        {"_id": 0, "id": 1}
+    )
+
+    if not banner:
+        raise HTTPException(status_code=404, detail="Travel banner not found")
+
+    doc = {
+        "id": "trv-" + uuid.uuid4().hex[:8],
+        **data.dict(),
+        "banner_id": banner_id,
+        "vendor_id": current["id"],
+        "created_at": now_iso(),
+        "updated_at": now_iso(),
+    }
+
+    await db.travel_packages.insert_one(dict(doc))
+    doc.pop("_id", None)
+    return doc
+
+
+@api.put("/vendor/service/banners/{banner_id}/packages/{package_id}")
+async def vendor_update_service_package(
+    banner_id: str,
+    package_id: str,
+    data: TravelPackageIn,
+    current=Depends(require_service_vendor)
+):
+    result = await db.travel_packages.update_one(
+        {
+            "id": package_id,
+            "banner_id": banner_id,
+            "vendor_id": current["id"],
+        },
+        {
+            "$set": {
+                **data.dict(),
+                "banner_id": banner_id,
+                "updated_at": now_iso(),
+            }
+        }
+    )
+
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Service package not found")
+
+    return await db.travel_packages.find_one(
+        {
+            "id": package_id,
+            "vendor_id": current["id"],
+        },
+        {"_id": 0}
+    )
+
+
+@api.delete("/vendor/service/banners/{banner_id}/packages/{package_id}")
+async def vendor_delete_service_package(
+    banner_id: str,
+    package_id: str,
+    current=Depends(require_service_vendor)
+):
+    result = await db.travel_packages.delete_one(
+        {
+            "id": package_id,
+            "banner_id": banner_id,
+            "vendor_id": current["id"],
+        }
+    )
+
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Service package not found")
+
+    return {"ok": True}
 
 
 @api.get("/vendor/products")
