@@ -56,7 +56,8 @@ export default function Home() {
   const [trending, setTrending] = useState<any[]>([]);
   const [unread, setUnread] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
-  const [bannerIndex, setBannerIndex] = useState(0);\n  const bannerListRef = useRef<FlatList<any>>(null);
+  const [bannerIndex, setBannerIndex] = useState(0);
+  const bannerListRef = useRef<FlatList<any>>(null);
 
   // Dynamic Address Fallback State
   const [selectedAddress, setSelectedAddress] = useState<string>("Home · Karmatar");
