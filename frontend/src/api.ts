@@ -332,6 +332,9 @@ export const api = {
       body: JSON.stringify(data),
     }),
 
+  travelBooking: (id: string) =>
+    apiFetch<any>(`/travel-bookings/${id}`),
+
   stores: () =>
     apiFetch<any[]>("/stores"),
 
