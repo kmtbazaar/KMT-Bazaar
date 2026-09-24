@@ -46,6 +46,8 @@ function RoleRouteGuard({ children }: { children: React.ReactNode }) {
       first === "category" ||
       first === "store" ||
       first === "product" ||
+      first === "banner" ||
+      first === "travel" ||
       first === "search" ||
       first === "RoojgarForm";
 
