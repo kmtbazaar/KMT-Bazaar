@@ -205,6 +205,37 @@ class CheckoutIn(BaseModel):
         return value
 
 
+class TravelCartAddIn(BaseModel):
+    package_id: str
+    adults: int = 1
+    children: int = 0
+    travel_date: str = ""
+    hotel_option: str = ""
+    flight_option: str = ""
+
+
+class TravelCartUpdateIn(BaseModel):
+    item_id: str
+    adults: int = 1
+    children: int = 0
+    travel_date: str = ""
+    hotel_option: str = ""
+    flight_option: str = ""
+
+
+class TravelCheckoutIn(BaseModel):
+    address_id: str
+    payment_method: str
+    notes: Optional[str] = ""
+
+    @field_validator("payment_method")
+    @classmethod
+    def validate_payment_method(cls, value):
+        if value not in {"cod", "online"}:
+            raise ValueError("Invalid payment method")
+        return value
+
+
 class AIChatRequest(BaseModel):
     message: str
 
@@ -697,6 +728,24 @@ async def list_banners():
     return banners
 
 
+@api.get("/banner-pages/{banner_id}")
+async def get_banner_page(banner_id: str):
+    banner = await db.banners.find_one({"id": banner_id}, {"_id": 0})
+    if not banner:
+        raise HTTPException(404, "Banner not found")
+
+    page = await db.banner_pages.find_one({"banner_id": banner_id}, {"_id": 0})
+    if not page:
+        raise HTTPException(404, "Custom page not found")
+
+    packages = await db.travel_packages.find(
+        {"banner_id": banner_id},
+        {"_id": 0}
+    ).sort("created_at", 1).to_list(100)
+
+    return {"banner": banner, "page": page, "packages": packages}
+
+
 @api.get("/stores")
 async def list_stores():
     stores = await db.stores.find({"is_approved": True}, {"_id": 0}).to_list(100)
@@ -942,6 +991,181 @@ async def update_cart(item: CartUpdateIn, current=Depends(get_current_user)):
 async def clear_cart(current=Depends(get_current_user)):
     await db.carts.update_one({"user_id": current["id"]}, {"$set": {"items": [], "updated_at": now_iso()}})
     return {"ok": True}
+
+
+# ------------------ TRAVEL CART ------------------
+async def get_travel_cart_doc(user_id: str):
+    cart = await db.travel_carts.find_one({"user_id": user_id}, {"_id": 0})
+    if not cart:
+        cart = {"user_id": user_id, "items": [], "updated_at": now_iso()}
+        await db.travel_carts.insert_one(dict(cart))
+    return cart
+
+
+async def expand_travel_cart(cart):
+    items = []
+    subtotal = 0.0
+
+    for item in cart.get("items", []):
+        package = await db.travel_packages.find_one(
+            {"id": item.get("package_id")},
+            {"_id": 0}
+        )
+        if not package:
+            continue
+
+        adults = max(int(item.get("adults", 1)), 1)
+        children = max(int(item.get("children", 0)), 0)
+        adult_total = float(package.get("price", 0)) * adults
+        child_total = float(package.get("child_price", package.get("price", 0))) * children
+        line_total = adult_total + child_total
+        subtotal += line_total
+
+        items.append({
+            "item_id": item["item_id"],
+            "package_id": package["id"],
+            "title": package.get("title", ""),
+            "destination": package.get("destination", ""),
+            "duration": package.get("duration", ""),
+            "image": (package.get("images") or [None])[0] or "",
+            "price": package.get("price", 0),
+            "child_price": package.get("child_price", package.get("price", 0)),
+            "hotel": package.get("hotel", ""),
+            "flight": package.get("flight", ""),
+            "flight_image": package.get("flight_image", ""),
+            "adults": adults,
+            "children": children,
+            "travel_date": item.get("travel_date", ""),
+            "hotel_option": item.get("hotel_option", ""),
+            "flight_option": item.get("flight_option", ""),
+            "line_total": round(line_total, 2),
+        })
+
+    service_fee = round(subtotal * 0.05, 2)
+    total = round(subtotal + service_fee, 2)
+
+    return {
+        "items": items,
+        "subtotal": round(subtotal, 2),
+        "service_fee": service_fee,
+        "total": total,
+        "item_count": len(items),
+    }
+
+
+@api.get("/travel-cart")
+async def get_travel_cart(current=Depends(get_current_user)):
+    return await expand_travel_cart(await get_travel_cart_doc(current["id"]))
+
+
+@api.post("/travel-cart/add")
+async def add_travel_cart(item: TravelCartAddIn, current=Depends(get_current_user)):
+    package = await db.travel_packages.find_one(
+        {"id": item.package_id},
+        {"_id": 0, "id": 1}
+    )
+    if not package:
+        raise HTTPException(404, "Travel package not found")
+
+    if item.adults < 1 or item.children < 0:
+        raise HTTPException(400, "Invalid traveller count")
+
+    cart = await get_travel_cart_doc(current["id"])
+    cart["items"].append({
+        "item_id": str(uuid.uuid4()),
+        "package_id": item.package_id,
+        "adults": item.adults,
+        "children": item.children,
+        "travel_date": item.travel_date,
+        "hotel_option": item.hotel_option,
+        "flight_option": item.flight_option,
+    })
+    await db.travel_carts.update_one(
+        {"user_id": current["id"]},
+        {"$set": {"items": cart["items"], "updated_at": now_iso()}}
+    )
+    return await expand_travel_cart(cart)
+
+
+@api.post("/travel-cart/update")
+async def update_travel_cart(item: TravelCartUpdateIn, current=Depends(get_current_user)):
+    cart = await get_travel_cart_doc(current["id"])
+    found = False
+
+    for it in cart["items"]:
+        if it["item_id"] == item.item_id:
+            if item.adults < 1 or item.children < 0:
+                raise HTTPException(400, "Invalid traveller count")
+            it.update({
+                "adults": item.adults,
+                "children": item.children,
+                "travel_date": item.travel_date,
+                "hotel_option": item.hotel_option,
+                "flight_option": item.flight_option,
+            })
+            found = True
+            break
+
+    if not found:
+        raise HTTPException(404, "Travel cart item not found")
+
+    await db.travel_carts.update_one(
+        {"user_id": current["id"]},
+        {"$set": {"items": cart["items"], "updated_at": now_iso()}}
+    )
+    return await expand_travel_cart(cart)
+
+
+@api.delete("/travel-cart/clear")
+async def clear_travel_cart(current=Depends(get_current_user)):
+    await db.travel_carts.update_one(
+        {"user_id": current["id"]},
+        {"$set": {"items": [], "updated_at": now_iso()}}
+    )
+    return {"ok": True}
+
+
+@api.post("/travel-bookings/checkout")
+async def travel_checkout(data: TravelCheckoutIn, current=Depends(get_current_user)):
+    cart = await get_travel_cart_doc(current["id"])
+    expanded = await expand_travel_cart(cart)
+
+    if not expanded["items"]:
+        raise HTTPException(400, "Travel cart is empty")
+
+    addr = await db.addresses.find_one(
+        {"id": data.address_id, "user_id": current["id"]},
+        {"_id": 0}
+    )
+    if not addr:
+        raise HTTPException(400, "Invalid address")
+
+    booking_id = str(uuid.uuid4())
+    booking_no = "KMTTRV" + datetime.now().strftime("%y%m%d") + booking_id[:5].upper()
+
+    booking = {
+        "id": booking_id,
+        "booking_no": booking_no,
+        "user_id": current["id"],
+        "items": expanded["items"],
+        "subtotal": expanded["subtotal"],
+        "service_fee": expanded["service_fee"],
+        "total": expanded["total"],
+        "address": addr,
+        "payment_method": data.payment_method,
+        "payment_status": "paid" if data.payment_method == "online" else "pending",
+        "status": "pending",
+        "notes": data.notes or "",
+        "created_at": now_iso(),
+    }
+
+    await db.travel_bookings.insert_one(dict(booking))
+    await db.travel_carts.update_one(
+        {"user_id": current["id"]},
+        {"$set": {"items": [], "updated_at": now_iso()}}
+    )
+    booking.pop("_id", None)
+    return booking
 
 
 # ------------------ ADDRESSES ------------------
@@ -1256,6 +1480,37 @@ class BannerIn(BaseModel):
     color: str = "#2563EB"
     order: int = 99
     category_id: Optional[str] = None
+    page_type: str = "category"
+    page_id: Optional[str] = None
+
+
+class BannerPageIn(BaseModel):
+    banner_id: str
+    page_type: str = "travel"
+    brand_name: str = ""
+    hero_title: str = ""
+    hero_subtitle: str = ""
+    hero_image: str = ""
+    description: str = ""
+    theme_color: str = "#0284C7"
+    animation_plane: bool = True
+    animation_clouds: bool = True
+    animation_parallax: bool = True
+
+
+class TravelPackageIn(BaseModel):
+    banner_id: str
+    title: str
+    destination: str = ""
+    duration: str = ""
+    price: float = 0
+    child_price: float = 0
+    hotel: str = ""
+    flight: str = ""
+    flight_image: str = ""
+    images: List[str] = []
+    description: str = ""
+    inclusions: List[str] = []
 
 
 class OrderStatusIn(BaseModel):
@@ -1772,11 +2027,43 @@ async def admin_update_cat(cid: str, data: CategoryIn, _=Depends(require_roles("
     return await db.categories.find_one({"id": cid}, {"_id": 0})
 
 
+async def upsert_banner_page_defaults(banner: dict):
+    if banner.get("page_type") != "travel":
+        return
+
+    banner_id = banner["id"]
+    defaults = {
+        "banner_id": banner_id,
+        "page_type": "travel",
+        "brand_name": banner.get("title", "Travel"),
+        "hero_title": banner.get("title", "Plan your next escape"),
+        "hero_subtitle": banner.get("subtitle", ""),
+        "hero_image": banner.get("image", ""),
+        "description": "Discover curated holiday packages with flights, hotels and transfers.",
+        "theme_color": banner.get("color", "#0284C7"),
+        "animation_plane": True,
+        "animation_clouds": True,
+        "animation_parallax": True,
+        "created_at": now_iso(),
+        "updated_at": now_iso(),
+    }
+    await db.banner_pages.update_one(
+        {"banner_id": banner_id},
+        {"$setOnInsert": defaults},
+        upsert=True,
+    )
+
+
 @api.post("/admin/banners")
 async def admin_create_banner(data: BannerIn, _=Depends(require_roles("admin"))):
     bid = "ban-" + uuid.uuid4().hex[:6]
-    doc = {"id": bid, **data.dict()}
+    payload = data.dict()
+    if payload.get("page_type") == "travel" and not payload.get("page_id"):
+        payload["page_id"] = bid
+
+    doc = {"id": bid, **payload}
     await db.banners.insert_one(dict(doc))
+    await upsert_banner_page_defaults(doc)
     doc.pop("_id", None)
     return doc
 
@@ -1789,13 +2076,106 @@ async def admin_delete_banner(bid: str, _=Depends(require_roles("admin"))):
 
 @api.put("/admin/banners/{bid}")
 async def admin_update_banner(bid: str, data: BannerIn, _=Depends(require_roles("admin"))):
+    payload = data.dict()
+    if payload.get("page_type") == "travel" and not payload.get("page_id"):
+        payload["page_id"] = bid
+
     result = await db.banners.update_one(
         {"id": bid},
-        {"$set": data.dict()}
+        {"$set": payload}
     )
     if result.matched_count == 0:
         raise HTTPException(status_code=404, detail="Banner not found")
-    return await db.banners.find_one({"id": bid}, {"_id": 0})
+
+    updated = await db.banners.find_one({"id": bid}, {"_id": 0})
+    await upsert_banner_page_defaults(updated)
+    return updated
+
+
+@api.put("/admin/banner-pages/{banner_id}")
+async def admin_update_banner_page(
+    banner_id: str,
+    data: BannerPageIn,
+    _=Depends(require_roles("admin"))
+):
+    banner = await db.banners.find_one({"id": banner_id}, {"_id": 0})
+    if not banner:
+        raise HTTPException(404, "Banner not found")
+
+    payload = data.dict()
+    payload["banner_id"] = banner_id
+    payload["updated_at"] = now_iso()
+
+    await db.banner_pages.update_one(
+        {"banner_id": banner_id},
+        {"$set": payload, "$setOnInsert": {"created_at": now_iso()}},
+        upsert=True,
+    )
+    await db.banners.update_one(
+        {"id": banner_id},
+        {"$set": {"page_type": payload.get("page_type", "travel"), "page_id": banner_id}}
+    )
+    return await db.banner_pages.find_one({"banner_id": banner_id}, {"_id": 0})
+
+
+@api.post("/admin/banner-pages/{banner_id}/packages")
+async def admin_create_travel_package(
+    banner_id: str,
+    data: TravelPackageIn,
+    _=Depends(require_roles("admin"))
+):
+    page = await db.banner_pages.find_one({"banner_id": banner_id}, {"_id": 0, "banner_id": 1})
+    if not page:
+        raise HTTPException(404, "Banner page not found")
+
+    pid = "trv-" + uuid.uuid4().hex[:8]
+    doc = {
+        "id": pid,
+        **data.dict(),
+        "banner_id": banner_id,
+        "created_at": now_iso(),
+        "updated_at": now_iso(),
+    }
+    await db.travel_packages.insert_one(dict(doc))
+    doc.pop("_id", None)
+    return doc
+
+
+@api.put("/admin/banner-pages/{banner_id}/packages/{package_id}")
+async def admin_update_travel_package(
+    banner_id: str,
+    package_id: str,
+    data: TravelPackageIn,
+    _=Depends(require_roles("admin"))
+):
+    payload = data.dict()
+    payload["banner_id"] = banner_id
+    payload["updated_at"] = now_iso()
+
+    result = await db.travel_packages.update_one(
+        {"id": package_id, "banner_id": banner_id},
+        {"$set": payload}
+    )
+    if result.matched_count == 0:
+        raise HTTPException(404, "Travel package not found")
+    return await db.travel_packages.find_one(
+        {"id": package_id},
+        {"_id": 0}
+    )
+
+
+@api.delete("/admin/banner-pages/{banner_id}/packages/{package_id}")
+async def admin_delete_travel_package(
+    banner_id: str,
+    package_id: str,
+    _=Depends(require_roles("admin"))
+):
+    result = await db.travel_packages.delete_one(
+        {"id": package_id, "banner_id": banner_id}
+    )
+    if result.deleted_count == 0:
+        raise HTTPException(404, "Travel package not found")
+    return {"ok": True}
 
 
 @api.get("/admin/commission")
@@ -2587,6 +2967,12 @@ async def ensure_db_indexes():
         db.notifications.create_index([("user_id", 1), ("created_at", -1)]),
         db.notifications.create_index([("user_id", 1), ("read", 1)]),
         db.settings.create_index("id", unique=True),
+        db.banner_pages.create_index("banner_id", unique=True),
+        db.travel_packages.create_index("id", unique=True),
+        db.travel_packages.create_index([("banner_id", 1), ("created_at", 1)]),
+        db.travel_carts.create_index("user_id", unique=True),
+        db.travel_bookings.create_index("id", unique=True),
+        db.travel_bookings.create_index([("user_id", 1), ("created_at", -1)]),
         db.roojgar_applications.create_index([("status", 1), ("created_at", -1)]),
     )
 
@@ -2741,10 +3127,76 @@ async def seed_db():
                 })
 
 
+async def ensure_special_banner_pages():
+    banner = await db.banners.find_one(
+        {"title": {"$regex": "Yatasphere|YatraSphere|Yatra", "$options": "i"}},
+        {"_id": 0}
+    )
+    if not banner:
+        return
+
+    if banner.get("page_type") != "travel":
+        await db.banners.update_one(
+            {"id": banner["id"]},
+            {"$set": {"page_type": "travel", "page_id": banner["id"]}}
+        )
+        banner["page_type"] = "travel"
+
+    await upsert_banner_page_defaults(banner)
+
+    if await db.travel_packages.count_documents({"banner_id": banner["id"]}) == 0:
+        packages = [
+            {
+                "id": "trv-shimla-demo",
+                "banner_id": banner["id"],
+                "title": "Shimla Scenic Escape",
+                "destination": "Shimla, Himachal Pradesh",
+                "duration": "4 Nights / 5 Days",
+                "price": 18999,
+                "child_price": 12999,
+                "hotel": "4★ mountain-view hotel with breakfast",
+                "flight": "Delhi ↔ Chandigarh flight + road transfer",
+                "flight_image": "https://images.unsplash.com/photo-1436491865332-7a61a109cc05?w=900&q=80",
+                "images": [
+                    "https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=1200&q=80",
+                    "https://images.unsplash.com/photo-1501785888041-af3ef285b470?w=1200&q=80",
+                    "https://images.unsplash.com/photo-1519681393784-d120267933ba?w=1200&q=80"
+                ],
+                "description": "Snowy peaks, Mall Road, Kufri and a relaxed mountain stay curated for a family holiday.",
+                "inclusions": ["Hotel stay", "Breakfast", "Airport/rail transfer", "Sightseeing"],
+                "created_at": now_iso(),
+                "updated_at": now_iso(),
+            },
+            {
+                "id": "trv-manali-demo",
+                "banner_id": banner["id"],
+                "title": "Manali Adventure Week",
+                "destination": "Manali, Himachal Pradesh",
+                "duration": "5 Nights / 6 Days",
+                "price": 22999,
+                "child_price": 15999,
+                "hotel": "4★ river-view hotel with breakfast",
+                "flight": "Delhi ↔ Chandigarh flight + private transfer",
+                "flight_image": "https://images.unsplash.com/photo-1436491865332-7a61a109cc05?w=900&q=80",
+                "images": [
+                    "https://images.unsplash.com/photo-1470770841072-f978cf4d019e?w=1200&q=80",
+                    "https://images.unsplash.com/photo-1524492412937-b28074a5d7da?w=1200&q=80",
+                    "https://images.unsplash.com/photo-1518005020951-eccb494ad742?w=1200&q=80"
+                ],
+                "description": "Mountain views, local experiences and flexible sightseeing with a comfortable stay.",
+                "inclusions": ["Hotel stay", "Breakfast", "Transfers", "Sightseeing"],
+                "created_at": now_iso(),
+                "updated_at": now_iso(),
+            },
+        ]
+        await db.travel_packages.insert_many(packages)
+
+
 @app.on_event("startup")
 async def on_startup():
     await ensure_db_indexes()
     await seed_db()
+    await ensure_special_banner_pages()
     logging.info("KMT Bazaar API ready. Seed completed.")
 
 
