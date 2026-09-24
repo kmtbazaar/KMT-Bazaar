@@ -1125,6 +1125,17 @@ async def clear_travel_cart(current=Depends(get_current_user)):
     return {"ok": True}
 
 
+@api.get("/travel-bookings/{booking_id}")
+async def get_travel_booking(booking_id: str, current=Depends(get_current_user)):
+    booking = await db.travel_bookings.find_one(
+        {"id": booking_id, "user_id": current["id"]},
+        {"_id": 0}
+    )
+    if not booking:
+        raise HTTPException(404, "Travel booking not found")
+    return booking
+
+
 @api.post("/travel-bookings/checkout")
 async def travel_checkout(data: TravelCheckoutIn, current=Depends(get_current_user)):
     cart = await get_travel_cart_doc(current["id"])
