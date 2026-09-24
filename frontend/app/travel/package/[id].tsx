@@ -8,7 +8,7 @@ import { api } from "@/src/api";
 import { COLORS, RADIUS, SPACING } from "@/src/theme";
 
 export default function TravelPackagePage() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, bannerId } = useLocalSearchParams<{ id: string; bannerId?: string }>();
   const router = useRouter();
   const [pkg, setPkg] = useState<any>(null);
   const [adults, setAdults] = useState(1);
@@ -22,9 +22,9 @@ export default function TravelPackagePage() {
     if (!id) return;
     // Package data is returned by the banner page endpoint, so this screen
     // uses the bannerId when available and avoids adding a separate public package API.
-    const bannerId = String((useLocalSearchParams() as any).bannerId || "");
-    if (!bannerId) return;
-    api.bannerPage(bannerId).then(d => {
+    const pageId = String(bannerId || "");
+    if (!pageId) return;
+    api.bannerPage(pageId).then(d => {
       const found = (d.packages || []).find((x:any) => x.id === String(id));
       setPkg(found || null);
     }).catch(() => setPkg(null));
