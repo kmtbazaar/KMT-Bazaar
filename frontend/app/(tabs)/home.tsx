@@ -275,7 +275,7 @@ export default function Home() {
             }
           }}
           renderItem={({ item }) => (
-            <Pressable testID={`banner-${item.id}`} onPress={() => router.push(`/category/${item.category_id}` as any)} style={s.banner}>
+            <Pressable testID={`banner-${item.id}`} onPress={() => item.page_type === "travel" ? router.push(`/banner/${item.id}` as any) : router.push(`/category/${item.category_id}` as any)} style={s.banner}>
               <Image source={{ uri: item.image }} style={s.bannerImg} contentFit="cover" />
               
               {/* Animated Gradient Border Flash */}
