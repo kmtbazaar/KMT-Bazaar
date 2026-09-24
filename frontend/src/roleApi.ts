@@ -109,6 +109,29 @@ products: () =>
       method: "DELETE",
     }),
 
+  updateBannerPage: (bannerId: string, data: any) =>
+    apiFetch(`/admin/banner-pages/${bannerId}`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    }),
+
+  createTravelPackage: (bannerId: string, data: any) =>
+    apiFetch(`/admin/banner-pages/${bannerId}/packages`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  updateTravelPackage: (bannerId: string, packageId: string, data: any) =>
+    apiFetch(`/admin/banner-pages/${bannerId}/packages/${packageId}`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    }),
+
+  deleteTravelPackage: (bannerId: string, packageId: string) =>
+    apiFetch(`/admin/banner-pages/${bannerId}/packages/${packageId}`, {
+      method: "DELETE",
+    }),
+
   getCommission: () =>
     apiFetch<any>("/admin/commission"),
 
