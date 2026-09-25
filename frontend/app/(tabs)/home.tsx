@@ -21,9 +21,7 @@ import { useAuth } from "@/src/AuthContext";
 import { RADIUS, SPACING, shadow } from "@/src/theme";
 import ImagePlaceholder from "@/src/components/ImagePlaceholder";
 import ProductCard from "@/src/components/ProductCard";
-import ImagePlaceholder from "@/src/components/ImagePlaceholder";
 import CheckoutBar from "@/src/components/CheckoutBar";
-import ImagePlaceholder from "@/src/components/ImagePlaceholder";
 
 const { width } = Dimensions.get("window");
 const BANNER_W = width - 32;
