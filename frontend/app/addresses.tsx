@@ -17,6 +17,26 @@ const normalizeMobile = (value: unknown) => {
   return digits;
 };
 
+async function reverseGeocodeDevice(latitude: number, longitude: number) {
+  const response = await fetch(
+    "https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=" +
+      encodeURIComponent(latitude) +
+      "&longitude=" +
+      encodeURIComponent(longitude) +
+      "&localityLanguage=en"
+  );
+  if (!response.ok) throw new Error("Device address lookup failed");
+  const data = await response.json();
+  return {
+    line1: "",
+    line2: String(data?.localityName || data?.locality || "").trim(),
+    district: String(data?.localityName || data?.locality || "").trim(),
+    city: String(data?.city || data?.locality || "").trim(),
+    state: String(data?.principalSubdivision || "").trim(),
+    pincode: String(data?.postcode || "").trim(),
+  };
+}
+
 export default function Addresses() {
   const router = useRouter();
   const { user, setUser } = useAuth();
@@ -30,11 +50,13 @@ export default function Addresses() {
   const [locationError, setLocationError] = useState("");
   const [existingLocationSaved, setExistingLocationSaved] = useState(false);
   const [gpsPrefillLoading, setGpsPrefillLoading] = useState(false);
+  const [saveError, setSaveError] = useState("");
 
   const [formData, setFormData] = useState({ 
     label: "Home", 
     full_name: "", 
-    line1: "", 
+    line1: "",
+    line2: "",
     landmark: "",
     district: "",
     city: "", 
@@ -93,7 +115,7 @@ export default function Addresses() {
         }));
 
         try {
-          const geo = await api.reverseGeocode(latitude, longitude);
+          const geo = await reverseGeocodeDevice(latitude, longitude);
           setFormData(prev => ({
             ...prev,
             line1: geo?.line1 || prev.line1,
@@ -101,7 +123,7 @@ export default function Addresses() {
             district: geo?.district || prev.district,
             city: geo?.city || prev.city,
             state: geo?.state || prev.state,
-            pincode: prev.pincode,
+            pincode: geo?.pincode || prev.pincode,
           }));
         } catch (error) {
           console.log("Initial reverse geocode failed:", error);
@@ -260,7 +282,7 @@ export default function Addresses() {
         setExistingLocationSaved(false);
 
         try {
-          const geo = await api.reverseGeocode(result.latitude, result.longitude);
+          const geo = await reverseGeocodeDevice(result.latitude, result.longitude);
           setFormData(prev => ({
             ...prev,
             line1: geo?.line1 || prev.line1,
@@ -268,7 +290,7 @@ export default function Addresses() {
             district: geo?.district || prev.district,
             city: geo?.city || prev.city,
             state: geo?.state || prev.state,
-            pincode: prev.pincode,
+            pincode: geo?.pincode || prev.pincode,
           }));
         } catch (geoError) {
           console.log("Manual location reverse geocode failed:", geoError);
@@ -293,7 +315,7 @@ export default function Addresses() {
       setExistingLocationSaved(false);
 
       try {
-        const geo = await api.reverseGeocode(result.latitude, result.longitude);
+        const geo = await reverseGeocodeDevice(result.latitude, result.longitude);
         setFormData(prev => ({
           ...prev,
           line1: geo?.line1 || prev.line1,
@@ -320,6 +342,7 @@ export default function Addresses() {
 
   const handleSave = async () => {
     Keyboard.dismiss();
+    setSaveError("");
 
     const requiredFields: Array<[string, string]> = [
       ["Receiver's Name", formData.full_name],
@@ -334,7 +357,13 @@ export default function Addresses() {
 
     const missingField = requiredFields.find(([, value]) => !value?.trim());
     if (missingField) {
-      Alert.alert("Mandatory field required", `${missingField[0]} is required. Please fill all * marked fields. Nearby / Landmark is optional.`);
+      const message = `${missingField[0]} is required. Please fill all * marked fields. Nearby / Landmark is optional.`;
+      setSaveError(message);
+      if (Platform.OS === "web") {
+        window.alert(message);
+      } else {
+        Alert.alert("Mandatory field required", message);
+      }
       return;
     }
 
@@ -523,27 +552,28 @@ export default function Addresses() {
               </View>
 
               <FieldLabel text="Receiver's Name" required />
-              <TextInput style={s.input} placeholder="Receiver's Name" value={formData.full_name} onChangeText={t => setFormData({ ...formData, full_name: t })} />
-              <FieldLabel text="Street / House No." required />
-              <TextInput style={s.input} placeholder="Street / House No." value={formData.line1} onChangeText={t => setFormData({ ...formData, line1: t })} />
+              <TextInput style={s.input} placeholder="Receiver's Name *" value={formData.full_name} onChangeText={t => setFormData({ ...formData, full_name: t })} />
+              <FieldLabel text="House No." required />
+              <TextInput style={s.input} placeholder="House No. *" value={formData.line1} onChangeText={t => setFormData({ ...formData, line1: t })} />
               <FieldLabel text="Area / Street" required />
-              <TextInput style={s.input} placeholder="Area / Street" value={formData.line2 || ""} onChangeText={t => setFormData({ ...formData, line2: t })} />
+              <TextInput style={s.input} placeholder="Area / Street *" value={formData.line2 || ""} onChangeText={t => setFormData({ ...formData, line2: t })} />
               <FieldLabel text="Nearby / Landmark" />
               <TextInput style={s.input} placeholder="Nearby / Landmark (optional)" value={formData.landmark} onChangeText={t => setFormData({ ...formData, landmark: t })} />
-              <FieldLabel text="District" required />
-              <TextInput style={s.input} placeholder="District" value={formData.district} onChangeText={t => setFormData({ ...formData, district: t })} />
+              <FieldLabel text="Village" required />
+              <TextInput style={s.input} placeholder="Village *" value={formData.district} onChangeText={t => setFormData({ ...formData, district: t })} />
 
               <View style={s.fieldRow}>
-                <View style={s.fieldHalf}><FieldLabel text="City" required /><TextInput style={s.input} placeholder="City" value={formData.city} onChangeText={t => setFormData({ ...formData, city: t })} /></View>
-                <View style={s.fieldHalf}><FieldLabel text="State" required /><TextInput style={s.input} placeholder="State" value={formData.state} onChangeText={t => setFormData({ ...formData, state: t })} /></View>
+                <View style={s.fieldHalf}><FieldLabel text="City" required /><TextInput style={s.input} placeholder="City *" value={formData.city} onChangeText={t => setFormData({ ...formData, city: t })} /></View>
+                <View style={s.fieldHalf}><FieldLabel text="State" required /><TextInput style={s.input} placeholder="State *" value={formData.state} onChangeText={t => setFormData({ ...formData, state: t })} /></View>
               </View>
 
               <View style={s.fieldRow}>
-                <View style={s.fieldHalf}><FieldLabel text="Pincode" required /><TextInput style={s.input} placeholder="Pincode" keyboardType="number-pad" maxLength={6} value={formData.pincode} onChangeText={t => setFormData({ ...formData, pincode: t.replace(/[^0-9]/g, '') })} /></View>
-                <View style={s.fieldHalf}><FieldLabel text="Mobile No." required /><TextInput style={s.input} placeholder="Mobile No." keyboardType="phone-pad" maxLength={10} value={formData.phone} onChangeText={t => setFormData({ ...formData, phone: normalizeMobile(t) })} /></View>
+                <View style={s.fieldHalf}><FieldLabel text="Pincode" required /><TextInput style={s.input} placeholder="Pincode *" keyboardType="number-pad" maxLength={6} value={formData.pincode} onChangeText={t => setFormData({ ...formData, pincode: t.replace(/[^0-9]/g, '') })} /></View>
+                <View style={s.fieldHalf}><FieldLabel text="Mobile No." required /><TextInput style={s.input} placeholder="Mobile No. *" keyboardType="phone-pad" maxLength={10} value={formData.phone} onChangeText={t => setFormData({ ...formData, phone: normalizeMobile(t) })} /></View>
               </View>
 
               <Text style={s.requiredNote}>* Mandatory field  ·  Nearby / Landmark is optional</Text>
+              {!!saveError && <Text style={s.formError}>{saveError}</Text>}
 
               {gpsPrefillLoading && (
                 <View style={s.gpsLoadingRow}>
@@ -646,6 +676,7 @@ const s = StyleSheet.create({
   locationErrorText: { color: "#B91C1C", fontSize: 10, fontWeight: "700", lineHeight: 15, marginTop: 7 },
   locationPrivacyText: { color: COLORS.textMuted, fontSize: 9, lineHeight: 14, marginTop: 7 },
   requiredNote: { color: COLORS.textMuted, fontSize: 10, marginBottom: 8 },
+  formError: { color: "#DC2626", fontSize: 12, lineHeight: 18, fontWeight: "800", marginBottom: 10 },
   fieldRow: { flexDirection: "row", gap: 8, width: "100%" },
   fieldHalf: { flex: 1, minWidth: 0 },
   gpsLoadingRow: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 8 },
