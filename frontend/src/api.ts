@@ -439,6 +439,7 @@ export const api = {
       address_id: string;
       payment_method: string;
       notes?: string;
+      location?: { latitude: number; longitude: number } | null;
     }
   ) =>
     apiFetch<any>("/orders/checkout", {
@@ -451,6 +452,9 @@ export const api = {
 
   order: (id: string) =>
     apiFetch<any>(`/orders/${id}`),
+
+  deliveryLocation: (id: string) =>
+    apiFetch<any>(`/orders/${id}/delivery-location`),
 
   notifications: () =>
     apiFetch<any[]>("/notifications"),
