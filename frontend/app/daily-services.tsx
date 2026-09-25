@@ -1,1 +1,1 @@
-import ServiceCatalog from "./service/[type]";export default function DailyServices(){return <ServiceCatalog/>}
+import ServiceCatalog from "./service/[type]";export default function Page(){return <ServiceCatalog fixedType="daily_service"/>}
