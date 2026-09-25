@@ -2430,6 +2430,22 @@ async def admin_delete_vendor_service(
     return {"ok": True}
 
 
+@api.get("/admin/service-bookings")
+async def admin_service_bookings(_=Depends(require_roles("admin"))):
+    return await db.service_bookings.find({}, {"_id": 0}).sort("created_at", -1).to_list(500)
+
+
+@api.post("/admin/service-bookings/{booking_id}/status")
+async def admin_service_booking_status(booking_id: str, data: OrderStatusIn, _=Depends(require_roles("admin"))):
+    result = await db.service_bookings.update_one(
+        {"id": booking_id},
+        {"$set": {"status": data.status.strip().lower(), "updated_at": now_iso()}}
+    )
+    if result.matched_count == 0:
+        raise HTTPException(404, "Booking not found")
+    return await db.service_bookings.find_one({"id": booking_id}, {"_id": 0})
+
+
 @api.get("/admin/commission")
 async def admin_get_commission(_=Depends(require_roles("admin"))):
     s = await db.settings.find_one({"id": "global"}, {"_id": 0})
