@@ -2454,8 +2454,13 @@ async def admin_reject_store(store_id: str, _=Depends(require_roles("admin"))):
 
 
 # ------------------ VENDOR SERVICES ------------------
+def _require_vendor_type(current, expected: str):
+    if (current.get("vendor_type") or "store") != expected:
+        raise HTTPException(status_code=403, detail=f"{expected.title()} Vendor access required")
+
 @api.get("/vendor/services")
 async def vendor_list_services(current=Depends(require_roles("vendor"))):
+    _require_vendor_type(current, "service")
     return await db.vendor_services.find(
         {"vendor_id": current["id"]},
         {"_id": 0}
@@ -2467,6 +2472,7 @@ async def vendor_create_service(
     data: VendorServiceIn,
     current=Depends(require_roles("vendor"))
 ):
+    _require_vendor_type(current, "service")
     service_id = "vsvc-" + uuid.uuid4().hex[:8]
     doc = {
         "id": service_id,
@@ -2486,6 +2492,7 @@ async def vendor_update_service(
     data: VendorServiceIn,
     current=Depends(require_roles("vendor"))
 ):
+    _require_vendor_type(current, "service")
     result = await db.vendor_services.update_one(
         {"id": service_id, "vendor_id": current["id"]},
         {"$set": {**data.dict(), "updated_at": now_iso()}}
@@ -2503,6 +2510,7 @@ async def vendor_delete_service(
     service_id: str,
     current=Depends(require_roles("vendor"))
 ):
+    _require_vendor_type(current, "service")
     result = await db.vendor_services.delete_one(
         {"id": service_id, "vendor_id": current["id"]}
     )
