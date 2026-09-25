@@ -207,6 +207,35 @@ class CheckoutIn(BaseModel):
         return value
 
 
+class TravelPageIn(BaseModel):
+    name: str
+    slug: str
+    subtitle: str = ""
+    cover_image: str = ""
+    description: str = ""
+    theme_color: str = "#2563EB"
+
+
+class TravelPackageIn(BaseModel):
+    page_id: str
+    title: str
+    location: str = ""
+    duration: str = ""
+    price: float = 0
+    mrp: Optional[float] = None
+    cover_image: str = ""
+    flight_image: str = ""
+    gallery: List[str] = []
+    hotel: str = ""
+    inclusions: List[str] = []
+    description: str = ""
+
+
+class TravelCartItemIn(BaseModel):
+    package_id: str
+    quantity: int = 1
+
+
 class AIChatRequest(BaseModel):
     message: str
 
@@ -1469,35 +1498,6 @@ class BannerIn(BaseModel):
     category_id: Optional[str] = None
     target_type: str = "category"
     target_slug: Optional[str] = None
-
-
-class TravelPageIn(BaseModel):
-    name: str
-    slug: str
-    subtitle: str = ""
-    cover_image: str = ""
-    description: str = ""
-    theme_color: str = "#2563EB"
-
-
-class TravelPackageIn(BaseModel):
-    page_id: str
-    title: str
-    location: str = ""
-    duration: str = ""
-    price: float = 0
-    mrp: Optional[float] = None
-    cover_image: str = ""
-    flight_image: str = ""
-    gallery: List[str] = []
-    hotel: str = ""
-    inclusions: List[str] = []
-    description: str = ""
-
-
-class TravelCartItemIn(BaseModel):
-    package_id: str
-    quantity: int = 1
 
 
 class OrderStatusIn(BaseModel):
