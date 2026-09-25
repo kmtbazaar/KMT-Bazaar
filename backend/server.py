@@ -1408,8 +1408,10 @@ class DeliveryLocationIn(BaseModel):
 async def update_delivery_location(
     order_id: str,
     data: DeliveryLocationIn,
-    current=Depends(require_roles("delivery")),
+    current=Depends(get_current_user),
 ):
+    if current.get("role") != Role.DELIVERY.value:
+        raise HTTPException(status_code=403, detail="Forbidden")
     if not (-90 <= data.latitude <= 90 and -180 <= data.longitude <= 180):
         raise HTTPException(status_code=400, detail="Invalid location coordinates")
 
