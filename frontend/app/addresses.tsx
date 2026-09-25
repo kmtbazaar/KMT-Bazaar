@@ -668,12 +668,15 @@ export default function Addresses() {
               <FieldLabel text="Village" required />
               <TextInput style={s.input} placeholder="Village *" value={formData.district} onChangeText={t => setFormData({ ...formData, district: t })} />
 
-              <FieldLabel text="State" required />
-              <TextInput style={s.input} placeholder="State *" value={formData.state} onChangeText={t => setFormData({ ...formData, state: t })} />
-
               <View style={s.fieldRow}>
-                <View style={s.fieldHalf}><FieldLabel text="Pincode" required /><TextInput style={s.input} placeholder="Pincode *" keyboardType="number-pad" maxLength={6} value={formData.pincode} onChangeText={t => setFormData({ ...formData, pincode: t.replace(/[^0-9]/g, '') })} /></View>
-                <View style={s.fieldHalf}><View /></View>
+                <View style={s.fieldHalf}>
+                  <FieldLabel text="State" required />
+                  <TextInput style={s.input} placeholder="State *" value={formData.state} onChangeText={t => setFormData({ ...formData, state: t })} />
+                </View>
+                <View style={s.fieldHalf}>
+                  <FieldLabel text="Pincode" required />
+                  <TextInput style={s.input} placeholder="Pincode *" keyboardType="number-pad" maxLength={6} value={formData.pincode} onChangeText={t => setFormData({ ...formData, pincode: t.replace(/[^0-9]/g, '') })} />
+                </View>
               </View>
 
               <Text style={s.requiredNote}>* Mandatory field  ·  Nearby / Landmark is optional</Text>
