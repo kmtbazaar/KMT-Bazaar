@@ -16,7 +16,51 @@ const ACTIONS = [
   { icon: "chart-line", label: "Earnings", path: "/vendor/earnings", color: "#16A34A" },
 ];
 
-export default function VendorDashboard() {
+export default function ServiceVendorDashboard() {
+  const router = useRouter();
+  const { user, logout } = useAuth();
+  return (
+    <View style={s.root} testID="service-vendor-dashboard">
+      <SafeAreaView edges={["top"]}>
+        <LinearGradient colors={[COLORS.accent, COLORS.accentDark]} style={s.header}>
+          <View style={s.headerTop}>
+            <View style={{flex:1}} />
+            <View style={{flex:2,alignItems:"center"}}>
+              <Text style={s.headerTitle}>Service Vendor</Text>
+              <Text style={s.headerSub}>Welcome, {user?.name}</Text>
+            </View>
+            <View style={{flex:1,alignItems:"flex-end"}}>
+              <Pressable onPress={logout} hitSlop={10}><MaterialCommunityIcons name="logout" size={26} color="#fff" /></Pressable>
+            </View>
+          </View>
+        </LinearGradient>
+      </SafeAreaView>
+      <ScrollView contentContainerStyle={{padding:SPACING.lg}}>
+        <Text style={s.sectionTitle}>My Services</Text>
+        <Pressable style={s.actionCard} onPress={() => router.push("/vendor/services" as any)}>
+          <View style={[s.actionIcon,{backgroundColor:"#F973161A"}]}><MaterialCommunityIcons name="briefcase-outline" size={24} color="#F97316"/></View>
+          <View style={{flex:1}}>
+            <Text style={s.actionLabel}>Manage Services</Text>
+            <Text style={{fontSize:12,color:COLORS.textMuted,marginTop:3}}>Add Holiday, Car Rental and Daily Services</Text>
+          </View>
+          <MaterialCommunityIcons name="chevron-right" size={20} color={COLORS.textMuted}/>
+        </Pressable>
+        <Pressable style={s.actionCard} onPress={() => router.push("/vendor/service-bookings" as any)}>
+          <View style={[s.actionIcon,{backgroundColor:"#16A34A1A"}]}><MaterialCommunityIcons name="calendar-check-outline" size={24} color="#16A34A"/></View>
+          <View style={{flex:1}}>
+            <Text style={s.actionLabel}>Bookings</Text>
+            <Text style={{fontSize:12,color:COLORS.textMuted,marginTop:3}}>View customer service bookings</Text>
+          </View>
+          <MaterialCommunityIcons name="chevron-right" size={20} color={COLORS.textMuted}/>
+        </Pressable>
+      </ScrollView>
+    </View>
+  );
+}
+
+function VendorDashboard() {
+  const { user } = useAuth();
+  if (user?.vendor_type === "service") return <ServiceVendorDashboard />;
   const router = useRouter();
   const { user, logout } = useAuth();
   const [stats, setStats] = useState<any>(null);
