@@ -124,44 +124,27 @@ export default function Home() {
           throw new Error("This browser does not support location access.");
         }
 
-        const getBrowserLocation = (enableHighAccuracy: boolean, timeout: number) =>
-          new Promise<{ latitude: number; longitude: number }>((resolve, reject) => {
-            navigator.geolocation.getCurrentPosition(
-              (position) => resolve({
-                latitude: position.coords.latitude,
-                longitude: position.coords.longitude,
-              }),
-              (error) => reject(error),
-              {
-                enableHighAccuracy,
-                timeout,
-                maximumAge: 0,
-              }
-            );
-          });
-
-        try {
-          coords = await getBrowserLocation(true, 20000);
-        } catch (firstError: any) {
-          console.log("High accuracy location failed, retrying with browser fallback:", firstError);
-
-          if (firstError?.code === 1) {
-            throw new Error("Location permission was denied. Allow location access for KMT Bazaar in your browser site settings.");
-          }
-
-          setLocationError("Getting your location with browser fallback…");
-
-          try {
-            coords = await getBrowserLocation(false, 30000);
-          } catch (secondError: any) {
-            const messages: Record<number, string> = {
-              1: "Location permission was denied. Allow location access for KMT Bazaar.",
-              2: "Your browser could not determine your location. Turn on device Location/GPS and try again.",
-              3: "Location timed out. Keep Location/GPS on and tap the location button again.",
-            };
-            throw new Error(messages[secondError?.code] || secondError?.message || "Could not get your current location.");
-          }
-        }
+        coords = await new Promise<{ latitude: number; longitude: number }>((resolve, reject) => {
+          navigator.geolocation.getCurrentPosition(
+            (position) => resolve({
+              latitude: position.coords.latitude,
+              longitude: position.coords.longitude,
+            }),
+            (error) => {
+              const messages: Record<number, string> = {
+                1: "Location permission was denied. Allow location access for KMT Bazaar in your browser site settings.",
+                2: "Your device/browser could not determine a precise location. Turn on Location/GPS and try again.",
+                3: "Precise GPS timed out. Keep Location/GPS on and tap the location button again.",
+              };
+              reject(new Error(messages[error?.code] || error?.message || "Could not get your precise current location."));
+            },
+            {
+              enableHighAccuracy: true,
+              timeout: 30000,
+              maximumAge: 0,
+            }
+          );
+        });
       } else {
         const permission = await Location.requestForegroundPermissionsAsync();
 
