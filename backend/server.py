@@ -1399,6 +1399,41 @@ async def get_order(order_id: str, current=Depends(get_current_user)):
     return o
 
 
+class CustomerLocationIn(BaseModel):
+    latitude: float
+    longitude: float
+    accuracy: Optional[float] = None
+
+@api.post("/orders/{order_id}/customer-location")
+async def update_customer_location(
+    order_id: str,
+    data: CustomerLocationIn,
+    current=Depends(get_current_user),
+):
+    if not (-90 <= data.latitude <= 90 and -180 <= data.longitude <= 180):
+        raise HTTPException(status_code=400, detail="Invalid location coordinates")
+
+    o = await db.orders.find_one(
+        {"id": order_id, "user_id": current["id"], "status": "out_for_delivery"},
+        {"_id": 0, "id": 1, "delivery_id": 1},
+    )
+    if not o:
+        raise HTTPException(status_code=404, detail="Active delivery order not found")
+
+    await db.orders.update_one(
+        {"id": order_id, "user_id": current["id"], "status": "out_for_delivery"},
+        {"$set": {
+            "customer_location": {
+                "latitude": data.latitude,
+                "longitude": data.longitude,
+                "accuracy": data.accuracy,
+                "updated_at": now_iso(),
+            }
+        }},
+    )
+    return {"ok": True}
+
+
 # ------------------ NOTIFICATIONS ------------------
 @api.get("/notifications")
 async def list_notifications(current=Depends(get_current_user)):
