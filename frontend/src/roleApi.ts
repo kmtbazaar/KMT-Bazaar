@@ -36,6 +36,9 @@ export const adminApi = {
       method: "DELETE",
     }),
 
+  serviceBookings: () => apiFetch<any[]>("/admin/service-bookings"),
+  updateServiceBooking: (id: string, status: string) => apiFetch<any>(`/admin/service-bookings/${encodeURIComponent(id)}/status`, { method: "POST", body: JSON.stringify({ status }) }),
+
   stats: () =>
     apiFetch<any>("/admin/stats"),
 
