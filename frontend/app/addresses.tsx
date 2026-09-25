@@ -22,15 +22,58 @@ export default function Addresses() {
     label: "Home", 
     full_name: "", 
     line1: "", 
+    landmark: "",
+    district: "",
     city: "", 
     state: "", 
     pincode: "", 
     phone: "" 
   });
 
-  useEffect(() => { 
-    loadAddresses(); 
-  }, []);
+  useEffect(() => {
+    loadAddresses();
+    (async () => {
+      try {
+        const raw = await AsyncStorage.getItem("kmt_current_location");
+        if (!raw) return;
+        const gps = JSON.parse(raw);
+        const latitude = Number(gps?.latitude);
+        const longitude = Number(gps?.longitude);
+        if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return;
+
+        await AsyncStorage.removeItem("kmt_current_location");
+        setEditingId(null);
+        setFormVisible(true);
+        setLocationCaptured({ latitude, longitude, accuracy: Number(gps?.accuracy) || undefined });
+        setGpsPrefillLoading(true);
+        setFormData((prev) => ({
+          ...prev,
+          full_name: user?.name || prev.full_name,
+          phone: user?.phone || prev.phone,
+        }));
+
+        try {
+          const geo = await api.reverseGeocode(latitude, longitude);
+          setFormData((prev) => ({
+            ...prev,
+            line1: geo?.line1 || prev.line1,
+            district: geo?.district || prev.district,
+            city: geo?.city || prev.city,
+            state: geo?.state || prev.state,
+            pincode: geo?.pincode || prev.pincode,
+          }));
+        } catch (geoError) {
+          console.log("Reverse geocode failed; GPS remains saved:", geoError);
+          setLocationError("GPS captured. Please enter the address details manually.");
+        } finally {
+          setGpsPrefillLoading(false);
+        }
+      } catch (e) {
+        console.log("GPS address prefill failed:", e);
+        setGpsPrefillLoading(false);
+      }
+    })();
+  }, [user?.name, user?.phone]);
 
   const loadAddresses = async () => {
     setLoading(true);
@@ -86,6 +129,8 @@ export default function Addresses() {
         label: address.label || "Home",
         full_name: address.full_name || address.name || "",
         line1: address.line1 || address.address || "",
+        landmark: address.landmark || "",
+        district: address.district || "",
         city: address.city || "",
         state: address.state || "",
         pincode: address.pincode ? String(address.pincode) : "",
@@ -93,7 +138,7 @@ export default function Addresses() {
       });
     } else {
       setEditingId(null);
-      setFormData({ label: "Home", full_name: "", line1: "", city: "", state: "", pincode: "", phone: "" });
+      setFormData({ label: "Home", full_name: "", line1: "", landmark: "", district: "", city: "", state: "", pincode: "", phone: "" });
     }
     setFormVisible(true);
   };
@@ -347,6 +392,8 @@ export default function Addresses() {
 
               <TextInput style={s.input} placeholder="Receiver's Name" value={formData.full_name} onChangeText={t => setFormData({ ...formData, full_name: t })} />
               <TextInput style={s.input} placeholder="Street / House No." value={formData.line1} onChangeText={t => setFormData({ ...formData, line1: t })} />
+              <TextInput style={s.input} placeholder="Nearby / Landmark (optional)" value={formData.landmark} onChangeText={t => setFormData({ ...formData, landmark: t })} />
+              <TextInput style={s.input} placeholder="District" value={formData.district} onChangeText={t => setFormData({ ...formData, district: t })} />
 
               <View style={{ flexDirection: "row", gap: 10 }}>
                 <TextInput style={[s.input, { flex: 1 }]} placeholder="City" value={formData.city} onChangeText={t => setFormData({ ...formData, city: t })} />
@@ -357,6 +404,13 @@ export default function Addresses() {
                 <TextInput style={[s.input, { flex: 1 }]} placeholder="Pincode" keyboardType="number-pad" maxLength={6} value={formData.pincode} onChangeText={t => setFormData({ ...formData, pincode: t.replace(/[^0-9]/g, '') })} />
                 <TextInput style={[s.input, { flex: 1 }]} placeholder="Phone No." keyboardType="phone-pad" maxLength={10} value={formData.phone} onChangeText={t => setFormData({ ...formData, phone: t.replace(/[^0-9]/g, '') })} />
               </View>
+
+              {gpsPrefillLoading && (
+                <View style={s.gpsLoadingRow}>
+                  <ActivityIndicator size="small" color={COLORS.brand} />
+                  <Text style={s.gpsLoadingText}>Finding nearby street, district, city and pincode…</Text>
+                </View>
+              )}
 
               <View style={s.locationCard}>
                 <View style={s.locationCardHeader}>
@@ -441,6 +495,8 @@ const s = StyleSheet.create({
   locationSuccessText: { color: "#15803D", fontSize: 10, fontWeight: "700", marginTop: 7 },
   locationErrorText: { color: "#B91C1C", fontSize: 10, fontWeight: "700", lineHeight: 15, marginTop: 7 },
   locationPrivacyText: { color: COLORS.textMuted, fontSize: 9, lineHeight: 14, marginTop: 7 },
+  gpsLoadingRow: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 8 },
+  gpsLoadingText: { flex: 1, color: COLORS.brand, fontSize: 10, fontWeight: "700" },
   modalActions: { flexDirection: "row", gap: 12, marginTop: 10 },
   cancelBtn: { flex: 1, padding: 14, alignItems: "center", borderRadius: RADIUS.pill, backgroundColor: COLORS.surfaceSecondary },
   cancelBtnText: { color: COLORS.text, fontWeight: "700" },
