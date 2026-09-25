@@ -6,6 +6,7 @@ import {
   ScrollView,
   Pressable,
   ActivityIndicator,
+  Linking,
 } from "react-native";
 import { Image } from "expo-image";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -27,10 +28,37 @@ export default function OrderDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const [order, setOrder] = useState<any>(null);
+  const [deliveryLocation, setDeliveryLocation] = useState<any>(null);
 
   useEffect(() => {
     (async () => setOrder(await api.order(id as string)))();
   }, [id]);
+
+  useEffect(() => {
+    let timer: ReturnType<typeof setInterval> | null = null;
+    let stopped = false;
+
+    const loadDeliveryLocation = async () => {
+      if (!id || !order || order.status !== "out_for_delivery") {
+        setDeliveryLocation(null);
+        return;
+      }
+      try {
+        const result = await api.deliveryLocation(id as string);
+        if (!stopped) setDeliveryLocation(result?.location || null);
+      } catch {}
+    };
+
+    if (order?.status === "out_for_delivery") {
+      loadDeliveryLocation();
+      timer = setInterval(loadDeliveryLocation, 7000);
+    }
+
+    return () => {
+      stopped = true;
+      if (timer) clearInterval(timer);
+    };
+  }, [id, order?.status]);
 
   if (!order)
     return (
@@ -135,6 +163,39 @@ export default function OrderDetail() {
             })}
           </View>
         </View>
+
+        {order.status === "out_for_delivery" && (
+          <View style={s.box}>
+            <Text style={s.boxTitle}>Delivery Partner Live Location</Text>
+            {deliveryLocation ? (
+              <>
+                <View style={s.locationRow}>
+                  <MaterialCommunityIcons name="crosshairs-gps" size={22} color={COLORS.brand} />
+                  <View style={{ flex: 1 }}>
+                    <Text style={s.locationTitle}>Location updating live</Text>
+                    <Text style={s.locationMeta}>
+                      {Number(deliveryLocation.latitude).toFixed(5)}, {Number(deliveryLocation.longitude).toFixed(5)}
+                    </Text>
+                    {deliveryLocation.updated_at && (
+                      <Text style={s.locationTime}>
+                        Updated {new Date(deliveryLocation.updated_at).toLocaleTimeString()}
+                      </Text>
+                    )}
+                  </View>
+                </View>
+                <Pressable
+                  onPress={() => Linking.openURL(`https://www.google.com/maps?q=${deliveryLocation.latitude},${deliveryLocation.longitude}`)}
+                  style={s.mapButton}
+                >
+                  <MaterialCommunityIcons name="map-marker-radius" size={18} color="#fff" />
+                  <Text style={s.mapButtonText}>Open Live Location in Maps</Text>
+                </Pressable>
+              </>
+            ) : (
+              <Text style={s.waitingLocation}>Waiting for the delivery partner to share a live location...</Text>
+            )}
+          </View>
+        )}
 
         <View style={s.box}>
           <Text style={s.boxTitle}>
@@ -404,6 +465,23 @@ const s = StyleSheet.create({
     fontWeight: "800",
     color: COLORS.text,
   },
+
+  locationRow: { flexDirection: "row", alignItems: "center", gap: 10 },
+  locationTitle: { fontWeight: "800", color: COLORS.text },
+  locationMeta: { color: COLORS.textSecondary, fontSize: 12, marginTop: 2 },
+  locationTime: { color: COLORS.textMuted, fontSize: 11, marginTop: 3 },
+  waitingLocation: { color: COLORS.textMuted, fontSize: 13 },
+  mapButton: {
+    marginTop: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    backgroundColor: COLORS.brand,
+    paddingVertical: 12,
+    borderRadius: RADIUS.pill,
+  },
+  mapButtonText: { color: "#fff", fontWeight: "800" },
 
   addrLabel: {
     fontWeight: "700",
