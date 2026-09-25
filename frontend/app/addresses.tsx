@@ -537,6 +537,8 @@ export default function Addresses() {
 
               <FieldLabel text="Receiver's Name" required />
               <TextInput style={s.input} placeholder="Receiver's Name *" value={formData.full_name} onChangeText={t => setFormData({ ...formData, full_name: t })} />
+              <FieldLabel text="Mobile No." required />
+              <TextInput style={s.input} placeholder="Mobile No. *" keyboardType="phone-pad" maxLength={10} value={formData.phone} onChangeText={t => setFormData({ ...formData, phone: normalizeMobile(t) })} />
               <FieldLabel text="House No." required />
               <TextInput style={s.input} placeholder="House No. *" value={formData.line1} onChangeText={t => setFormData({ ...formData, line1: t })} />
               <FieldLabel text="Area / Street" required />
@@ -553,7 +555,7 @@ export default function Addresses() {
 
               <View style={s.fieldRow}>
                 <View style={s.fieldHalf}><FieldLabel text="Pincode" required /><TextInput style={s.input} placeholder="Pincode *" keyboardType="number-pad" maxLength={6} value={formData.pincode} onChangeText={t => setFormData({ ...formData, pincode: t.replace(/[^0-9]/g, '') })} /></View>
-                <View style={s.fieldHalf}><FieldLabel text="Mobile No." required /><TextInput style={s.input} placeholder="Mobile No. *" keyboardType="phone-pad" maxLength={10} value={formData.phone} onChangeText={t => setFormData({ ...formData, phone: normalizeMobile(t) })} /></View>
+                <View style={s.fieldHalf}><View /></View>
               </View>
 
               <Text style={s.requiredNote}>* Mandatory field  ·  Nearby / Landmark is optional</Text>
