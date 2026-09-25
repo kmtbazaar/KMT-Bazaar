@@ -18,23 +18,7 @@ const normalizeMobile = (value: unknown) => {
 };
 
 async function reverseGeocodeDevice(latitude: number, longitude: number) {
-  const response = await fetch(
-    "https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=" +
-      encodeURIComponent(latitude) +
-      "&longitude=" +
-      encodeURIComponent(longitude) +
-      "&localityLanguage=en"
-  );
-  if (!response.ok) throw new Error("Device address lookup failed");
-  const data = await response.json();
-  return {
-    line1: "",
-    line2: String(data?.localityName || data?.locality || "").trim(),
-    district: String(data?.localityName || data?.locality || "").trim(),
-    city: String(data?.city || data?.locality || "").trim(),
-    state: String(data?.principalSubdivision || "").trim(),
-    pincode: String(data?.postcode || "").trim(),
-  };
+  return await api.reverseGeocode(latitude, longitude);
 }
 
 export default function Addresses() {
