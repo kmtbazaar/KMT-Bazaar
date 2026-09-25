@@ -986,7 +986,7 @@ async def reverse_geocode(latitude: float, longitude: float, current=Depends(get
 
     try:
         async with httpx.AsyncClient(
-            timeout=8.0,
+            timeout=10.0,
             headers={
                 "User-Agent": "KMT-Bazaar/1.0 (+https://kmtbazaar.tech)"
             },
@@ -1006,41 +1006,76 @@ async def reverse_geocode(latitude: float, longitude: float, current=Depends(get
             data = response.json()
 
         address = data.get("address") or {}
-        road = address.get("road") or address.get("pedestrian") or address.get("footway") or ""
+        display_name = str(data.get("display_name") or "").strip()
+
+        house = (
+            address.get("house_number")
+            or address.get("building")
+            or ""
+        )
+        road = (
+            address.get("road")
+            or address.get("pedestrian")
+            or address.get("footway")
+            or address.get("cycleway")
+            or ""
+        )
         area = (
             address.get("neighbourhood")
             or address.get("suburb")
+            or address.get("residential")
+            or address.get("quarter")
+            or address.get("locality")
             or address.get("village")
             or address.get("hamlet")
             or ""
         )
-        line1_parts = [part.strip() for part in [road, area] if part and part.strip()]
+
+        line1_parts = [str(part).strip() for part in [house, road] if str(part).strip()]
         line1 = ", ".join(dict.fromkeys(line1_parts))
+
+        line2 = str(area).strip()
+        if not line2 and road and display_name:
+            remaining = display_name.replace(str(road), "", 1).strip(" ,")
+            if remaining:
+                line2 = remaining.split(",")[0].strip()
 
         city = (
             address.get("city")
             or address.get("town")
             or address.get("municipality")
-            or address.get("village")
             or address.get("city_district")
+            or address.get("village")
+            or address.get("hamlet")
             or ""
         )
         district = (
             address.get("district")
             or address.get("county")
             or address.get("state_district")
+            or address.get("region")
             or ""
         )
-        state = address.get("state") or ""
+        state = address.get("state") or address.get("state_district") or ""
         pincode = address.get("postcode") or ""
 
+        # Keep the form usable even when a rural reverse-geocoder response
+        # omits a dedicated road/area component.
+        if not line1 and display_name:
+            line1 = display_name.split(",")[0].strip()
+        if not line2 and display_name:
+            parts = [part.strip() for part in display_name.split(",") if part.strip()]
+            if len(parts) > 1:
+                line2 = parts[1]
+
         return {
-            "display_name": data.get("display_name") or "",
+            "display_name": display_name,
             "line1": line1,
-            "district": district,
-            "city": city,
-            "state": state,
-            "pincode": pincode,
+            "line2": line2,
+            "district": str(district).strip(),
+            "city": str(city).strip(),
+            "state": str(state).strip(),
+            "pincode": str(pincode).strip(),
             "latitude": latitude,
             "longitude": longitude,
             "attribution": "© OpenStreetMap contributors",
