@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { Animated, View, Text, StyleSheet, Pressable, Switch, RefreshControl, ScrollView } from "react-native";
+import { Animated, View, Text, StyleSheet, Pressable, Switch, RefreshControl, ScrollView, Linking } from "react-native";
 import { Image } from "expo-image";
 import { useFocusEffect, useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
@@ -337,6 +337,29 @@ export default function DeliveryDashboard() {
                     <MaterialCommunityIcons name="map-marker" size={12} color={COLORS.textMuted} /> {item.address?.line1}, {item.address?.city} - {item.address?.pincode}
                   </Text>
 
+                  {item.customer_location?.latitude != null && item.customer_location?.longitude != null && (
+                    <Pressable
+                      onPress={() =>
+                        Linking.openURL(
+                          "https://www.google.com/maps?q=" +
+                            item.customer_location.latitude +
+                            "," +
+                            item.customer_location.longitude
+                        )
+                      }
+                      style={s.locationBtn}
+                    >
+                      <MaterialCommunityIcons name="map-marker-radius" size={17} color={COLORS.brand} />
+                      <View style={{ flex: 1 }}>
+                        <Text style={s.locationTitle}>Customer delivery location</Text>
+                        <Text style={s.locationMeta}>
+                          {Number(item.customer_location.latitude).toFixed(5)}, {Number(item.customer_location.longitude).toFixed(5)}
+                        </Text>
+                      </View>
+                      <MaterialCommunityIcons name="open-in-new" size={17} color={COLORS.brand} />
+                    </Pressable>
+                  )}
+
                   <Text style={s.itemsInfo}>
                     {item.items?.length || 0} item{(item.items?.length || 0) > 1 ? "s" : ""} · {item.payment_method?.toUpperCase()}
                   </Text>
@@ -432,6 +455,9 @@ const s = StyleSheet.create({
   total: { fontWeight: "800", color: COLORS.success, fontSize: 15 },
   cust: { color: COLORS.textSecondary, fontSize: 12, marginTop: 6 },
   addr: { color: COLORS.textSecondary, fontSize: 12, marginTop: 2 },
+  locationBtn: { flexDirection: "row", alignItems: "center", gap: 8, marginTop: 8, padding: 10, borderRadius: RADIUS.md, backgroundColor: "#EFF6FF", borderWidth: 1, borderColor: "#BFDBFE" },
+  locationTitle: { color: COLORS.brand, fontWeight: "800", fontSize: 11 },
+  locationMeta: { color: COLORS.textSecondary, fontSize: 10, marginTop: 2 },
   itemsInfo: { color: COLORS.textMuted, fontSize: 11, marginTop: 4 },
   btn: { flexDirection: "row", gap: 6, alignItems: "center", justifyContent: "center", paddingVertical: 10, borderRadius: RADIUS.pill, marginTop: 10 },
   btnAccent: { backgroundColor: COLORS.accent },
