@@ -375,6 +375,9 @@ export const api = {
       method: "DELETE",
     }),
 
+  reverseGeocode: (latitude: number, longitude: number) =>
+    apiFetch<any>(`/geo/reverse?latitude=${encodeURIComponent(latitude)}&longitude=${encodeURIComponent(longitude)}`),
+
   addresses: () =>
     apiFetch<any[]>("/addresses"),
 
