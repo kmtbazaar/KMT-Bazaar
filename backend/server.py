@@ -192,10 +192,16 @@ class CartUpdateIn(BaseModel):
     variant: Optional[str] = None
 
 
+class GeoLocationIn(BaseModel):
+    latitude: float
+    longitude: float
+
+
 class CheckoutIn(BaseModel):
     address_id: str
     payment_method: str  # cod | online
     notes: Optional[str] = ""
+    location: Optional[GeoLocationIn] = None
 
     @field_validator("payment_method")
     @classmethod
@@ -1163,6 +1169,7 @@ async def travel_checkout(data: TravelCheckoutIn, current=Depends(get_current_us
         "service_fee": expanded["service_fee"],
         "total": expanded["total"],
         "address": addr,
+        "customer_location": customer_location,
         "payment_method": data.payment_method,
         "payment_status": "paid" if data.payment_method == "online" else "pending",
         "status": "pending",
@@ -1299,6 +1306,16 @@ async def checkout(
 
     if not addr:
         raise HTTPException(400, "Invalid address")
+
+    customer_location = None
+    if data.location:
+        if not (-90 <= data.location.latitude <= 90 and -180 <= data.location.longitude <= 180):
+            raise HTTPException(400, "Invalid location coordinates")
+        customer_location = {
+            "latitude": data.location.latitude,
+            "longitude": data.location.longitude,
+            "updated_at": now_iso(),
+        }
 
     order_id = str(uuid.uuid4())
     order_no = (
@@ -2617,7 +2634,13 @@ async def delivery_mark_delivered(order_id: str, current=Depends(require_roles("
     if not o: raise HTTPException(404, "Not assigned to you")
     timeline = o.get("timeline", [])
     timeline.append({"status": "delivered", "at": now_iso(), "label": "Delivered"})
-    await db.orders.update_one({"id": order_id}, {"$set": {"status": "delivered", "timeline": timeline}})
+    await db.orders.update_one(
+        {"id": order_id},
+        {
+            "$set": {"status": "delivered", "timeline": timeline},
+            "$unset": {"delivery_location": ""},
+        },
+    )
     await db.notifications.insert_one({
         "id": str(uuid.uuid4()), "user_id": o["user_id"], "title": "Order delivered",
         "body": f"Your order {o['order_no']} has been delivered. Enjoy!", "type": "delivery", "read": False, "created_at": now_iso(),
@@ -2642,6 +2665,63 @@ async def delivery_my(current=Depends(require_roles("delivery"))):
     for o in orders:
         o["customer"] = customer_map.get(o.get("user_id"), {})
     return orders
+
+
+@api.post("/delivery/orders/{order_id}/location")
+async def delivery_update_location(
+    order_id: str,
+    data: GeoLocationIn,
+    current=Depends(require_roles("delivery"))
+):
+    if not (-90 <= data.latitude <= 90 and -180 <= data.longitude <= 180):
+        raise HTTPException(400, "Invalid location coordinates")
+
+    order = await db.orders.find_one(
+        {
+            "id": order_id,
+            "delivery_id": current["id"],
+            "status": "out_for_delivery",
+        },
+        {"_id": 0, "id": 1},
+    )
+    if not order:
+        raise HTTPException(404, "Order not assigned to you or not out for delivery")
+
+    location = {
+        "latitude": data.latitude,
+        "longitude": data.longitude,
+        "updated_at": now_iso(),
+    }
+
+    await db.orders.update_one(
+        {"id": order_id},
+        {"$set": {"delivery_location": location}},
+    )
+
+    return {"ok": True, "location": location}
+
+
+@api.get("/orders/{order_id}/delivery-location")
+async def customer_delivery_location(
+    order_id: str,
+    current=Depends(require_roles("customer"))
+):
+    order = await db.orders.find_one(
+        {
+            "id": order_id,
+            "user_id": current["id"],
+        },
+        {"_id": 0, "status": 1, "delivery_id": 1, "delivery_location": 1},
+    )
+    if not order:
+        raise HTTPException(404, "Order not found")
+
+    return {
+        "ok": True,
+        "status": order.get("status"),
+        "delivery_id": order.get("delivery_id"),
+        "location": order.get("delivery_location") if order.get("status") == "out_for_delivery" else None,
+    }
 
 
 @api.get("/delivery/stats")
