@@ -337,7 +337,7 @@ export default function DeliveryDashboard() {
                     <MaterialCommunityIcons name="map-marker" size={12} color={COLORS.textMuted} /> {item.address?.line1}, {item.address?.city} - {item.address?.pincode}
                   </Text>
 
-                  {item.customer_location?.latitude != null && item.customer_location?.longitude != null && (
+                  {(tab === "active" || isAccepted) && item.customer_location?.latitude != null && item.customer_location?.longitude != null && (
                     <Pressable
                       onPress={() =>
                         Linking.openURL(
