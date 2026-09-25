@@ -2409,6 +2409,7 @@ async def delivery_available(current=Depends(require_roles("delivery"))):
 
     for o in orders:
         o["customer"] = customer_map.get(o.get("user_id"), {})
+        o.pop("customer_location", None)
     return orders
 
 
@@ -2468,7 +2469,7 @@ async def delivery_mark_delivered(order_id: str, current=Depends(require_roles("
     if not o: raise HTTPException(404, "Not assigned to you")
     timeline = o.get("timeline", [])
     timeline.append({"status": "delivered", "at": now_iso(), "label": "Delivered"})
-    await db.orders.update_one({"id": order_id}, {"$set": {"status": "delivered", "timeline": timeline}})
+    await db.orders.update_one({"id": order_id}, {"$set": {"status": "delivered", "timeline": timeline}, "$unset": {"customer_location": ""}})
     await db.notifications.insert_one({
         "id": str(uuid.uuid4()), "user_id": o["user_id"], "title": "Order delivered",
         "body": f"Your order {o['order_no']} has been delivered. Enjoy!", "type": "delivery", "read": False, "created_at": now_iso(),
