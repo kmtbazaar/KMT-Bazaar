@@ -587,7 +587,7 @@ export default function Home() {
         {/* Vendor Services Section */}
         {vendorServices.length > 0 && (
           <>
-            <SectionTitle title="Vendor Service" subtitle="Local services" />
+            <SectionTitle title="Services" subtitle="Local services" />
             <FlatList
               horizontal
               data={vendorServices}
@@ -668,8 +668,8 @@ function SectionTitle({ title, subtitle }: { title: string; subtitle?: string })
 }
 
 const s = StyleSheet.create({
-  serviceCardSmall: { width: 135, backgroundColor: THEME.white, borderRadius: RADIUS.md, overflow: "hidden", borderWidth: 1, borderColor: THEME.borderSoft },
-  serviceImgSmall: { width: "100%", height: 65 },
+  serviceCardSmall: { width: width > 768 ? 240 : Math.max(150, (width - (SPACING.lg * 2) - 10) / 2), height: 150, backgroundColor: THEME.white, borderRadius: RADIUS.md, overflow: "hidden", borderWidth: 1, borderColor: THEME.borderSoft },
+  serviceImgSmall: { width: "100%", height: 105 },
   servicePlaceholder: { alignItems: "center", justifyContent: "center", backgroundColor: "#E0F2FE" },
   serviceNameSmall: { fontWeight: "800", color: THEME.black, fontSize: 12 },
   serviceVendorSmall: { fontSize: 10, color: THEME.blackMuted, fontWeight: "600", marginTop: 3 },
