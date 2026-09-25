@@ -18,6 +18,9 @@ export default function Addresses() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [selectedAddrId, setSelectedAddrId] = useState<string | null>(null);
   const [locationLoading, setLocationLoading] = useState(false);
+  const [locationCaptured, setLocationCaptured] = useState<{ latitude: number; longitude: number; accuracy?: number } | null>(null);
+  const [locationError, setLocationError] = useState("");
+  const [existingLocationSaved, setExistingLocationSaved] = useState(false);
 
   const [formData, setFormData] = useState({ 
     label: "Home", 
@@ -76,6 +79,10 @@ export default function Addresses() {
   };
 
   const handleOpenForm = (address?: any) => {
+    setLocationCaptured(null);
+    setLocationError("");
+    setExistingLocationSaved(Boolean(address?.has_location));
+
     if (address) {
       const addressId = address.id || address._id;
       setEditingId(addressId ? String(addressId) : null);
@@ -97,33 +104,91 @@ export default function Addresses() {
 
   const getCurrentLocation = async () => {
     setLocationLoading(true);
+    setLocationError("");
+
     try {
       if (Platform.OS === "web") {
-        if (!navigator.geolocation) {
-          throw new Error("Browser location is not available.");
+        if (typeof window !== "undefined" && !window.isSecureContext) {
+          throw new Error("Location works only on a secure HTTPS connection. Please open KMT Bazaar using https://kmtbazaar.tech.");
         }
-        return await new Promise<{ latitude: number; longitude: number }>((resolve, reject) => {
+
+        if (!navigator.geolocation) {
+          throw new Error("This browser does not provide location access. Please use Chrome, Edge, or Safari with location enabled.");
+        }
+
+        const nav = navigator as Navigator & {
+          permissions?: {
+            query: (permissionDesc: { name: string }) => Promise<{ state: string }>;
+          };
+        };
+
+        if (nav.permissions?.query) {
+          try {
+            const permission = await nav.permissions.query({ name: "geolocation" });
+            if (permission.state === "denied") {
+              throw new Error("Location permission is blocked for KMT Bazaar. Allow location access for https://kmtbazaar.tech in your browser site settings, then tap USE MY CURRENT LOCATION again.");
+            }
+          } catch (permissionError: any) {
+            if (permissionError?.message?.includes("Location permission is blocked")) {
+              throw permissionError;
+            }
+          }
+        }
+
+        const result = await new Promise<{ latitude: number; longitude: number; accuracy?: number }>((resolve, reject) => {
           navigator.geolocation.getCurrentPosition(
             (position) => resolve({
               latitude: position.coords.latitude,
               longitude: position.coords.longitude,
+              accuracy: position.coords.accuracy,
             }),
-            (error) => reject(new Error(error.message || "Could not fetch current location.")),
-            { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+            (error) => {
+              const messages: Record<number, string> = {
+                1: "Location permission was denied. Allow location access for KMT Bazaar and try again.",
+                2: "Your device could not determine the current location. Turn on device location/GPS and try again.",
+                3: "Location request timed out. Move near a window or outdoors and try again.",
+              };
+              reject(new Error(messages[error.code] || error.message || "Could not fetch current location."));
+            },
+            { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 }
           );
         });
+
+        if (!Number.isFinite(result.latitude) || !Number.isFinite(result.longitude)) {
+          throw new Error("The browser returned an invalid location. Please try again.");
+        }
+
+        setLocationCaptured(result);
+        setExistingLocationSaved(false);
+        return result;
       }
+
       const permission = await Location.requestForegroundPermissionsAsync();
       if (permission.status !== "granted") {
-        throw new Error("Location permission is required to save this delivery address.");
+        throw new Error("Location permission is required. Allow location access for KMT Bazaar and try again.");
       }
+
       const current = await Location.getCurrentPositionAsync({
         accuracy: Location.Accuracy.High,
       });
-      return {
+
+      const result = {
         latitude: current.coords.latitude,
         longitude: current.coords.longitude,
+        accuracy: current.coords.accuracy,
       };
+
+      if (!Number.isFinite(result.latitude) || !Number.isFinite(result.longitude)) {
+        throw new Error("The device returned an invalid location. Please try again.");
+      }
+
+      setLocationCaptured(result);
+      setExistingLocationSaved(false);
+      return result;
+    } catch (e: any) {
+      const message = e?.message || "Could not fetch your current location. Please try again.";
+      setLocationError(message);
+      throw new Error(message);
     } finally {
       setLocationLoading(false);
     }
@@ -148,7 +213,7 @@ export default function Addresses() {
     }
 
     try {
-      const location = await getCurrentLocation();
+      const location = locationCaptured || await getCurrentLocation();
       const addressPayload = {
         ...formData,
         latitude: location.latitude,
@@ -163,6 +228,9 @@ export default function Addresses() {
 
       setFormVisible(false);
       setEditingId(null);
+      setLocationCaptured(null);
+      setLocationError("");
+      setExistingLocationSaved(false);
       loadAddresses();
     } catch (e: any) {
       console.log("ADDRESS SAVE ERROR:", e);
@@ -265,6 +333,16 @@ export default function Addresses() {
                 <Text style={s.addressText}>{item.line1 || item.address}</Text>
                 <Text style={s.addressText}>{item.city}, {item.state} - {item.pincode}</Text>
                 <Text style={s.phoneText}>Phone: {item.phone}</Text>
+                <View style={[s.locationBadge, item.has_location ? s.locationBadgeOk : s.locationBadgeWarn]}>
+                  <MaterialCommunityIcons
+                    name={item.has_location ? "crosshairs-gps" : "map-marker-alert"}
+                    size={14}
+                    color={item.has_location ? "#15803D" : "#B45309"}
+                  />
+                  <Text style={[s.locationBadgeText, { color: item.has_location ? "#15803D" : "#B45309" }]}>
+                    {item.has_location ? "GPS location saved" : "GPS location required"}
+                  </Text>
+                </View>
               </TouchableOpacity>
 
               <View style={s.actionRow}>
@@ -323,6 +401,66 @@ export default function Addresses() {
                 <TextInput style={[s.input, { flex: 1 }]} placeholder="Phone No." keyboardType="phone-pad" maxLength={10} value={formData.phone} onChangeText={t => setFormData({ ...formData, phone: t.replace(/[^0-9]/g, '') })} />
               </View>
 
+              <View style={s.locationCard}>
+                <View style={s.locationCardHeader}>
+                  <View style={s.locationIcon}>
+                    <MaterialCommunityIcons
+                      name={locationCaptured ? "crosshairs-gps" : "map-marker-radius"}
+                      size={20}
+                      color={locationCaptured ? "#15803D" : COLORS.brand}
+                    />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={s.locationCardTitle}>Delivery location</Text>
+                    <Text style={s.locationCardText}>
+                      {locationCaptured
+                        ? "Current GPS captured for this address"
+                        : existingLocationSaved
+                          ? "A GPS location is already saved. Save again to refresh it."
+                          : "Required to deliver your order to your real location."}
+                    </Text>
+                  </View>
+                </View>
+
+                <TouchableOpacity
+                  onPress={() => getCurrentLocation().catch(() => {})}
+                  style={[s.locationBtn, locationCaptured && s.locationBtnSuccess]}
+                  disabled={locationLoading}
+                  activeOpacity={0.8}
+                >
+                  {locationLoading ? (
+                    <ActivityIndicator size="small" color="#fff" />
+                  ) : (
+                    <MaterialCommunityIcons
+                      name={locationCaptured ? "check-circle" : "crosshairs-gps"}
+                      size={18}
+                      color="#fff"
+                    />
+                  )}
+                  <Text style={s.locationBtnText}>
+                    {locationLoading
+                      ? "GETTING CURRENT LOCATION..."
+                      : locationCaptured
+                        ? "LOCATION CAPTURED"
+                        : "USE MY CURRENT LOCATION"}
+                  </Text>
+                </TouchableOpacity>
+
+                {locationCaptured && (
+                  <Text style={s.locationSuccessText}>
+                    {"GPS ready" + (locationCaptured.accuracy ? " · ±" + Math.round(locationCaptured.accuracy) + " m" : "") + ". This location will be attached to the delivery order."}
+                  </Text>
+                )}
+
+                {!!locationError && (
+                  <Text style={s.locationErrorText}>{locationError}</Text>
+                )}
+
+                <Text style={s.locationPrivacyText}>
+                  Your exact GPS is stored with the order for delivery and is not shown to other customers.
+                </Text>
+              </View>
+
               <View style={s.modalActions}>
                 <TouchableOpacity onPress={() => { setFormVisible(false); setEditingId(null); }} style={s.cancelBtn}>
                   <Text style={s.cancelBtnText}>CANCEL</Text>
@@ -356,6 +494,10 @@ const s = StyleSheet.create({
   nameText: { color: COLORS.text, fontSize: 16, fontWeight: "800", paddingTop: 10, paddingBottom: 2 },
   addressText: { color: COLORS.text, fontSize: 14, paddingTop: 2, lineHeight: 20 },
   phoneText: { color: COLORS.textMuted, fontSize: 13, paddingVertical: 6, fontWeight: "600" },
+  locationBadge: { flexDirection: "row", alignItems: "center", alignSelf: "flex-start", gap: 5, paddingHorizontal: 8, paddingVertical: 5, borderRadius: RADIUS.pill, marginBottom: 10, borderWidth: 1 },
+  locationBadgeOk: { backgroundColor: "#F0FDF4", borderColor: "#BBF7D0" },
+  locationBadgeWarn: { backgroundColor: "#FFFBEB", borderColor: "#FDE68A" },
+  locationBadgeText: { fontSize: 11, fontWeight: "800" },
   actionRow: { flexDirection: "row", borderTopWidth: 1, borderColor: COLORS.border, marginTop: 8 },
   actionBtn: { flex: 1, paddingVertical: 12, alignItems: "center", backgroundColor: "#fff" },
   actionTextEdit: { color: COLORS.brand, fontWeight: "700", fontSize: 13 },
@@ -372,6 +514,17 @@ const s = StyleSheet.create({
   typeText: { color: COLORS.textMuted, fontWeight: "600", fontSize: 13 },
   typeTextActive: { color: COLORS.brand, fontWeight: "800" },
   input: { backgroundColor: COLORS.surfaceSecondary, borderWidth: 1, borderColor: COLORS.border, paddingHorizontal: 16, paddingVertical: 12, borderRadius: RADIUS.sm, marginBottom: 12, fontSize: 14, color: COLORS.text },
+  locationCard: { marginTop: 6, padding: 12, borderRadius: RADIUS.md, backgroundColor: "#EFF6FF", borderWidth: 1, borderColor: "#BFDBFE" },
+  locationCardHeader: { flexDirection: "row", alignItems: "center", gap: 10 },
+  locationIcon: { width: 36, height: 36, borderRadius: 18, backgroundColor: "#DBEAFE", alignItems: "center", justifyContent: "center" },
+  locationCardTitle: { color: COLORS.text, fontSize: 13, fontWeight: "900" },
+  locationCardText: { color: COLORS.textSecondary, fontSize: 11, lineHeight: 16, marginTop: 2 },
+  locationBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 7, marginTop: 10, paddingVertical: 11, borderRadius: RADIUS.pill, backgroundColor: COLORS.brand },
+  locationBtnSuccess: { backgroundColor: "#16A34A" },
+  locationBtnText: { color: "#fff", fontSize: 11, fontWeight: "900" },
+  locationSuccessText: { color: "#15803D", fontSize: 10, fontWeight: "700", marginTop: 7 },
+  locationErrorText: { color: "#B91C1C", fontSize: 10, fontWeight: "700", lineHeight: 15, marginTop: 7 },
+  locationPrivacyText: { color: COLORS.textMuted, fontSize: 9, lineHeight: 14, marginTop: 7 },
   modalActions: { flexDirection: "row", gap: 12, marginTop: 10 },
   cancelBtn: { flex: 1, padding: 14, alignItems: "center", borderRadius: RADIUS.pill, backgroundColor: COLORS.surfaceSecondary },
   cancelBtnText: { color: COLORS.text, fontWeight: "700" },
