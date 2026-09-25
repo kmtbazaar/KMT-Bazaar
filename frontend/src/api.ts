@@ -318,6 +318,11 @@ export const api = {
   serviceCatalog: (type: string) => apiFetch<any[]>(`/services/catalog/${encodeURIComponent(type)}`),
   serviceDetail: (type: string, id: string) => apiFetch<any>(`/services/catalog/${encodeURIComponent(type)}/${encodeURIComponent(id)}`),
   serviceBookings: () => apiFetch<any[]>("/service-bookings"),
+  serviceCart: () => apiFetch<any>("/service-cart"),
+  serviceCartAdd: (data: any) => apiFetch<any>("/service-cart/add", { method: "POST", body: JSON.stringify(data) }),
+  serviceCartClear: () => apiFetch("/service-cart/clear", { method: "DELETE" }),
+  serviceCartCheckout: () => apiFetch<any>("/service-cart/checkout", { method: "POST" }),
+
   serviceBooking: (id: string) => apiFetch<any>(`/service-bookings/${encodeURIComponent(id)}`),
   createServiceBooking: (data: any) => apiFetch<any>("/service-bookings", { method: "POST", body: JSON.stringify(data) }),
   updateServiceBooking: (id: string, status: string) => apiFetch<any>(`/service-bookings/${encodeURIComponent(id)}/status`, { method: "POST", body: JSON.stringify({ status }) }),
