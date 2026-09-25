@@ -4,6 +4,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import * as Location from "expo-location";
 import { api } from "@/src/api";
 import { useAuth } from "@/src/AuthContext";
 import { COLORS, RADIUS, SPACING, shadow } from "@/src/theme";
@@ -16,6 +17,7 @@ export default function Addresses() {
   const [formVisible, setFormVisible] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [selectedAddrId, setSelectedAddrId] = useState<string | null>(null);
+  const [locationLoading, setLocationLoading] = useState(false);
 
   const [formData, setFormData] = useState({ 
     label: "Home", 
@@ -93,6 +95,40 @@ export default function Addresses() {
     setFormVisible(true);
   };
 
+  const getCurrentLocation = async () => {
+    setLocationLoading(true);
+    try {
+      if (Platform.OS === "web") {
+        if (!navigator.geolocation) {
+          throw new Error("Browser location is not available.");
+        }
+        return await new Promise<{ latitude: number; longitude: number }>((resolve, reject) => {
+          navigator.geolocation.getCurrentPosition(
+            (position) => resolve({
+              latitude: position.coords.latitude,
+              longitude: position.coords.longitude,
+            }),
+            (error) => reject(new Error(error.message || "Could not fetch current location.")),
+            { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+          );
+        });
+      }
+      const permission = await Location.requestForegroundPermissionsAsync();
+      if (permission.status !== "granted") {
+        throw new Error("Location permission is required to save this delivery address.");
+      }
+      const current = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.High,
+      });
+      return {
+        latitude: current.coords.latitude,
+        longitude: current.coords.longitude,
+      };
+    } finally {
+      setLocationLoading(false);
+    }
+  };
+
   const handleSave = async () => {
     Keyboard.dismiss();
 
@@ -112,17 +148,28 @@ export default function Addresses() {
     }
 
     try {
+      const location = await getCurrentLocation();
+      const addressPayload = {
+        ...formData,
+        latitude: location.latitude,
+        longitude: location.longitude,
+      };
+
       if (editingId) {
-        await api.updateAddress(editingId, formData);
+        await api.updateAddress(editingId, addressPayload);
       } else {
-        await api.createAddress(formData);
+        await api.createAddress(addressPayload);
       }
+
       setFormVisible(false);
       setEditingId(null);
       loadAddresses();
     } catch (e: any) {
-      console.log("BACKEND ERROR DETAILS:", e);
-      Alert.alert("Backend Error", e.message || JSON.stringify(e) || "Something went wrong with the API");
+      console.log("ADDRESS SAVE ERROR:", e);
+      Alert.alert(
+        "Location Required",
+        e.message || "Could not fetch your current location. Please allow location access and try again."
+      );
     }
   };
 
@@ -280,8 +327,8 @@ export default function Addresses() {
                 <TouchableOpacity onPress={() => { setFormVisible(false); setEditingId(null); }} style={s.cancelBtn}>
                   <Text style={s.cancelBtnText}>CANCEL</Text>
                 </TouchableOpacity>
-                <TouchableOpacity onPress={handleSave} style={s.saveBtn}>
-                  <Text style={s.saveBtnText}>SAVE ADDRESS</Text>
+                <TouchableOpacity onPress={handleSave} style={s.saveBtn} disabled={locationLoading}>
+                  {locationLoading ? <ActivityIndicator size="small" color="#fff" /> : <Text style={s.saveBtnText}>SAVE ADDRESS</Text>}
                 </TouchableOpacity>
               </View>
             </View>
