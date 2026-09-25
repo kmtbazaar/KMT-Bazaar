@@ -10,6 +10,7 @@ import { api } from "@/src/api";
 import { useAuth } from "@/src/AuthContext";
 import { COLORS, LOGO_URL, RADIUS, SPACING } from "@/src/theme";
 import { WebView } from "react-native-webview";
+import * as Location from "expo-location";
 
 function CustomerLocationMap({ latitude, longitude }: { latitude: number; longitude: number }) {
   const lat = Number(latitude);
@@ -44,6 +45,8 @@ export default function DeliveryDashboard() {
   const [unread, setUnread] = useState(0);
   const [acceptedId, setAcceptedId] = useState<string | null>(null);
   const [popupOrder, setPopupOrder] = useState<any | null>(null);
+  const locationWatchRef = useRef<any>(null);
+  const trackedOrderIdRef = useRef<string | null>(null);
 
   const previousAvailableIds = useRef<string[]>([]);
   const availabilityInitialized = useRef(false);
@@ -107,6 +110,36 @@ export default function DeliveryDashboard() {
     } catch {}
   }, [showIncomingPopup]);
 
+  useEffect(() => {
+    const activeOrder = mine.find((o: any) => o.status === "out_for_delivery");
+    const stop = () => {
+      if (locationWatchRef.current !== null) {
+        if (Platform.OS === "web" && navigator.geolocation) navigator.geolocation.clearWatch(locationWatchRef.current);
+        else { try { locationWatchRef.current.remove(); } catch {} }
+        locationWatchRef.current = null;
+      }
+      trackedOrderIdRef.current = null;
+    };
+    if (!activeOrder?.id) { stop(); return; }
+    if (trackedOrderIdRef.current === activeOrder.id && locationWatchRef.current !== null) return;
+    stop();
+    trackedOrderIdRef.current = activeOrder.id;
+    const send = (p: any) => deliveryApi.updateDeliveryLocation(activeOrder.id, p.coords.latitude, p.coords.longitude, p.coords.accuracy).catch(() => {});
+    if (Platform.OS === "web") {
+      if (typeof navigator !== "undefined" && navigator.geolocation) {
+        locationWatchRef.current = navigator.geolocation.watchPosition(send, () => {}, {enableHighAccuracy:true, maximumAge:5000, timeout:15000});
+      }
+    } else {
+      Location.requestForegroundPermissionsAsync().then(async perm => {
+        if (perm.status !== "granted" || trackedOrderIdRef.current !== activeOrder.id) return;
+        locationWatchRef.current = await Location.watchPositionAsync(
+          { accuracy: Location.Accuracy.High, timeInterval: 5000, distanceInterval: 10 },
+          loc => send({coords:{latitude:loc.coords.latitude,longitude:loc.coords.longitude,accuracy:loc.coords.accuracy}})
+        );
+      }).catch(() => {});
+    }
+    return stop;
+  }, [mine]);
   useFocusEffect(
     useCallback(() => {
       load(false);
