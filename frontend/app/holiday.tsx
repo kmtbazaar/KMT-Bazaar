@@ -1,1 +1,1 @@
-import ServiceCatalog from "./service/[type]";export default function Holiday(){return <ServiceCatalog/>}
+import ServiceCatalog from "./service/[type]";export default function Page(){return <ServiceCatalog fixedType="holiday"/>}
