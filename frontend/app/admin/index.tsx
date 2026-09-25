@@ -84,6 +84,12 @@ const ACTIONS = [
     color: "#EC4899",
   },
   {
+    icon: "briefcase-outline",
+    label: "Vendor Service",
+    path: "/admin/vendor-services",
+    color: THEME.orange,
+  },
+  {
     icon: "image-multiple-outline",
     label: "Banners",
     path: "/admin/banners",
