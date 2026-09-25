@@ -11,6 +11,7 @@ const TOKEN_KEY = "kmt_token";
 const USER_KEY = "kmt_user";
 
 export type UserRole = "customer" | "vendor" | "delivery" | "admin";
+export type VendorType = "store" | "service";
 
 export interface User {
   id: string;
@@ -19,6 +20,7 @@ export interface User {
   phone?: string | null;
   role: UserRole;
   avatar?: string | null;
+  vendor_type?: VendorType | null;
 }
 
 // Storage helpers
