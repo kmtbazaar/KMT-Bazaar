@@ -229,6 +229,12 @@ export const deliveryApi = {
       method: "POST",
     }),
 
+  updateLocation: (id: string, location: { latitude: number; longitude: number }) =>
+    apiFetch(`/delivery/orders/${id}/location`, {
+      method: "POST",
+      body: JSON.stringify(location),
+    }),
+
   my: () =>
     apiFetch<any[]>("/delivery/my"),
 
