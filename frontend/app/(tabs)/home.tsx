@@ -55,6 +55,7 @@ export default function Home() {
   const [brokenImages, setBrokenImages] = useState<Record<string, boolean>>({});
   const [cats, setCats] = useState<any[]>([]);
   const [stores, setStores] = useState<any[]>([]);
+  const [vendorServices, setVendorServices] = useState<any[]>([]);
   const [trending, setTrending] = useState<any[]>([]);
   const [unread, setUnread] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
@@ -241,16 +242,18 @@ export default function Home() {
     if (!locationReady) return;
 
     try {
-      const [b, c, s, t, u] = await Promise.all([
+      const [b, c, s, vs, t, u] = await Promise.all([
         api.banners(),
         api.categories(),
         api.stores(),
+        api.vendorServices(),
         api.products({ trending: true }),
         api.unreadCount(),
       ]);
       setBanners(b || []);
       setCats(c || []);
       setStores(s || []);
+      setVendorServices(vs || []);
       setTrending(t || []);
       setUnread(u?.count || 0);
     } catch (e) {
@@ -581,6 +584,38 @@ export default function Home() {
           }}
         />
 
+        {/* Vendor Services Section */}
+        {vendorServices.length > 0 && (
+          <>
+            <SectionTitle title="Vendor Service" subtitle="Local services" />
+            <FlatList
+              horizontal
+              data={vendorServices}
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={{ paddingHorizontal: SPACING.lg, gap: 10, paddingVertical: 4 }}
+              keyExtractor={(it) => String(it.id)}
+              renderItem={({ item }) => (
+                <Pressable
+                  style={s.serviceCardSmall}
+                  onPress={() => router.push({ pathname: "/vendor-service/[id]", params: { id: item.id } } as any)}
+                >
+                  {item.image ? (
+                    <Image source={{ uri: item.image }} style={s.serviceImgSmall} contentFit="cover" />
+                  ) : (
+                    <View style={[s.serviceImgSmall, s.servicePlaceholder]}>
+                      <MaterialCommunityIcons name="briefcase-outline" size={28} color={THEME.skyHeader} />
+                    </View>
+                  )}
+                  <View style={{ padding: 6 }}>
+                    <Text style={s.serviceNameSmall} numberOfLines={1}>{item.name}</Text>
+                    {!!item.vendor_name && <Text style={s.serviceVendorSmall} numberOfLines={1}>{item.vendor_name}</Text>}
+                  </View>
+                </Pressable>
+              )}
+            />
+          </>
+        )}
+
         {/* Trending Products Section */}
         <SectionTitle title="Trending Products" subtitle="Best sellers this week" />
         <View style={s.trendingGrid}>
@@ -633,6 +668,11 @@ function SectionTitle({ title, subtitle }: { title: string; subtitle?: string })
 }
 
 const s = StyleSheet.create({
+  serviceCardSmall: { width: 135, backgroundColor: THEME.white, borderRadius: RADIUS.md, overflow: "hidden", borderWidth: 1, borderColor: THEME.borderSoft },
+  serviceImgSmall: { width: "100%", height: 65 },
+  servicePlaceholder: { alignItems: "center", justifyContent: "center", backgroundColor: "#E0F2FE" },
+  serviceNameSmall: { fontWeight: "800", color: THEME.black, fontSize: 12 },
+  serviceVendorSmall: { fontSize: 10, color: THEME.blackMuted, fontWeight: "600", marginTop: 3 },
   locationGate: { flex: 1, justifyContent: "center", alignItems: "center", paddingHorizontal: 20, paddingVertical: 40, backgroundColor: THEME.whiteBg },
   locationGateCard: { width: "100%", maxWidth: 460, backgroundColor: "#fff", borderRadius: 24, padding: 24, alignItems: "center", borderWidth: 1, borderColor: THEME.borderSoft },
   locationGateIcon: { width: 72, height: 72, borderRadius: 36, alignItems: "center", justifyContent: "center", backgroundColor: "#FFF1E8", marginBottom: 14 },
