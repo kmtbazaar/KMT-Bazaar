@@ -1,11 +1,12 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { Animated, View, Text, StyleSheet, Pressable, Switch, RefreshControl, ScrollView, Linking } from "react-native";
+import { Animated, View, Text, StyleSheet, Pressable, Switch, RefreshControl, ScrollView, Linking, Platform } from "react-native";
 import { Image } from "expo-image";
 import { useFocusEffect, useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import * as Location from "expo-location";
+import { WebView } from "react-native-webview";
 import { deliveryApi } from "@/src/roleApi";
 import { api } from "@/src/api";
 import { useAuth } from "@/src/AuthContext";
@@ -337,27 +338,41 @@ export default function DeliveryDashboard() {
                     <MaterialCommunityIcons name="map-marker" size={12} color={COLORS.textMuted} /> {item.address?.line1}, {item.address?.city} - {item.address?.pincode}
                   </Text>
 
-                  {(tab === "active" || isAccepted) && item.customer_location?.latitude != null && item.customer_location?.longitude != null && (
-                    <Pressable
-                      onPress={() =>
-                        Linking.openURL(
-                          "https://www.google.com/maps?q=" +
-                            item.customer_location.latitude +
-                            "," +
-                            item.customer_location.longitude
-                        )
-                      }
-                      style={s.locationBtn}
-                    >
-                      <MaterialCommunityIcons name="map-marker-radius" size={17} color={COLORS.brand} />
-                      <View style={{ flex: 1 }}>
-                        <Text style={s.locationTitle}>Customer delivery location</Text>
-                        <Text style={s.locationMeta}>
-                          {Number(item.customer_location.latitude).toFixed(5)}, {Number(item.customer_location.longitude).toFixed(5)}
-                        </Text>
+                  {tab === "active" && item.customer_location?.latitude != null && item.customer_location?.longitude != null && (
+                    <View style={s.locationSection}>
+                      <View style={s.locationHeader}>
+                        <View style={s.locationHeaderIcon}>
+                          <MaterialCommunityIcons name="map-marker-radius" size={18} color={COLORS.brand} />
+                        </View>
+                        <View style={{ flex: 1 }}>
+                          <Text style={s.locationTitle}>Customer delivery location</Text>
+                          <Text style={s.locationMeta}>
+                            {Number(item.customer_location.latitude).toFixed(5)}, {Number(item.customer_location.longitude).toFixed(5)}
+                          </Text>
+                        </View>
                       </View>
-                      <MaterialCommunityIcons name="open-in-new" size={17} color={COLORS.brand} />
-                    </Pressable>
+
+                      <CustomerLocationMap
+                        latitude={Number(item.customer_location.latitude)}
+                        longitude={Number(item.customer_location.longitude)}
+                      />
+
+                      <Pressable
+                        onPress={() =>
+                          Linking.openURL(
+                            "https://www.google.com/maps?q=" +
+                              item.customer_location.latitude +
+                              "," +
+                              item.customer_location.longitude
+                          )
+                        }
+                        style={s.openMapBtn}
+                      >
+                        <MaterialCommunityIcons name="navigation-variant" size={16} color={COLORS.brand} />
+                        <Text style={s.openMapText}>Open in Google Maps</Text>
+                        <MaterialCommunityIcons name="open-in-new" size={16} color={COLORS.brand} />
+                      </Pressable>
+                    </View>
                   )}
 
                   <Text style={s.itemsInfo}>
@@ -398,6 +413,65 @@ export default function DeliveryDashboard() {
           </View>
         )}
       </ScrollView>
+    </View>
+  );
+}
+
+function CustomerLocationMap({ latitude, longitude }: { latitude: number; longitude: number }) {
+  const safeLatitude = Number(latitude);
+  const safeLongitude = Number(longitude);
+
+  if (
+    !Number.isFinite(safeLatitude) ||
+    !Number.isFinite(safeLongitude) ||
+    safeLatitude < -90 ||
+    safeLatitude > 90 ||
+    safeLongitude < -180 ||
+    safeLongitude > 180
+  ) {
+    return null;
+  }
+
+  const delta = 0.0045;
+  const mapUrl =
+    "https://www.openstreetmap.org/export/embed.html?bbox=" +
+    (safeLongitude - delta) +
+    "," +
+    (safeLatitude - delta) +
+    "," +
+    (safeLongitude + delta) +
+    "," +
+    (safeLatitude + delta) +
+    "&layer=mapnik&marker=" +
+    safeLatitude +
+    "," +
+    safeLongitude;
+
+  if (Platform.OS === "web") {
+    return (
+      <View style={s.mapWrap}>
+        <iframe
+          title="Customer delivery location map"
+          src={mapUrl}
+          loading="lazy"
+          style={{
+            width: "100%",
+            height: "100%",
+            border: "0",
+            display: "block",
+          }}
+        />
+      </View>
+    );
+  }
+
+  return (
+    <View style={s.mapWrap}>
+      <WebView
+        source={{ uri: mapUrl }}
+        originWhitelist={["*"]}
+        style={s.map}
+      />
     </View>
   );
 }
@@ -455,9 +529,15 @@ const s = StyleSheet.create({
   total: { fontWeight: "800", color: COLORS.success, fontSize: 15 },
   cust: { color: COLORS.textSecondary, fontSize: 12, marginTop: 6 },
   addr: { color: COLORS.textSecondary, fontSize: 12, marginTop: 2 },
-  locationBtn: { flexDirection: "row", alignItems: "center", gap: 8, marginTop: 8, padding: 10, borderRadius: RADIUS.md, backgroundColor: "#EFF6FF", borderWidth: 1, borderColor: "#BFDBFE" },
+  locationSection: { marginTop: 8, padding: 10, borderRadius: RADIUS.md, backgroundColor: "#EFF6FF", borderWidth: 1, borderColor: "#BFDBFE" },
+  locationHeader: { flexDirection: "row", alignItems: "center", gap: 8 },
+  locationHeaderIcon: { width: 30, height: 30, borderRadius: 15, backgroundColor: "#DBEAFE", alignItems: "center", justifyContent: "center" },
   locationTitle: { color: COLORS.brand, fontWeight: "800", fontSize: 11 },
   locationMeta: { color: COLORS.textSecondary, fontSize: 10, marginTop: 2 },
+  mapWrap: { width: "100%", height: 190, overflow: "hidden", borderRadius: RADIUS.md, marginTop: 8, backgroundColor: "#E5E7EB" },
+  map: { flex: 1 },
+  openMapBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 7, marginTop: 8, paddingVertical: 9, borderRadius: RADIUS.pill, backgroundColor: "#fff", borderWidth: 1, borderColor: "#93C5FD" },
+  openMapText: { color: COLORS.brand, fontWeight: "800", fontSize: 11 },
   itemsInfo: { color: COLORS.textMuted, fontSize: 11, marginTop: 4 },
   btn: { flexDirection: "row", gap: 6, alignItems: "center", justifyContent: "center", paddingVertical: 10, borderRadius: RADIUS.pill, marginTop: 10 },
   btnAccent: { backgroundColor: COLORS.accent },
