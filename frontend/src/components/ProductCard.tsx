@@ -18,6 +18,7 @@ import Animated, {
 import { COLORS, IMAGE_FALLBACK_URL, RADIUS } from "@/src/theme";
 import { useCart } from "@/src/CartContext";
 import { useRouter } from "expo-router";
+import ImagePlaceholder from "@/src/components/ImagePlaceholder";
 
 const SCREEN_W = Dimensions.get("window").width;
 
