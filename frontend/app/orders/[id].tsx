@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   View,
   Text,
@@ -28,9 +28,57 @@ export default function OrderDetail() {
   const router = useRouter();
   const [order, setOrder] = useState<any>(null);
 
+  const locationWatchRef = useRef<number | null>(null);
+
   useEffect(() => {
-    (async () => setOrder(await api.order(id as string)))();
+    let cancelled = false;
+
+    const loadOrder = async () => {
+      try {
+        const next = await api.order(id as string);
+        if (!cancelled) setOrder(next);
+      } catch {}
+    };
+
+    loadOrder();
+    const refreshTimer = setInterval(loadOrder, 10000);
+
+    return () => {
+      cancelled = true;
+      clearInterval(refreshTimer);
+      if (locationWatchRef.current !== null && typeof navigator !== "undefined" && navigator.geolocation) {
+        navigator.geolocation.clearWatch(locationWatchRef.current);
+        locationWatchRef.current = null;
+      }
+    };
   }, [id]);
+
+  useEffect(() => {
+    if (!order || order.status !== "out_for_delivery") return;
+    if (typeof navigator === "undefined" || !navigator.geolocation) return;
+
+    const send = (position: GeolocationPosition) => {
+      api.updateCustomerLocation(
+        id as string,
+        position.coords.latitude,
+        position.coords.longitude,
+        position.coords.accuracy
+      ).catch(() => {});
+    };
+
+    locationWatchRef.current = navigator.geolocation.watchPosition(
+      send,
+      () => {},
+      { enableHighAccuracy: true, maximumAge: 5000, timeout: 15000 }
+    );
+
+    return () => {
+      if (locationWatchRef.current !== null) {
+        navigator.geolocation.clearWatch(locationWatchRef.current);
+        locationWatchRef.current = null;
+      }
+    };
+  }, [order?.status, id]);
 
   if (!order)
     return (
