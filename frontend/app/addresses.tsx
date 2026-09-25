@@ -101,7 +101,7 @@ export default function Addresses() {
             district: geo?.district || prev.district,
             city: geo?.city || prev.city,
             state: geo?.state || prev.state,
-            pincode: geo?.pincode || prev.pincode,
+            pincode: prev.pincode,
           }));
         } catch (error) {
           console.log("Initial reverse geocode failed:", error);
@@ -268,7 +268,7 @@ export default function Addresses() {
             district: geo?.district || prev.district,
             city: geo?.city || prev.city,
             state: geo?.state || prev.state,
-            pincode: geo?.pincode || prev.pincode,
+            pincode: prev.pincode,
           }));
         } catch (geoError) {
           console.log("Manual location reverse geocode failed:", geoError);
