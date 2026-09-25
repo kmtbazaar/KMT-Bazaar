@@ -97,6 +97,7 @@ export default function Addresses() {
           setFormData(prev => ({
             ...prev,
             line1: geo?.line1 || prev.line1,
+            line2: geo?.line2 || prev.line2,
             district: geo?.district || prev.district,
             city: geo?.city || prev.city,
             state: geo?.state || prev.state,
@@ -218,6 +219,23 @@ export default function Addresses() {
 
         setLocationCaptured(result);
         setExistingLocationSaved(false);
+
+        try {
+          const geo = await api.reverseGeocode(result.latitude, result.longitude);
+          setFormData(prev => ({
+            ...prev,
+            line1: geo?.line1 || prev.line1,
+            line2: geo?.line2 || prev.line2,
+            district: geo?.district || prev.district,
+            city: geo?.city || prev.city,
+            state: geo?.state || prev.state,
+            pincode: geo?.pincode || prev.pincode,
+          }));
+        } catch (geoError) {
+          console.log("Manual location reverse geocode failed:", geoError);
+          setLocationError("GPS captured. Address details could not be auto-filled; please enter them manually.");
+        }
+
         return result;
       }
 
@@ -454,14 +472,14 @@ export default function Addresses() {
               <TextInput style={s.input} placeholder="Nearby / Landmark (optional)" value={formData.landmark} onChangeText={t => setFormData({ ...formData, landmark: t })} />
               <TextInput style={s.input} placeholder="District *" value={formData.district} onChangeText={t => setFormData({ ...formData, district: t })} />
 
-              <View style={{ flexDirection: "row", gap: 10 }}>
-                <TextInput style={[s.input, { flex: 1 }]} placeholder="City *" value={formData.city} onChangeText={t => setFormData({ ...formData, city: t })} />
-                <TextInput style={[s.input, { flex: 1 }]} placeholder="State *" value={formData.state} onChangeText={t => setFormData({ ...formData, state: t })} />
+              <View style={s.fieldRow}>
+                <TextInput style={[s.input, s.fieldHalf]} placeholder="City *" value={formData.city} onChangeText={t => setFormData({ ...formData, city: t })} />
+                <TextInput style={[s.input, s.fieldHalf]} placeholder="State *" value={formData.state} onChangeText={t => setFormData({ ...formData, state: t })} />
               </View>
 
-              <View style={{ flexDirection: "row", gap: 10 }}>
-                <TextInput style={[s.input, { flex: 1 }]} placeholder="Pincode *" keyboardType="number-pad" maxLength={6} value={formData.pincode} onChangeText={t => setFormData({ ...formData, pincode: t.replace(/[^0-9]/g, '') })} />
-                <TextInput style={[s.input, { flex: 1 }]} placeholder="Mobile No. *" keyboardType="phone-pad" maxLength={10} value={formData.phone} onChangeText={t => setFormData({ ...formData, phone: normalizeMobile(t) })} />
+              <View style={s.fieldRow}>
+                <TextInput style={[s.input, s.fieldHalf]} placeholder="Pincode *" keyboardType="number-pad" maxLength={6} value={formData.pincode} onChangeText={t => setFormData({ ...formData, pincode: t.replace(/[^0-9]/g, '') })} />
+                <TextInput style={[s.input, s.fieldHalf]} placeholder="Mobile No. *" keyboardType="phone-pad" maxLength={10} value={formData.phone} onChangeText={t => setFormData({ ...formData, phone: normalizeMobile(t) })} />
               </View>
 
               <Text style={s.requiredNote}>* Mandatory field  ·  Nearby / Landmark is optional</Text>
@@ -557,6 +575,8 @@ const s = StyleSheet.create({
   locationErrorText: { color: "#B91C1C", fontSize: 10, fontWeight: "700", lineHeight: 15, marginTop: 7 },
   locationPrivacyText: { color: COLORS.textMuted, fontSize: 9, lineHeight: 14, marginTop: 7 },
   requiredNote: { color: COLORS.textMuted, fontSize: 10, marginBottom: 8 },
+  fieldRow: { flexDirection: "row", gap: 8, width: "100%" },
+  fieldHalf: { flex: 1, minWidth: 0 },
   gpsLoadingRow: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 8 },
   gpsLoadingText: { flex: 1, color: COLORS.brand, fontSize: 10, fontWeight: "700" },
   modalActions: { flexDirection: "row", gap: 12, marginTop: 10 },
