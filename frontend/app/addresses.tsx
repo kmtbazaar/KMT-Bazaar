@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { View, Text, StyleSheet, Pressable, FlatList, TextInput, ActivityIndicator, Modal, Alert, ScrollView, TouchableOpacity, Keyboard, Platform } from "react-native";
+import { WebView } from "react-native-webview";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRouter, useLocalSearchParams } from "expo-router";
@@ -27,6 +28,8 @@ export default function Addresses() {
   const [addresses, setAddresses] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [formVisible, setFormVisible] = useState(false);
+  const [mapVisible, setMapVisible] = useState(false);
+  const [pendingMapLocation, setPendingMapLocation] = useState<{ latitude: number; longitude: number; accuracy?: number } | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [selectedAddrId, setSelectedAddrId] = useState<string | null>(null);
   const [locationLoading, setLocationLoading] = useState(false);
@@ -71,7 +74,13 @@ export default function Addresses() {
 
         await AsyncStorage.removeItem("kmt_current_location");
         setEditingId(null);
-        setFormVisible(true);
+        setFormVisible(false);
+        setMapVisible(true);
+        setPendingMapLocation({
+          latitude,
+          longitude,
+          accuracy: Number(gps?.accuracy) || undefined,
+        });
         setLocationCaptured({
           latitude,
           longitude,
@@ -123,6 +132,24 @@ export default function Addresses() {
   }, [params.mode, user?.name, user?.phone]);
 
 
+  useEffect(() => {
+    if (Platform.OS !== "web" || typeof window === "undefined") return;
+    const onMessage = (event: MessageEvent) => {
+      try {
+        const data = typeof event.data === "string" ? JSON.parse(event.data) : event.data;
+        if (data?.type === "location" && Number.isFinite(Number(data.lat)) && Number.isFinite(Number(data.lng))) {
+          setPendingMapLocation(prev => ({
+            latitude: Number(data.lat),
+            longitude: Number(data.lng),
+            accuracy: prev?.accuracy,
+          }));
+        }
+      } catch {}
+    };
+    window.addEventListener("message", onMessage);
+    return () => window.removeEventListener("message", onMessage);
+  }, []);
+
   const loadAddresses = async () => {
     setLoading(true);
     try {
@@ -165,6 +192,47 @@ export default function Addresses() {
     router.back();
   };
 
+
+  const openDetailsAfterMap = async (location: { latitude: number; longitude: number; accuracy?: number }) => {
+    setMapVisible(false);
+    setPendingMapLocation(location);
+    setLocationCaptured(location);
+    setLocationError("");
+    setGpsPrefillLoading(true);
+
+    let profileName = user?.name || "";
+    let profilePhone = user?.phone || "";
+    try {
+      const profile = await api.me();
+      profileName = profileName || profile?.name || "";
+      profilePhone = profilePhone || profile?.phone || "";
+    } catch {}
+
+    setFormData(prev => ({
+      ...prev,
+      full_name: profileName || prev.full_name,
+      phone: normalizeMobile(profilePhone) || normalizeMobile(prev.phone),
+    }));
+
+    try {
+      const geo = await reverseGeocodeDevice(location.latitude, location.longitude);
+      setFormData(prev => ({
+        ...prev,
+        line1: geo?.line1 || "",
+        line2: geo?.line2 || "",
+        district: geo?.district || prev.district,
+        city: geo?.city || geo?.district || prev.city,
+        state: geo?.state || prev.state,
+        pincode: geo?.pincode || prev.pincode,
+      }));
+    } catch {
+      setLocationError("Location set hai. Address details manually fill kar sakte hain.");
+    } finally {
+      setGpsPrefillLoading(false);
+    }
+    setFormVisible(true);
+  };
+
   const handleOpenForm = (address?: any) => {
     setLocationCaptured(null);
     setLocationError("");
@@ -188,13 +256,16 @@ export default function Addresses() {
       setEditingId(null);
       setFormData({ label: "Home", full_name: user?.name || "", line1: "", line2: "", landmark: "", district: "", city: "", state: "", pincode: "", phone: normalizeMobile(user?.phone || "") });
     }
-    setFormVisible(true);
-
-    // A brand-new address always captures the device location immediately.
     if (!address) {
+      setFormVisible(false);
+      setMapVisible(true);
+      setLocationError("");
+      setPendingMapLocation(null);
       setTimeout(() => {
         getCurrentLocation().catch(() => {});
       }, 0);
+    } else {
+      setFormVisible(true);
     }
   };
 
@@ -263,24 +334,8 @@ export default function Addresses() {
         });
 
         setLocationCaptured(result);
+        setPendingMapLocation(result);
         setExistingLocationSaved(false);
-
-        try {
-          const geo = await reverseGeocodeDevice(result.latitude, result.longitude);
-          setFormData(prev => ({
-            ...prev,
-            line1: geo?.line1 || prev.line1,
-            line2: geo?.line2 || prev.line2,
-            district: geo?.district || prev.district,
-            city: geo?.city || prev.city,
-            state: geo?.state || prev.state,
-            pincode: geo?.pincode || prev.pincode,
-          }));
-        } catch (geoError) {
-          console.log("Manual location reverse geocode failed:", geoError);
-          setLocationError("GPS captured. Address details could not be auto-filled; please enter them manually.");
-        }
-
         return result;
       }
 
@@ -296,24 +351,8 @@ export default function Addresses() {
         accuracy: current.coords.accuracy,
       };
       setLocationCaptured(result);
+      setPendingMapLocation(result);
       setExistingLocationSaved(false);
-
-      try {
-        const geo = await reverseGeocodeDevice(result.latitude, result.longitude);
-        setFormData(prev => ({
-          ...prev,
-          line1: geo?.line1 || prev.line1,
-          line2: geo?.line2 || prev.line2,
-          district: geo?.district || prev.district,
-          city: geo?.city || prev.city,
-          state: geo?.state || prev.state,
-          pincode: geo?.pincode || prev.pincode,
-        }));
-      } catch (geoError) {
-        console.log("Native location reverse geocode failed:", geoError);
-        setLocationError("GPS captured. Address details could not be auto-filled; please enter them manually.");
-      }
-
       return result;
     } catch (e: any) {
       const message = e?.message || "Could not fetch current location.";
@@ -361,9 +400,14 @@ export default function Addresses() {
       return;
     }
 
+    const saveData = {
+      ...formData,
+      city: formData.city || formData.district,
+    };
+
     try {
       if (editingId) {
-        await api.updateAddress(editingId, formData);
+        await api.updateAddress(editingId, saveData);
       } else {
         if (!locationCaptured) {
           Alert.alert("Location Required", "Please set your current location before saving this address.");
@@ -371,7 +415,7 @@ export default function Addresses() {
         }
 
         await api.createAddress({
-          ...formData,
+          ...saveData,
           latitude: locationCaptured.latitude,
           longitude: locationCaptured.longitude,
           is_default: addresses.length === 0,
@@ -521,6 +565,82 @@ export default function Addresses() {
         </TouchableOpacity>
       </View>
 
+
+      <Modal visible={mapVisible} animationType="slide" transparent={false}>
+        <SafeAreaView style={s.mapScreen} edges={["top", "bottom"]}>
+          <View style={s.mapHeader}>
+            <TouchableOpacity onPress={() => setMapVisible(false)} style={s.mapBackBtn}>
+              <MaterialCommunityIcons name="arrow-left" size={24} color={COLORS.text} />
+            </TouchableOpacity>
+            <Text style={s.mapTitle}>Set delivery location</Text>
+            <View style={{ width: 40 }} />
+          </View>
+
+          <View style={s.mapWrap}>
+            {Platform.OS === "web" ? (
+              pendingMapLocation ? (
+                <iframe
+                  title="Set delivery location"
+                  srcDoc={buildMapHtml(pendingMapLocation.latitude, pendingMapLocation.longitude)}
+                  style={{ width: "100%", height: "100%", border: 0 } as any}
+                />
+              ) : (
+                <View style={s.mapLoading}>
+                  <ActivityIndicator size="large" color={COLORS.brand} />
+                  <Text style={s.mapLoadingText}>Getting your current location…</Text>
+                </View>
+              )
+            ) : (
+              pendingMapLocation ? (
+                <WebView
+                  originWhitelist={["*"]}
+                  source={{ html: buildMapHtml(pendingMapLocation.latitude, pendingMapLocation.longitude) }}
+                  onMessage={(event) => {
+                    try {
+                      const data = JSON.parse(event.nativeEvent.data || "{}");
+                      if (data?.type === "location" && Number.isFinite(Number(data.lat)) && Number.isFinite(Number(data.lng))) {
+                        setPendingMapLocation(prev => ({
+                          latitude: Number(data.lat),
+                          longitude: Number(data.lng),
+                          accuracy: prev?.accuracy,
+                        }));
+                      }
+                    } catch {}
+                  }}
+                  style={{ flex: 1 }}
+                />
+              ) : (
+                <View style={s.mapLoading}>
+                  <ActivityIndicator size="large" color={COLORS.brand} />
+                  <Text style={s.mapLoadingText}>Getting your current location…</Text>
+                </View>
+              )
+            )}
+            <View pointerEvents="none" style={s.centerPin}>
+              <MaterialCommunityIcons name="map-marker" size={48} color="#E11D48" />
+            </View>
+            <View pointerEvents="none" style={s.mapHint}>
+              <Text style={s.mapHintText}>Move the map until the pin is exactly on your home.</Text>
+            </View>
+          </View>
+
+          <View style={s.mapFooter}>
+            <View style={s.mapSelectedRow}>
+              <MaterialCommunityIcons name="crosshairs-gps" size={20} color="#15803D" />
+              <Text style={s.mapSelectedText}>{pendingMapLocation ? "Location selected" : "Finding your location…"}</Text>
+            </View>
+            <TouchableOpacity
+              disabled={!pendingMapLocation}
+              onPress={() => pendingMapLocation && openDetailsAfterMap(pendingMapLocation)}
+              style={[s.confirmLocationBtn, !pendingMapLocation && { opacity: 0.5 }]}
+            >
+              <Text style={s.confirmLocationText}>CONFIRM LOCATION</Text>
+              <MaterialCommunityIcons name="arrow-right" size={20} color="#fff" />
+            </TouchableOpacity>
+          </View>
+        </SafeAreaView>
+      </Modal>
+
       <Modal visible={formVisible} animationType="slide" transparent={true}>
         <View style={s.modalOverlay}>
           <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: 'flex-end' }} keyboardShouldPersistTaps="handled">
@@ -548,10 +668,8 @@ export default function Addresses() {
               <FieldLabel text="Village" required />
               <TextInput style={s.input} placeholder="Village *" value={formData.district} onChangeText={t => setFormData({ ...formData, district: t })} />
 
-              <View style={s.fieldRow}>
-                <View style={s.fieldHalf}><FieldLabel text="City" required /><TextInput style={s.input} placeholder="City *" value={formData.city} onChangeText={t => setFormData({ ...formData, city: t })} /></View>
-                <View style={s.fieldHalf}><FieldLabel text="State" required /><TextInput style={s.input} placeholder="State *" value={formData.state} onChangeText={t => setFormData({ ...formData, state: t })} /></View>
-              </View>
+              <FieldLabel text="State" required />
+              <TextInput style={s.input} placeholder="State *" value={formData.state} onChangeText={t => setFormData({ ...formData, state: t })} />
 
               <View style={s.fieldRow}>
                 <View style={s.fieldHalf}><FieldLabel text="Pincode" required /><TextInput style={s.input} placeholder="Pincode *" keyboardType="number-pad" maxLength={6} value={formData.pincode} onChangeText={t => setFormData({ ...formData, pincode: t.replace(/[^0-9]/g, '') })} /></View>
@@ -603,6 +721,21 @@ export default function Addresses() {
   );
 }
 
+
+function buildMapHtml(latitude: number, longitude: number) {
+  const lat = Number.isFinite(Number(latitude)) ? Number(latitude) : 20.5937;
+  const lng = Number.isFinite(Number(longitude)) ? Number(longitude) : 78.9629;
+  return [
+    "<!doctype html><html><head><meta name=\"viewport\" content=\"width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no\">",
+    "<link rel=\"stylesheet\" href=\"https://unpkg.com/leaflet@1.9.4/dist/leaflet.css\">",
+    "<style>html,body,#map{margin:0;width:100%;height:100%;overflow:hidden}.leaflet-control-attribution{font-size:9px}</style>",
+    "</head><body><div id=\"map\"></div>",
+    "<script src=\"https://unpkg.com/leaflet@1.9.4/dist/leaflet.js\"><\\/script>",
+    "<script>(function(){var start=[" + lat + "," + lng + "];var map=L.map('map',{zoomControl:true}).setView(start,18);L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:20,attribution:'© OpenStreetMap contributors'}).addTo(map);var marker=L.marker(start,{draggable:true}).addTo(map);function send(){var p=marker.getLatLng();var msg=JSON.stringify({type:'location',lat:p.lat,lng:p.lng});try{if(window.ReactNativeWebView){window.ReactNativeWebView.postMessage(msg);}}catch(e){}try{if(window.parent&&window.parent!==window){window.parent.postMessage(msg,'*');}}catch(e){}}marker.on('dragend',send);map.on('moveend',function(){var c=map.getCenter();marker.setLatLng(c);send();});send();})();<\\/script>",
+    "</body></html>"
+  ].join("");
+}
+
 function FieldLabel({ text, required = false }: { text: string; required?: boolean }) {
   return (
     <Text style={s.fieldLabel}>
@@ -612,6 +745,22 @@ function FieldLabel({ text, required = false }: { text: string; required?: boole
 }
 
 const s = StyleSheet.create({
+
+  mapScreen: { flex: 1, backgroundColor: "#fff" },
+  mapHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 14, paddingVertical: 10, backgroundColor: "#fff", borderBottomWidth: 1, borderColor: COLORS.border },
+  mapBackBtn: { width: 40, height: 40, alignItems: "center", justifyContent: "center" },
+  mapTitle: { fontSize: 17, fontWeight: "900", color: COLORS.text },
+  mapWrap: { flex: 1, position: "relative", overflow: "hidden" },
+  centerPin: { position: "absolute", left: "50%", top: "50%", marginLeft: -24, marginTop: -42 },
+  mapHint: { position: "absolute", top: 14, left: 18, right: 18, alignItems: "center" },
+  mapHintText: { backgroundColor: "rgba(255,255,255,0.94)", color: COLORS.text, paddingHorizontal: 14, paddingVertical: 8, borderRadius: RADIUS.pill, fontSize: 12, fontWeight: "800" },
+  mapFooter: { backgroundColor: "#fff", paddingHorizontal: 16, paddingTop: 12, paddingBottom: 14, borderTopWidth: 1, borderColor: COLORS.border },
+  mapSelectedRow: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 10 },
+  mapSelectedText: { color: COLORS.text, fontSize: 13, fontWeight: "800" },
+  confirmLocationBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, backgroundColor: COLORS.brand, borderRadius: RADIUS.pill, paddingVertical: 14 },
+  confirmLocationText: { color: "#fff", fontSize: 13, fontWeight: "900" },
+  mapLoading: { flex: 1, alignItems: "center", justifyContent: "center", gap: 10 },
+  mapLoadingText: { color: COLORS.textSecondary, fontSize: 13, fontWeight: "700" },
   root: { flex: 1, backgroundColor: COLORS.surfaceSecondary },
   center: { flex: 1, justifyContent: "center", alignItems: "center" },
   header: { flexDirection: "row", alignItems: "center", padding: SPACING.lg, backgroundColor: "#fff", borderBottomWidth: 1, borderColor: COLORS.border },
