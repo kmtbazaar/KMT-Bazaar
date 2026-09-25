@@ -171,15 +171,43 @@ export default function Checkout() {
       let location: { latitude: number; longitude: number } | null = null;
 
       try {
-        const permission = await Location.requestForegroundPermissionsAsync();
-        if (permission.status === "granted") {
-          const current = await Location.getCurrentPositionAsync({
-            accuracy: Location.Accuracy.Balanced,
+        if (Platform.OS === "web") {
+          location = await new Promise<{ latitude: number; longitude: number } | null>((resolve) => {
+            if (!navigator.geolocation) {
+              console.log("Browser geolocation is not available");
+              resolve(null);
+              return;
+            }
+
+            navigator.geolocation.getCurrentPosition(
+              (position) => {
+                resolve({
+                  latitude: position.coords.latitude,
+                  longitude: position.coords.longitude,
+                });
+              },
+              (error) => {
+                console.log("Customer browser location unavailable:", error);
+                resolve(null);
+              },
+              {
+                enableHighAccuracy: true,
+                timeout: 10000,
+                maximumAge: 0,
+              }
+            );
           });
-          location = {
-            latitude: current.coords.latitude,
-            longitude: current.coords.longitude,
-          };
+        } else {
+          const permission = await Location.requestForegroundPermissionsAsync();
+          if (permission.status === "granted") {
+            const current = await Location.getCurrentPositionAsync({
+              accuracy: Location.Accuracy.Balanced,
+            });
+            location = {
+              latitude: current.coords.latitude,
+              longitude: current.coords.longitude,
+            };
+          }
         }
       } catch (locationError) {
         console.log("Customer location unavailable:", locationError);
