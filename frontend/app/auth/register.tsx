@@ -28,6 +28,12 @@ const VENDOR_TYPES = [
 { id: "service", label: "Service Vendor", icon: "briefcase-outline" },
 ];
 
+const SERVICE_TYPES = [
+{ id: "holiday", label: "Holiday", icon: "airplane-takeoff" },
+{ id: "car_rental", label: "Car Rental", icon: "car" },
+{ id: "daily_service", label: "Daily Services", icon: "tools" },
+];
+
 export default function Register() {
 const router = useRouter();
 const { register } = useAuth();
@@ -40,6 +46,7 @@ const [password, setPassword] = useState("");
 const [confirmPassword, setConfirmPassword] = useState("");
 const [role, setRole] = useState("customer");
 const [vendorType, setVendorType] = useState<"store" | "service">("store");
+const [serviceType, setServiceType] = useState<"holiday" | "car_rental" | "daily_service">("daily_service");
 const [loading, setLoading] = useState(false);
 const [error, setError] = useState<string | null>(null);
 
@@ -116,6 +123,7 @@ try {
     password,
     role,
     vendor_type: role === "vendor" ? vendorType : undefined,
+    service_type: role === "vendor" && vendorType === "service" ? serviceType : undefined,
   });
 
   router.replace(
@@ -207,6 +215,25 @@ color={COLORS.text}
               </Pressable>
             ))}
           </View>
+          {vendorType === "service" && (
+            <View style={s.vendorTypeBox}>
+              <Text style={s.vendorTypeTitle}>Service Category</Text>
+              <Text style={s.vendorTypeSub}>Choose the service you will provide</Text>
+              <View style={s.vendorTypesRow}>
+                {SERVICE_TYPES.map((v) => (
+                  <Pressable
+                    key={v.id}
+                    testID={`service-type-${v.id}`}
+                    onPress={() => setServiceType(v.id as any)}
+                    style={[s.vendorTypeCard, serviceType === v.id && s.vendorTypeCardActive]}
+                  >
+                    <MaterialCommunityIcons name={v.icon as any} size={22} color={serviceType === v.id ? "#fff" : COLORS.brand} />
+                    <Text style={[s.vendorTypeLabel, serviceType === v.id && { color: "#fff" }]}>{v.label}</Text>
+                  </Pressable>
+                ))}
+              </View>
+            </View>
+          )}
         </View>
       )}
 
