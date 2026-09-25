@@ -3272,7 +3272,7 @@ async def seed_db():
 
     await db.banners.update_many(
         {"title": {"$regex": "yatasphere|yatra.?sphere", "$options": "i"}},
-        {"$set": {"target_type": "custom_page", "target_slug": "yatasphere-holiday"}}
+        {"$set": {"target_type": "category"}, "$unset": {"target_slug": ""}}
     )
 
     # Default settings
