@@ -4,6 +4,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import * as Location from "expo-location";
 import { api } from "@/src/api";
 import { useAuth } from "@/src/AuthContext";
 import { COLORS, RADIUS, SPACING, shadow } from "@/src/theme";
@@ -74,23 +75,87 @@ export default function Addresses() {
   };
 
   const handleOpenForm = (address?: any) => {
+    setLocationCaptured(null);
+    setLocationError("");
+    setExistingLocationSaved(Boolean(address?.has_location));
+
     if (address) {
       const addressId = address.id || address._id;
       setEditingId(addressId ? String(addressId) : null);
-      setFormData({ 
-        label: address.label || "Home", 
-        full_name: address.full_name || address.name || "", 
-        line1: address.line1 || address.address || "", 
-        city: address.city || "", 
-        state: address.state || "", 
-        pincode: address.pincode ? String(address.pincode) : "", 
-        phone: address.phone ? String(address.phone) : "" 
+      setFormData({
+        label: address.label || "Home",
+        full_name: address.full_name || address.name || "",
+        line1: address.line1 || address.address || "",
+        city: address.city || "",
+        state: address.state || "",
+        pincode: address.pincode ? String(address.pincode) : "",
+        phone: address.phone ? String(address.phone) : ""
       });
     } else {
       setEditingId(null);
       setFormData({ label: "Home", full_name: "", line1: "", city: "", state: "", pincode: "", phone: "" });
     }
     setFormVisible(true);
+  };
+
+  const getCurrentLocation = async () => {
+    setLocationLoading(true);
+    setLocationError("");
+
+    try {
+      if (Platform.OS === "web") {
+        if (typeof window !== "undefined" && !window.isSecureContext) {
+          throw new Error("Location requires a secure HTTPS connection. Please open https://kmtbazaar.tech.");
+        }
+        if (!navigator.geolocation) {
+          throw new Error("This browser does not support location access.");
+        }
+
+        const result = await new Promise<{ latitude: number; longitude: number; accuracy?: number }>((resolve, reject) => {
+          navigator.geolocation.getCurrentPosition(
+            (position) => resolve({
+              latitude: position.coords.latitude,
+              longitude: position.coords.longitude,
+              accuracy: position.coords.accuracy,
+            }),
+            (error) => {
+              const messages: Record<number, string> = {
+                1: "Location permission was denied. Allow location access for KMT Bazaar and try again.",
+                2: "Turn on device GPS/location and try again.",
+                3: "Location request timed out. Please try again.",
+              };
+              reject(new Error(messages[error.code] || error.message || "Could not fetch current location."));
+            },
+            { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 }
+          );
+        });
+
+        setLocationCaptured(result);
+        setExistingLocationSaved(false);
+        return result;
+      }
+
+      const permission = await Location.requestForegroundPermissionsAsync();
+      if (permission.status !== "granted") {
+        throw new Error("Location permission is required. Allow KMT Bazaar to use your location and try again.");
+      }
+
+      const current = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
+      const result = {
+        latitude: current.coords.latitude,
+        longitude: current.coords.longitude,
+        accuracy: current.coords.accuracy,
+      };
+      setLocationCaptured(result);
+      setExistingLocationSaved(false);
+      return result;
+    } catch (e: any) {
+      const message = e?.message || "Could not fetch current location.";
+      setLocationError(message);
+      throw new Error(message);
+    } finally {
+      setLocationLoading(false);
+    }
   };
 
   const handleSave = async () => {
@@ -112,17 +177,28 @@ export default function Addresses() {
     }
 
     try {
+      const location = locationCaptured || await getCurrentLocation();
+      const addressPayload = {
+        ...formData,
+        latitude: location.latitude,
+        longitude: location.longitude,
+      };
+
       if (editingId) {
-        await api.updateAddress(editingId, formData);
+        await api.updateAddress(editingId, addressPayload);
       } else {
-        await api.createAddress(formData);
+        await api.createAddress(addressPayload);
       }
+
       setFormVisible(false);
       setEditingId(null);
+      setLocationCaptured(null);
+      setLocationError("");
+      setExistingLocationSaved(false);
       loadAddresses();
     } catch (e: any) {
-      console.log("BACKEND ERROR DETAILS:", e);
-      Alert.alert("Backend Error", e.message || JSON.stringify(e) || "Something went wrong with the API");
+      console.log("ADDRESS SAVE ERROR:", e);
+      Alert.alert("Location Required", e.message || "Could not fetch current location.");
     }
   };
 
@@ -218,6 +294,12 @@ export default function Addresses() {
                 <Text style={s.addressText}>{item.line1 || item.address}</Text>
                 <Text style={s.addressText}>{item.city}, {item.state} - {item.pincode}</Text>
                 <Text style={s.phoneText}>Phone: {item.phone}</Text>
+                <View style={[s.locationBadge, item.has_location ? s.locationBadgeOk : s.locationBadgeWarn]}>
+                  <MaterialCommunityIcons name={item.has_location ? "crosshairs-gps" : "map-marker-alert"} size={14} color={item.has_location ? "#15803D" : "#B45309"} />
+                  <Text style={[s.locationBadgeText, { color: item.has_location ? "#15803D" : "#B45309" }]}>
+                    {item.has_location ? "GPS location saved" : "GPS location required"}
+                  </Text>
+                </View>
               </TouchableOpacity>
 
               <View style={s.actionRow}>
@@ -276,6 +358,25 @@ export default function Addresses() {
                 <TextInput style={[s.input, { flex: 1 }]} placeholder="Phone No." keyboardType="phone-pad" maxLength={10} value={formData.phone} onChangeText={t => setFormData({ ...formData, phone: t.replace(/[^0-9]/g, '') })} />
               </View>
 
+              <View style={s.locationCard}>
+                <View style={s.locationCardHeader}>
+                  <View style={s.locationIcon}><MaterialCommunityIcons name={locationCaptured ? "crosshairs-gps" : "map-marker-radius"} size={20} color={locationCaptured ? "#15803D" : COLORS.brand} /></View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={s.locationCardTitle}>Delivery location</Text>
+                    <Text style={s.locationCardText}>
+                      {locationCaptured ? "Current GPS captured for this address." : existingLocationSaved ? "GPS is already saved. Refresh it with the button below when needed." : "Current GPS is required for delivery."}
+                    </Text>
+                  </View>
+                </View>
+                <TouchableOpacity onPress={() => getCurrentLocation().catch(() => {})} style={[s.locationBtn, locationCaptured && s.locationBtnSuccess]} disabled={locationLoading} activeOpacity={0.8}>
+                  {locationLoading ? <ActivityIndicator size="small" color="#fff" /> : <MaterialCommunityIcons name={locationCaptured ? "check-circle" : "crosshairs-gps"} size={18} color="#fff" />}
+                  <Text style={s.locationBtnText}>{locationLoading ? "GETTING LOCATION..." : locationCaptured ? "LOCATION CAPTURED" : "USE MY CURRENT LOCATION"}</Text>
+                </TouchableOpacity>
+                {!!locationCaptured && <Text style={s.locationSuccessText}>GPS ready{locationCaptured.accuracy ? " · ±" + Math.round(locationCaptured.accuracy) + " m" : ""}. This will be used for delivery.</Text>}
+                {!!locationError && <Text style={s.locationErrorText}>{locationError}</Text>}
+                <Text style={s.locationPrivacyText}>Exact GPS is used for delivery and is not shown to other customers.</Text>
+              </View>
+
               <View style={s.modalActions}>
                 <TouchableOpacity onPress={() => { setFormVisible(false); setEditingId(null); }} style={s.cancelBtn}>
                   <Text style={s.cancelBtnText}>CANCEL</Text>
@@ -309,6 +410,10 @@ const s = StyleSheet.create({
   nameText: { color: COLORS.text, fontSize: 16, fontWeight: "800", paddingTop: 10, paddingBottom: 2 },
   addressText: { color: COLORS.text, fontSize: 14, paddingTop: 2, lineHeight: 20 },
   phoneText: { color: COLORS.textMuted, fontSize: 13, paddingVertical: 6, fontWeight: "600" },
+  locationBadge: { flexDirection: "row", alignItems: "center", alignSelf: "flex-start", gap: 5, paddingHorizontal: 8, paddingVertical: 5, borderRadius: RADIUS.pill, marginBottom: 10, borderWidth: 1 },
+  locationBadgeOk: { backgroundColor: "#F0FDF4", borderColor: "#BBF7D0" },
+  locationBadgeWarn: { backgroundColor: "#FFFBEB", borderColor: "#FDE68A" },
+  locationBadgeText: { fontSize: 11, fontWeight: "800" },
   actionRow: { flexDirection: "row", borderTopWidth: 1, borderColor: COLORS.border, marginTop: 8 },
   actionBtn: { flex: 1, paddingVertical: 12, alignItems: "center", backgroundColor: "#fff" },
   actionTextEdit: { color: COLORS.brand, fontWeight: "700", fontSize: 13 },
@@ -325,6 +430,17 @@ const s = StyleSheet.create({
   typeText: { color: COLORS.textMuted, fontWeight: "600", fontSize: 13 },
   typeTextActive: { color: COLORS.brand, fontWeight: "800" },
   input: { backgroundColor: COLORS.surfaceSecondary, borderWidth: 1, borderColor: COLORS.border, paddingHorizontal: 16, paddingVertical: 12, borderRadius: RADIUS.sm, marginBottom: 12, fontSize: 14, color: COLORS.text },
+  locationCard: { marginTop: 6, padding: 12, borderRadius: RADIUS.md, backgroundColor: "#EFF6FF", borderWidth: 1, borderColor: "#BFDBFE" },
+  locationCardHeader: { flexDirection: "row", alignItems: "center", gap: 10 },
+  locationIcon: { width: 36, height: 36, borderRadius: 18, backgroundColor: "#DBEAFE", alignItems: "center", justifyContent: "center" },
+  locationCardTitle: { color: COLORS.text, fontSize: 13, fontWeight: "900" },
+  locationCardText: { color: COLORS.textSecondary, fontSize: 11, lineHeight: 16, marginTop: 2 },
+  locationBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 7, marginTop: 10, paddingVertical: 11, borderRadius: RADIUS.pill, backgroundColor: COLORS.brand },
+  locationBtnSuccess: { backgroundColor: "#16A34A" },
+  locationBtnText: { color: "#fff", fontSize: 11, fontWeight: "900" },
+  locationSuccessText: { color: "#15803D", fontSize: 10, fontWeight: "700", marginTop: 7 },
+  locationErrorText: { color: "#B91C1C", fontSize: 10, fontWeight: "700", lineHeight: 15, marginTop: 7 },
+  locationPrivacyText: { color: COLORS.textMuted, fontSize: 9, lineHeight: 14, marginTop: 7 },
   modalActions: { flexDirection: "row", gap: 12, marginTop: 10 },
   cancelBtn: { flex: 1, padding: 14, alignItems: "center", borderRadius: RADIUS.pill, backgroundColor: COLORS.surfaceSecondary },
   cancelBtnText: { color: COLORS.text, fontWeight: "700" },
