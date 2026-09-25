@@ -1399,6 +1399,41 @@ async def get_order(order_id: str, current=Depends(get_current_user)):
     return o
 
 
+class DeliveryLocationIn(BaseModel):
+    latitude: float
+    longitude: float
+    accuracy: Optional[float] = None
+
+@api.post("/delivery/orders/{order_id}/location")
+async def update_delivery_location(
+    order_id: str,
+    data: DeliveryLocationIn,
+    current=Depends(require_roles("delivery")),
+):
+    if not (-90 <= data.latitude <= 90 and -180 <= data.longitude <= 180):
+        raise HTTPException(status_code=400, detail="Invalid location coordinates")
+
+    result = await db.orders.update_one(
+        {
+            "id": order_id,
+            "delivery_id": current["id"],
+            "status": "out_for_delivery",
+        },
+        {
+            "$set": {
+                "delivery_location": {
+                    "latitude": data.latitude,
+                    "longitude": data.longitude,
+                    "accuracy": data.accuracy,
+                    "updated_at": now_iso(),
+                }
+            }
+        },
+    )
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Active delivery order not found")
+    return {"ok": True}
+
 class CustomerLocationIn(BaseModel):
     latitude: float
     longitude: float
@@ -2712,7 +2747,7 @@ async def delivery_mark_delivered(order_id: str, current=Depends(require_roles("
     if not o: raise HTTPException(404, "Not assigned to you")
     timeline = o.get("timeline", [])
     timeline.append({"status": "delivered", "at": now_iso(), "label": "Delivered"})
-    await db.orders.update_one({"id": order_id}, {"$set": {"status": "delivered", "timeline": timeline}, "$unset": {"customer_location": ""}})
+    await db.orders.update_one({"id": order_id}, {"$set": {"status": "delivered", "timeline": timeline}, "$unset": {"customer_location": "", "delivery_location": ""}})
     await db.notifications.insert_one({
         "id": str(uuid.uuid4()), "user_id": o["user_id"], "title": "Order delivered",
         "body": f"Your order {o['order_no']} has been delivered. Enjoy!", "type": "delivery", "read": False, "created_at": now_iso(),
