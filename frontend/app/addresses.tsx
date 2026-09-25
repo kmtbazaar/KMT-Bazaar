@@ -260,7 +260,7 @@ export default function Addresses() {
 
     const missingField = requiredFields.find(([, value]) => !value?.trim());
     if (missingField) {
-      Alert.alert("Required Field", `${missingField[0]} is required. Please fill all required fields. Nearby / Landmark is optional.`);
+      Alert.alert("Mandatory field required", `${missingField[0]} is required. Please fill all * marked fields. Nearby / Landmark is optional.`);
       return;
     }
 
@@ -450,6 +450,7 @@ export default function Addresses() {
 
               <TextInput style={s.input} placeholder="Receiver's Name *" value={formData.full_name} onChangeText={t => setFormData({ ...formData, full_name: t })} />
               <TextInput style={s.input} placeholder="Street / House No. *" value={formData.line1} onChangeText={t => setFormData({ ...formData, line1: t })} />
+              <TextInput style={s.input} placeholder="Area / Street *" value={formData.line2 || ""} onChangeText={t => setFormData({ ...formData, line2: t })} />
               <TextInput style={s.input} placeholder="Nearby / Landmark (optional)" value={formData.landmark} onChangeText={t => setFormData({ ...formData, landmark: t })} />
               <TextInput style={s.input} placeholder="District *" value={formData.district} onChangeText={t => setFormData({ ...formData, district: t })} />
 
@@ -463,7 +464,7 @@ export default function Addresses() {
                 <TextInput style={[s.input, { flex: 1 }]} placeholder="Mobile No. *" keyboardType="phone-pad" maxLength={10} value={formData.phone} onChangeText={t => setFormData({ ...formData, phone: normalizeMobile(t) })} />
               </View>
 
-              <Text style={s.requiredNote}>* All fields are required except Nearby / Landmark.</Text>
+              <Text style={s.requiredNote}>* Mandatory field  ·  Nearby / Landmark is optional</Text>
 
               {gpsPrefillLoading && (
                 <View style={s.gpsLoadingRow}>
