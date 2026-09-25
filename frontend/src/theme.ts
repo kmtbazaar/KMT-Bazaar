@@ -75,8 +75,11 @@ export const FONT = {
   body: "System",
 };
 
-export const LOGO_URL =
-  "https://customer-assets.emergentagent.com/job_1ae74cf0-8aee-427c-ac11-8ee2e0303df6/artifacts/xvwo5fui_file_00000000af4c720b99befeb2888762a7.png";
+const REPO_ASSET_BASE =
+  "https://raw.githubusercontent.com/kmtbazaar/KMT-Bazaar/web-testing-fix/frontend/assets/images";
+
+export const LOGO_URL = `${REPO_ASSET_BASE}/splash-icon.png`;
+export const IMAGE_FALLBACK_URL = `${REPO_ASSET_BASE}/cat-banner.png`;
 
 // ===== SHADOWS & ANIMATED BORDER PRESETS =====
 export const shadow = {
