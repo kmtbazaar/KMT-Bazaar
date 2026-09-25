@@ -5,6 +5,7 @@ import { useFocusEffect, useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
+import * as Location from "expo-location";
 import { deliveryApi } from "@/src/roleApi";
 import { api } from "@/src/api";
 import { useAuth } from "@/src/AuthContext";
@@ -159,6 +160,51 @@ export default function DeliveryDashboard() {
   const active = mine.filter(o => o.status === "out_for_delivery");
   const history = mine.filter(o => o.status === "delivered");
   const display = tab === "available" ? available : tab === "active" ? active : history;
+  const activeOrderIds = active.map((o: any) => o.id).filter(Boolean).join("|");
+
+  useEffect(() => {
+    let subscription: Location.LocationSubscription | null = null;
+    let stopped = false;
+
+    const startLocationTracking = async () => {
+      if (!online || !activeOrderIds) return;
+
+      try {
+        const permission = await Location.requestForegroundPermissionsAsync();
+        if (stopped || permission.status !== "granted") return;
+
+        subscription = await Location.watchPositionAsync(
+          {
+            accuracy: Location.Accuracy.Balanced,
+            timeInterval: 5000,
+            distanceInterval: 15,
+          },
+          async (position) => {
+            if (stopped) return;
+            const location = {
+              latitude: position.coords.latitude,
+              longitude: position.coords.longitude,
+            };
+            await Promise.all(
+              activeOrderIds
+                .split("|")
+                .filter(Boolean)
+                .map((orderId) => deliveryApi.updateLocation(orderId, location).catch(() => null))
+            );
+          }
+        );
+      } catch (error) {
+        console.log("Delivery location tracking unavailable:", error);
+      }
+    };
+
+    startLocationTracking();
+
+    return () => {
+      stopped = true;
+      if (subscription) subscription.remove();
+    };
+  }, [online, activeOrderIds]);
 
   return (
     <View style={s.root} testID="delivery-dashboard">
