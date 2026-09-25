@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { View, Text, StyleSheet, Pressable, FlatList, TextInput, ActivityIndicator, Modal, Alert, ScrollView, TouchableOpacity, Keyboard, Platform } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
+import { useRouter, useLocalSearchParams } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Location from "expo-location";
 import { api } from "@/src/api";
@@ -35,12 +35,21 @@ export default function Addresses() {
     phone: "" 
   });
 
+  const params = useLocalSearchParams<{ mode?: string }>();
+
   useEffect(() => {
     loadAddresses();
+
+    if (params.mode !== "initial") {
+      AsyncStorage.removeItem("kmt_current_location");
+      return;
+    }
+
     (async () => {
       try {
         const raw = await AsyncStorage.getItem("kmt_current_location");
         if (!raw) return;
+
         const gps = JSON.parse(raw);
         const latitude = Number(gps?.latitude);
         const longitude = Number(gps?.longitude);
@@ -49,9 +58,14 @@ export default function Addresses() {
         await AsyncStorage.removeItem("kmt_current_location");
         setEditingId(null);
         setFormVisible(true);
-        setLocationCaptured({ latitude, longitude, accuracy: Number(gps?.accuracy) || undefined });
+        setLocationCaptured({
+          latitude,
+          longitude,
+          accuracy: Number(gps?.accuracy) || undefined,
+        });
+        setExistingLocationSaved(false);
         setGpsPrefillLoading(true);
-        setFormData((prev) => ({
+        setFormData(prev => ({
           ...prev,
           full_name: user?.name || prev.full_name,
           phone: user?.phone || prev.phone,
@@ -59,7 +73,7 @@ export default function Addresses() {
 
         try {
           const geo = await api.reverseGeocode(latitude, longitude);
-          setFormData((prev) => ({
+          setFormData(prev => ({
             ...prev,
             line1: geo?.line1 || prev.line1,
             district: geo?.district || prev.district,
@@ -67,18 +81,19 @@ export default function Addresses() {
             state: geo?.state || prev.state,
             pincode: geo?.pincode || prev.pincode,
           }));
-        } catch (geoError) {
-          console.log("Reverse geocode failed; GPS remains saved:", geoError);
+        } catch (error) {
+          console.log("Initial reverse geocode failed:", error);
           setLocationError("GPS captured. Please enter the address details manually.");
         } finally {
           setGpsPrefillLoading(false);
         }
-      } catch (e) {
-        console.log("GPS address prefill failed:", e);
+      } catch (error) {
+        console.log("Initial location setup failed:", error);
         setGpsPrefillLoading(false);
       }
     })();
-  }, [user?.name, user?.phone]);
+  }, [params.mode, user?.name, user?.phone]);
+
 
   const loadAddresses = async () => {
     setLoading(true);
@@ -227,17 +242,20 @@ export default function Addresses() {
     }
 
     try {
-      const location = locationCaptured || await getCurrentLocation();
-      const addressPayload = {
-        ...formData,
-        latitude: location.latitude,
-        longitude: location.longitude,
-      };
-
       if (editingId) {
-        await api.updateAddress(editingId, addressPayload);
+        await api.updateAddress(editingId, formData);
       } else {
-        await api.createAddress(addressPayload);
+        if (!locationCaptured) {
+          Alert.alert("Location Required", "Please set your current location before saving this address.");
+          return;
+        }
+
+        await api.createAddress({
+          ...formData,
+          latitude: locationCaptured.latitude,
+          longitude: locationCaptured.longitude,
+          is_default: addresses.length === 0,
+        });
       }
 
       setFormVisible(false);
@@ -245,12 +263,14 @@ export default function Addresses() {
       setLocationCaptured(null);
       setLocationError("");
       setExistingLocationSaved(false);
+      setGpsPrefillLoading(false);
       loadAddresses();
     } catch (e: any) {
       console.log("ADDRESS SAVE ERROR:", e);
-      Alert.alert("Location Required", e.message || "Could not fetch current location.");
+      Alert.alert("Address Error", e.message || "Could not save address.");
     }
   };
+
 
   // 🔥 FIXED DELETE HANDLER (WEB & MOBILE COMPATIBLE)
   const handleDelete = async (item: any) => {
