@@ -472,13 +472,18 @@ export default function Home() {
                   router.push(`/category/${item.category_id}` as any);
                 }
               }} style={s.banner}>
-              <Image
-                source={item.image && !brokenImages[`banner:${String(item.id)}`] ? { uri: item.image } : undefined}
-                style={s.bannerImg}
-                contentFit="cover"
-                onError={() => setBrokenImages(prev => ({ ...prev, [`banner:${String(item.id)}`]: true }))}
-              {(!item.image || brokenImages[`banner:${String(item.id)}`]) && <ImagePlaceholder type="banner" style={StyleSheet.absoluteFillObject} />}
-              />
+              <View style={s.bannerImgWrap}>
+                {item.image && !brokenImages[`banner:${String(item.id)}`] ? (
+                  <Image
+                    source={{ uri: item.image }}
+                    style={s.bannerImg}
+                    contentFit="cover"
+                    onError={() => setBrokenImages(prev => ({ ...prev, [`banner:${String(item.id)}`]: true }))}
+                  />
+                ) : (
+                  <ImagePlaceholder type="banner" style={StyleSheet.absoluteFillObject} />
+                )}
+              </View>
               
               {/* Animated Gradient Border Flash */}
               <Animated.View style={[s.bannerFlashBorder, animatedFlashStyle]} />
@@ -507,13 +512,16 @@ export default function Home() {
                 <View style={s.catCircleWrap}>
                   <Animated.View style={[s.catFlashBorder, animatedFlashStyle]} />
                   <View style={s.catCircle}>
-                    <Image
-                      source={c.image && !brokenImages[`cat:${String(c.id)}`] ? { uri: c.image } : undefined}
-                      style={s.catImg}
-                      contentFit="cover"
-                      onError={() => setBrokenImages(prev => ({ ...prev, [`cat:${String(c.id)}`]: true }))}
-                      {(!c.image || brokenImages[`cat:${String(c.id)}`]) && <ImagePlaceholder type="category" style={StyleSheet.absoluteFillObject} />}
-                    />
+                    {c.image && !brokenImages[`cat:${String(c.id)}`] ? (
+                      <Image
+                        source={{ uri: c.image }}
+                        style={s.catImg}
+                        contentFit="cover"
+                        onError={() => setBrokenImages(prev => ({ ...prev, [`cat:${String(c.id)}`]: true }))}
+                      />
+                    ) : (
+                      <ImagePlaceholder type="category" style={StyleSheet.absoluteFillObject} />
+                    )}
                   </View>
                 </View>
                 <Text style={s.catName} numberOfLines={1}>{c.name}</Text>
@@ -544,13 +552,16 @@ export default function Home() {
                 <Animated.View style={[s.storeFlashBorder, animatedFlashStyle]} />
                 
                 <View style={{ position: "relative" }}>
-                  <Image
-                    source={item.image && !brokenImages[`store:${String(item.id)}`] ? { uri: item.image } : undefined}
-                    style={s.storeImgSmall}
-                    contentFit="cover"
-                    onError={() => setBrokenImages(prev => ({ ...prev, [`store:${String(item.id)}`]: true }))}
-                    {(!item.image || brokenImages[`store:${String(item.id)}`]) && <ImagePlaceholder type="store" style={StyleSheet.absoluteFillObject} />}
-                  />
+                  {item.image && !brokenImages[`store:${String(item.id)}`] ? (
+                    <Image
+                      source={{ uri: item.image }}
+                      style={s.storeImgSmall}
+                      contentFit="cover"
+                      onError={() => setBrokenImages(prev => ({ ...prev, [`store:${String(item.id)}`]: true }))}
+                    />
+                  ) : (
+                    <ImagePlaceholder type="store" style={StyleSheet.absoluteFillObject} />
+                  )}
                   
                   {!isAvailable && (
                     <View style={s.offlineOverlay}>
@@ -667,6 +678,7 @@ const s = StyleSheet.create({
 
   /* Clean Banner Styling */
   banner: { width: BANNER_W, height: 155, borderRadius: RADIUS.lg, overflow: "hidden", backgroundColor: THEME.white, position: "relative", ...shadow.soft },
+  bannerImgWrap: { width: "100%", height: "100%", position: "relative" },
   bannerImg: { width: "100%", height: "100%" },
   bannerFlashBorder: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, borderRadius: RADIUS.lg, borderWidth: 2.5, borderColor: THEME.orangeBright, pointerEvents: "none" },
   bannerText: { position: "absolute", left: 16, bottom: 16, right: 16, alignItems: "flex-start" },
