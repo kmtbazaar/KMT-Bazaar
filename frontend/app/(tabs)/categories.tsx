@@ -5,9 +5,12 @@ import { useRouter, useNavigation } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { api } from "@/src/api";
-import { COLORS, IMAGE_FALLBACK_URL, RADIUS, SPACING } from "@/src/theme";
+import { COLORS, RADIUS, SPACING } from "@/src/theme";
+import ImagePlaceholder from "@/src/components/ImagePlaceholder";
 import ProductCard from "@/src/components/ProductCard";
+import ImagePlaceholder from "@/src/components/ImagePlaceholder";
 import CheckoutBar from "@/src/components/CheckoutBar";
+import ImagePlaceholder from "@/src/components/ImagePlaceholder";
 import { useCart } from "@/src/CartContext";
 
 const RAIL_WIDTH = 88;
