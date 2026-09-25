@@ -2471,6 +2471,168 @@ async def admin_reject_store(store_id: str, _=Depends(require_roles("admin"))):
     return {"ok": True, "message": "Store Rejected and Deleted"}
 
 
+
+# ------------------ SERVICE MARKETPLACE ------------------
+SERVICE_TYPES = {
+    "holiday": {
+        "id": "holiday",
+        "name": "Holiday",
+        "icon": "airplane-takeoff",
+        "description": "Holiday packages and trip bookings",
+    },
+    "car_rental": {
+        "id": "car_rental",
+        "name": "Car Rental",
+        "icon": "car",
+        "description": "Cars, rentals and trip bookings",
+    },
+    "daily_service": {
+        "id": "daily_service",
+        "name": "Daily Services",
+        "icon": "tools",
+        "description": "Repair, mistri, labour and local home services",
+    },
+}
+
+
+class ServiceBookingIn(BaseModel):
+    service_type: ServiceType
+    service_id: str
+    booking_date: str
+    booking_time: str = ""
+    address_id: Optional[str] = None
+    quantity: int = 1
+    notes: str = ""
+    extra: Dict[str, Any] = {}
+
+
+@api.get("/service-types")
+async def service_types():
+    return list(SERVICE_TYPES.values())
+
+
+@api.get("/services/catalog/{service_type}")
+async def service_catalog(service_type: ServiceType):
+    items = await db.vendor_services.find(
+        {"service_type": service_type.value, "active": True},
+        {"_id": 0}
+    ).sort("order", 1).to_list(200)
+    return items
+
+
+@api.get("/services/catalog/{service_type}/{service_id}")
+async def service_catalog_detail(service_type: ServiceType, service_id: str):
+    item = await db.vendor_services.find_one(
+        {"id": service_id, "service_type": service_type.value, "active": True},
+        {"_id": 0}
+    )
+    if not item:
+        raise HTTPException(404, "Service not found")
+    return item
+
+
+@api.post("/service-bookings")
+async def create_service_booking(data: ServiceBookingIn, current=Depends(require_roles("customer"))):
+    service = await db.vendor_services.find_one(
+        {"id": data.service_id, "service_type": data.service_type.value, "active": True},
+        {"_id": 0}
+    )
+    if not service:
+        raise HTTPException(404, "Service is not available")
+    booking_id = "sbk-" + uuid.uuid4().hex[:10]
+    status_value = "pending"
+    doc = {
+        "id": booking_id,
+        "customer_id": current["id"],
+        "customer_name": current.get("name", ""),
+        "vendor_id": service.get("vendor_id"),
+        "service_id": service["id"],
+        "service_type": data.service_type.value,
+        "service_name": service.get("name", ""),
+        "vendor_name": service.get("vendor_name", ""),
+        "booking_date": data.booking_date,
+        "booking_time": data.booking_time,
+        "address_id": data.address_id,
+        "quantity": max(1, data.quantity),
+        "notes": data.notes,
+        "extra": data.extra,
+        "status": status_value,
+        "created_at": now_iso(),
+        "updated_at": now_iso(),
+    }
+    await db.service_bookings.insert_one(dict(doc))
+    return doc
+
+
+@api.get("/service-bookings")
+async def list_service_bookings(current=Depends(require_roles("customer"))):
+    return await db.service_bookings.find(
+        {"customer_id": current["id"]},
+        {"_id": 0}
+    ).sort("created_at", -1).to_list(200)
+
+
+@api.get("/service-bookings/{booking_id}")
+async def get_service_booking(booking_id: str, current=Depends(get_current_user)):
+    query = {"id": booking_id}
+    if current.get("role") == Role.CUSTOMER.value:
+        query["customer_id"] = current["id"]
+    elif current.get("role") == Role.VENDOR.value:
+        query["vendor_id"] = current["id"]
+    else:
+        raise HTTPException(403, "Access denied")
+    doc = await db.service_bookings.find_one(query, {"_id": 0})
+    if not doc:
+        raise HTTPException(404, "Booking not found")
+    return doc
+
+
+@api.post("/vendor/service-bookings/{booking_id}/status")
+async def vendor_service_booking_status(
+    booking_id: str,
+    data: OrderStatusIn,
+    current=Depends(require_roles("vendor"))
+):
+    _require_vendor_type(current, "service")
+    booking = await db.service_bookings.find_one(
+        {"id": booking_id, "vendor_id": current["id"]},
+        {"_id": 0}
+    )
+    if not booking:
+        raise HTTPException(404, "Booking not found")
+    allowed = {
+        "holiday": {"pending", "confirmed", "travel_scheduled", "completed", "cancelled"},
+        "car_rental": {"booking_requested", "accepted", "vehicle_assigned", "trip_started", "completed", "cancelled"},
+        "daily_service": {"booking_requested", "provider_accepted", "provider_on_the_way", "service_started", "completed", "cancelled"},
+    }
+    st = data.status.strip().lower()
+    if st not in allowed.get(booking.get("service_type"), set()):
+        raise HTTPException(400, "Invalid status for this service type")
+    await db.service_bookings.update_one(
+        {"id": booking_id, "vendor_id": current["id"]},
+        {"$set": {"status": st, "updated_at": now_iso()}}
+    )
+    return await db.service_bookings.find_one({"id": booking_id}, {"_id": 0})
+
+
+@api.get("/vendor/service-bookings")
+async def vendor_service_bookings(current=Depends(require_roles("vendor"))):
+    _require_vendor_type(current, "service")
+    return await db.service_bookings.find(
+        {"vendor_id": current["id"]},
+        {"_id": 0}
+    ).sort("created_at", -1).to_list(200)
+
+
+@api.get("/vendor/service-type")
+async def vendor_service_type(current=Depends(require_roles("vendor"))):
+    _require_vendor_type(current, "service")
+    return {
+        "service_type": current.get("service_type") or ServiceType.DAILY_SERVICE.value,
+        "name": SERVICE_TYPES.get(current.get("service_type") or ServiceType.DAILY_SERVICE.value, {}).get("name", "Daily Services"),
+    }
+
+
 # ------------------ VENDOR SERVICES ------------------
 def _require_vendor_type(current, expected: str):
     if (current.get("vendor_type") or "store") != expected:
@@ -2492,9 +2654,12 @@ async def vendor_create_service(
 ):
     _require_vendor_type(current, "service")
     service_id = "vsvc-" + uuid.uuid4().hex[:8]
+    _require_vendor_type(current, "service")
+    vendor_service_type = current.get("service_type") or ServiceType.DAILY_SERVICE.value
     doc = {
         "id": service_id,
         **data.dict(),
+        "service_type": vendor_service_type,
         "vendor_id": current["id"],
         "created_at": now_iso(),
         "updated_at": now_iso(),
