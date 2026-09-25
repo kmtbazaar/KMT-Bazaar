@@ -1,11 +1,12 @@
 import React, { useEffect, useState, useCallback, useRef } from "react";
-import { View, Text, ScrollView, StyleSheet, Pressable, FlatList, Dimensions, RefreshControl, Platform } from "react-native";
+import { View, Text, ScrollView, StyleSheet, Pressable, FlatList, Dimensions, RefreshControl, Platform, Alert } from "react-native";
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRouter, useFocusEffect } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import * as Location from "expo-location";
 import Animated, { 
   FadeIn, 
   FadeOut, 
@@ -59,8 +60,10 @@ export default function Home() {
   const [bannerIndex, setBannerIndex] = useState(0);
   const bannerListRef = useRef<FlatList<any>>(null);
 
-  // Dynamic Address Fallback State
+  // Dynamic Address + live GPS state
   const [selectedAddress, setSelectedAddress] = useState<string>("Home · Karmatar");
+  const [locationLoading, setLocationLoading] = useState(false);
+  const [locationActive, setLocationActive] = useState(false);
 
   // Sync selected address automatically whenever user returns to Home Screen
   useFocusEffect(
@@ -101,6 +104,104 @@ export default function Home() {
       return () => { isMounted = false; };
     }, [user])
   );
+
+  const handleLiveLocationPress = useCallback(async () => {
+    if (locationLoading) return;
+
+    setLocationLoading(true);
+    try {
+      let coords: { latitude: number; longitude: number };
+
+      if (Platform.OS === "web") {
+        if (typeof window !== "undefined" && !window.isSecureContext) {
+          throw new Error("Location requires a secure HTTPS connection.");
+        }
+
+        if (!navigator.geolocation) {
+          throw new Error("This browser does not support location access.");
+        }
+
+        coords = await new Promise<{ latitude: number; longitude: number }>((resolve, reject) => {
+          navigator.geolocation.getCurrentPosition(
+            (position) => resolve({
+              latitude: position.coords.latitude,
+              longitude: position.coords.longitude,
+            }),
+            (error) => {
+              const messages: Record<number, string> = {
+                1: "Location permission was denied. Please allow location access for KMT Bazaar.",
+                2: "Your device could not determine the current location. Turn on GPS/location and try again.",
+                3: "Location request timed out. Please try again.",
+              };
+              reject(new Error(messages[error.code] || "Could not get your current location."));
+            },
+            {
+              enableHighAccuracy: true,
+              timeout: 20000,
+              maximumAge: 0,
+            }
+          );
+        });
+      } else {
+        const permission = await Location.requestForegroundPermissionsAsync();
+        if (permission.status !== "granted") {
+          throw new Error("Location permission is required. Please allow KMT Bazaar to use your location.");
+        }
+
+        const current = await Location.getCurrentPositionAsync({
+          accuracy: Location.Accuracy.High,
+        });
+
+        coords = {
+          latitude: current.coords.latitude,
+          longitude: current.coords.longitude,
+        };
+      }
+
+      if (
+        !Number.isFinite(coords.latitude) ||
+        !Number.isFinite(coords.longitude) ||
+        coords.latitude < -90 ||
+        coords.latitude > 90 ||
+        coords.longitude < -180 ||
+        coords.longitude > 180
+      ) {
+        throw new Error("Invalid current location received.");
+      }
+
+      const gpsSelection = {
+        id: "live-" + Date.now(),
+        label: "Current location",
+        line1: "Using your current GPS location",
+        city: "",
+        state: "",
+        pincode: "",
+        phone: user?.phone || "",
+        full_name: user?.name || "",
+        latitude: coords.latitude,
+        longitude: coords.longitude,
+        source: "device-gps",
+        captured_at: new Date().toISOString(),
+      };
+
+      await AsyncStorage.setItem("kmt_current_location", JSON.stringify(gpsSelection));
+      setSelectedAddress("Current location");
+      setLocationActive(true);
+
+      // Existing address page remains the place where complete delivery details are saved.
+      router.push("/addresses" as any);
+    } catch (e: any) {
+      console.log("HOME LIVE LOCATION ERROR:", e);
+      const message = e?.message || "Could not fetch your current location.";
+      if (Platform.OS === "web" && typeof window !== "undefined") {
+        window.alert(message);
+      } else {
+        Alert.alert("Location", message);
+      }
+    } finally {
+      setLocationLoading(false);
+    }
+  }, [locationLoading, router, user?.name, user?.phone]);
 
   // Animated Search Bar Placeholder Index
   const [placeholderIdx, setPlaceholderIdx] = useState(0);
@@ -202,16 +303,23 @@ export default function Home() {
             style={s.locWrap} 
             testID="location-selector"
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-            onPress={() => router.push("/addresses" as any)}
+            onPress={handleLiveLocationPress}
+            disabled={locationLoading}
           >
             <View style={s.locIconBg}>
               <MaterialCommunityIcons name="map-marker-radius" size={20} color={THEME.orange} />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={s.locLabel}>Deliver to</Text>
+              <Text style={s.locLabel}>
+                {locationLoading ? "Finding your location..." : locationActive ? "Current location" : "Deliver to"}
+              </Text>
               <Text style={s.locValue} numberOfLines={1}>
-                {selectedAddress}{" "}
-                <MaterialCommunityIcons name="chevron-down" size={16} color={THEME.white} />
+                {locationLoading ? "Detecting GPS..." : selectedAddress}{" "}
+                <MaterialCommunityIcons
+                  name={locationLoading ? "crosshairs-gps" : locationActive ? "crosshairs-gps" : "chevron-down"}
+                  size={16}
+                  color={THEME.white}
+                />
               </Text>
             </View>
           </Pressable>
