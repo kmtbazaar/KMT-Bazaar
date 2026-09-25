@@ -308,6 +308,12 @@ export const api = {
   stores: () =>
     apiFetch<any[]>("/stores"),
 
+  vendorServices: () =>
+    apiFetch<any[]>("/vendor-services"),
+
+  vendorService: (id: string) =>
+    apiFetch<any>(`/vendor-services/${encodeURIComponent(id)}`),
+
   products: (
   params: {
     category?: string;
