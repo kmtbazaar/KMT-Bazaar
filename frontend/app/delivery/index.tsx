@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { Animated, View, Text, StyleSheet, Pressable, Switch, RefreshControl, ScrollView } from "react-native";
+import { Animated, View, Text, StyleSheet, Pressable, Switch, RefreshControl, ScrollView, Platform, Linking } from "react-native";
 import { Image } from "expo-image";
 import { useFocusEffect, useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
@@ -9,6 +9,28 @@ import { deliveryApi } from "@/src/roleApi";
 import { api } from "@/src/api";
 import { useAuth } from "@/src/AuthContext";
 import { COLORS, LOGO_URL, RADIUS, SPACING } from "@/src/theme";
+import { WebView } from "react-native-webview";
+
+function CustomerLocationMap({ latitude, longitude }: { latitude: number; longitude: number }) {
+  const lat = Number(latitude);
+  const lon = Number(longitude);
+  if (!Number.isFinite(lat) || !Number.isFinite(lon) || lat < -90 || lat > 90 || lon < -180 || lon > 180) return null;
+
+  const delta = 0.0045;
+  const mapUrl = "https://www.openstreetmap.org/export/embed.html?bbox=" +
+    (lon - delta) + "," + (lat - delta) + "," + (lon + delta) + "," + (lat + delta) +
+    "&layer=mapnik&marker=" + lat + "," + lon;
+
+  if (Platform.OS === "web") {
+    return (
+      <View style={s.mapWrap}>
+        <iframe title="Customer delivery location map" src={mapUrl} loading="lazy" style={{ width: "100%", height: "100%", border: "0", display: "block" }} />
+      </View>
+    );
+  }
+
+  return <View style={s.mapWrap}><WebView source={{ uri: mapUrl }} originWhitelist={["*"]} style={s.map} /></View>;
+}
 
 export default function DeliveryDashboard() {
   const router = useRouter();
@@ -295,6 +317,36 @@ export default function DeliveryDashboard() {
                     {item.items?.length || 0} item{(item.items?.length || 0) > 1 ? "s" : ""} · {item.payment_method?.toUpperCase()}
                   </Text>
 
+                  {tab === "active" && item.customer_location?.latitude != null && item.customer_location?.longitude != null && (
+                    <View style={s.locationSection}>
+                      <View style={s.locationHeader}>
+                        <View style={s.locationIcon}>
+                          <MaterialCommunityIcons name="map-marker-radius" size={18} color={COLORS.brand} />
+                        </View>
+                        <View style={{ flex: 1 }}>
+                          <Text style={s.locationTitle}>Customer delivery location</Text>
+                          <Text style={s.locationMeta}>
+                            {Number(item.customer_location.latitude).toFixed(5)}, {Number(item.customer_location.longitude).toFixed(5)}
+                          </Text>
+                        </View>
+                      </View>
+
+                      <CustomerLocationMap
+                        latitude={Number(item.customer_location.latitude)}
+                        longitude={Number(item.customer_location.longitude)}
+                      />
+
+                      <Pressable
+                        onPress={() => Linking.openURL("https://www.google.com/maps?q=" + item.customer_location.latitude + "," + item.customer_location.longitude)}
+                        style={s.openMapBtn}
+                      >
+                        <MaterialCommunityIcons name="navigation-variant" size={16} color={COLORS.brand} />
+                        <Text style={s.openMapText}>Open in Google Maps</Text>
+                        <MaterialCommunityIcons name="open-in-new" size={16} color={COLORS.brand} />
+                      </Pressable>
+                    </View>
+                  )}
+
                   {tab === "available" && (
                     <Pressable
                       testID={`claim-${item.id}`}
@@ -391,6 +443,16 @@ const s = StyleSheet.create({
   btnAccent: { backgroundColor: COLORS.accent },
   btnSuccess: { backgroundColor: COLORS.success },
   btnText: { color: "#fff", fontWeight: "800", fontSize: 13 },
+  locationSection: { marginTop: 8, padding: 10, borderRadius: RADIUS.md, backgroundColor: "#EFF6FF", borderWidth: 1, borderColor: "#BFDBFE" },
+  locationHeader: { flexDirection: "row", alignItems: "center", gap: 8 },
+  locationIcon: { width: 30, height: 30, borderRadius: 15, backgroundColor: "#DBEAFE", alignItems: "center", justifyContent: "center" },
+  locationTitle: { color: COLORS.brand, fontWeight: "800", fontSize: 11 },
+  locationMeta: { color: COLORS.textSecondary, fontSize: 10, marginTop: 2 },
+  mapWrap: { width: "100%", height: 190, overflow: "hidden", borderRadius: RADIUS.md, marginTop: 8, backgroundColor: "#E5E7EB" },
+  map: { flex: 1 },
+  openMapBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 7, marginTop: 8, paddingVertical: 9, borderRadius: RADIUS.pill, backgroundColor: "#fff", borderWidth: 1, borderColor: "#93C5FD" },
+  openMapText: { color: COLORS.brand, fontWeight: "800", fontSize: 11 },
+
 
   incomingPopup: {
     position: "absolute",
