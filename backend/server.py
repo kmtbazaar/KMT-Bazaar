@@ -95,6 +95,12 @@ class VendorType(str, Enum):
     SERVICE = "service"
 
 
+class ServiceType(str, Enum):
+    HOLIDAY = "holiday"
+    CAR_RENTAL = "car_rental"
+    DAILY_SERVICE = "daily_service"
+
+
 def now_iso():
     return datetime.now(timezone.utc).isoformat()
 
@@ -121,6 +127,7 @@ class RegisterIn(BaseModel):
     password: str
     role: Role = Role.CUSTOMER
     vendor_type: VendorType = VendorType.STORE
+    service_type: Optional[ServiceType] = None
 
 
 class LoginIn(BaseModel):
@@ -169,6 +176,7 @@ class UserOut(BaseModel):
     role: Role
     avatar: Optional[str] = None
     vendor_type: Optional[VendorType] = None
+    service_type: Optional[ServiceType] = None
 
 
 class AuthOut(BaseModel):
@@ -332,6 +340,11 @@ def user_to_out(u: dict) -> dict:
         "role": u.get("role", "customer"),
         "avatar": u.get("avatar"),
         "vendor_type": (u.get("vendor_type") or "store") if u.get("role") == Role.VENDOR.value else None,
+        "service_type": (
+            (u.get("service_type") or ServiceType.DAILY_SERVICE.value)
+            if u.get("role") == Role.VENDOR.value and (u.get("vendor_type") or "store") == VendorType.SERVICE.value
+            else None
+        ),
     }
 
 
@@ -354,6 +367,11 @@ async def register(data: RegisterIn):
         "password": hash_password(data.password),
         "role": data.role.value,
         "vendor_type": data.vendor_type.value if data.role == Role.VENDOR else None,
+        "service_type": (
+            (data.service_type.value if data.service_type else ServiceType.DAILY_SERVICE.value)
+            if data.role == Role.VENDOR and data.vendor_type == VendorType.SERVICE
+            else None
+        ),
         "avatar": None,
         "created_at": now_iso(),
     }
