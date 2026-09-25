@@ -1,12 +1,11 @@
 import React, { useEffect, useState, useCallback, useRef } from "react";
-import { View, Text, ScrollView, StyleSheet, Pressable, FlatList, Dimensions, RefreshControl, Platform, Alert } from "react-native";
+import { View, Text, ScrollView, StyleSheet, Pressable, FlatList, Dimensions, RefreshControl, Platform, ActivityIndicator } from "react-native";
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRouter, useFocusEffect } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import * as Location from "expo-location";
 import Animated, { 
   FadeIn, 
   FadeOut, 
@@ -60,57 +59,73 @@ export default function Home() {
   const [bannerIndex, setBannerIndex] = useState(0);
   const bannerListRef = useRef<FlatList<any>>(null);
 
-  // Customer home location state
-  const [selectedAddress, setSelectedAddress] = useState<string>("Home · Karmatar");
-  const [locationLoading, setLocationLoading] = useState(false);
-  const [locationActive, setLocationActive] = useState(false);
-  const [locationError, setLocationError] = useState("");
+  // Customer delivery location state
+  const [selectedAddress, setSelectedAddress] = useState("Set your delivery location");
+  const [locationReady, setLocationReady] = useState(false);
+  const [initialLocationLoading, setInitialLocationLoading] = useState(false);
+  const [initialLocationError, setInitialLocationError] = useState("");
 
-  // Sync selected address automatically whenever user returns to Home Screen
+  // Existing customers use their saved/default address. New customers must set location first.
   useFocusEffect(
     useCallback(() => {
-      let isMounted = true;
-      const loadActiveAddress = async () => {
+      let mounted = true;
+
+      const syncDeliveryLocation = async () => {
         try {
-          // 1. Check local storage selection
-          const activeAddr = await AsyncStorage.getItem("selected_address");
-          if (activeAddr) {
-            const parsed = JSON.parse(activeAddr);
-            const labelStr = parsed.label || "Home";
-            const locationStr = parsed.line1 || parsed.city || "Karmatar";
-            if (isMounted) setSelectedAddress(`${labelStr} · ${locationStr}`);
-            return;
+          const stored = await AsyncStorage.getItem("selected_address");
+
+          if (stored) {
+            const parsed = JSON.parse(stored);
+            if (parsed?.has_location !== false && parsed?.id) {
+              const label = parsed.label || "Home";
+              const place = parsed.line1 || parsed.city || "Saved address";
+              if (mounted) {
+                setSelectedAddress(`${label} · ${place}`);
+                setLocationReady(true);
+              }
+              return;
+            }
           }
 
-          // 2. Fallback to API user addresses if no local selection
-          const addrList = await api.addresses();
-          if (addrList && addrList.length > 0) {
-            const def = addrList.find((a: any) => a.is_default) || addrList[0];
-            const labelStr = def.label || "Home";
-            const locationStr = def.line1 || def.city || "Karmatar";
-            if (isMounted) setSelectedAddress(`${labelStr} · ${locationStr}`);
-            await AsyncStorage.setItem("selected_address", JSON.stringify(def));
-            return;
+          const list = await api.addresses();
+
+          if (list?.length) {
+            const valid = list.find((a: any) => a.has_location && a.is_default) ||
+              list.find((a: any) => a.has_location) ||
+              list.find((a: any) => a.is_default);
+
+            if (valid?.has_location) {
+              const label = valid.label || "Home";
+              const place = valid.line1 || valid.city || "Saved address";
+              if (mounted) {
+                setSelectedAddress(`${label} · ${place}`);
+                setLocationReady(true);
+                await AsyncStorage.setItem("selected_address", JSON.stringify(valid));
+              }
+              return;
+            }
           }
 
-          // 3. Fallback to User Context
-          if (user?.address && isMounted) {
-            setSelectedAddress(user.address);
+          if (mounted) {
+            setLocationReady(false);
+            setSelectedAddress("Set your delivery location");
           }
-        } catch (err) {
-          console.log("Error reading active address:", err);
+        } catch (error) {
+          console.log("Delivery location sync failed:", error);
+          if (mounted) setLocationReady(false);
         }
       };
-      loadActiveAddress();
-      return () => { isMounted = false; };
+
+      syncDeliveryLocation();
+      return () => { mounted = false; };
     }, [user])
   );
 
-  const handleLiveLocationPress = useCallback(async () => {
-    if (locationLoading) return;
+  const captureInitialLocation = useCallback(async () => {
+    if (initialLocationLoading) return;
 
-    setLocationLoading(true);
-    setLocationError("");
+    setInitialLocationLoading(true);
+    setInitialLocationError("");
 
     try {
       let coords: { latitude: number; longitude: number; accuracy?: number };
@@ -119,7 +134,6 @@ export default function Home() {
         if (typeof window !== "undefined" && !window.isSecureContext) {
           throw new Error("Location requires a secure HTTPS connection.");
         }
-
         if (!navigator.geolocation) {
           throw new Error("This browser does not support location access.");
         }
@@ -133,7 +147,7 @@ export default function Home() {
             if (settled) return;
             settled = true;
             if (watchId !== null) navigator.geolocation.clearWatch(watchId);
-            clearTimeout(timeoutId);
+            window.clearTimeout(timeoutId);
             if (error) reject(error);
             else resolve(value || best as { latitude: number; longitude: number; accuracy?: number });
           };
@@ -142,7 +156,7 @@ export default function Home() {
             if (best && Number.isFinite(best.accuracy) && (best.accuracy as number) <= 150) {
               finish(best);
             } else {
-              finish(undefined, new Error("Precise GPS is not accurate enough yet. Keep Location/GPS on, step outdoors or near a window, and try again."));
+              finish(undefined, new Error("Precise GPS is not available yet. Turn on Location/GPS and try again."));
             }
           }, 30000);
 
@@ -165,22 +179,17 @@ export default function Home() {
             },
             (error) => {
               const messages: Record<number, string> = {
-                1: "Location permission was denied. Allow location access for KMT Bazaar in your browser site settings.",
-                2: "Your device/browser could not determine a precise location. Turn on Location/GPS and try again.",
-                3: "Precise GPS timed out. Keep Location/GPS on and tap the location button again.",
+                1: "Location permission was denied. Allow KMT Bazaar to use your location.",
+                2: "Turn on your device Location/GPS and try again.",
+                3: "Precise GPS timed out. Try again with Location/GPS on.",
               };
-              finish(undefined, new Error(messages[error?.code] || error?.message || "Could not get your precise current location."));
+              finish(undefined, new Error(messages[error?.code] || error?.message || "Could not get your current location."));
             },
-            {
-              enableHighAccuracy: true,
-              timeout: 30000,
-              maximumAge: 0,
-            }
+            { enableHighAccuracy: true, timeout: 30000, maximumAge: 0 }
           );
         });
       } else {
         const permission = await Location.requestForegroundPermissionsAsync();
-
         if (permission.status !== "granted") {
           throw new Error("Location permission is required. Please allow KMT Bazaar to use your location.");
         }
@@ -196,21 +205,10 @@ export default function Home() {
         };
       }
 
-      if (
-        !Number.isFinite(coords.latitude) ||
-        !Number.isFinite(coords.longitude) ||
-        coords.latitude < -90 ||
-        coords.latitude > 90 ||
-        coords.longitude < -180 ||
-        coords.longitude > 180
-      ) {
-        throw new Error("Invalid current location received.");
-      }
-
-      const gpsSelection = {
-        id: "live-" + Date.now(),
-        label: "Current location",
-        line1: "Using your current GPS location",
+      await AsyncStorage.setItem("kmt_current_location", JSON.stringify({
+        id: "initial-" + Date.now(),
+        label: "Home",
+        line1: "",
         city: "",
         state: "",
         pincode: "",
@@ -221,22 +219,46 @@ export default function Home() {
         accuracy: coords.accuracy,
         source: "device-gps",
         captured_at: new Date().toISOString(),
-      };
+      }));
 
-      await AsyncStorage.setItem("kmt_current_location", JSON.stringify(gpsSelection));
-      setSelectedAddress("Current location");
-      setLocationActive(true);
-      setLocationError("");
-
-      // Keep the full delivery-address form as the next step.
-      router.push("/addresses" as any);
-    } catch (e: any) {
-      console.log("HOME LIVE LOCATION ERROR:", e);
-      setLocationError(e?.message || "Could not fetch your current location.");
+      router.push({ pathname: "/addresses", params: { mode: "initial" } } as any);
+    } catch (error: any) {
+      console.log("INITIAL LOCATION ERROR:", error);
+      setInitialLocationError(error?.message || "Could not fetch your current location.");
     } finally {
-      setLocationLoading(false);
+      setInitialLocationLoading(false);
     }
-  }, [locationLoading, router, user?.name, user?.phone]);
+  }, [initialLocationLoading, router, user?.name, user?.phone]);
+
+  const handleHomeLocationPress = useCallback(() => {
+    router.push("/addresses" as any);
+  }, [router]);
+
+  // Marketplace content loads only after a delivery location is ready.
+  const load = useCallback(async () => {
+    if (!locationReady) return;
+
+    try {
+      const [b, c, s, t, u] = await Promise.all([
+        api.banners(),
+        api.categories(),
+        api.stores(),
+        api.products({ trending: true }),
+        api.unreadCount(),
+      ]);
+      setBanners(b || []);
+      setCats(c || []);
+      setStores(s || []);
+      setTrending(t || []);
+      setUnread(u?.count || 0);
+    } catch (e) {
+      console.log("load err", e);
+    }
+  }, [locationReady]);
+
+  useEffect(() => {
+    if (locationReady) load();
+  }, [locationReady, load]);
 
   // Animated Search Bar Placeholder Index
   const [placeholderIdx, setPlaceholderIdx] = useState(0);
@@ -250,17 +272,6 @@ export default function Home() {
       bannerListRef.current?.scrollToIndex({ index: bannerIndex, animated: true });
     }
   }, [bannerIndex, banners.length]);
-
-  const load = useCallback(async () => {
-    try {
-      const [b, c, s, t, u] = await Promise.all([
-        api.banners(), api.categories(), api.stores(), api.products({ trending: true }), api.unreadCount(),
-      ]);
-      setBanners(b || []); setCats(c || []); setStores(s || []); setTrending(t || []); setUnread(u?.count || 0);
-    } catch (e) { console.log("load err", e); }
-  }, []);
-
-  useEffect(() => { load(); }, [load]);
 
   // Automatic banner carousel
   useEffect(() => {
@@ -338,34 +349,18 @@ export default function Home() {
             style={s.locWrap} 
             testID="location-selector"
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-            onPress={handleLiveLocationPress}
-            disabled={locationLoading}
+            onPress={handleHomeLocationPress}
           >
             <View style={s.locIconBg}>
               <MaterialCommunityIcons name="map-marker-radius" size={20} color={THEME.orange} />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={s.locLabel}>
-                {locationLoading ? "Finding your location..." : locationActive ? "Current location" : "Deliver to"}
-              </Text>
+              <Text style={s.locLabel}>Deliver to</Text>
               <Text style={s.locValue} numberOfLines={1}>
-                {locationLoading
-                  ? "Detecting GPS..."
-                  : locationError
-                    ? "Tap to retry location"
-                    : selectedAddress}{" "}
-                <MaterialCommunityIcons
-                  name={locationLoading ? "crosshairs-gps" : locationActive ? "crosshairs-gps" : "chevron-down"}
-                  size={16}
-                  color={THEME.white}
-                />
+                {selectedAddress}{" "}
+                <MaterialCommunityIcons name="chevron-down" size={16} color={THEME.white} />
               </Text>
             </View>
-            {Boolean(locationError) && !locationLoading && (
-              <Text style={s.locationErrorText} numberOfLines={2}>
-                {locationError}
-              </Text>
-            )}
           </Pressable>
 
           {/* Animated Notification Bell on Top Right */}
@@ -406,17 +401,50 @@ export default function Home() {
         </Pressable>
       </SafeAreaView>
 
-      <ScrollView
-        contentContainerStyle={{ paddingBottom: 120, flexGrow: 1 }}
-        refreshControl={
-          Platform.OS === 'web' ? undefined : (
-            <RefreshControl tintColor={THEME.orange} refreshing={refreshing} onRefresh={onRefresh} />
-          )
-        }
-        showsVerticalScrollIndicator={false}
-        nestedScrollEnabled={true}
-        style={Platform.OS === 'web' ? ({ height: '100%', overflowY: 'auto', touchAction: 'pan-y' } as any) : {}}
-      >
+      {!locationReady ? (
+        <View style={s.locationGate}>
+          <View style={s.locationGateCard}>
+            <View style={s.locationGateIcon}>
+              <MaterialCommunityIcons name="map-marker-radius" size={34} color={THEME.orange} />
+            </View>
+            <Text style={s.locationGateTitle}>Set your delivery location</Text>
+            <Text style={s.locationGateText}>
+              KMT Bazaar needs your current location to show stores and products available for delivery near you.
+            </Text>
+            <Pressable
+              onPress={captureInitialLocation}
+              disabled={initialLocationLoading}
+              style={[s.locationGateButton, initialLocationLoading && { opacity: 0.7 }]}
+            >
+              {initialLocationLoading ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <MaterialCommunityIcons name="crosshairs-gps" size={19} color="#fff" />
+              )}
+              <Text style={s.locationGateButtonText}>
+                {initialLocationLoading ? "DETECTING LOCATION..." : "USE MY CURRENT LOCATION"}
+              </Text>
+            </Pressable>
+            {!!initialLocationError && (
+              <Text style={s.locationGateError}>{initialLocationError}</Text>
+            )}
+            <Text style={s.locationGatePrivacy}>
+              Your exact delivery GPS is used for delivery and is not shown to other customers.
+            </Text>
+          </View>
+        </View>
+      ) : (
+        <ScrollView
+          contentContainerStyle={{ paddingBottom: 120, flexGrow: 1 }}
+          refreshControl={
+            Platform.OS === 'web' ? undefined : (
+              <RefreshControl tintColor={THEME.orange} refreshing={refreshing} onRefresh={onRefresh} />
+            )
+          }
+          showsVerticalScrollIndicator={false}
+          nestedScrollEnabled={true}
+          style={Platform.OS === 'web' ? ({ height: '100%', overflowY: 'auto', touchAction: 'pan-y' } as any) : {}}
+        >
 
         {/* Clean Banner Carousel without Dull Overlays */}
         <FlatList
@@ -567,6 +595,7 @@ export default function Home() {
           </LinearGradient>
         </View>
       </ScrollView>
+      )}
 
       {/* Floating Checkout Bar */}
       <CheckoutBar />
@@ -587,6 +616,15 @@ function SectionTitle({ title, subtitle }: { title: string; subtitle?: string })
 }
 
 const s = StyleSheet.create({
+  locationGate: { flex: 1, justifyContent: "center", alignItems: "center", paddingHorizontal: 20, paddingVertical: 40, backgroundColor: THEME.whiteBg },
+  locationGateCard: { width: "100%", maxWidth: 460, backgroundColor: "#fff", borderRadius: 24, padding: 24, alignItems: "center", borderWidth: 1, borderColor: THEME.borderSoft },
+  locationGateIcon: { width: 72, height: 72, borderRadius: 36, alignItems: "center", justifyContent: "center", backgroundColor: "#FFF1E8", marginBottom: 14 },
+  locationGateTitle: { fontSize: 22, fontWeight: "900", color: THEME.black, textAlign: "center" },
+  locationGateText: { marginTop: 8, color: THEME.blackMuted, fontSize: 14, lineHeight: 21, textAlign: "center" },
+  locationGateButton: { marginTop: 20, width: "100%", flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, backgroundColor: THEME.orange, paddingVertical: 14, borderRadius: 14 },
+  locationGateButtonText: { color: "#fff", fontSize: 12, fontWeight: "900" },
+  locationGateError: { marginTop: 10, color: "#B91C1C", fontSize: 11, lineHeight: 16, textAlign: "center" },
+  locationGatePrivacy: { marginTop: 12, color: THEME.blackMuted, fontSize: 10, lineHeight: 15, textAlign: "center" },
   root: { flex: 1, backgroundColor: THEME.whiteBg },
   /* Header Height Restricted strictly till search box */
   headerBg: { position: "absolute", top: 0, left: 0, right: 0, height: 155, borderBottomLeftRadius: 18, borderBottomRightRadius: 18 },
