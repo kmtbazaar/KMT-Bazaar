@@ -16,6 +16,26 @@ export const adminApi = {
       method: "POST",
     }),
 
+  vendorServices: () =>
+    apiFetch<any[]>("/admin/vendor-services"),
+
+  createVendorService: (data: any) =>
+    apiFetch("/admin/vendor-services", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  updateVendorService: (id: string, data: any) =>
+    apiFetch(`/admin/vendor-services/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    }),
+
+  deleteVendorService: (id: string) =>
+    apiFetch(`/admin/vendor-services/${id}`, {
+      method: "DELETE",
+    }),
+
   stats: () =>
     apiFetch<any>("/admin/stats"),
 
