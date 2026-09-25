@@ -1392,6 +1392,8 @@ async def checkout(
 @api.get("/orders")
 async def list_orders(current=Depends(get_current_user)):
     orders = await db.orders.find({"user_id": current["id"]}, {"_id": 0}).sort("created_at", -1).to_list(100)
+    for o in orders:
+        o.pop("customer_location", None)
     return orders
 
 
@@ -1400,6 +1402,7 @@ async def get_order(order_id: str, current=Depends(get_current_user)):
     o = await db.orders.find_one({"id": order_id, "user_id": current["id"]}, {"_id": 0})
     if not o:
         raise HTTPException(404, "Order not found")
+    o.pop("customer_location", None)
     return o
 
 
@@ -1985,6 +1988,7 @@ async def admin_orders(
             if vendor_id and vendor_id not in order_vendor_ids:
                 order_vendor_ids.append(vendor_id)
 
+        order.pop("customer_location", None)
         order["vendor_ids"] = order_vendor_ids
         order["vendors"] = [
             vendor_map[vid]
@@ -2671,6 +2675,7 @@ async def vendor_orders(current=Depends(require_roles("vendor"))):
         # Frontend ke liye order data
         vendor_order = dict(o)
         vendor_order["customer"] = customer
+        vendor_order.pop("customer_location", None)
         vendor_order["my_items"] = my_items
         vendor_order["my_revenue"] = round(my_revenue, 2)
 
