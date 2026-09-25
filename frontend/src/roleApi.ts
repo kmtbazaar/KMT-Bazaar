@@ -166,6 +166,26 @@ export const vendorApi = {
       method: "DELETE",
     }),
 
+  services: () =>
+    apiFetch<any[]>("/vendor/services"),
+
+  createService: (data: any) =>
+    apiFetch("/vendor/services", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  updateService: (id: string, data: any) =>
+    apiFetch(`/vendor/services/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    }),
+
+  deleteService: (id: string) =>
+    apiFetch(`/vendor/services/${id}`, {
+      method: "DELETE",
+    }),
+
   products: () =>
     apiFetch<any[]>("/vendor/products"),
 
