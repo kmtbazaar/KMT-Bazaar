@@ -180,9 +180,16 @@ export default function Addresses() {
       });
     } else {
       setEditingId(null);
-      setFormData({ label: "Home", full_name: "", line1: "", landmark: "", district: "", city: "", state: "", pincode: "", phone: "" });
+      setFormData({ label: "Home", full_name: user?.name || "", line1: "", line2: "", landmark: "", district: "", city: "", state: "", pincode: "", phone: normalizeMobile(user?.phone || "") });
     }
     setFormVisible(true);
+
+    // A brand-new address always captures the device location immediately.
+    if (!address) {
+      setTimeout(() => {
+        getCurrentLocation().catch(() => {});
+      }, 0);
+    }
   };
 
   const getCurrentLocation = async () => {
@@ -252,6 +259,23 @@ export default function Addresses() {
       };
       setLocationCaptured(result);
       setExistingLocationSaved(false);
+
+      try {
+        const geo = await api.reverseGeocode(result.latitude, result.longitude);
+        setFormData(prev => ({
+          ...prev,
+          line1: geo?.line1 || prev.line1,
+          line2: geo?.line2 || prev.line2,
+          district: geo?.district || prev.district,
+          city: geo?.city || prev.city,
+          state: geo?.state || prev.state,
+          pincode: geo?.pincode || prev.pincode,
+        }));
+      } catch (geoError) {
+        console.log("Native location reverse geocode failed:", geoError);
+        setLocationError("GPS captured. Address details could not be auto-filled; please enter them manually.");
+      }
+
       return result;
     } catch (e: any) {
       const message = e?.message || "Could not fetch current location.";
