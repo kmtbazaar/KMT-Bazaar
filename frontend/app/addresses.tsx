@@ -17,6 +17,11 @@ export default function Addresses() {
   const [formVisible, setFormVisible] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [selectedAddrId, setSelectedAddrId] = useState<string | null>(null);
+  const [locationLoading, setLocationLoading] = useState(false);
+  const [locationCaptured, setLocationCaptured] = useState<{ latitude: number; longitude: number; accuracy?: number } | null>(null);
+  const [locationError, setLocationError] = useState("");
+  const [existingLocationSaved, setExistingLocationSaved] = useState(false);
+  const [gpsPrefillLoading, setGpsPrefillLoading] = useState(false);
 
   const [formData, setFormData] = useState({ 
     label: "Home", 
