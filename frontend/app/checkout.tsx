@@ -6,6 +6,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import * as Location from "expo-location";
 import { api } from "@/src/api";
 import { useCart } from "@/src/CartContext";
 import { COLORS, RADIUS, SPACING } from "@/src/theme";
@@ -18,9 +19,12 @@ export default function Checkout() {
   const [payment, setPayment] = useState<"cod" | "online">("cod");
   const [loading, setLoading] = useState(false);
   const [showForm, setShowForm] = useState(false);
-  
+  const [locationLoading, setLocationLoading] = useState(false);
+  const [locationCaptured, setLocationCaptured] = useState<{ latitude: number; longitude: number; accuracy?: number } | null>(null);
+  const [locationError, setLocationError] = useState("");
+
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [form, setForm] = useState({ label: "Home", full_name: "", phone: "", line1: "", line2: "", city: "", state: "", pincode: "" });
+  const [form, setForm] = useState({ label: "Home", full_name: "", phone: "", line1: "", line2: "", landmark: "", district: "", city: "", state: "", pincode: "" });
 
   const loadAddrs = async () => {
     try {
@@ -43,7 +47,10 @@ export default function Checkout() {
         setSelectedAddr(firstId ? String(firstId) : null);
       }
 
-      if (a?.length === 0) setShowForm(true);
+      if (a?.length === 0) {
+        setShowForm(false);
+        setSelectedAddr(null);
+      }
     } catch (e) {
       console.log("Failed to load addresses", e);
     }
@@ -70,11 +77,135 @@ export default function Checkout() {
       phone: addr.phone || "",
       line1: addr.line1 || "",
       line2: addr.line2 || "",
+      landmark: addr.landmark || "",
+      district: addr.district || "",
       city: addr.city || "",
       state: addr.state || "",
       pincode: addr.pincode || ""
     });
+    setLocationCaptured(null);
+    setLocationError("");
     setShowForm(true);
+  };
+
+  const captureNewAddressLocation = async () => {
+    setLocationLoading(true);
+    setLocationError("");
+
+    try {
+      let result: { latitude: number; longitude: number; accuracy?: number };
+
+      if (Platform.OS === "web") {
+        if (typeof window !== "undefined" && !window.isSecureContext) {
+          throw new Error("Location requires a secure HTTPS connection.");
+        }
+        if (!navigator.geolocation) {
+          throw new Error("This browser does not support location access.");
+        }
+
+        result = await new Promise<{ latitude: number; longitude: number; accuracy?: number }>((resolve, reject) => {
+          let watchId: number | null = null;
+          let best: { latitude: number; longitude: number; accuracy?: number } | null = null;
+          let settled = false;
+
+          const finish = (value?: { latitude: number; longitude: number; accuracy?: number }, error?: Error) => {
+            if (settled) return;
+            settled = true;
+            if (watchId !== null) navigator.geolocation.clearWatch(watchId);
+            window.clearTimeout(timeoutId);
+            if (error) reject(error);
+            else resolve(value || best as { latitude: number; longitude: number; accuracy?: number });
+          };
+
+          const timeoutId = window.setTimeout(() => {
+            if (best && Number.isFinite(best.accuracy) && (best.accuracy as number) <= 150) finish(best);
+            else finish(undefined, new Error("Precise GPS is not accurate enough yet. Turn on Location/GPS and try again."));
+          }, 30000);
+
+          watchId = navigator.geolocation.watchPosition(
+            (position) => {
+              const current = {
+                latitude: position.coords.latitude,
+                longitude: position.coords.longitude,
+                accuracy: Number(position.coords.accuracy),
+              };
+
+              if (!best || current.accuracy < (best.accuracy ?? Infinity)) best = current;
+              if (current.accuracy <= 75) finish(current);
+            },
+            (error) => {
+              const messages: Record<number, string> = {
+                1: "Location permission was denied. Allow KMT Bazaar to use your location.",
+                2: "Turn on your device Location/GPS and try again.",
+                3: "Precise GPS timed out. Try again with Location/GPS on.",
+              };
+              finish(undefined, new Error(messages[error?.code] || error?.message || "Could not get your precise current location."));
+            },
+            { enableHighAccuracy: true, timeout: 30000, maximumAge: 0 }
+          );
+        });
+      } else {
+        const permission = await Location.requestForegroundPermissionsAsync();
+        if (permission.status !== "granted") {
+          throw new Error("Location permission is required for delivery. Please allow it and try again.");
+        }
+
+        const current = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
+        result = {
+          latitude: current.coords.latitude,
+          longitude: current.coords.longitude,
+          accuracy: current.coords.accuracy,
+        };
+      }
+
+      setLocationCaptured(result);
+
+      try {
+        const geo = await api.reverseGeocode(result.latitude, result.longitude);
+        setForm(prev => ({
+          ...prev,
+          line1: geo?.line1 || prev.line1,
+          district: geo?.district || prev.district,
+          city: geo?.city || prev.city,
+          state: geo?.state || prev.state,
+          pincode: geo?.pincode || prev.pincode,
+        }));
+      } catch (error) {
+        console.log("Checkout reverse geocode failed:", error);
+        setLocationError("GPS captured. Please enter the address details manually.");
+      }
+
+      return result;
+    } catch (error: any) {
+      const message = error?.message || "Could not fetch your current location.";
+      setLocationError(message);
+      throw error;
+    } finally {
+      setLocationLoading(false);
+    }
+  };
+
+  const handleAddNewAddress = async () => {
+    setEditingId(null);
+    setLocationCaptured(null);
+    setLocationError("");
+    setForm({
+      label: "Home",
+      full_name: "",
+      phone: "",
+      line1: "",
+      line2: "",
+      landmark: "",
+      district: "",
+      city: "",
+      state: "",
+      pincode: "",
+    });
+    setShowForm(true);
+
+    try {
+      await captureNewAddressLocation();
+    } catch {}
   };
 
   // 🔥 FIXED DELETE BUTTON LOGIC (WEB & MOBILE COMPATIBLE)
@@ -139,27 +270,50 @@ export default function Checkout() {
       if (editingId) {
         await api.updateAddress(editingId, form);
       } else {
-        const a = await api.createAddress({ ...form, is_default: addresses.length === 0 });
-        const createdId = String(a.id || a._id);
-        if (addresses.length === 0) {
-          setSelectedAddr(createdId);
-          await AsyncStorage.setItem("selected_address", JSON.stringify(a));
+        if (!locationCaptured) {
+          Alert.alert("Location Required", "Please allow current location for this new delivery address.");
+          return;
         }
+
+        const a = await api.createAddress({
+          ...form,
+          latitude: locationCaptured.latitude,
+          longitude: locationCaptured.longitude,
+          is_default: addresses.length === 0,
+        });
+        const createdId = String(a.id || a._id);
+        setSelectedAddr(createdId);
+        await AsyncStorage.setItem("selected_address", JSON.stringify(a));
       }
-      
+
       setEditingId(null);
-      setForm({ label: "Home", full_name: "", phone: "", line1: "", line2: "", city: "", state: "", pincode: "" });
+      setLocationCaptured(null);
+      setLocationError("");
+      setForm({
+        label: "Home",
+        full_name: "",
+        phone: "",
+        line1: "",
+        line2: "",
+        landmark: "",
+        district: "",
+        city: "",
+        state: "",
+        pincode: "",
+      });
       setShowForm(false);
-      loadAddrs();
-    } catch (e) {
-      Alert.alert("Error", "Failed to save address");
+      await loadAddrs();
+    } catch (e: any) {
+      Alert.alert("Error", e?.message || "Failed to save address");
     }
   };
 
   const cancelForm = () => {
     setShowForm(false);
     setEditingId(null);
-    setForm({ label: "Home", full_name: "", phone: "", line1: "", line2: "", city: "", state: "", pincode: "" });
+    setLocationCaptured(null);
+    setLocationError("");
+    setForm({ label: "Home", full_name: "", phone: "", line1: "", line2: "", landmark: "", district: "", city: "", state: "", pincode: "" });
   };
 
   const onPlace = async () => {
@@ -222,11 +376,7 @@ export default function Checkout() {
           })}
           
           {!showForm && (
-            <Pressable testID="add-address-btn" onPress={() => {
-              setEditingId(null);
-              setForm({ label: "Home", full_name: "", phone: "", line1: "", line2: "", city: "", state: "", pincode: "" });
-              setShowForm(true);
-            }} style={s.addBtn}>
+            <Pressable testID="add-address-btn" onPress={handleAddNewAddress} style={s.addBtn}>
               <MaterialCommunityIcons name="plus" size={18} color={COLORS.brand} />
               <Text style={s.addBtnText}>Add new address</Text>
             </Pressable>
@@ -238,7 +388,24 @@ export default function Checkout() {
               <Input ph="Phone (10 digits)" v={form.phone} oc={(v: string) => setForm({ ...form, phone: v.replace(/[^0-9]/g, '') })} kt="number-pad" maxLength={10} testID="addr-phone" />
               <Input ph="House no, Building" v={form.line1} oc={(v: string) => setForm({ ...form, line1: v })} testID="addr-line1" />
               <Input ph="Area, Street (optional)" v={form.line2} oc={(v: string) => setForm({ ...form, line2: v })} testID="addr-line2" />
+              <Input ph="Nearby / Landmark (optional)" v={form.landmark} oc={(v: string) => setForm({ ...form, landmark: v })} testID="addr-landmark" />
+              <Input ph="District" v={form.district} oc={(v: string) => setForm({ ...form, district: v })} testID="addr-district" />
               
+              {!editingId && (
+                <View style={s.locationCard}>
+                  <View style={s.locationRow}>
+                    <MaterialCommunityIcons name={locationCaptured ? "check-circle" : "crosshairs-gps"} size={19} color={locationCaptured ? "#15803D" : COLORS.brand} />
+                    <View style={{ flex: 1 }}>
+                      <Text style={s.locationTitle}>{locationLoading ? "Detecting your live location…" : locationCaptured ? "Live location captured" : "Location required for delivery"}</Text>
+                      <Text style={s.locationText}>{locationCaptured ? "Your device GPS is attached to this new address." : "Tap Add new address to start location capture."}</Text>
+                    </View>
+                  </View>
+                  {!!locationCaptured && <Text style={s.locationSuccess}>GPS ready{locationCaptured.accuracy ? " · ±" + Math.round(locationCaptured.accuracy) + " m" : ""}</Text>}
+                  {!!locationError && <Text style={s.locationError}>{locationError}</Text>}
+                  {locationLoading && <ActivityIndicator size="small" color={COLORS.brand} style={{ marginTop: 8, alignSelf: "flex-start" }} />}
+                </View>
+              )}
+
               <View style={{ flexDirection: "row", gap: 8 }}>
                 <View style={{ flex: 1 }}><Input ph="City" v={form.city} oc={(v: string) => setForm({ ...form, city: v })} testID="addr-city" /></View>
                 <View style={{ flex: 1 }}><Input ph="State" v={form.state} oc={(v: string) => setForm({ ...form, state: v })} testID="addr-state" /></View>
@@ -251,7 +418,7 @@ export default function Checkout() {
                     <Text style={[s.saveBtnText, { color: COLORS.textSecondary }]}>Cancel</Text>
                   </Pressable>
                  )}
-                <Pressable testID="save-address" onPress={saveAddr} style={[s.saveBtn, { flex: 1 }]}>
+                <Pressable testID="save-address" onPress={saveAddr} disabled={!editingId && (!locationCaptured || locationLoading)} style={[s.saveBtn, { flex: 1 }, (!editingId && (!locationCaptured || locationLoading)) && { opacity: 0.55 }]}>
                   <Text style={s.saveBtnText}>{editingId ? "Update Address" : "Save Address"}</Text>
                 </Pressable>
               </View>
@@ -326,6 +493,12 @@ const s = StyleSheet.create({
   actionRow: { flexDirection: "row", justifyContent: "flex-end", gap: 12, borderTopWidth: 1, borderColor: COLORS.border, marginTop: 8, paddingTop: 8 },
   addBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", padding: 12, gap: 6, borderRadius: RADIUS.md, borderWidth: 1, borderColor: COLORS.brand, borderStyle: "dashed" },
   addBtnText: { color: COLORS.brand, fontWeight: "700" },
+  locationCard: { marginTop: 4, marginBottom: 10, padding: 12, borderRadius: RADIUS.md, backgroundColor: "#EFF6FF", borderWidth: 1, borderColor: "#BFDBFE" },
+  locationRow: { flexDirection: "row", alignItems: "center", gap: 10 },
+  locationTitle: { color: COLORS.text, fontSize: 13, fontWeight: "800" },
+  locationText: { color: COLORS.textSecondary, fontSize: 11, lineHeight: 16, marginTop: 2 },
+  locationSuccess: { color: "#15803D", fontSize: 10, fontWeight: "700", marginTop: 6 },
+  locationError: { color: "#B91C1C", fontSize: 10, fontWeight: "700", lineHeight: 15, marginTop: 6 },
   form: { backgroundColor: COLORS.surfaceSecondary, padding: 12, borderRadius: RADIUS.md, marginTop: 8 },
   saveBtn: { backgroundColor: COLORS.brand, padding: 12, borderRadius: RADIUS.pill, alignItems: "center" },
   saveBtnText: { color: "#fff", fontWeight: "800" },
