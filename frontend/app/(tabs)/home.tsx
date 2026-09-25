@@ -64,6 +64,7 @@ export default function Home() {
   const [selectedAddress, setSelectedAddress] = useState<string>("Home · Karmatar");
   const [locationLoading, setLocationLoading] = useState(false);
   const [locationActive, setLocationActive] = useState(false);
+  const [locationError, setLocationError] = useState("");
 
   // Sync selected address automatically whenever user returns to Home Screen
   useFocusEffect(
@@ -107,33 +108,86 @@ export default function Home() {
 
   const handleLiveLocationPress = useCallback(async () => {
     if (locationLoading) return;
+
     setLocationLoading(true);
+    setLocationError("");
+
     try {
       let coords: { latitude: number; longitude: number };
 
       if (Platform.OS === "web") {
-        if (typeof window !== "undefined" && !window.isSecureContext) throw new Error("Location requires a secure HTTPS connection.");
-        if (!navigator.geolocation) throw new Error("This browser does not support location access.");
+        if (typeof window !== "undefined" && !window.isSecureContext) {
+          throw new Error("Location requires a secure HTTPS connection.");
+        }
 
-        coords = await new Promise<{ latitude: number; longitude: number }>((resolve, reject) => {
-          navigator.geolocation.getCurrentPosition(
-            position => resolve({ latitude: position.coords.latitude, longitude: position.coords.longitude }),
-            error => {
-              const messages: Record<number,string> = {
-                1: "Location permission was denied. Allow location access for KMT Bazaar.",
-                2: "Turn on device GPS/location and try again.",
-                3: "Location request timed out. Please try again.",
-              };
-              reject(new Error(messages[error.code] || error.message || "Could not get your current location."));
-            },
-            { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 }
-          );
-        });
+        if (!navigator.geolocation) {
+          throw new Error("This browser does not support location access.");
+        }
+
+        const getBrowserLocation = (enableHighAccuracy: boolean, timeout: number) =>
+          new Promise<{ latitude: number; longitude: number }>((resolve, reject) => {
+            navigator.geolocation.getCurrentPosition(
+              (position) => resolve({
+                latitude: position.coords.latitude,
+                longitude: position.coords.longitude,
+              }),
+              (error) => reject(error),
+              {
+                enableHighAccuracy,
+                timeout,
+                maximumAge: 0,
+              }
+            );
+          });
+
+        try {
+          coords = await getBrowserLocation(true, 20000);
+        } catch (firstError: any) {
+          console.log("High accuracy location failed, retrying with browser fallback:", firstError);
+
+          if (firstError?.code === 1) {
+            throw new Error("Location permission was denied. Allow location access for KMT Bazaar in your browser site settings.");
+          }
+
+          setLocationError("Getting your location with browser fallback…");
+
+          try {
+            coords = await getBrowserLocation(false, 30000);
+          } catch (secondError: any) {
+            const messages: Record<number, string> = {
+              1: "Location permission was denied. Allow location access for KMT Bazaar.",
+              2: "Your browser could not determine your location. Turn on device Location/GPS and try again.",
+              3: "Location timed out. Keep Location/GPS on and tap the location button again.",
+            };
+            throw new Error(messages[secondError?.code] || secondError?.message || "Could not get your current location.");
+          }
+        }
       } else {
         const permission = await Location.requestForegroundPermissionsAsync();
-        if (permission.status !== "granted") throw new Error("Location permission is required. Please allow KMT Bazaar to use your location.");
-        const current = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
-        coords = { latitude: current.coords.latitude, longitude: current.coords.longitude };
+
+        if (permission.status !== "granted") {
+          throw new Error("Location permission is required. Please allow KMT Bazaar to use your location.");
+        }
+
+        const current = await Location.getCurrentPositionAsync({
+          accuracy: Location.Accuracy.High,
+        });
+
+        coords = {
+          latitude: current.coords.latitude,
+          longitude: current.coords.longitude,
+        };
+      }
+
+      if (
+        !Number.isFinite(coords.latitude) ||
+        !Number.isFinite(coords.longitude) ||
+        coords.latitude < -90 ||
+        coords.latitude > 90 ||
+        coords.longitude < -180 ||
+        coords.longitude > 180
+      ) {
+        throw new Error("Invalid current location received.");
       }
 
       const gpsSelection = {
@@ -154,11 +208,13 @@ export default function Home() {
       await AsyncStorage.setItem("kmt_current_location", JSON.stringify(gpsSelection));
       setSelectedAddress("Current location");
       setLocationActive(true);
+      setLocationError("");
+
+      // Keep the full delivery-address form as the next step.
       router.push("/addresses" as any);
     } catch (e: any) {
-      const message = e?.message || "Could not fetch your current location.";
-      if (Platform.OS === "web" && typeof window !== "undefined") window.alert(message);
-      else Alert.alert("Location", message);
+      console.log("HOME LIVE LOCATION ERROR:", e);
+      setLocationError(e?.message || "Could not fetch your current location.");
     } finally {
       setLocationLoading(false);
     }
@@ -275,7 +331,11 @@ export default function Home() {
                 {locationLoading ? "Finding your location..." : locationActive ? "Current location" : "Deliver to"}
               </Text>
               <Text style={s.locValue} numberOfLines={1}>
-                {locationLoading ? "Detecting GPS..." : selectedAddress}{" "}
+                {locationLoading
+                  ? "Detecting GPS..."
+                  : locationError
+                    ? "Tap to retry location"
+                    : selectedAddress}{" "}
                 <MaterialCommunityIcons
                   name={locationLoading ? "crosshairs-gps" : locationActive ? "crosshairs-gps" : "chevron-down"}
                   size={16}
@@ -283,6 +343,11 @@ export default function Home() {
                 />
               </Text>
             </View>
+            {Boolean(locationError) && !locationLoading && (
+              <Text style={s.locationErrorText} numberOfLines={2}>
+                {locationError}
+              </Text>
+            )}
           </Pressable>
 
           {/* Animated Notification Bell on Top Right */}
@@ -512,7 +577,7 @@ const s = StyleSheet.create({
   locWrap: { flexDirection: "row", gap: 8, alignItems: "center", flex: 1, marginRight: 12, zIndex: 99, elevation: 5 },
   locIconBg: { width: 34, height: 34, borderRadius: 17, backgroundColor: THEME.white, alignItems: "center", justifyContent: "center", ...shadow.soft },
   locLabel: { color: "rgba(255,255,255,0.85)", fontSize: 11, fontWeight: "600" },
-  locValue: { color: THEME.white, fontSize: 14, fontWeight: "800" },
+  locValue: { color: THEME.white, fontSize: 14, fontWeight: "800" },\n  locationErrorText: { color: "#FEF3C7", fontSize: 9, fontWeight: "700", marginTop: 2, maxWidth: 260 },
   headerActions: { flexDirection: "row", alignItems: "center" },
   iconBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: "rgba(255,255,255,0.2)", alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: "rgba(255,255,255,0.3)" },
   bellBadge: { position: "absolute", top: 2, right: 2, backgroundColor: THEME.orange, minWidth: 18, height: 18, borderRadius: 9, paddingHorizontal: 4, alignItems: "center", justifyContent: "center", borderWidth: 1.5, borderColor: THEME.white },
