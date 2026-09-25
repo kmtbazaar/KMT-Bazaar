@@ -2531,6 +2531,75 @@ async def service_catalog_detail(service_type: ServiceType, service_id: str):
     return item
 
 
+
+@api.get("/service-cart")
+async def get_service_cart(current=Depends(require_roles("customer"))):
+    cart = await db.service_carts.find_one({"user_id": current["id"]}, {"_id": 0})
+    return cart or {"user_id": current["id"], "items": []}
+
+
+class ServiceCartAddIn(BaseModel):
+    service_type: ServiceType
+    service_id: str
+    booking_date: str
+    booking_time: str = ""
+    address_id: Optional[str] = None
+    quantity: int = 1
+    notes: str = ""
+    extra: Dict[str, Any] = {}
+
+
+@api.post("/service-cart/add")
+async def add_service_cart(data: ServiceCartAddIn, current=Depends(require_roles("customer"))):
+    service = await db.vendor_services.find_one(
+        {"id": data.service_id, "service_type": data.service_type.value, "active": True},
+        {"_id": 0}
+    )
+    if not service:
+        raise HTTPException(404, "Service is not available")
+    item = data.dict()
+    item["service_type"] = data.service_type.value
+    item["service_name"] = service.get("name", "")
+    item["vendor_id"] = service.get("vendor_id")
+    item["vendor_name"] = service.get("vendor_name", "")
+    item["added_at"] = now_iso()
+    await db.service_carts.update_one(
+        {"user_id": current["id"]},
+        {"$set": {"items": [item], "updated_at": now_iso()}},
+        upsert=True
+    )
+    return await get_service_cart(current)
+
+
+@api.delete("/service-cart/clear")
+async def clear_service_cart(current=Depends(require_roles("customer"))):
+    await db.service_carts.delete_one({"user_id": current["id"]})
+    return {"ok": True}
+
+
+@api.post("/service-cart/checkout")
+async def checkout_service_cart(current=Depends(require_roles("customer"))):
+    cart = await db.service_carts.find_one({"user_id": current["id"]}, {"_id": 0})
+    items = (cart or {}).get("items", [])
+    if not items:
+        raise HTTPException(400, "Service booking cart is empty")
+    created = []
+    for item in items:
+        data = ServiceBookingIn(
+            service_type=item["service_type"],
+            service_id=item["service_id"],
+            booking_date=item["booking_date"],
+            booking_time=item.get("booking_time", ""),
+            address_id=item.get("address_id"),
+            quantity=max(1, int(item.get("quantity", 1))),
+            notes=item.get("notes", ""),
+            extra=item.get("extra") or {},
+        )
+        created.append(await create_service_booking(data, current))
+    await db.service_carts.delete_one({"user_id": current["id"]})
+    return {"ok": True, "bookings": created}
+
+
 @api.post("/service-bookings")
 async def create_service_booking(data: ServiceBookingIn, current=Depends(require_roles("customer"))):
     service = await db.vendor_services.find_one(
