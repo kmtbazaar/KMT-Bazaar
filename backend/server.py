@@ -984,35 +984,56 @@ async def reverse_geocode(latitude: float, longitude: float, current=Depends(get
     if not (-90 <= latitude <= 90 and -180 <= longitude <= 180):
         raise HTTPException(status_code=400, detail="Invalid location coordinates")
 
+    nominatim_data = {}
+    photon_data = {}
+
+    async def fetch_nominatim(client):
+        response = await client.get(
+            "https://nominatim.openstreetmap.org/reverse",
+            params={
+                "format": "jsonv2",
+                "addressdetails": 1,
+                "zoom": 18,
+                "lat": latitude,
+                "lon": longitude,
+                "accept-language": "en-IN",
+            },
+        )
+        response.raise_for_status()
+        return response.json()
+
+    async def fetch_photon(client):
+        response = await client.get(
+            "https://photon.komoot.io/reverse",
+            params={
+                "lat": latitude,
+                "lon": longitude,
+                "lang": "en",
+            },
+        )
+        response.raise_for_status()
+        return response.json()
+
     try:
         async with httpx.AsyncClient(
-            timeout=10.0,
-            headers={
-                "User-Agent": "KMT-Bazaar/1.0 (+https://kmtbazaar.tech)"
-            },
+            timeout=7.0,
+            headers={"User-Agent": "KMT-Bazaar/1.0 (+https://kmtbazaar.tech)"},
         ) as client:
-            response = await client.get(
-                "https://nominatim.openstreetmap.org/reverse",
-                params={
-                    "format": "jsonv2",
-                    "addressdetails": 1,
-                    "zoom": 18,
-                    "lat": latitude,
-                    "lon": longitude,
-                    "accept-language": "en-IN",
-                },
+            results = await asyncio.gather(
+                fetch_nominatim(client),
+                fetch_photon(client),
+                return_exceptions=True,
             )
-            response.raise_for_status()
-            data = response.json()
 
-        address = data.get("address") or {}
-        display_name = str(data.get("display_name") or "").strip()
+        if not isinstance(results[0], Exception):
+            nominatim_data = results[0] or {}
+        if not isinstance(results[1], Exception):
+            photon_data = results[1] or {}
 
-        house = (
-            address.get("house_number")
-            or address.get("building")
-            or ""
-        )
+        address = nominatim_data.get("address") or {}
+        display_name = str(nominatim_data.get("display_name") or "").strip()
+
+        house = address.get("house_number") or address.get("building") or ""
         road = (
             address.get("road")
             or address.get("pedestrian")
@@ -1057,16 +1078,60 @@ async def reverse_geocode(latitude: float, longitude: float, current=Depends(get
             or ""
         )
         state = address.get("state") or address.get("state_district") or ""
-        pincode = address.get("postcode") or ""
+        nominatim_pin = str(address.get("postcode") or "").strip()
 
-        # Keep the form usable even when a rural reverse-geocoder response
-        # omits a dedicated road/area component.
+        photon_features = photon_data.get("features") or []
+        photon_props = (photon_features[0].get("properties") or {}) if photon_features else {}
+        photon_pin = str(photon_props.get("postcode") or "").strip()
+        photon_line1 = str(photon_props.get("street") or "").strip()
+        photon_house = str(photon_props.get("housenumber") or "").strip()
+        photon_area = str(
+            photon_props.get("district")
+            or photon_props.get("locality")
+            or photon_props.get("name")
+            or ""
+        ).strip()
+
+        # Prefer an exact cross-source postcode agreement. If sources disagree,
+        # leave the field blank instead of silently presenting a potentially wrong PIN.
+        pincode = ""
+        if nominatim_pin and photon_pin and nominatim_pin == photon_pin:
+            pincode = nominatim_pin
+        elif photon_pin and not nominatim_pin:
+            pincode = photon_pin
+
+        if not line1:
+            if photon_house and photon_line1:
+                line1 = f"{photon_house}, {photon_line1}"
+            elif photon_line1:
+                line1 = photon_line1
+        if not line2 and photon_area:
+            line2 = photon_area
         if not line1 and display_name:
             line1 = display_name.split(",")[0].strip()
         if not line2 and display_name:
             parts = [part.strip() for part in display_name.split(",") if part.strip()]
             if len(parts) > 1:
                 line2 = parts[1]
+
+        if not display_name and photon_features:
+            display_name = ", ".join(
+                part for part in [
+                    line1,
+                    line2,
+                    city,
+                    district,
+                    state,
+                    pincode,
+                ]
+                if part
+            )
+
+        if not any([line1, line2, city, district, state, pincode, display_name]):
+            raise HTTPException(
+                status_code=502,
+                detail="Could not read address details from the current location.",
+            )
 
         return {
             "display_name": display_name,
@@ -1075,20 +1140,23 @@ async def reverse_geocode(latitude: float, longitude: float, current=Depends(get
             "district": str(district).strip(),
             "city": str(city).strip(),
             "state": str(state).strip(),
-            "pincode": str(pincode).strip(),
+            "pincode": pincode,
             "latitude": latitude,
             "longitude": longitude,
-            "attribution": "© OpenStreetMap contributors",
+            "attribution": "© OpenStreetMap contributors; Photon",
         }
     except httpx.HTTPError:
         raise HTTPException(
             status_code=502,
-            detail="Address lookup service is temporarily unavailable. You can enter the address details manually; GPS location is still saved.",
+            detail="Address lookup service is temporarily unavailable. GPS location is still saved.",
         )
+    except HTTPException:
+        raise
     except Exception:
+        logging.exception("Reverse geocoding failed")
         raise HTTPException(
             status_code=502,
-            detail="Could not read address details from the current location. You can enter the address details manually; GPS location is still saved.",
+            detail="Could not read address details from the current location. GPS location is still saved.",
         )
 
 
