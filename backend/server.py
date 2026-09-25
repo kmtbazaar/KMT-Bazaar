@@ -174,15 +174,39 @@ class AddressIn(BaseModel):
     full_name: str
     phone: str
     line1: str
-    line2: Optional[str] = ""
+    line2: str
     landmark: Optional[str] = ""
-    district: Optional[str] = ""
+    district: str
     city: str
     state: str
     pincode: str
     latitude: Optional[float] = None
     longitude: Optional[float] = None
     is_default: bool = False
+
+    @field_validator("full_name", "phone", "line1", "line2", "district", "city", "state", "pincode")
+    @classmethod
+    def required_address_text(cls, value):
+        value = str(value or "").strip()
+        if not value:
+            raise ValueError("This address field is required")
+        return value
+
+    @field_validator("phone")
+    @classmethod
+    def validate_address_phone(cls, value):
+        digits = "".join(ch for ch in str(value) if ch.isdigit())
+        if len(digits) != 10:
+            raise ValueError("Mobile Number must be exactly 10 digits")
+        return digits
+
+    @field_validator("pincode")
+    @classmethod
+    def validate_address_pincode(cls, value):
+        value = str(value).strip()
+        if not value.isdigit() or len(value) != 6:
+            raise ValueError("Pincode must be exactly 6 digits")
+        return value
 
 
 class CartItemIn(BaseModel):
