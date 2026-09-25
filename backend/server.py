@@ -1197,6 +1197,15 @@ async def get_travel_page(slug: str):
     return {**page, "packages": packages}
 
 
+# ------------------ ROLE GUARDS ------------------
+def require_roles(*roles):
+    async def _dep(current=Depends(get_current_user)):
+        if current.get("role") not in roles:
+            raise HTTPException(status_code=403, detail="Forbidden")
+        return current
+    return _dep
+
+
 @api.get("/admin/travel/pages")
 async def admin_travel_pages(_=Depends(require_roles("admin"))):
     return await db.travel_pages.find({}, {"_id": 0}).sort("created_at", -1).to_list(200)
@@ -1369,15 +1378,6 @@ async def clear_travel_cart(current=Depends(get_current_user)):
         upsert=True
     )
     return {"items": [], "total": 0}
-
-
-# ------------------ ROLE GUARDS ------------------
-def require_roles(*roles):
-    async def _dep(current=Depends(get_current_user)):
-        if current.get("role") not in roles:
-            raise HTTPException(status_code=403, detail="Forbidden")
-        return current
-    return _dep
 
 
 @api.post("/uploads/image")
