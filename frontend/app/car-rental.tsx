@@ -1,0 +1,1 @@
+import ServiceCatalog from "./service/[type]";export default function CarRental(){return <ServiceCatalog/>}
