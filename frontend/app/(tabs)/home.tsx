@@ -18,7 +18,7 @@ import Animated, {
 } from "react-native-reanimated";
 import { api } from "@/src/api";
 import { useAuth } from "@/src/AuthContext";
-import { RADIUS, SPACING, shadow } from "@/src/theme";
+import { IMAGE_FALLBACK_URL, RADIUS, SPACING, shadow } from "@/src/theme";
 import ProductCard from "@/src/components/ProductCard";
 import CheckoutBar from "@/src/components/CheckoutBar";
 
@@ -52,6 +52,7 @@ export default function Home() {
   const { user } = useAuth();
   const router = useRouter();
   const [banners, setBanners] = useState<any[]>([]);
+  const [brokenImages, setBrokenImages] = useState<Record<string, boolean>>({});
   const [cats, setCats] = useState<any[]>([]);
   const [stores, setStores] = useState<any[]>([]);
   const [trending, setTrending] = useState<any[]>([]);
@@ -470,7 +471,12 @@ export default function Home() {
                   router.push(`/category/${item.category_id}` as any);
                 }
               }} style={s.banner}>
-              <Image source={{ uri: item.image }} style={s.bannerImg} contentFit="cover" />
+              <Image
+                source={{ uri: brokenImages[`banner:${String(item.id)}`] ? IMAGE_FALLBACK_URL : (item.image || IMAGE_FALLBACK_URL) }}
+                style={s.bannerImg}
+                contentFit="cover"
+                onError={() => setBrokenImages(prev => ({ ...prev, [`banner:${String(item.id)}`]: true }))}
+              />
               
               {/* Animated Gradient Border Flash */}
               <Animated.View style={[s.bannerFlashBorder, animatedFlashStyle]} />
@@ -499,7 +505,12 @@ export default function Home() {
                 <View style={s.catCircleWrap}>
                   <Animated.View style={[s.catFlashBorder, animatedFlashStyle]} />
                   <View style={s.catCircle}>
-                    <Image source={{ uri: c.image }} style={s.catImg} contentFit="cover" />
+                    <Image
+                      source={{ uri: brokenImages[`cat:${String(c.id)}`] ? IMAGE_FALLBACK_URL : (c.image || IMAGE_FALLBACK_URL) }}
+                      style={s.catImg}
+                      contentFit="cover"
+                      onError={() => setBrokenImages(prev => ({ ...prev, [`cat:${String(c.id)}`]: true }))}
+                    />
                   </View>
                 </View>
                 <Text style={s.catName} numberOfLines={1}>{c.name}</Text>
@@ -530,7 +541,12 @@ export default function Home() {
                 <Animated.View style={[s.storeFlashBorder, animatedFlashStyle]} />
                 
                 <View style={{ position: "relative" }}>
-                  <Image source={{ uri: item.image }} style={s.storeImgSmall} contentFit="cover" />
+                  <Image
+                    source={{ uri: brokenImages[`store:${String(item.id)}`] ? IMAGE_FALLBACK_URL : (item.image || IMAGE_FALLBACK_URL) }}
+                    style={s.storeImgSmall}
+                    contentFit="cover"
+                    onError={() => setBrokenImages(prev => ({ ...prev, [`store:${String(item.id)}`]: true }))}
+                  />
                   
                   {!isAvailable && (
                     <View style={s.offlineOverlay}>
