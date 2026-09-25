@@ -5,6 +5,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
+import * as Location from "expo-location";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { api } from "@/src/api";
 import { useCart } from "@/src/CartContext";
@@ -167,7 +168,28 @@ export default function Checkout() {
     setLoading(true);
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     try {
-      const order = await api.checkout({ address_id: selectedAddr, payment_method: payment });
+      let location: { latitude: number; longitude: number } | null = null;
+
+      try {
+        const permission = await Location.requestForegroundPermissionsAsync();
+        if (permission.status === "granted") {
+          const current = await Location.getCurrentPositionAsync({
+            accuracy: Location.Accuracy.Balanced,
+          });
+          location = {
+            latitude: current.coords.latitude,
+            longitude: current.coords.longitude,
+          };
+        }
+      } catch (locationError) {
+        console.log("Customer location unavailable:", locationError);
+      }
+
+      const order = await api.checkout({
+        address_id: selectedAddr,
+        payment_method: payment,
+        location,
+      });
       await refresh();
       router.replace(`/orders/${order.id}` as any);
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
