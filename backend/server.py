@@ -2777,7 +2777,7 @@ async def delivery_mark_delivered(order_id: str, current=Depends(require_roles("
         {"id": order_id},
         {
             "$set": {"status": "delivered", "timeline": timeline},
-            "$unset": {"delivery_location": ""},
+            "$unset": {"delivery_location": "", "customer_location": ""},
         },
     )
     await db.notifications.insert_one({
