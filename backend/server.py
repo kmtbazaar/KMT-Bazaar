@@ -761,6 +761,25 @@ async def list_stores():
     return stores
 
 
+@api.get("/vendor-services")
+async def list_vendor_services():
+    return await db.vendor_services.find(
+        {"active": True},
+        {"_id": 0}
+    ).sort("order", 1).to_list(100)
+
+
+@api.get("/vendor-services/{service_id}")
+async def get_vendor_service(service_id: str):
+    service = await db.vendor_services.find_one(
+        {"id": service_id, "active": True},
+        {"_id": 0}
+    )
+    if not service:
+        raise HTTPException(status_code=404, detail="Vendor service not found")
+    return service
+
+
 @api.get("/products")
 async def list_products(
     category: Optional[str] = None,
@@ -1780,6 +1799,17 @@ class BannerIn(BaseModel):
     target_slug: Optional[str] = None
 
 
+class VendorServiceIn(BaseModel):
+    name: str
+    vendor_name: str = ""
+    description: str = ""
+    image: str = ""
+    category: str = ""
+    phone: str = ""
+    order: int = 99
+    active: bool = True
+
+
 class OrderStatusIn(BaseModel):
     status: str
 
@@ -2318,6 +2348,59 @@ async def admin_update_banner(bid: str, data: BannerIn, _=Depends(require_roles(
     if result.matched_count == 0:
         raise HTTPException(status_code=404, detail="Banner not found")
     return await db.banners.find_one({"id": bid}, {"_id": 0})
+
+
+@api.get("/admin/vendor-services")
+async def admin_list_vendor_services(_=Depends(require_roles("admin"))):
+    return await db.vendor_services.find(
+        {},
+        {"_id": 0}
+    ).sort("order", 1).to_list(200)
+
+
+@api.post("/admin/vendor-services")
+async def admin_create_vendor_service(
+    data: VendorServiceIn,
+    _=Depends(require_roles("admin"))
+):
+    service_id = "vsvc-" + uuid.uuid4().hex[:8]
+    doc = {
+        "id": service_id,
+        **data.dict(),
+        "created_at": now_iso(),
+        "updated_at": now_iso(),
+    }
+    await db.vendor_services.insert_one(dict(doc))
+    return doc
+
+
+@api.put("/admin/vendor-services/{service_id}")
+async def admin_update_vendor_service(
+    service_id: str,
+    data: VendorServiceIn,
+    _=Depends(require_roles("admin"))
+):
+    result = await db.vendor_services.update_one(
+        {"id": service_id},
+        {"$set": {**data.dict(), "updated_at": now_iso()}}
+    )
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Vendor service not found")
+    return await db.vendor_services.find_one(
+        {"id": service_id},
+        {"_id": 0}
+    )
+
+
+@api.delete("/admin/vendor-services/{service_id}")
+async def admin_delete_vendor_service(
+    service_id: str,
+    _=Depends(require_roles("admin"))
+):
+    result = await db.vendor_services.delete_one({"id": service_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Vendor service not found")
+    return {"ok": True}
 
 
 @api.get("/admin/commission")
