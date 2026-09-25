@@ -33,6 +33,7 @@ from datetime import datetime, timezone, timedelta
 from passlib.context import CryptContext
 from PIL import Image, ImageOps
 import io
+import httpx
 import jwt
 from enum import Enum
 
@@ -174,6 +175,8 @@ class AddressIn(BaseModel):
     phone: str
     line1: str
     line2: Optional[str] = ""
+    landmark: Optional[str] = ""
+    district: Optional[str] = ""
     city: str
     state: str
     pincode: str
@@ -976,6 +979,84 @@ async def clear_cart(current=Depends(get_current_user)):
 
 
 # ------------------ ADDRESSES ------------------
+@api.get("/geo/reverse")
+async def reverse_geocode(latitude: float, longitude: float, current=Depends(get_current_user)):
+    if not (-90 <= latitude <= 90 and -180 <= longitude <= 180):
+        raise HTTPException(status_code=400, detail="Invalid location coordinates")
+
+    try:
+        async with httpx.AsyncClient(
+            timeout=8.0,
+            headers={
+                "User-Agent": "KMT-Bazaar/1.0 (+https://kmtbazaar.tech)"
+            },
+        ) as client:
+            response = await client.get(
+                "https://nominatim.openstreetmap.org/reverse",
+                params={
+                    "format": "jsonv2",
+                    "addressdetails": 1,
+                    "zoom": 18,
+                    "lat": latitude,
+                    "lon": longitude,
+                    "accept-language": "en-IN",
+                },
+            )
+            response.raise_for_status()
+            data = response.json()
+
+        address = data.get("address") or {}
+        road = address.get("road") or address.get("pedestrian") or address.get("footway") or ""
+        area = (
+            address.get("neighbourhood")
+            or address.get("suburb")
+            or address.get("village")
+            or address.get("hamlet")
+            or ""
+        )
+        line1_parts = [part.strip() for part in [road, area] if part and part.strip()]
+        line1 = ", ".join(dict.fromkeys(line1_parts))
+
+        city = (
+            address.get("city")
+            or address.get("town")
+            or address.get("municipality")
+            or address.get("village")
+            or address.get("city_district")
+            or ""
+        )
+        district = (
+            address.get("district")
+            or address.get("county")
+            or address.get("state_district")
+            or ""
+        )
+        state = address.get("state") or ""
+        pincode = address.get("postcode") or ""
+
+        return {
+            "display_name": data.get("display_name") or "",
+            "line1": line1,
+            "district": district,
+            "city": city,
+            "state": state,
+            "pincode": pincode,
+            "latitude": latitude,
+            "longitude": longitude,
+            "attribution": "© OpenStreetMap contributors",
+        }
+    except httpx.HTTPError:
+        raise HTTPException(
+            status_code=502,
+            detail="Address lookup service is temporarily unavailable. You can enter the address details manually; GPS location is still saved.",
+        )
+    except Exception:
+        raise HTTPException(
+            status_code=502,
+            detail="Could not read address details from the current location. You can enter the address details manually; GPS location is still saved.",
+        )
+
+
 @api.get("/addresses")
 async def list_addresses(current=Depends(get_current_user)):
     addrs = await db.addresses.find({"user_id": current["id"]}, {"_id": 0}).to_list(50)
