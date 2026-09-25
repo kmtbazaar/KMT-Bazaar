@@ -5,7 +5,7 @@ interface AuthCtx {
   user: User | null;
   loading: boolean;
   login: (email: string, password: string) => Promise<User>;
-  register: (data: { name: string; email: string; phone?: string; password: string; role?: string; vendor_type?: "store" | "service" }) => Promise<User>;
+  register: (data: { name: string; email: string; phone?: string; password: string; role?: string; vendor_type?: "store" | "service"; service_type?: "holiday" | "car_rental" | "daily_service" }) => Promise<User>;
   loginOtp: (phone: string, otp: string, name?: string) => Promise<User>;
   googleLogin: (credential: string) => Promise<User>;
   logout: () => Promise<void>;
