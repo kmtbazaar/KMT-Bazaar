@@ -8,9 +8,7 @@ import { api } from "@/src/api";
 import { COLORS, RADIUS, SPACING } from "@/src/theme";
 import ImagePlaceholder from "@/src/components/ImagePlaceholder";
 import ProductCard from "@/src/components/ProductCard";
-import ImagePlaceholder from "@/src/components/ImagePlaceholder";
 import CheckoutBar from "@/src/components/CheckoutBar";
-import ImagePlaceholder from "@/src/components/ImagePlaceholder";
 import { useCart } from "@/src/CartContext";
 
 const RAIL_WIDTH = 88;
@@ -40,7 +38,7 @@ export default function Categories() {
         // Scroll DOWN -> Smooth Slide Down (Hide Tab Bar)
         isHidden.current = true;
         Animated.timing(translateYAnim, {
-          toValue: 100, // Slide down out of bounds
+          toValue: 100,
           duration: 250,
           useNativeDriver: false,
         }).start(({ finished }) => {
@@ -73,7 +71,7 @@ export default function Categories() {
           },
         });
         Animated.timing(translateYAnim, {
-          toValue: 0, // Slide up back to position
+          toValue: 0,
           duration: 250,
           useNativeDriver: false,
         }).start();
@@ -135,6 +133,7 @@ export default function Categories() {
           <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: bottomPad }}>
             {cats.map((c) => {
               const isActive = active === c.id;
+              const hasImage = Boolean(c.image) && !brokenImages[String(c.id)];
               return (
                 <Pressable
                   key={c.id}
@@ -144,12 +143,16 @@ export default function Categories() {
                 >
                   {isActive && <View style={s.railBar} />}
                   <View style={[s.railImgWrap, isActive && s.railImgWrapActive]}>
-                    <Image
-                      source={{ uri: brokenImages[String(c.id)] ? IMAGE_FALLBACK_URL : (c.image || IMAGE_FALLBACK_URL) }}
-                      style={s.railImg}
-                      contentFit="cover"
-                      onError={() => setBrokenImages(prev => ({ ...prev, [String(c.id)]: true }))}
-                    />
+                    {hasImage ? (
+                      <Image
+                        source={{ uri: c.image }}
+                        style={s.railImg}
+                        contentFit="cover"
+                        onError={() => setBrokenImages(prev => ({ ...prev, [String(c.id)]: true }))}
+                      />
+                    ) : (
+                      <ImagePlaceholder type="category" style={s.railImg} />
+                    )}
                   </View>
                   <Text
                     style={[s.railLabel, isActive && { color: COLORS.brand, fontWeight: "800" }]}
