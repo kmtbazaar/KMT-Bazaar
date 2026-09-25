@@ -6,6 +6,7 @@ import {
   ScrollView,
   Pressable,
   ActivityIndicator,
+  Platform,
 } from "react-native";
 import { Image } from "expo-image";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -13,6 +14,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import Animated, { ZoomIn } from "react-native-reanimated";
 import { LinearGradient } from "expo-linear-gradient";
+import { WebView } from "react-native-webview";
 import { api } from "@/src/api";
 import { COLORS, RADIUS, SPACING } from "@/src/theme";
 
@@ -216,6 +218,25 @@ export default function OrderDetail() {
             </View>
           ))}
         </View>
+
+        {order.status === "out_for_delivery" && (
+          <View style={s.box}>
+            <Text style={s.boxTitle}>Delivery Partner Live Location</Text>
+            {order.delivery_location?.latitude != null && order.delivery_location?.longitude != null ? (
+              <View style={s.liveMap}>
+                {Platform.OS === "web" ? (
+                  <iframe
+                    title="Delivery partner live location"
+                    src={"https://www.openstreetmap.org/export/embed.html?bbox=" + (Number(order.delivery_location.longitude)-0.0045) + "," + (Number(order.delivery_location.latitude)-0.0045) + "," + (Number(order.delivery_location.longitude)+0.0045) + "," + (Number(order.delivery_location.latitude)+0.0045) + "&layer=mapnik&marker=" + Number(order.delivery_location.latitude) + "," + Number(order.delivery_location.longitude)}
+                    style={{width:"100%",height:"100%",border:"0"} as any}
+                  />
+                ) : (
+                  <WebView source={{uri:"https://www.openstreetmap.org/export/embed.html?bbox="+(Number(order.delivery_location.longitude)-0.0045)+","+(Number(order.delivery_location.latitude)-0.0045)+","+(Number(order.delivery_location.longitude)+0.0045)+","+(Number(order.delivery_location.latitude)+0.0045)+"&layer=mapnik&marker="+Number(order.delivery_location.latitude)+","+Number(order.delivery_location.longitude)}} style={{flex:1}} />
+                )}
+              </View>
+            ) : <Text style={s.liveWaiting}>Waiting for delivery partner location…</Text>}
+          </View>
+        )}
 
         <View style={s.box}>
           <Text style={s.boxTitle}>
@@ -470,6 +491,8 @@ const s = StyleSheet.create({
     marginTop: 4,
   },
 
+  liveMap: { width:"100%", height:220, overflow:"hidden", borderRadius:RADIUS.md, backgroundColor:"#E5E7EB", marginTop:4 },
+  liveWaiting: { paddingVertical:40, textAlign:"center", color:COLORS.textSecondary, fontSize:12, fontWeight:"700" },
   divider: {
     height: 1,
     backgroundColor: COLORS.border,
