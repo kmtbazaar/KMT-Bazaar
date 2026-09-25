@@ -17,7 +17,10 @@
     },
     "android": {
       "edgeToEdgeEnabled": false,
-      "permissions": ["CAMERA", "READ_MEDIA_IMAGES"]
+      "permissions": [
+        "CAMERA",
+        "READ_MEDIA_IMAGES"
+      ]
     },
     "web": {
       "bundler": "metro",
@@ -43,6 +46,12 @@
         {
           "photosPermission": "Pick product photos from your gallery",
           "cameraPermission": "Take photos of products to list"
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Allow KMT Bazaar to use your location for delivery and live order tracking."
         }
       ]
     ],
