@@ -584,37 +584,31 @@ export default function Home() {
           }}
         />
 
-        {/* Vendor Services Section */}
-        {vendorServices.length > 0 && (
-          <>
-            <SectionTitle title="Services" subtitle="Local services" />
-            <FlatList
-              horizontal
-              data={vendorServices}
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={{ paddingHorizontal: SPACING.lg, gap: 10, paddingVertical: 4 }}
-              keyExtractor={(it) => String(it.id)}
-              renderItem={({ item }) => (
-                <Pressable
-                  style={s.serviceCardSmall}
-                  onPress={() => router.push({ pathname: "/vendor-service/[id]", params: { id: item.id } } as any)}
-                >
-                  {item.image ? (
-                    <Image source={{ uri: item.image }} style={s.serviceImgSmall} contentFit="cover" />
-                  ) : (
-                    <View style={[s.serviceImgSmall, s.servicePlaceholder]}>
-                      <MaterialCommunityIcons name="briefcase-outline" size={28} color={THEME.skyHeader} />
-                    </View>
-                  )}
-                  <View style={{ padding: 6 }}>
-                    <Text style={s.serviceNameSmall} numberOfLines={1}>{item.name}</Text>
-                    {!!item.vendor_name && <Text style={s.serviceVendorSmall} numberOfLines={1}>{item.vendor_name}</Text>}
-                  </View>
-                </Pressable>
-              )}
-            />
-          </>
-        )}
+        {/* Service Marketplace Section */}
+        <SectionTitle title="Services" subtitle="Book local services" />
+        <FlatList
+          horizontal
+          data={[
+            { id: "holiday", title: "Holiday", sub: "Holiday packages", icon: "airplane-takeoff", path: "/holiday" },
+            { id: "car_rental", title: "Car Rental", sub: "Cars & trips", icon: "car", path: "/car-rental" },
+            { id: "daily_service", title: "Daily Services", sub: "Repair & local work", icon: "tools", path: "/daily-services" },
+          ]}
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={{ paddingHorizontal: SPACING.lg, gap: 10, paddingVertical: 4 }}
+          keyExtractor={(it) => it.id}
+          renderItem={({ item }) => (
+            <Pressable
+              style={{ width: 165, height: 132, backgroundColor: "#fff", borderRadius: 14, borderWidth: 1, borderColor: "#E2E8F0", padding: 12 }}
+              onPress={() => router.push(item.path as any)}
+            >
+              <View style={{ width: 42, height: 42, borderRadius: 12, backgroundColor: "#E0F2FE", alignItems: "center", justifyContent: "center" }}>
+                <MaterialCommunityIcons name={item.icon as any} size={24} color={THEME.skyHeader} />
+              </View>
+              <Text style={{ fontSize: 16, fontWeight: "800", color: THEME.black, marginTop: 10 }} numberOfLines={1}>{item.title}</Text>
+              <Text style={{ fontSize: 11, color: THEME.blackMuted, marginTop: 3 }} numberOfLines={1}>{item.sub}</Text>
+            </Pressable>
+          )}
+        />
 
         {/* Trending Products Section */}
         <SectionTitle title="Trending Products" subtitle="Best sellers this week" />
