@@ -113,7 +113,7 @@ export default function Home() {
     setLocationError("");
 
     try {
-      let coords: { latitude: number; longitude: number };
+      let coords: { latitude: number; longitude: number; accuracy?: number };
 
       if (Platform.OS === "web") {
         if (typeof window !== "undefined" && !window.isSecureContext) {
@@ -124,19 +124,52 @@ export default function Home() {
           throw new Error("This browser does not support location access.");
         }
 
-        coords = await new Promise<{ latitude: number; longitude: number }>((resolve, reject) => {
-          navigator.geolocation.getCurrentPosition(
-            (position) => resolve({
-              latitude: position.coords.latitude,
-              longitude: position.coords.longitude,
-            }),
+        coords = await new Promise<{ latitude: number; longitude: number; accuracy?: number }>((resolve, reject) => {
+          let watchId: number | null = null;
+          let best: { latitude: number; longitude: number; accuracy?: number } | null = null;
+          let settled = false;
+
+          const finish = (value?: { latitude: number; longitude: number; accuracy?: number }, error?: Error) => {
+            if (settled) return;
+            settled = true;
+            if (watchId !== null) navigator.geolocation.clearWatch(watchId);
+            clearTimeout(timeoutId);
+            if (error) reject(error);
+            else resolve(value || best as { latitude: number; longitude: number; accuracy?: number });
+          };
+
+          const timeoutId = window.setTimeout(() => {
+            if (best && Number.isFinite(best.accuracy) && (best.accuracy as number) <= 150) {
+              finish(best);
+            } else {
+              finish(undefined, new Error("Precise GPS is not accurate enough yet. Keep Location/GPS on, step outdoors or near a window, and try again."));
+            }
+          }, 30000);
+
+          watchId = navigator.geolocation.watchPosition(
+            (position) => {
+              const accuracy = Number(position.coords.accuracy);
+              const current = {
+                latitude: position.coords.latitude,
+                longitude: position.coords.longitude,
+                accuracy: Number.isFinite(accuracy) ? accuracy : undefined,
+              };
+
+              if (!best || (current.accuracy ?? Infinity) < (best.accuracy ?? Infinity)) {
+                best = current;
+              }
+
+              if ((current.accuracy ?? Infinity) <= 75) {
+                finish(current);
+              }
+            },
             (error) => {
               const messages: Record<number, string> = {
                 1: "Location permission was denied. Allow location access for KMT Bazaar in your browser site settings.",
                 2: "Your device/browser could not determine a precise location. Turn on Location/GPS and try again.",
                 3: "Precise GPS timed out. Keep Location/GPS on and tap the location button again.",
               };
-              reject(new Error(messages[error?.code] || error?.message || "Could not get your precise current location."));
+              finish(undefined, new Error(messages[error?.code] || error?.message || "Could not get your precise current location."));
             },
             {
               enableHighAccuracy: true,
@@ -159,6 +192,7 @@ export default function Home() {
         coords = {
           latitude: current.coords.latitude,
           longitude: current.coords.longitude,
+          accuracy: current.coords.accuracy,
         };
       }
 
@@ -184,6 +218,7 @@ export default function Home() {
         full_name: user?.name || "",
         latitude: coords.latitude,
         longitude: coords.longitude,
+        accuracy: coords.accuracy,
         source: "device-gps",
         captured_at: new Date().toISOString(),
       };
