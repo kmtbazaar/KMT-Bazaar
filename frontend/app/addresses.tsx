@@ -65,10 +65,23 @@ export default function Addresses() {
         });
         setExistingLocationSaved(false);
         setGpsPrefillLoading(true);
+        let profileName = user?.name || "";
+        let profilePhone = user?.phone || "";
+
+        // Always read the authenticated profile so both mobile-login and
+        // email-login customers get their saved mobile number here.
+        try {
+          const profile = await api.me();
+          profileName = profileName || profile?.name || "";
+          profilePhone = profilePhone || profile?.phone || "";
+        } catch (profileError) {
+          console.log("Profile lookup for address autofill failed:", profileError);
+        }
+
         setFormData(prev => ({
           ...prev,
-          full_name: user?.name || prev.full_name,
-          phone: user?.phone || prev.phone,
+          full_name: profileName || prev.full_name,
+          phone: profilePhone || prev.phone,
         }));
 
         try {
@@ -226,8 +239,19 @@ export default function Addresses() {
   const handleSave = async () => {
     Keyboard.dismiss();
 
-    if (!formData.full_name || !formData.line1 || !formData.city || !formData.state || !formData.pincode || !formData.phone) {
-      Alert.alert("Required Fields", "Please fill all fields to proceed.");
+    const requiredFields: Array<[string, string]> = [
+      ["Receiver's Name", formData.full_name],
+      ["Street / House No.", formData.line1],
+      ["District", formData.district],
+      ["City", formData.city],
+      ["State", formData.state],
+      ["Pincode", formData.pincode],
+      ["Mobile Number", formData.phone],
+    ];
+
+    const missingField = requiredFields.find(([, value]) => !value?.trim());
+    if (missingField) {
+      Alert.alert("Required Field", `${missingField[0]} is required. Nearby / Landmark is optional.`);
       return;
     }
 
@@ -415,20 +439,22 @@ export default function Addresses() {
                 ))}
               </View>
 
-              <TextInput style={s.input} placeholder="Receiver's Name" value={formData.full_name} onChangeText={t => setFormData({ ...formData, full_name: t })} />
-              <TextInput style={s.input} placeholder="Street / House No." value={formData.line1} onChangeText={t => setFormData({ ...formData, line1: t })} />
+              <TextInput style={s.input} placeholder="Receiver's Name *" value={formData.full_name} onChangeText={t => setFormData({ ...formData, full_name: t })} />
+              <TextInput style={s.input} placeholder="Street / House No. *" value={formData.line1} onChangeText={t => setFormData({ ...formData, line1: t })} />
               <TextInput style={s.input} placeholder="Nearby / Landmark (optional)" value={formData.landmark} onChangeText={t => setFormData({ ...formData, landmark: t })} />
-              <TextInput style={s.input} placeholder="District" value={formData.district} onChangeText={t => setFormData({ ...formData, district: t })} />
+              <TextInput style={s.input} placeholder="District *" value={formData.district} onChangeText={t => setFormData({ ...formData, district: t })} />
 
               <View style={{ flexDirection: "row", gap: 10 }}>
-                <TextInput style={[s.input, { flex: 1 }]} placeholder="City" value={formData.city} onChangeText={t => setFormData({ ...formData, city: t })} />
-                <TextInput style={[s.input, { flex: 1 }]} placeholder="State" value={formData.state} onChangeText={t => setFormData({ ...formData, state: t })} />
+                <TextInput style={[s.input, { flex: 1 }]} placeholder="City *" value={formData.city} onChangeText={t => setFormData({ ...formData, city: t })} />
+                <TextInput style={[s.input, { flex: 1 }]} placeholder="State *" value={formData.state} onChangeText={t => setFormData({ ...formData, state: t })} />
               </View>
 
               <View style={{ flexDirection: "row", gap: 10 }}>
-                <TextInput style={[s.input, { flex: 1 }]} placeholder="Pincode" keyboardType="number-pad" maxLength={6} value={formData.pincode} onChangeText={t => setFormData({ ...formData, pincode: t.replace(/[^0-9]/g, '') })} />
-                <TextInput style={[s.input, { flex: 1 }]} placeholder="Phone No." keyboardType="phone-pad" maxLength={10} value={formData.phone} onChangeText={t => setFormData({ ...formData, phone: t.replace(/[^0-9]/g, '') })} />
+                <TextInput style={[s.input, { flex: 1 }]} placeholder="Pincode *" keyboardType="number-pad" maxLength={6} value={formData.pincode} onChangeText={t => setFormData({ ...formData, pincode: t.replace(/[^0-9]/g, '') })} />
+                <TextInput style={[s.input, { flex: 1 }]} placeholder="Mobile No. *" keyboardType="phone-pad" maxLength={10} value={formData.phone} onChangeText={t => setFormData({ ...formData, phone: t.replace(/[^0-9]/g, '') })} />
               </View>
+
+              <Text style={s.requiredNote}>* All fields are required except Nearby / Landmark.</Text>
 
               {gpsPrefillLoading && (
                 <View style={s.gpsLoadingRow}>
@@ -520,6 +546,7 @@ const s = StyleSheet.create({
   locationSuccessText: { color: "#15803D", fontSize: 10, fontWeight: "700", marginTop: 7 },
   locationErrorText: { color: "#B91C1C", fontSize: 10, fontWeight: "700", lineHeight: 15, marginTop: 7 },
   locationPrivacyText: { color: COLORS.textMuted, fontSize: 9, lineHeight: 14, marginTop: 7 },
+  requiredNote: { color: COLORS.textMuted, fontSize: 10, marginBottom: 8 },
   gpsLoadingRow: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 8 },
   gpsLoadingText: { flex: 1, color: COLORS.brand, fontSize: 10, fontWeight: "700" },
   modalActions: { flexDirection: "row", gap: 12, marginTop: 10 },
