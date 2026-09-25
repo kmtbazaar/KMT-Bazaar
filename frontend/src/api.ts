@@ -12,6 +12,7 @@ const USER_KEY = "kmt_user";
 
 export type UserRole = "customer" | "vendor" | "delivery" | "admin";
 export type VendorType = "store" | "service";
+export type ServiceType = "holiday" | "car_rental" | "daily_service";
 
 export interface User {
   id: string;
@@ -21,6 +22,7 @@ export interface User {
   role: UserRole;
   avatar?: string | null;
   vendor_type?: VendorType | null;
+  service_type?: ServiceType | null;
 }
 
 // Storage helpers
@@ -229,6 +231,8 @@ export const api = {
       phone?: string;
       password: string;
       role?: string;
+      vendor_type?: VendorType;
+      service_type?: ServiceType;
     }
   ) =>
     apiFetch<{ token: string; user: User }>("/auth/register", {
@@ -310,6 +314,13 @@ export const api = {
   stores: () =>
     apiFetch<any[]>("/stores"),
 
+  serviceTypes: () => apiFetch<any[]>("/service-types"),
+  serviceCatalog: (type: string) => apiFetch<any[]>(`/services/catalog/${encodeURIComponent(type)}`),
+  serviceDetail: (type: string, id: string) => apiFetch<any>(`/services/catalog/${encodeURIComponent(type)}/${encodeURIComponent(id)}`),
+  serviceBookings: () => apiFetch<any[]>("/service-bookings"),
+  serviceBooking: (id: string) => apiFetch<any>(`/service-bookings/${encodeURIComponent(id)}`),
+  createServiceBooking: (data: any) => apiFetch<any>("/service-bookings", { method: "POST", body: JSON.stringify(data) }),
+  updateServiceBooking: (id: string, status: string) => apiFetch<any>(`/service-bookings/${encodeURIComponent(id)}/status`, { method: "POST", body: JSON.stringify({ status }) }),
   vendorServices: () =>
     apiFetch<any[]>("/vendor-services"),
 
