@@ -23,6 +23,11 @@ const ROLES = [
 { id: "delivery", label: "Delivery", icon: "moped" },
 ];
 
+const VENDOR_TYPES = [
+{ id: "store", label: "Store Vendor", icon: "storefront-outline" },
+{ id: "service", label: "Service Vendor", icon: "briefcase-outline" },
+];
+
 export default function Register() {
 const router = useRouter();
 const { register } = useAuth();
@@ -34,6 +39,7 @@ const [phone, setPhone] = useState(params.phone || "");
 const [password, setPassword] = useState("");
 const [confirmPassword, setConfirmPassword] = useState("");
 const [role, setRole] = useState("customer");
+const [vendorType, setVendorType] = useState<"store" | "service">("store");
 const [loading, setLoading] = useState(false);
 const [error, setError] = useState<string | null>(null);
 
@@ -109,6 +115,7 @@ try {
     phone: phone.trim(),
     password,
     role,
+    vendor_type: role === "vendor" ? vendorType : undefined,
   });
 
   router.replace(
@@ -182,6 +189,26 @@ color={COLORS.text}
           </Pressable>
         ))}
       </View>
+
+      {role === "vendor" && (
+        <View style={s.vendorTypeBox}>
+          <Text style={s.vendorTypeTitle}>Vendor Type</Text>
+          <Text style={s.vendorTypeSub}>Choose what you will provide on KMT Bazaar</Text>
+          <View style={s.vendorTypesRow}>
+            {VENDOR_TYPES.map((v) => (
+              <Pressable
+                key={v.id}
+                testID={`vendor-type-${v.id}`}
+                onPress={() => setVendorType(v.id as "store" | "service")}
+                style={[s.vendorTypeCard, vendorType === v.id && s.vendorTypeCardActive]}
+              >
+                <MaterialCommunityIcons name={v.icon as any} size={24} color={vendorType === v.id ? "#fff" : COLORS.brand} />
+                <Text style={[s.vendorTypeLabel, vendorType === v.id && { color: "#fff" }]}>{v.label}</Text>
+              </Pressable>
+            ))}
+          </View>
+        </View>
+      )}
 
       <Field
         icon="account-outline"
@@ -376,6 +403,13 @@ marginBottom: SPACING.sm,
 fontSize: 13,
 },
 
+vendorTypeBox: { backgroundColor: COLORS.surfaceSecondary, borderRadius: RADIUS.md, padding: SPACING.md, marginBottom: SPACING.lg, borderWidth: 1, borderColor: COLORS.border },
+vendorTypeTitle: { fontSize: 14, fontWeight: "800", color: COLORS.text },
+vendorTypeSub: { fontSize: 12, color: COLORS.textSecondary, marginTop: 3, marginBottom: 10 },
+vendorTypesRow: { flexDirection: "row", gap: SPACING.sm },
+vendorTypeCard: { flex: 1, alignItems: "center", padding: SPACING.md, borderRadius: RADIUS.md, borderWidth: 1.5, borderColor: COLORS.border, backgroundColor: COLORS.surface, gap: 6 },
+vendorTypeCardActive: { backgroundColor: COLORS.brand, borderColor: COLORS.brand },
+vendorTypeLabel: { fontWeight: "700", color: COLORS.text, fontSize: 12 },
 rolesRow: {
 flexDirection: "row",
 gap: SPACING.sm,
