@@ -180,6 +180,8 @@ class AddressIn(BaseModel):
     state: str
     pincode: str
     is_default: bool = False
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
 
 
 class CartItemIn(BaseModel):
@@ -1200,11 +1202,24 @@ async def travel_checkout(data: TravelCheckoutIn, current=Depends(get_current_us
 @api.get("/addresses")
 async def list_addresses(current=Depends(get_current_user)):
     addrs = await db.addresses.find({"user_id": current["id"]}, {"_id": 0}).to_list(50)
+    for addr in addrs:
+        addr["has_location"] = (
+            addr.get("latitude") is not None
+            and addr.get("longitude") is not None
+        )
+        addr.pop("latitude", None)
+        addr.pop("longitude", None)
     return addrs
 
 
 @api.post("/addresses")
 async def create_address(data: AddressIn, current=Depends(get_current_user)):
+    if (data.latitude is None) != (data.longitude is None):
+        raise HTTPException(400, "Both latitude and longitude are required")
+    if data.latitude is not None:
+        if not (-90 <= data.latitude <= 90 and -180 <= data.longitude <= 180):
+            raise HTTPException(400, "Invalid location coordinates")
+
     if data.is_default:
         await db.addresses.update_many({"user_id": current["id"]}, {"$set": {"is_default": False}})
     addr = {
@@ -1215,12 +1230,25 @@ async def create_address(data: AddressIn, current=Depends(get_current_user)):
     }
     await db.addresses.insert_one(dict(addr))
     addr.pop("_id", None)
-    return addr
+    public_addr = dict(addr)
+    public_addr["has_location"] = (
+        public_addr.get("latitude") is not None
+        and public_addr.get("longitude") is not None
+    )
+    public_addr.pop("latitude", None)
+    public_addr.pop("longitude", None)
+    return public_addr
 
 
 # 🔥 EDIT / UPDATE ADDRESS
 @api.put("/addresses/{addr_id}")
 async def update_address(addr_id: str, data: AddressIn, current=Depends(get_current_user)):
+    if (data.latitude is None) != (data.longitude is None):
+        raise HTTPException(400, "Both latitude and longitude are required")
+    if data.latitude is not None:
+        if not (-90 <= data.latitude <= 90 and -180 <= data.longitude <= 180):
+            raise HTTPException(400, "Invalid location coordinates")
+
     if data.is_default:
         await db.addresses.update_many({"user_id": current["id"]}, {"$set": {"is_default": False}})
     
@@ -1232,6 +1260,12 @@ async def update_address(addr_id: str, data: AddressIn, current=Depends(get_curr
         raise HTTPException(status_code=404, detail="Address not found")
         
     updated = await db.addresses.find_one({"id": addr_id, "user_id": current["id"]}, {"_id": 0})
+    updated["has_location"] = (
+        updated.get("latitude") is not None
+        and updated.get("longitude") is not None
+    )
+    updated.pop("latitude", None)
+    updated.pop("longitude", None)
     return updated
 
 
@@ -1318,7 +1352,19 @@ async def checkout(
         raise HTTPException(400, "Invalid address")
 
     customer_location = None
-    if data.location:
+
+    stored_latitude = addr.get("latitude")
+    stored_longitude = addr.get("longitude")
+
+    if stored_latitude is not None and stored_longitude is not None:
+        if not (-90 <= stored_latitude <= 90 and -180 <= stored_longitude <= 180):
+            raise HTTPException(400, "Saved address has invalid location coordinates")
+        customer_location = {
+            "latitude": stored_latitude,
+            "longitude": stored_longitude,
+            "updated_at": now_iso(),
+        }
+    elif data.location:
         if not (-90 <= data.location.latitude <= 90 and -180 <= data.location.longitude <= 180):
             raise HTTPException(400, "Invalid location coordinates")
         customer_location = {
@@ -1326,6 +1372,11 @@ async def checkout(
             "longitude": data.location.longitude,
             "updated_at": now_iso(),
         }
+    else:
+        raise HTTPException(
+            400,
+            "Delivery location missing. Please edit and save this address with current location."
+        )
 
     order_id = str(uuid.uuid4())
     order_no = (
@@ -1344,6 +1395,7 @@ async def checkout(
         "tax": expanded["tax"],
         "total": expanded["total"],
         "address": addr,
+        "customer_location": customer_location,
         "payment_method": data.payment_method,
         # Online payment is not marked paid until a payment gateway
         # webhook verifies the transaction.
