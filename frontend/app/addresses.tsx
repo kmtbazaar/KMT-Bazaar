@@ -206,21 +206,53 @@ export default function Addresses() {
         }
 
         const result = await new Promise<{ latitude: number; longitude: number; accuracy?: number }>((resolve, reject) => {
-          navigator.geolocation.getCurrentPosition(
-            (position) => resolve({
-              latitude: position.coords.latitude,
-              longitude: position.coords.longitude,
-              accuracy: position.coords.accuracy,
-            }),
+          let watchId: number | null = null;
+          let best: { latitude: number; longitude: number; accuracy?: number } | null = null;
+          let settled = false;
+
+          const finish = (value?: { latitude: number; longitude: number; accuracy?: number }, error?: Error) => {
+            if (settled) return;
+            settled = true;
+            if (watchId !== null) navigator.geolocation.clearWatch(watchId);
+            window.clearTimeout(timeoutId);
+            if (error) reject(error);
+            else resolve(value || best as { latitude: number; longitude: number; accuracy?: number });
+          };
+
+          const timeoutId = window.setTimeout(() => {
+            if (best && Number.isFinite(best.accuracy) && (best.accuracy as number) <= 150) {
+              finish(best);
+            } else {
+              finish(undefined, new Error("Precise GPS is not available yet. Turn on Location/GPS and try again."));
+            }
+          }, 30000);
+
+          watchId = navigator.geolocation.watchPosition(
+            (position) => {
+              const accuracy = Number(position.coords.accuracy);
+              const current = {
+                latitude: position.coords.latitude,
+                longitude: position.coords.longitude,
+                accuracy: Number.isFinite(accuracy) ? accuracy : undefined,
+              };
+
+              if (!best || (current.accuracy ?? Infinity) < (best.accuracy ?? Infinity)) {
+                best = current;
+              }
+
+              if ((current.accuracy ?? Infinity) <= 75) {
+                finish(current);
+              }
+            },
             (error) => {
               const messages: Record<number, string> = {
                 1: "Location permission was denied. Allow location access for KMT Bazaar and try again.",
                 2: "Turn on device GPS/location and try again.",
-                3: "Location request timed out. Please try again.",
+                3: "Precise GPS timed out. Turn on Location/GPS and try again.",
               };
-              reject(new Error(messages[error.code] || error.message || "Could not fetch current location."));
+              finish(undefined, new Error(messages[error?.code] || error?.message || "Could not fetch current location."));
             },
-            { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 }
+            { enableHighAccuracy: true, timeout: 30000, maximumAge: 0 }
           );
         });
 
@@ -490,20 +522,25 @@ export default function Addresses() {
                 ))}
               </View>
 
-              <TextInput style={s.input} placeholder="Receiver's Name *" value={formData.full_name} onChangeText={t => setFormData({ ...formData, full_name: t })} />
-              <TextInput style={s.input} placeholder="Street / House No. *" value={formData.line1} onChangeText={t => setFormData({ ...formData, line1: t })} />
-              <TextInput style={s.input} placeholder="Area / Street *" value={formData.line2 || ""} onChangeText={t => setFormData({ ...formData, line2: t })} />
+              <FieldLabel text="Receiver's Name" required />
+              <TextInput style={s.input} placeholder="Receiver's Name" value={formData.full_name} onChangeText={t => setFormData({ ...formData, full_name: t })} />
+              <FieldLabel text="Street / House No." required />
+              <TextInput style={s.input} placeholder="Street / House No." value={formData.line1} onChangeText={t => setFormData({ ...formData, line1: t })} />
+              <FieldLabel text="Area / Street" required />
+              <TextInput style={s.input} placeholder="Area / Street" value={formData.line2 || ""} onChangeText={t => setFormData({ ...formData, line2: t })} />
+              <FieldLabel text="Nearby / Landmark" />
               <TextInput style={s.input} placeholder="Nearby / Landmark (optional)" value={formData.landmark} onChangeText={t => setFormData({ ...formData, landmark: t })} />
-              <TextInput style={s.input} placeholder="District *" value={formData.district} onChangeText={t => setFormData({ ...formData, district: t })} />
+              <FieldLabel text="District" required />
+              <TextInput style={s.input} placeholder="District" value={formData.district} onChangeText={t => setFormData({ ...formData, district: t })} />
 
               <View style={s.fieldRow}>
-                <TextInput style={[s.input, s.fieldHalf]} placeholder="City *" value={formData.city} onChangeText={t => setFormData({ ...formData, city: t })} />
-                <TextInput style={[s.input, s.fieldHalf]} placeholder="State *" value={formData.state} onChangeText={t => setFormData({ ...formData, state: t })} />
+                <View style={s.fieldHalf}><FieldLabel text="City" required /><TextInput style={s.input} placeholder="City" value={formData.city} onChangeText={t => setFormData({ ...formData, city: t })} /></View>
+                <View style={s.fieldHalf}><FieldLabel text="State" required /><TextInput style={s.input} placeholder="State" value={formData.state} onChangeText={t => setFormData({ ...formData, state: t })} /></View>
               </View>
 
               <View style={s.fieldRow}>
-                <TextInput style={[s.input, s.fieldHalf]} placeholder="Pincode *" keyboardType="number-pad" maxLength={6} value={formData.pincode} onChangeText={t => setFormData({ ...formData, pincode: t.replace(/[^0-9]/g, '') })} />
-                <TextInput style={[s.input, s.fieldHalf]} placeholder="Mobile No. *" keyboardType="phone-pad" maxLength={10} value={formData.phone} onChangeText={t => setFormData({ ...formData, phone: normalizeMobile(t) })} />
+                <View style={s.fieldHalf}><FieldLabel text="Pincode" required /><TextInput style={s.input} placeholder="Pincode" keyboardType="number-pad" maxLength={6} value={formData.pincode} onChangeText={t => setFormData({ ...formData, pincode: t.replace(/[^0-9]/g, '') })} /></View>
+                <View style={s.fieldHalf}><FieldLabel text="Mobile No." required /><TextInput style={s.input} placeholder="Mobile No." keyboardType="phone-pad" maxLength={10} value={formData.phone} onChangeText={t => setFormData({ ...formData, phone: normalizeMobile(t) })} /></View>
               </View>
 
               <Text style={s.requiredNote}>* Mandatory field  ·  Nearby / Landmark is optional</Text>
@@ -550,6 +587,14 @@ export default function Addresses() {
   );
 }
 
+function FieldLabel({ text, required = false }: { text: string; required?: boolean }) {
+  return (
+    <Text style={s.fieldLabel}>
+      {text}{required ? <Text style={s.requiredStar}> *</Text> : null}
+    </Text>
+  );
+}
+
 const s = StyleSheet.create({
   root: { flex: 1, backgroundColor: COLORS.surfaceSecondary },
   center: { flex: 1, justifyContent: "center", alignItems: "center" },
@@ -586,6 +631,8 @@ const s = StyleSheet.create({
   typeBtnActive: { backgroundColor: COLORS.brandLight, borderColor: COLORS.brand },
   typeText: { color: COLORS.textMuted, fontWeight: "600", fontSize: 13 },
   typeTextActive: { color: COLORS.brand, fontWeight: "800" },
+  fieldLabel: { color: COLORS.text, fontSize: 12, fontWeight: "800", marginBottom: 5 },
+  requiredStar: { color: "#DC2626", fontWeight: "900" },
   input: { backgroundColor: COLORS.surfaceSecondary, borderWidth: 1, borderColor: COLORS.border, paddingHorizontal: 16, paddingVertical: 12, borderRadius: RADIUS.sm, marginBottom: 12, fontSize: 14, color: COLORS.text },
   locationCard: { marginTop: 6, padding: 12, borderRadius: RADIUS.md, backgroundColor: "#EFF6FF", borderWidth: 1, borderColor: "#BFDBFE" },
   locationCardHeader: { flexDirection: "row", alignItems: "center", gap: 10 },
