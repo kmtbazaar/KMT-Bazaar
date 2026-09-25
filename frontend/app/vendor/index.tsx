@@ -27,6 +27,7 @@ export default function ServiceVendorDashboard() {
             <View style={{flex:1}} />
             <View style={{flex:2,alignItems:"center"}}>
               <Text style={s.headerTitle}>Service Vendor</Text>
+                <Text style={s.headerSub}>{user?.service_type === "holiday" ? "Holiday" : user?.service_type === "car_rental" ? "Car Rental" : "Daily Services"}</Text>
               <Text style={s.headerSub}>Welcome, {user?.name}</Text>
             </View>
             <View style={{flex:1,alignItems:"flex-end"}}>
