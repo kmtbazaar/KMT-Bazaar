@@ -5,7 +5,7 @@ import { useRouter, useNavigation } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { api } from "@/src/api";
-import { COLORS, RADIUS, SPACING } from "@/src/theme";
+import { COLORS, IMAGE_FALLBACK_URL, RADIUS, SPACING } from "@/src/theme";
 import ProductCard from "@/src/components/ProductCard";
 import CheckoutBar from "@/src/components/CheckoutBar";
 import { useCart } from "@/src/CartContext";
@@ -16,6 +16,7 @@ export default function Categories() {
   const router = useRouter();
   const navigation = useNavigation();
   const [cats, setCats] = useState<any[]>([]);
+  const [brokenImages, setBrokenImages] = useState<Record<string, boolean>>({});
   const [active, setActive] = useState<string>("");
   const [products, setProducts] = useState<any[]>([]);
   const [loadingProducts, setLoadingProducts] = useState(false);
@@ -140,7 +141,12 @@ export default function Categories() {
                 >
                   {isActive && <View style={s.railBar} />}
                   <View style={[s.railImgWrap, isActive && s.railImgWrapActive]}>
-                    <Image source={{ uri: c.image }} style={s.railImg} contentFit="cover" />
+                    <Image
+                      source={{ uri: brokenImages[String(c.id)] ? IMAGE_FALLBACK_URL : (c.image || IMAGE_FALLBACK_URL) }}
+                      style={s.railImg}
+                      contentFit="cover"
+                      onError={() => setBrokenImages(prev => ({ ...prev, [String(c.id)]: true }))}
+                    />
                   </View>
                   <Text
                     style={[s.railLabel, isActive && { color: COLORS.brand, fontWeight: "800" }]}
