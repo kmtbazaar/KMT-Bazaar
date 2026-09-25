@@ -9,6 +9,14 @@ import { api } from "@/src/api";
 import { useAuth } from "@/src/AuthContext";
 import { COLORS, RADIUS, SPACING, shadow } from "@/src/theme";
 
+const normalizeMobile = (value: unknown) => {
+  const digits = String(value || "").replace(/\D/g, "");
+  if (digits.length === 10) return digits;
+  if (digits.length === 12 && digits.startsWith("91")) return digits.slice(-10);
+  if (digits.length > 10) return digits.slice(-10);
+  return digits;
+};
+
 export default function Addresses() {
   const router = useRouter();
   const { user, setUser } = useAuth();
@@ -81,7 +89,7 @@ export default function Addresses() {
         setFormData(prev => ({
           ...prev,
           full_name: profileName || prev.full_name,
-          phone: profilePhone || prev.phone,
+          phone: normalizeMobile(profilePhone) || normalizeMobile(prev.phone),
         }));
 
         try {
@@ -242,6 +250,7 @@ export default function Addresses() {
     const requiredFields: Array<[string, string]> = [
       ["Receiver's Name", formData.full_name],
       ["Street / House No.", formData.line1],
+      ["Area / Street", formData.line2],
       ["District", formData.district],
       ["City", formData.city],
       ["State", formData.state],
@@ -251,7 +260,7 @@ export default function Addresses() {
 
     const missingField = requiredFields.find(([, value]) => !value?.trim());
     if (missingField) {
-      Alert.alert("Required Field", `${missingField[0]} is required. Nearby / Landmark is optional.`);
+      Alert.alert("Required Field", `${missingField[0]} is required. Please fill all required fields. Nearby / Landmark is optional.`);
       return;
     }
 
@@ -451,7 +460,7 @@ export default function Addresses() {
 
               <View style={{ flexDirection: "row", gap: 10 }}>
                 <TextInput style={[s.input, { flex: 1 }]} placeholder="Pincode *" keyboardType="number-pad" maxLength={6} value={formData.pincode} onChangeText={t => setFormData({ ...formData, pincode: t.replace(/[^0-9]/g, '') })} />
-                <TextInput style={[s.input, { flex: 1 }]} placeholder="Mobile No. *" keyboardType="phone-pad" maxLength={10} value={formData.phone} onChangeText={t => setFormData({ ...formData, phone: t.replace(/[^0-9]/g, '') })} />
+                <TextInput style={[s.input, { flex: 1 }]} placeholder="Mobile No. *" keyboardType="phone-pad" maxLength={10} value={formData.phone} onChangeText={t => setFormData({ ...formData, phone: normalizeMobile(t) })} />
               </View>
 
               <Text style={s.requiredNote}>* All fields are required except Nearby / Landmark.</Text>
