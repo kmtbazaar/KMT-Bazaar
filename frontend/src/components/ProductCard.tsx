@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useState } from "react";
 import {
   View,
   Text,
@@ -15,7 +15,7 @@ import Animated, {
   withSequence,
   withSpring,
 } from "react-native-reanimated";
-import { COLORS, RADIUS } from "@/src/theme";
+import { COLORS, IMAGE_FALLBACK_URL, RADIUS } from "@/src/theme";
 import { useCart } from "@/src/CartContext";
 import { useRouter } from "expo-router";
 
@@ -45,6 +45,7 @@ export default function ProductCard({
 }) {
   const router = useRouter();
   const { add, update, cart } = useCart();
+  const [imageFailed, setImageFailed] = useState(false);
   const scale = useSharedValue(1);
 
   const qty = useMemo(() => {
@@ -133,10 +134,11 @@ export default function ProductCard({
       >
         <View style={s.imgWrap}>
           <Image
-            source={{ uri: p.image }}
+            source={{ uri: imageFailed ? IMAGE_FALLBACK_URL : (p.image || IMAGE_FALLBACK_URL) }}
             style={StyleSheet.absoluteFillObject}
             contentFit="cover"
             transition={200}
+            onError={() => setImageFailed(true)}
           />
 
           {discount > 0 && (
