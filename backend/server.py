@@ -90,6 +90,11 @@ class Role(str, Enum):
     ADMIN = "admin"
 
 
+class VendorType(str, Enum):
+    STORE = "store"
+    SERVICE = "service"
+
+
 def now_iso():
     return datetime.now(timezone.utc).isoformat()
 
@@ -115,6 +120,7 @@ class RegisterIn(BaseModel):
     phone: Optional[str] = None
     password: str
     role: Role = Role.CUSTOMER
+    vendor_type: VendorType = VendorType.STORE
 
 
 class LoginIn(BaseModel):
@@ -162,6 +168,7 @@ class UserOut(BaseModel):
     phone: Optional[str] = None
     role: Role
     avatar: Optional[str] = None
+    vendor_type: Optional[VendorType] = None
 
 
 class AuthOut(BaseModel):
@@ -324,6 +331,7 @@ def user_to_out(u: dict) -> dict:
         "phone": u.get("phone"),
         "role": u.get("role", "customer"),
         "avatar": u.get("avatar"),
+        "vendor_type": (u.get("vendor_type") or "store") if u.get("role") == Role.VENDOR.value else None,
     }
 
 
@@ -345,6 +353,7 @@ async def register(data: RegisterIn):
         "phone": data.phone,
         "password": hash_password(data.password),
         "role": data.role.value,
+        "vendor_type": data.vendor_type.value if data.role == Role.VENDOR else None,
         "avatar": None,
         "created_at": now_iso(),
     }
@@ -2442,6 +2451,64 @@ async def admin_reject_store(store_id: str, _=Depends(require_roles("admin"))):
     if res.deleted_count == 0:
         raise HTTPException(404, "Store not found")
     return {"ok": True, "message": "Store Rejected and Deleted"}
+
+
+# ------------------ VENDOR SERVICES ------------------
+@api.get("/vendor/services")
+async def vendor_list_services(current=Depends(require_roles("vendor"))):
+    return await db.vendor_services.find(
+        {"vendor_id": current["id"]},
+        {"_id": 0}
+    ).sort("order", 1).to_list(200)
+
+
+@api.post("/vendor/services")
+async def vendor_create_service(
+    data: VendorServiceIn,
+    current=Depends(require_roles("vendor"))
+):
+    service_id = "vsvc-" + uuid.uuid4().hex[:8]
+    doc = {
+        "id": service_id,
+        **data.dict(),
+        "vendor_id": current["id"],
+        "created_at": now_iso(),
+        "updated_at": now_iso(),
+    }
+    await db.vendor_services.insert_one(dict(doc))
+    doc.pop("_id", None)
+    return doc
+
+
+@api.put("/vendor/services/{service_id}")
+async def vendor_update_service(
+    service_id: str,
+    data: VendorServiceIn,
+    current=Depends(require_roles("vendor"))
+):
+    result = await db.vendor_services.update_one(
+        {"id": service_id, "vendor_id": current["id"]},
+        {"$set": {**data.dict(), "updated_at": now_iso()}}
+    )
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Service not found")
+    return await db.vendor_services.find_one(
+        {"id": service_id, "vendor_id": current["id"]},
+        {"_id": 0}
+    )
+
+
+@api.delete("/vendor/services/{service_id}")
+async def vendor_delete_service(
+    service_id: str,
+    current=Depends(require_roles("vendor"))
+):
+    result = await db.vendor_services.delete_one(
+        {"id": service_id, "vendor_id": current["id"]}
+    )
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Service not found")
+    return {"ok": True}
 
 
 # ------------------ VENDOR ------------------
