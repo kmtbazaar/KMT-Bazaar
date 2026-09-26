@@ -2588,9 +2588,9 @@ async def add_service_cart(data: ServiceCartAddIn, current=Depends(require_roles
     )
 
     is_mock = (
-        data.service_type == ServiceType.HOLIDAY
+        data.service_type in (ServiceType.HOLIDAY, ServiceType.CAR_RENTAL)
         and str(data.service_id).startswith("mock-")
-        and (data.extra or {}).get("source") == "mock-package"
+        and (data.extra or {}).get("source") in ("mock-package", "mock-car")
     )
 
     if not service and not is_mock:
@@ -2601,7 +2601,7 @@ async def add_service_cart(data: ServiceCartAddIn, current=Depends(require_roles
     item["service_name"] = (
         service.get("name", "")
         if service
-        else (data.extra or {}).get("package_name", "Holiday Package")
+        else (data.extra or {}).get("package_name", "Service Booking")
     )
     item["vendor_id"] = service.get("vendor_id") if service else None
     item["vendor_name"] = (
