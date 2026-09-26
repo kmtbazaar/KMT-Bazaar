@@ -1831,10 +1831,13 @@ class VendorServiceIn(BaseModel):
     vendor_name: str = ""
     description: str = ""
     image: str = ""
+    gallery: list[str] = []
+    location: str = ""
     category: str = ""
     phone: str = ""
     order: int = 99
     active: bool = True
+    service_type: ServiceType = ServiceType.DAILY_SERVICE
 
 
 class OrderStatusIn(BaseModel):
