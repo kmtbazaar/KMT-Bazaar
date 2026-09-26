@@ -329,6 +329,32 @@ export default function CarRentalPage() {
 
   useFocusEffect(useCallback(() => { load(); }, [load]));
 
+  useEffect(() => {
+    if (Platform.OS !== "web" || typeof document === "undefined") return;
+    const html = document.documentElement;
+    const body = document.body;
+    const previousHtmlBg = html.style.backgroundColor;
+    const previousBodyBg = body.style.backgroundColor;
+    const previousBodyMargin = body.style.margin;
+    const previousHtmlOverscroll = (html.style as any).overscrollBehaviorY;
+    const previousBodyOverscroll = (body.style as any).overscrollBehaviorY;
+
+    html.style.backgroundColor = BLACK;
+    body.style.backgroundColor = BLACK;
+    body.style.margin = "0";
+    (html.style as any).overscrollBehaviorY = "none";
+    (body.style as any).overscrollBehaviorY = "none";
+
+    return () => {
+      html.style.backgroundColor = previousHtmlBg;
+      body.style.backgroundColor = previousBodyBg;
+      body.style.margin = previousBodyMargin;
+      (html.style as any).overscrollBehaviorY = previousHtmlOverscroll;
+      (body.style as any).overscrollBehaviorY = previousBodyOverscroll;
+    };
+  }, []);
+
+
   const filtered = useMemo(() => {
     const needle = query.trim().toLowerCase();
     if (!needle) return items;
@@ -406,7 +432,7 @@ export default function CarRentalPage() {
 
   return (
     <SafeAreaView style={styles.root}>
-      <ScrollView contentContainerStyle={styles.page} showsVerticalScrollIndicator={false}>
+      <ScrollView style={styles.scrollSurface} contentContainerStyle={styles.page} showsVerticalScrollIndicator={false}>
         <LinearGradient colors={["#04101e", "#08344a", "#06202f"]} style={styles.hero}>
           <View style={styles.glow} />
           <Animated.View style={[styles.neonRing, pulseStyle]} />
@@ -426,9 +452,6 @@ export default function CarRentalPage() {
             <Animated.View entering={FadeInDown.duration(600)}>
               <Text style={styles.kicker}>DRIVE. DISCOVER. ARRIVE.</Text>
               <Text style={styles.heroTitle}>Your journey starts with the{"\n"}right <Text style={styles.heroAccent}>car.</Text></Text>
-              <Text style={styles.heroSub}>
-                Book cars, chauffeurs and tour-ready vehicles for city rides, airport transfers and outstation travel.
-              </Text>
             </Animated.View>
 
             <Animated.View entering={FadeInUp.delay(160).duration(650)} style={styles.searchBox}>
@@ -446,16 +469,6 @@ export default function CarRentalPage() {
                 <MaterialCommunityIcons name="arrow-right" size={20} color={WHITE} />
               </Pressable>
             </Animated.View>
-          </View>
-
-          <Animated.View style={[styles.orbitBadge, pulseStyle]}>
-            <MaterialCommunityIcons name="navigation-variant" size={15} color={AMBER} />
-            <Text style={styles.orbitText}>CITY · AIRPORT · OUTSTATION</Text>
-          </Animated.View>
-          <View style={styles.heroStats}>
-            <View style={styles.heroStat}><MaterialCommunityIcons name="car-multiple" size={18} color={AMBER} /><Text style={styles.heroStatText}>Multiple vehicle types</Text></View>
-            <View style={styles.heroStat}><MaterialCommunityIcons name="map-marker-distance" size={18} color={WHITE} /><Text style={styles.heroStatText}>City & outstation</Text></View>
-            <View style={styles.heroStat}><MaterialCommunityIcons name="calendar-range" size={18} color={WHITE} /><Text style={styles.heroStatText}>Flexible duration</Text></View>
           </View>
 
           <View style={styles.road}>
@@ -670,9 +683,10 @@ function SpecBox({ icon, label, value }: { icon: any; label: string; value: stri
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: BLACK },
+  root: { flex: 1, backgroundColor: BLACK, minHeight: "100%" as any },
+  scrollSurface: { flex: 1, backgroundColor: BLACK },
   page: { paddingBottom: 70 },
-  hero: { minHeight: 470, paddingHorizontal: 18, paddingTop: 22, overflow: "hidden", borderBottomLeftRadius: 30, borderBottomRightRadius: 30 },
+  hero: { minHeight: 405, paddingHorizontal: 18, paddingTop: 22, overflow: "hidden", borderBottomLeftRadius: 30, borderBottomRightRadius: 30 },
   glow: { position: "absolute", width: 260, height: 260, borderRadius: 130, backgroundColor: "rgba(24,214,255,.16)", right: -80, top: 35 },
   heroShine: { position: "absolute", top: -70, left: -180, width: 110, height: 620, backgroundColor: "rgba(255,255,255,.07)", zIndex: 2 },
   neonRing: { position: "absolute", width: 220, height: 220, borderRadius: 110, borderWidth: 1, borderColor: "rgba(24,214,255,.34)", right: -44, top: 40 },
@@ -682,16 +696,10 @@ const styles = StyleSheet.create({
   livePill: { flexDirection: "row", gap: 6, alignItems: "center", paddingHorizontal: 10, paddingVertical: 8, borderRadius: 999, backgroundColor: "rgba(24,214,255,.12)", borderWidth: 1, borderColor: "rgba(24,214,255,.34)" },
   liveDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: RED },
   liveText: { color: "#d8f9ff", fontSize: 10, fontWeight: "900" },
-  orbitBadge: { position: "absolute", right: 20, bottom: 165, flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 11, paddingVertical: 8, borderRadius: 999, backgroundColor: "rgba(255,181,71,.10)", borderWidth: 1, borderColor: "rgba(255,181,71,.28)", zIndex: 6 },
-  orbitText: { color: "#ffe7b6", fontSize: 9, fontWeight: "900", letterSpacing: 1 },
-  heroStats: { position: "absolute", left: 18, right: 18, bottom: 112, flexDirection: "row", flexWrap: "wrap", gap: 8, zIndex: 4 },
-  heroStat: { flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 10, paddingVertical: 8, borderRadius: 999, backgroundColor: "rgba(255,255,255,.075)", borderWidth: 1, borderColor: "rgba(170,235,255,.18)" },
-  heroStatText: { color: "#dceef5", fontSize: 10, fontWeight: "800" },
-  heroCopy: { zIndex: 5, maxWidth: 920, width: "100%", alignSelf: "center", paddingTop: 56 },
+  heroCopy: { zIndex: 5, maxWidth: 920, width: "100%", alignSelf: "center", paddingTop: 46 },
   kicker: { color: RED, fontSize: 12, fontWeight: "900", letterSpacing: 2.2, marginBottom: 10 },
   heroTitle: { color: WHITE, fontSize: 39, lineHeight: 46, fontWeight: "900" },
   heroAccent: { color: AMBER },
-  heroSub: { color: "#c4c7cd", fontSize: 15, lineHeight: 23, maxWidth: 730, marginTop: 15 },
   searchBox: { marginTop: 24, backgroundColor: WHITE, borderWidth: 1, borderColor: "rgba(255,255,255,.25)", borderRadius: 17, padding: 7, flexDirection: "row", alignItems: "center", maxWidth: 840, shadowColor: RED, shadowOpacity: .22, shadowRadius: 28 },
   searchInput: { flex: 1, paddingHorizontal: 10, paddingVertical: 13, fontSize: 15, color: BLACK },
   searchBtn: { width: 48, height: 48, borderRadius: 13, backgroundColor: RED, alignItems: "center", justifyContent: "center" },
