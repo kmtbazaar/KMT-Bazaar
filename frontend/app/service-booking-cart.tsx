@@ -16,11 +16,11 @@ export default function Cart(){
   if(phone.replace(/\D/g,"").length!==10){Alert.alert("Mobile required","Please enter a valid 10-digit mobile number.");return}
   try{setBusy(true);await api.serviceCartCustomer({full_name:name.trim(),phone:phone.replace(/\D/g,""),email:email.trim()});r.push("/service-checkout" as any)}catch(e:any){Alert.alert("Booking",""+(e?.message||"Could not save details"))}finally{setBusy(false)}
  };
- return <SafeAreaView style={s.root}><View style={s.h}><Pressable onPress={()=>r.back()}><MaterialCommunityIcons name="arrow-left" size={24}/></Pressable><View style={{flex:1}}><Text style={s.t}>Booking Cart</Text><Text style={s.sub}>Almost ready for your holiday</Text></View><MaterialCommunityIcons name="airplane-takeoff" size={25} color="#0284C7"/></View>
+ return <SafeAreaView style={s.root}><View style={s.h}><Pressable onPress={()=>r.back()}><MaterialCommunityIcons name="arrow-left" size={24}/></Pressable><View style={{flex:1}}><Text style={s.t}>Booking Cart</Text><Text style={s.sub}>Almost ready for your journey</Text></View><MaterialCommunityIcons name="car-sports" size={25} color="#ef233c"/></View>
  <ScrollView contentContainerStyle={s.b}>
  {!x?<View style={s.empty}><MaterialCommunityIcons name="bag-suitcase-outline" size={48} color="#94a3b8"/><Text style={s.emptyT}>Your booking cart is empty</Text></View>:
  <>
- <View style={s.card}><Text style={s.label}>YOUR TRIP</Text><Text style={s.name}>{x.service_name||extra.package_name}</Text><Text style={s.meta}>{x.booking_date}{x.booking_time?" · "+x.booking_time:""}</Text><View style={s.row}><Text style={s.muted}>Travellers</Text><Text style={s.bold}>{x.quantity||1}</Text></View><View style={s.row}><Text style={s.muted}>Package total</Text><Text style={s.price}>₹{total.toLocaleString("en-IN")}</Text></View></View>
+ <View style={s.card}><Text style={s.label}>YOUR JOURNEY</Text><Text style={s.name}>{x.service_name||extra.package_name}</Text><Text style={s.meta}>{x.booking_date}{x.booking_time?" · "+x.booking_time:""}</Text><View style={s.row}><Text style={s.muted}>Travellers</Text><Text style={s.bold}>{x.quantity||1}</Text></View><View style={s.row}><Text style={s.muted}>Package total</Text><Text style={s.price}>₹{total.toLocaleString("en-IN")}</Text></View></View>
  <View style={s.card}><Text style={s.label}>BOOKING CONTACT</Text><Text style={s.helper}>These details will be used for booking confirmation and travel communication.</Text>
  <TextInput value={name} onChangeText={setName} placeholder="Full name *" style={s.input}/>
  <TextInput value={phone} onChangeText={v=>setPhone(v.replace(/[^0-9]/g,""))} placeholder="Mobile number *" keyboardType="phone-pad" maxLength={10} style={s.input}/>
