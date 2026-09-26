@@ -11,7 +11,7 @@ export default function VendorEarnings() {
   const router = useRouter();
   const [stats, setStats] = useState<any>(null);
 
-  const load = useCallback(async () => { try { setStats(await vendorApi.stats()); } catch {} }, []);
+  const load = useCallback(async () => { try { setStats(await vendorApi.serviceStats()); } catch {} }, []);
   useFocusEffect(useCallback(() => { load(); }, [load]));
 
   return (
@@ -30,10 +30,10 @@ export default function VendorEarnings() {
 
         <View style={s.row}>
           <Card label="Gross Revenue" value={`₹${stats?.revenue ?? 0}`} icon="cash" color={COLORS.brand} />
-          <Card label="Total Orders" value={stats?.orders ?? 0} icon="package-variant" color={COLORS.accent} />
+          <Card label="Total Bookings" value={stats?.orders ?? 0} icon="package-variant" color={COLORS.accent} />
         </View>
         <View style={s.row}>
-          <Card label="Delivered" value={stats?.delivered ?? 0} icon="check-circle-outline" color={COLORS.success} />
+          <Card label="Completed" value={stats?.completed ?? 0} icon="check-circle-outline" color={COLORS.success} />
           <Card label="Pending" value={stats?.pending ?? 0} icon="clock-outline" color="#EAB308" />
         </View>
 
