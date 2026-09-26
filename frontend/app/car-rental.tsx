@@ -529,21 +529,7 @@ export default function CarRentalPage() {
           </View>
         )}
 
-        <View style={styles.workflow}>
-          <Text style={styles.sectionTitle}>How KMT Bazaar Car Rental works</Text>
-          <Text style={styles.sectionSub}>A simple three-step journey from search to confirmed booking.</Text>
-          <View style={styles.workflowRow}>
-            {[
-              ["1", "Choose your car", "Compare seats, fuel, comfort and service type."],
-              ["2", "Add trip details", "Tell us pickup, destination, date and passengers."],
-              ["3", "Pay & confirm", "Continue through the existing KMT booking checkout."],
-            ].map(([n, t, d]) => (
-              <View key={n} style={styles.workflowItem}>
-                <View style={styles.workflowNum}><Text style={styles.workflowNumText}>{n}</Text></View>
-                <Text style={styles.workflowTitle}>{t}</Text>
-                <Text style={styles.workflowDesc}>{d}</Text>
-              </View>
-            ))}
+          ))}
           </View>
         </View>
 
