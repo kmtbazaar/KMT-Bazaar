@@ -704,7 +704,7 @@ const styles = StyleSheet.create({
   introIcon: { width: 49, height: 49, borderRadius: 15, backgroundColor: "#e9fbff", alignItems: "center", justifyContent: "center" },
   introTitle: { color: BLACK, fontSize: 16, fontWeight: "900" },
   introText: { color: "#61798c", fontSize: 12, lineHeight: 18, marginTop: 3 },
-  sectionTitle: { maxWidth: 980, width: "calc(100% - 36px)" as any, alignSelf: "center", color: WHITE, fontSize: 22, fontWeight: "900", marginTop: 27, marginBottom: 9 },
+  sectionTitle: { maxWidth: 980, width: "calc(100% - 36px)" as any, alignSelf: "center", color: "#22C55E", fontSize: 22, fontWeight: "900", marginTop: 27, marginBottom: 9 },
   sectionSub: { color: MUTED, fontSize: 12, lineHeight: 18 },
   filterRow: { paddingHorizontal: 18, gap: 9, paddingBottom: 4 },
   filterChip: { flexDirection: "row", gap: 7, alignItems: "center", paddingVertical: 11, paddingHorizontal: 14, borderRadius: 999, borderWidth: 1, borderColor: LINE, backgroundColor: BLACK_2 },
