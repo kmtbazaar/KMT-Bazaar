@@ -354,8 +354,8 @@ async def register(data: RegisterIn):
     if data.role == Role.ADMIN:
         raise HTTPException(status_code=403, detail="Admin accounts cannot be created through public registration")
     if data.role == Role.VENDOR and data.vendor_type == VendorType.SERVICE:
-        if not data.service_type:
-            raise HTTPException(status_code=400, detail="Service type is required for a service vendor")
+        if data.service_type not in {ServiceType.HOLIDAY, ServiceType.CAR_RENTAL}:
+            raise HTTPException(status_code=400, detail="Only Holiday and Car Rental service vendors are supported. Daily Services are admin-managed.")
         existing_service_vendor = await db.users.find_one({
             "role": Role.VENDOR.value,
             "vendor_type": VendorType.SERVICE.value,
@@ -2924,6 +2924,8 @@ async def vendor_service_stats(current=Depends(require_roles("vendor"))):
 @api.get("/vendor/services")
 async def vendor_list_services(current=Depends(require_roles("vendor"))):
     _require_vendor_type(current, "service")
+    if current.get("service_type") not in {ServiceType.HOLIDAY.value, ServiceType.CAR_RENTAL.value}:
+        raise HTTPException(status_code=403, detail="Daily Services are managed by Admin only")
     return await db.vendor_services.find(
         {"vendor_id": current["id"], "service_type": current.get("service_type") or ServiceType.DAILY_SERVICE.value},
         {"_id": 0}
@@ -2936,6 +2938,8 @@ async def vendor_create_service(
     current=Depends(require_roles("vendor"))
 ):
     _require_vendor_type(current, "service")
+    if current.get("service_type") not in {ServiceType.HOLIDAY.value, ServiceType.CAR_RENTAL.value}:
+        raise HTTPException(status_code=403, detail="Daily Services are managed by Admin only")
     service_id = "vsvc-" + uuid.uuid4().hex[:8]
     _require_vendor_type(current, "service")
     vendor_service_type = current.get("service_type") or ServiceType.DAILY_SERVICE.value
@@ -2959,6 +2963,8 @@ async def vendor_update_service(
     current=Depends(require_roles("vendor"))
 ):
     _require_vendor_type(current, "service")
+    if current.get("service_type") not in {ServiceType.HOLIDAY.value, ServiceType.CAR_RENTAL.value}:
+        raise HTTPException(status_code=403, detail="Daily Services are managed by Admin only")
     update_data = data.dict()
     update_data["service_type"] = current.get("service_type") or ServiceType.DAILY_SERVICE.value
     result = await db.vendor_services.update_one(
@@ -2979,6 +2985,8 @@ async def vendor_delete_service(
     current=Depends(require_roles("vendor"))
 ):
     _require_vendor_type(current, "service")
+    if current.get("service_type") not in {ServiceType.HOLIDAY.value, ServiceType.CAR_RENTAL.value}:
+        raise HTTPException(status_code=403, detail="Daily Services are managed by Admin only")
     result = await db.vendor_services.delete_one(
         {"id": service_id, "vendor_id": current["id"]}
     )
