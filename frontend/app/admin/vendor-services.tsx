@@ -8,7 +8,7 @@ import { adminApi } from "@/src/roleApi";
 import { COLORS, RADIUS, SPACING } from "@/src/theme";
 import ImageUploader from "@/src/components/ImageUploader";
 
-const EMPTY = { name: "", vendor_name: "", description: "", image: "", gallery: [], location: "", category: "", phone: "", order: "99", active: true, service_type: "daily_service" };
+const EMPTY = { name: "", vendor_name: "", description: "", image: "", gallery: [], location: "", category: "", phone: "", price: "0", unit: "visit", order: "99", active: true, service_type: "daily_service" };
 
 export default function AdminVendorServices() {
   const router = useRouter();
@@ -30,7 +30,7 @@ export default function AdminVendorServices() {
       image: item.image || "", gallery: Array.isArray(item.gallery) ? item.gallery : [],
       location: item.location || "", category: item.category || "", phone: item.phone || "",
       order: String(item.order ?? 99), active: item.active !== false,
-      service_type: item.service_type || "daily_service"
+      service_type: item.service_type || "daily_service", price: String(item.price ?? 0), unit: item.unit || "visit"
     });
     setModal(true);
   };
@@ -40,7 +40,7 @@ export default function AdminVendorServices() {
       Platform.OS === "web" ? window.alert("Service name is required") : Alert.alert("Required", "Service name is required");
       return;
     }
-    const data = { ...f, name: f.name.trim(), order: Number(f.order) || 99 };
+    const data = { ...f, name: f.name.trim(), order: Number(f.order) || 99, price: Number(f.price) || 0 };
     if (editingId) await adminApi.updateVendorService(editingId, data);
     else await adminApi.createVendorService(data);
     setModal(false); setEditingId(null); setF({ ...EMPTY }); load();
@@ -101,6 +101,8 @@ export default function AdminVendorServices() {
             <Input ph="Category" v={f.category} oc={(v:string)=>setF({...f,category:v})} />
             <Input ph="Description" v={f.description} oc={(v:string)=>setF({...f,description:v})} />
             <Input ph="Phone" v={f.phone} oc={(v:string)=>setF({...f,phone:v})} keyboardType="phone-pad" />
+            <Input ph="Price" v={f.price} oc={(v:string)=>setF({...f,price:v})} keyboardType="numeric" />
+            <Input ph="Unit (visit / day / package)" v={f.unit} oc={(v:string)=>setF({...f,unit:v})} />
             <Input ph="Display Order" v={f.order} oc={(v:string)=>setF({...f,order:v})} keyboardType="numeric" />
             <ImageUploader value={f.image} onChange={(uri)=>setF({...f,image:uri})} label="Cover Image" aspect={[16,9]} />
             {f.service_type==="holiday" && <View style={{marginTop:4}}>
