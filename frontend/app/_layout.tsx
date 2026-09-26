@@ -41,6 +41,7 @@ function RoleRouteGuard({ children }: { children: React.ReactNode }) {
 
     const customerShared =
       first === "checkout" ||
+      first === "car-trip-builder" ||
       first === "service-booking-cart" ||
       first === "service-checkout" ||
       first === "service-payment" ||
