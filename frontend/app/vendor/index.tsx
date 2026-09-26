@@ -19,6 +19,13 @@ const ACTIONS = [
 export default function ServiceVendorDashboard() {
   const router = useRouter();
   const { user, logout } = useAuth();
+  const type = user?.service_type || "daily_service";
+  const meta:any = {
+    holiday:{label:"Holiday Vendor",icon:"airplane-takeoff",color:"#2563EB",sub:"Manage holiday packages and customer bookings"},
+    car_rental:{label:"Car Rental Vendor",icon:"car",color:"#0f172a",sub:"Manage cars, rentals and trip bookings"},
+    daily_service:{label:"Daily Services Vendor",icon:"tools",color:"#16A34A",sub:"Manage plumbers, electricians, mistri, labour and home services"}
+  };
+  const m=meta[type]||meta.daily_service;
   return (
     <View style={s.root} testID="service-vendor-dashboard">
       <SafeAreaView edges={["top"]}>
@@ -26,8 +33,8 @@ export default function ServiceVendorDashboard() {
           <View style={s.headerTop}>
             <View style={{flex:1}} />
             <View style={{flex:2,alignItems:"center"}}>
-              <Text style={s.headerTitle}>Service Vendor</Text>
-                <Text style={s.headerSub}>{user?.service_type === "holiday" ? "Holiday" : user?.service_type === "car_rental" ? "Car Rental" : "Daily Services"}</Text>
+              <Text style={s.headerTitle}>{m.label}</Text>
+                <Text style={[s.headerSub,{color:m.color}]}>{m.sub}</Text>
               <Text style={s.headerSub}>Welcome, {user?.name}</Text>
             </View>
             <View style={{flex:1,alignItems:"flex-end"}}>
@@ -42,7 +49,7 @@ export default function ServiceVendorDashboard() {
           <View style={[s.actionIcon,{backgroundColor:"#F973161A"}]}><MaterialCommunityIcons name="briefcase-outline" size={24} color="#F97316"/></View>
           <View style={{flex:1}}>
             <Text style={s.actionLabel}>Manage Services</Text>
-            <Text style={{fontSize:12,color:COLORS.textMuted,marginTop:3}}>Add Holiday, Car Rental and Daily Services</Text>
+            <Text style={{fontSize:12,color:COLORS.textMuted,marginTop:3}}>Add and manage only your assigned service type</Text>
           </View>
           <MaterialCommunityIcons name="chevron-right" size={20} color={COLORS.textMuted}/>
         </Pressable>
