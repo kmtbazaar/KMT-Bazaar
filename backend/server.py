@@ -353,6 +353,18 @@ def user_to_out(u: dict) -> dict:
 async def register(data: RegisterIn):
     if data.role == Role.ADMIN:
         raise HTTPException(status_code=403, detail="Admin accounts cannot be created through public registration")
+    if data.role == Role.VENDOR and data.vendor_type == VendorType.SERVICE:
+        if not data.service_type:
+            raise HTTPException(status_code=400, detail="Service type is required for a service vendor")
+        existing_service_vendor = await db.users.find_one({
+            "role": Role.VENDOR.value,
+            "vendor_type": VendorType.SERVICE.value,
+            "service_type": data.service_type.value,
+            "active": {"$ne": False},
+        }, {"_id": 1})
+        if existing_service_vendor:
+            service_label = SERVICE_TYPES.get(data.service_type.value, {}).get("name", data.service_type.value)
+            raise HTTPException(status_code=409, detail=f"{service_label} vendor account already exists")
     existing = await db.users.find_one({"$or": [{"email": data.email}, {"phone": data.phone}]})
     if existing:
         if existing.get("email") == data.email:
@@ -1837,6 +1849,8 @@ class VendorServiceIn(BaseModel):
     phone: str = ""
     order: int = 99
     active: bool = True
+    price: float = 0
+    unit: str = "visit"
     service_type: ServiceType = ServiceType.DAILY_SERVICE
 
 
@@ -2894,11 +2908,24 @@ def _require_vendor_type(current, expected: str):
     if (current.get("vendor_type") or "store") != expected:
         raise HTTPException(status_code=403, detail=f"{expected.title()} Vendor access required")
 
+@api.get("/vendor/service-stats")
+async def vendor_service_stats(current=Depends(require_roles("vendor"))):
+    _require_vendor_type(current, "service")
+    service_type = current.get("service_type") or ServiceType.DAILY_SERVICE.value
+    services_count, active_count, bookings = await asyncio.gather(
+        db.vendor_services.count_documents({"vendor_id": current["id"], "service_type": service_type}),
+        db.vendor_services.count_documents({"vendor_id": current["id"], "service_type": service_type, "active": True}),
+        db.service_bookings.find({"vendor_id": current["id"], "service_type": service_type}, {"_id": 0, "paid_amount": 1, "status": 1}).to_list(500),
+    )
+    revenue = round(sum(float(x.get("paid_amount", 0) or 0) for x in bookings), 2)
+    pending = sum(1 for x in bookings if x.get("status") not in {"completed", "cancelled"})
+    return {"service_type": service_type, "services": services_count, "active_services": active_count, "bookings": len(bookings), "pending": pending, "revenue": revenue}
+
 @api.get("/vendor/services")
 async def vendor_list_services(current=Depends(require_roles("vendor"))):
     _require_vendor_type(current, "service")
     return await db.vendor_services.find(
-        {"vendor_id": current["id"]},
+        {"vendor_id": current["id"], "service_type": current.get("service_type") or ServiceType.DAILY_SERVICE.value},
         {"_id": 0}
     ).sort("order", 1).to_list(200)
 
@@ -2932,9 +2959,11 @@ async def vendor_update_service(
     current=Depends(require_roles("vendor"))
 ):
     _require_vendor_type(current, "service")
+    update_data = data.dict()
+    update_data["service_type"] = current.get("service_type") or ServiceType.DAILY_SERVICE.value
     result = await db.vendor_services.update_one(
-        {"id": service_id, "vendor_id": current["id"]},
-        {"$set": {**data.dict(), "updated_at": now_iso()}}
+        {"id": service_id, "vendor_id": current["id"], "service_type": update_data["service_type"]},
+        {"$set": {**update_data, "updated_at": now_iso()}}
     )
     if result.matched_count == 0:
         raise HTTPException(status_code=404, detail="Service not found")
