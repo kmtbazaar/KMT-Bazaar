@@ -94,7 +94,7 @@ export default function AdminVendorServices() {
       seats:isCar?(Number(f.seats)||0):0,
       bags:isCar?(Number(f.bags)||0):0,
       transmission:isCar?String(f.transmission||""):"",
-      fuel:isCar?String(f.fuel||"):"",
+      fuel:isCar?String(f.fuel||""):"",
       tag:String(f.tag||"").trim(),
       includes,
       service_type:isVendorMode?(service_type||"holiday"):(f.service_type||"daily_service"),
