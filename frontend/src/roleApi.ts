@@ -169,6 +169,7 @@ export const vendorApi = {
       method: "DELETE",
     }),
 
+  serviceStats: () => apiFetch<any>("/vendor/service-stats"),
   serviceBookings: () => apiFetch<any[]>("/vendor/service-bookings"),
   updateServiceBooking: (id: string, status: string) => apiFetch<any>(`/vendor/service-bookings/${encodeURIComponent(id)}/status`, { method: "POST", body: JSON.stringify({ status }) }),
   services: () =>
