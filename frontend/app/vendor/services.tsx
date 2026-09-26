@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from "react";
-import { View, Text, StyleSheet, FlatList, Pressable, Modal, TextInput, KeyboardAvoidingView, Platform, Alert } from "react-native";
+import { View, Text, StyleSheet, FlatList, Pressable, Modal, TextInput, KeyboardAvoidingView, Platform, Alert, ScrollView } from "react-native";
 import { Image } from "expo-image";
 import { useFocusEffect, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -49,6 +49,7 @@ export default function VendorServices() {
       ListEmptyComponent={<View style={s.empty}><MaterialCommunityIcons name="briefcase-outline" size={44} color={COLORS.textMuted}/><Text style={s.emptyText}>No services yet</Text><Text style={s.meta}>Add your first service with +</Text></View>}
     />
     <Modal visible={modal} transparent animationType="slide"><View style={m.back}><KeyboardAvoidingView behavior={Platform.OS==="ios"?"padding":undefined} style={m.sheet}>
+      <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={true} contentContainerStyle={{paddingBottom:20}}>
       <Text style={m.title}>{editing?"Edit Service":"Add Service"}</Text>
       <Input ph="Service Name *" v={f.name} set={(v:string)=>setF({...f,name:v})}/>
       <Input ph={serviceType==="daily_service"?"Category (Plumber / Electrician / Mistri etc.)":"Category"} v={f.category} set={(v:string)=>setF({...f,category:v})}/>
@@ -62,6 +63,7 @@ export default function VendorServices() {
         {[0,1,2,3,4].map((i)=><ImageUploader key={i} value={f.gallery?.[i] || ""} onChange={(uri)=>setF({...f,gallery:Object.assign([],f.gallery||[],{[i]:uri}).slice(0,5)})} label={`Destination Photo ${i+1}`} aspect={[4,3]}/>)}
       </View>}
       <View style={{flexDirection:"row",gap:8,marginTop:8}}><Pressable onPress={()=>setModal(false)} style={[m.btn,m.ghost]}><Text style={m.ghostText}>Cancel</Text></Pressable><Pressable onPress={save} style={[m.btn,m.primary]}><Text style={m.btnText}>{editing?"Save Changes":"Create"}</Text></Pressable></View>
+      </ScrollView>
     </KeyboardAvoidingView></View></Modal>
   </SafeAreaView>;
 }
