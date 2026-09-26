@@ -19,13 +19,16 @@ const ACTIONS = [
 export default function ServiceVendorDashboard() {
   const router = useRouter();
   const { user, logout } = useAuth();
-  const type = user?.service_type || "daily_service";
+  const type = user?.service_type || "holiday";
   const meta:any = {
     holiday:{label:"Holiday Vendor",icon:"airplane-takeoff",color:"#2563EB",sub:"Manage holiday packages and customer bookings"},
     car_rental:{label:"Car Rental Vendor",icon:"car",color:"#0f172a",sub:"Manage cars, rentals and trip bookings"},
-    daily_service:{label:"Daily Services Vendor",icon:"tools",color:"#16A34A",sub:"Manage plumbers, electricians, mistri, labour and home services"}
+    daily_service:{label:"Daily Services Admin-Managed",icon:"tools",color:"#64748b",sub:"Daily Services are managed by Admin only"}
   };
-  const m=meta[type]||meta.daily_service;
+  const m=meta[type]||meta.holiday;
+  if (type === "daily_service") {
+    return <View style={s.root} testID="service-vendor-access-blocked"><SafeAreaView edges={["top"]}><LinearGradient colors={[COLORS.accent, COLORS.accentDark]} style={s.header}><View style={s.headerTop}><View style={{flex:1}}/><View style={{flex:2,alignItems:"center"}}><Text style={s.headerTitle}>Service Vendor Access</Text><Text style={s.headerSub}>Daily Services are managed by Admin only</Text></View><View style={{flex:1,alignItems:"flex-end"}}><Pressable onPress={logout}><MaterialCommunityIcons name="logout" size={26} color="#fff"/></Pressable></View></View></LinearGradient></SafeAreaView><View style={{padding:24,alignItems:"center",marginTop:70}}><MaterialCommunityIcons name="shield-lock-outline" size={58} color="#64748b"/><Text style={{fontSize:22,fontWeight:"900",marginTop:14,textAlign:"center"}}>No Daily Service Vendor Dashboard</Text><Text style={{color:COLORS.textMuted,textAlign:"center",marginTop:8,lineHeight:20}}>Daily Services, plumbers, electricians, mistri and labour are managed directly by Admin.</Text><Pressable onPress={logout} style={{marginTop:22,backgroundColor:COLORS.brand,paddingHorizontal:24,paddingVertical:13,borderRadius:30}}><Text style={{color:"#fff",fontWeight:"900"}}>Logout</Text></Pressable></View></View>;
+  }
   return (
     <View style={s.root} testID="service-vendor-dashboard">
       <SafeAreaView edges={["top"]}>
