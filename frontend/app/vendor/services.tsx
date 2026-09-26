@@ -43,7 +43,7 @@ export default function VendorServices() {
         <Text style={s.name} numberOfLines={1}>{item.name}</Text>
         {!!item.category&&<Text style={s.meta} numberOfLines={1}>{item.category}</Text>}
         <View style={s.actions}><Pressable onPress={()=>openEdit(item)}><MaterialCommunityIcons name="pencil-outline" size={18} color={COLORS.brand}/></Pressable><Pressable onPress={()=>remove(item.id)}><MaterialCommunityIcons name="trash-can-outline" size={18} color={COLORS.error}/></Pressable></View>
-      </View>)}
+      </View>}
       ListEmptyComponent={<View style={s.empty}><MaterialCommunityIcons name="briefcase-outline" size={44} color={COLORS.textMuted}/><Text style={s.emptyText}>No services yet</Text><Text style={s.meta}>Add your first service with +</Text></View>}
     />
     <Modal visible={modal} transparent animationType="slide"><View style={m.back}><KeyboardAvoidingView behavior={Platform.OS==="ios"?"padding":undefined} style={m.sheet}>
