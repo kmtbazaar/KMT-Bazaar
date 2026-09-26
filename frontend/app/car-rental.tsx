@@ -278,6 +278,7 @@ export default function CarRentalPage() {
   const carX = useSharedValue(-180);
   const roadX = useSharedValue(0);
   const pulse = useSharedValue(0.95);
+  const shine = useSharedValue(-1);
 
   useEffect(() => {
     carX.value = withRepeat(
@@ -295,6 +296,11 @@ export default function CarRentalPage() {
       -1,
       true
     );
+    shine.value = withRepeat(
+      withSequence(withTiming(1.15, { duration: 2600 }), withTiming(-1, { duration: 40 })),
+      -1,
+      false
+    );
   }, [carX, pulse, roadX]);
 
   const carStyle = useAnimatedStyle(() => ({
@@ -304,6 +310,7 @@ export default function CarRentalPage() {
     transform: [{ translateX: roadX.value }],
   }));
   const pulseStyle = useAnimatedStyle(() => ({ transform: [{ scale: pulse.value }] }));
+  const shineStyle = useAnimatedStyle(() => ({ transform: [{ translateX: shine.value * (width + 260) }, { skewX: "-18deg" }] }));
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -331,8 +338,7 @@ export default function CarRentalPage() {
   }, [items, query]);
 
   const heroSearch = () => {
-    const q = query.trim();
-    if (q) setFilter("All");
+    setQuery(query.trim());
   };
 
   const openDetails = (item: CarItem) => {
@@ -403,6 +409,7 @@ export default function CarRentalPage() {
         <LinearGradient colors={["#050608", "#111318", "#33090f"]} style={styles.hero}>
           <View style={styles.glow} />
           <Animated.View style={[styles.neonRing, pulseStyle]} />
+          <Animated.View pointerEvents="none" style={[styles.heroShine, shineStyle]} />
           <View style={styles.heroTop}>
             <View style={styles.badge}>
               <MaterialCommunityIcons name="steering" size={15} color={RED} />
@@ -438,6 +445,12 @@ export default function CarRentalPage() {
                 <MaterialCommunityIcons name="arrow-right" size={20} color={WHITE} />
               </Pressable>
             </Animated.View>
+          </View>
+
+          <View style={styles.heroStats}>
+            <View style={styles.heroStat}><MaterialCommunityIcons name="car-multiple" size={18} color={RED} /><Text style={styles.heroStatText}>Multiple vehicle types</Text></View>
+            <View style={styles.heroStat}><MaterialCommunityIcons name="map-marker-distance" size={18} color={WHITE} /><Text style={styles.heroStatText}>City & outstation</Text></View>
+            <View style={styles.heroStat}><MaterialCommunityIcons name="calendar-range" size={18} color={WHITE} /><Text style={styles.heroStatText}>Flexible duration</Text></View>
           </View>
 
           <View style={styles.road}>
@@ -534,18 +547,7 @@ export default function CarRentalPage() {
           </View>
         </View>
 
-        <View style={styles.trustRow}>
-          {[
-            ["shield-check", "Verified-ready flow", "Built for a vendor marketplace"],
-            ["cash-check", "Transparent pricing", "See the rate before checkout"],
-            ["headset", "Trip support", "Vendor contact can be added later"],
-          ].map(([icon, title, desc]) => (
-            <View key={title} style={styles.trustCard}>
-              <MaterialCommunityIcons name={icon as any} size={23} color={RED} />
-              <Text style={styles.trustTitle}>{title}</Text>
-              <Text style={styles.trustText}>{desc}</Text>
-            </View>
-          ))}
+        ))}
         </View>
       </ScrollView>
 
@@ -685,8 +687,9 @@ function SpecBox({ icon, label, value }: { icon: any; label: string; value: stri
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: BLACK },
   page: { paddingBottom: 70 },
-  hero: { minHeight: 430, paddingHorizontal: 18, paddingTop: 22, overflow: "hidden", borderBottomLeftRadius: 30, borderBottomRightRadius: 30 },
+  hero: { minHeight: 470, paddingHorizontal: 18, paddingTop: 22, overflow: "hidden", borderBottomLeftRadius: 30, borderBottomRightRadius: 30 },
   glow: { position: "absolute", width: 260, height: 260, borderRadius: 130, backgroundColor: "rgba(239,35,60,.13)", right: -80, top: 35 },
+  heroShine: { position: "absolute", top: -70, left: -180, width: 110, height: 620, backgroundColor: "rgba(255,255,255,.045)", zIndex: 2 },
   neonRing: { position: "absolute", width: 220, height: 220, borderRadius: 110, borderWidth: 1, borderColor: "rgba(239,35,60,.28)", right: -44, top: 40 },
   heroTop: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", zIndex: 4 },
   badge: { flexDirection: "row", gap: 7, alignItems: "center", paddingHorizontal: 11, paddingVertical: 8, backgroundColor: "rgba(255,255,255,.06)", borderWidth: 1, borderColor: "rgba(255,255,255,.09)", borderRadius: 999 },
@@ -694,12 +697,15 @@ const styles = StyleSheet.create({
   livePill: { flexDirection: "row", gap: 6, alignItems: "center", paddingHorizontal: 10, paddingVertical: 8, borderRadius: 999, backgroundColor: "rgba(239,35,60,.12)", borderWidth: 1, borderColor: "rgba(239,35,60,.3)" },
   liveDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: RED },
   liveText: { color: "#ffd7dc", fontSize: 10, fontWeight: "900" },
-  heroCopy: { zIndex: 3, maxWidth: 920, width: "100%", alignSelf: "center", paddingTop: 56 },
+  heroStats: { position: "absolute", left: 18, right: 18, bottom: 112, flexDirection: "row", flexWrap: "wrap", gap: 8, zIndex: 4 },
+  heroStat: { flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 10, paddingVertical: 8, borderRadius: 999, backgroundColor: "rgba(255,255,255,.065)", borderWidth: 1, borderColor: "rgba(255,255,255,.11)" },
+  heroStatText: { color: "#dce0e6", fontSize: 10, fontWeight: "800" },
+  heroCopy: { zIndex: 5, maxWidth: 920, width: "100%", alignSelf: "center", paddingTop: 56 },
   kicker: { color: RED, fontSize: 12, fontWeight: "900", letterSpacing: 2.2, marginBottom: 10 },
   heroTitle: { color: WHITE, fontSize: 39, lineHeight: 46, fontWeight: "900" },
   heroAccent: { color: RED },
   heroSub: { color: "#c4c7cd", fontSize: 15, lineHeight: 23, maxWidth: 730, marginTop: 15 },
-  searchBox: { marginTop: 24, backgroundColor: WHITE, borderRadius: 17, padding: 7, flexDirection: "row", alignItems: "center", maxWidth: 840, shadowColor: RED, shadowOpacity: .18, shadowRadius: 28 },
+  searchBox: { marginTop: 24, backgroundColor: WHITE, borderWidth: 1, borderColor: "rgba(255,255,255,.25)", borderRadius: 17, padding: 7, flexDirection: "row", alignItems: "center", maxWidth: 840, shadowColor: RED, shadowOpacity: .18, shadowRadius: 28 },
   searchInput: { flex: 1, paddingHorizontal: 10, paddingVertical: 13, fontSize: 15, color: BLACK },
   searchBtn: { width: 48, height: 48, borderRadius: 13, backgroundColor: RED, alignItems: "center", justifyContent: "center" },
   road: { position: "absolute", left: 0, right: 0, bottom: 0, height: 100, backgroundColor: "#08090b", borderTopWidth: 1, borderTopColor: "#22262e", overflow: "hidden" },
@@ -743,7 +749,8 @@ const styles = StyleSheet.create({
   pricePill: { position: "absolute", right: 10, bottom: 10, flexDirection: "row", gap: 3, alignItems: "baseline", paddingHorizontal: 10, paddingVertical: 7, borderRadius: 10, backgroundColor: RED },
   price: { color: WHITE, fontSize: 15, fontWeight: "900" },
   priceMeta: { color: "#ffe4e7", fontSize: 10, fontWeight: "800" },
-  cardBody: { padding: 14 },
+  cardBody: { padding: 15 },
+  cardGlow: { position: "absolute", left: 0, right: 0, bottom: 0, height: 2, backgroundColor: RED, opacity: .9 },
   titleLine: { flexDirection: "row", alignItems: "center", gap: 8 },
   cardTitle: { flex: 1, color: WHITE, fontSize: 17, fontWeight: "900" },
   rating: { flexDirection: "row", alignItems: "center", gap: 3 },
