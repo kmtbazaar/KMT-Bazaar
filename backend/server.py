@@ -2912,14 +2912,28 @@ def _require_vendor_type(current, expected: str):
 async def vendor_service_stats(current=Depends(require_roles("vendor"))):
     _require_vendor_type(current, "service")
     service_type = current.get("service_type") or ServiceType.DAILY_SERVICE.value
-    services_count, active_count, bookings = await asyncio.gather(
+    services_count, active_count, bookings, settings = await asyncio.gather(
         db.vendor_services.count_documents({"vendor_id": current["id"], "service_type": service_type}),
         db.vendor_services.count_documents({"vendor_id": current["id"], "service_type": service_type, "active": True}),
         db.service_bookings.find({"vendor_id": current["id"], "service_type": service_type}, {"_id": 0, "paid_amount": 1, "status": 1}).to_list(500),
+        db.settings.find_one({"id": "global"}, {"_id": 0})
     )
     revenue = round(sum(float(x.get("paid_amount", 0) or 0) for x in bookings), 2)
     pending = sum(1 for x in bookings if x.get("status") not in {"completed", "cancelled"})
-    return {"service_type": service_type, "services": services_count, "active_services": active_count, "bookings": len(bookings), "pending": pending, "revenue": revenue}
+    completed = sum(1 for x in bookings if x.get("status") == "completed")
+    commission = float((settings or {}).get("commission_percent", 10.0) or 10.0)
+    payout = round(revenue * (1 - commission / 100), 2)
+    return {
+        "service_type": service_type,
+        "services": services_count,
+        "active_services": active_count,
+        "bookings": len(bookings),
+        "completed": completed,
+        "pending": pending,
+        "revenue": revenue,
+        "commission_percent": commission,
+        "payout": payout,
+    }
 
 @api.get("/vendor/services")
 async def vendor_list_services(current=Depends(require_roles("vendor"))):
