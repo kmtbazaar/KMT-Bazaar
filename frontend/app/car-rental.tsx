@@ -336,12 +336,18 @@ export default function CarRentalPage() {
     const previousHtmlBg = html.style.backgroundColor;
     const previousBodyBg = body.style.backgroundColor;
     const previousBodyMargin = body.style.margin;
+    const previousHtmlHeight = html.style.height;
+    const previousBodyHeight = body.style.height;
+    const previousBodyOverflow = body.style.overflow;
     const previousHtmlOverscroll = (html.style as any).overscrollBehaviorY;
     const previousBodyOverscroll = (body.style as any).overscrollBehaviorY;
 
     html.style.backgroundColor = BLACK;
     body.style.backgroundColor = BLACK;
     body.style.margin = "0";
+    html.style.height = "100%";
+    body.style.height = "100%";
+    body.style.overflow = "hidden";
     (html.style as any).overscrollBehaviorY = "none";
     (body.style as any).overscrollBehaviorY = "none";
 
@@ -349,6 +355,9 @@ export default function CarRentalPage() {
       html.style.backgroundColor = previousHtmlBg;
       body.style.backgroundColor = previousBodyBg;
       body.style.margin = previousBodyMargin;
+      html.style.height = previousHtmlHeight;
+      body.style.height = previousBodyHeight;
+      body.style.overflow = previousBodyOverflow;
       (html.style as any).overscrollBehaviorY = previousHtmlOverscroll;
       (body.style as any).overscrollBehaviorY = previousBodyOverscroll;
     };
@@ -683,9 +692,9 @@ function SpecBox({ icon, label, value }: { icon: any; label: string; value: stri
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: BLACK, minHeight: "100%" as any },
+  root: { flex: 1, backgroundColor: BLACK },
   scrollSurface: { flex: 1, backgroundColor: BLACK },
-  page: { paddingBottom: 70 },
+  page: { paddingBottom: 0 },
   hero: { minHeight: 405, paddingHorizontal: 18, paddingTop: 22, overflow: "hidden", borderBottomLeftRadius: 30, borderBottomRightRadius: 30 },
   glow: { position: "absolute", width: 260, height: 260, borderRadius: 130, backgroundColor: "rgba(24,214,255,.16)", right: -80, top: 35 },
   heroShine: { position: "absolute", top: -70, left: -180, width: 110, height: 620, backgroundColor: "rgba(255,255,255,.07)", zIndex: 2 },
