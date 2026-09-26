@@ -207,13 +207,13 @@ export default function VendorServices() {
 
               <ImageUploader value={f.image} onChange={(uri)=>setF({...f,image:uri})} label={isCar ? "Car Main Photo" : "Package Cover Photo"} aspect={[16,9]} />
 
-              <Text style={m.galleryTitle}>{isCar ? "Car Gallery · Up to 5 Photos" : "Destination Gallery · Up to 5 Photos"}</Text>
-              {[0,1,2,3,4].map((i)=>
+              <Text style={m.galleryTitle}>{isCar ? "Car Photos · 2 Photos" : "Destination Gallery · Up to 5 Photos"}</Text>
+              {(isCar ? [0,1] : [0,1,2,3,4]).map((i)=>
                 <ImageUploader
                   key={i}
                   value={f.gallery?.[i] || ""}
-                  onChange={(uri)=>setF({...f,gallery:Object.assign([],f.gallery || [], {[i]:uri}).slice(0,5)})}
-                  label={`Photo ${i+1}`}
+                  onChange={(uri)=>setF({...f,gallery:Object.assign([],f.gallery || [], {[i]:uri}).slice(isCar ? 2 : 5)})}
+                  label={isCar ? (i === 0 ? "Main Car Photo" : "Second Car Photo") : `Photo ${i+1}`}
                   aspect={[4,3]}
                 />
               )}
