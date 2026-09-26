@@ -23,7 +23,8 @@ function RoleRouteGuard({ children }: { children: React.ReactNode }) {
       first === "RoojgarForm" ||
       first === "holiday" ||
       first === "car-rental" ||
-      first === "daily-services";
+      first === "daily-services" ||
+      first === "daily-service-booking";
 
     if (!user) {
       if (!isAuthRoute && !isPublicRoute) router.replace("/auth/login");
