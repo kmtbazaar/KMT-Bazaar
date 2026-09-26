@@ -10,6 +10,8 @@ import { vendorApi } from "@/src/roleApi";
 import { api, uploadImageAsset } from "@/src/api"; 
 import { useAuth } from "@/src/AuthContext";
 import { COLORS, LOGO_URL, RADIUS, SPACING, shadow } from "@/src/theme";
+import HolidayVendorDashboardScreen from "./holiday-dashboard";
+import CarRentalVendorDashboardScreen from "./car-rental-dashboard";
 
 const ACTIONS = [
   { icon: "clipboard-list-outline", label: "Orders", path: "/vendor/orders", color: "#F97316" },
@@ -17,90 +19,21 @@ const ACTIONS = [
 ];
 
 export default function ServiceVendorDashboard() {
-  const router = useRouter();
-  const { user, logout } = useAuth();
-  const type = user?.service_type || "holiday";
-  const [serviceStats, setServiceStats] = useState<any>(null);
-  const loadServiceStats = useCallback(async () => {
-    try { setServiceStats(await vendorApi.serviceStats()); } catch {}
-  }, []);
-  useFocusEffect(useCallback(() => { loadServiceStats(); }, [loadServiceStats]));
-  const meta:any = {
-    holiday:{label:"Holiday Vendor",icon:"airplane-takeoff",color:"#2563EB",sub:"Manage holiday packages and customer bookings"},
-    car_rental:{label:"Car Rental Vendor",icon:"car",color:"#0f172a",sub:"Manage cars, rentals and trip bookings"},
-    daily_service:{label:"Daily Services Admin-Managed",icon:"tools",color:"#64748b",sub:"Daily Services are managed by Admin only"}
-  };
-  const m=meta[type]||meta.holiday;
-  if (type === "daily_service") {
-    return <View style={s.root} testID="service-vendor-access-blocked"><SafeAreaView edges={["top"]}><LinearGradient colors={[COLORS.accent, COLORS.accentDark]} style={s.header}><View style={s.headerTop}><View style={{flex:1}}/><View style={{flex:2,alignItems:"center"}}><Text style={s.headerTitle}>Service Vendor Access</Text><Text style={s.headerSub}>Daily Services are managed by Admin only</Text></View><View style={{flex:1,alignItems:"flex-end"}}><Pressable onPress={logout}><MaterialCommunityIcons name="logout" size={26} color="#fff"/></Pressable></View></View></LinearGradient></SafeAreaView><View style={{padding:24,alignItems:"center",marginTop:70}}><MaterialCommunityIcons name="shield-lock-outline" size={58} color="#64748b"/><Text style={{fontSize:22,fontWeight:"900",marginTop:14,textAlign:"center"}}>No Daily Service Vendor Dashboard</Text><Text style={{color:COLORS.textMuted,textAlign:"center",marginTop:8,lineHeight:20}}>Daily Services, plumbers, electricians, mistri and labour are managed directly by Admin.</Text><Pressable onPress={logout} style={{marginTop:22,backgroundColor:COLORS.brand,paddingHorizontal:24,paddingVertical:13,borderRadius:30}}><Text style={{color:"#fff",fontWeight:"900"}}>Logout</Text></Pressable></View></View>;
-  }
-  return (
-    <View style={s.root} testID="service-vendor-dashboard">
-      <SafeAreaView edges={["top"]}>
-        <LinearGradient colors={[COLORS.accent, COLORS.accentDark]} style={s.header}>
-          <View style={s.headerTop}>
-            <View style={{flex:1}} />
-            <View style={{flex:2,alignItems:"center"}}>
-              <Text style={s.headerTitle}>{m.label}</Text>
-                <Text style={[s.headerSub,{color:m.color}]}>{m.sub}</Text>
-              <Text style={s.headerSub}>Welcome, {user?.name}</Text>
-            </View>
-            <View style={{flex:1,alignItems:"flex-end"}}>
-              <Pressable onPress={logout} hitSlop={10}><MaterialCommunityIcons name="logout" size={26} color="#fff" /></Pressable>
-            </View>
-          </View>
-        </LinearGradient>
-      </SafeAreaView>
-      <ScrollView style={{flex:1}} contentContainerStyle={{padding:SPACING.lg,paddingBottom:100}}>
-        <View style={s.kpiRow}>
-          <KPI label="Revenue" value={`₹${serviceStats?.revenue ?? 0}`} icon="cash" color={COLORS.success} />
-          <KPI label="Bookings" value={serviceStats?.bookings ?? 0} icon="calendar-check" color={COLORS.accent} />
-        </View>
-        <View style={s.kpiRow}>
-          <KPI label="Completed" value={serviceStats?.completed ?? 0} icon="check-circle-outline" color={COLORS.success} />
-          <KPI label="Pending" value={serviceStats?.pending ?? 0} icon="clock-outline" color="#EAB308" />
-        </View>
-        <View style={{backgroundColor:"#fff",padding:14,borderRadius:RADIUS.md,borderWidth:1,borderColor:COLORS.border,marginBottom:SPACING.lg}}>
-          <Text style={{color:COLORS.textMuted,fontSize:11,fontWeight:"700"}}>ESTIMATED PAYOUT</Text>
-          <Text style={{fontSize:28,fontWeight:"900",color:COLORS.success,marginTop:4}}>{`₹${serviceStats?.payout ?? 0}`}</Text>
-          <Text style={{fontSize:11,color:COLORS.textMuted,marginTop:2}}>After {serviceStats?.commission_percent ?? 10}% platform commission</Text>
-        </View>
-        <Text style={s.sectionTitle}>My Services</Text>
-        <Pressable style={s.actionCard} onPress={() => router.push("/vendor/services" as any)}>
-          <View style={[s.actionIcon,{backgroundColor:"#F973161A"}]}><MaterialCommunityIcons name="briefcase-outline" size={24} color="#F97316"/></View>
-          <View style={{flex:1}}>
-            <Text style={s.actionLabel}>Manage Services</Text>
-            <Text style={{fontSize:12,color:COLORS.textMuted,marginTop:3}}>Add and manage only your assigned service type</Text>
-          </View>
-          <MaterialCommunityIcons name="chevron-right" size={20} color={COLORS.textMuted}/>
-        </Pressable>
-        <Pressable style={s.actionCard} onPress={() => router.push("/vendor/earnings" as any)}>
-          <View style={[s.actionIcon,{backgroundColor:"#16A34A1A"}]}><MaterialCommunityIcons name="chart-line" size={24} color="#16A34A"/></View>
-          <View style={{flex:1}}>
-            <Text style={s.actionLabel}>Earnings</Text>
-            <Text style={{fontSize:12,color:COLORS.textMuted,marginTop:3}}>View revenue, commission and estimated payout</Text>
-          </View>
-          <MaterialCommunityIcons name="chevron-right" size={20} color={COLORS.textMuted}/>
-        </Pressable>
-        <Pressable style={s.actionCard} onPress={() => router.push("/vendor/service-bookings" as any)}>
-          <View style={[s.actionIcon,{backgroundColor:"#16A34A1A"}]}><MaterialCommunityIcons name="calendar-check-outline" size={24} color="#16A34A"/></View>
-          <View style={{flex:1}}>
-            <Text style={s.actionLabel}>Bookings</Text>
-            <Text style={{fontSize:12,color:COLORS.textMuted,marginTop:3}}>View customer service bookings</Text>
-          </View>
-          <MaterialCommunityIcons name="chevron-right" size={20} color={COLORS.textMuted}/>
-        </Pressable>
-      </ScrollView>
-    </View>
-  );
+  const { user } = useAuth();
+  if (user?.service_type === "car_rental") return <CarRentalVendorDashboard />;
+  return <HolidayVendorDashboard />;
 }
 
-function KPI({ label, value, icon, color }: any) {
-  return <View style={s.kpiCard}>
-    <View style={[s.kpiIcon,{backgroundColor:color+"1A"}]}><MaterialCommunityIcons name={icon as any} size={18} color={color}/></View>
-    <Text style={s.kpiValue}>{value}</Text>
-    <Text style={s.kpiLabel}>{label}</Text>
-  </View>;
+function HolidayVendorDashboard() {
+  const { user } = useAuth();
+  const { logout } = useAuth();
+  return <HolidayVendorDashboardScreen user={user} logout={logout} />;
+}
+
+function CarRentalVendorDashboard() {
+  const { user } = useAuth();
+  const { logout } = useAuth();
+  return <CarRentalVendorDashboardScreen user={user} logout={logout} />;
 }
 
 function VendorDashboard() {
