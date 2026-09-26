@@ -204,15 +204,6 @@ const MOCK_FLEET = [
   },
 ];
 
-const QUICK_FILTERS = [
-  { key: "All", icon: "car-multiple" },
-  { key: "With Driver", icon: "steering" },
-  { key: "Tour & Travel", icon: "map-marker-path" },
-  { key: "Airport & City", icon: "airport" },
-  { key: "Self Drive", icon: "key-chain" },
-  { key: "Premium", icon: "crown-outline" },
-  { key: "Group Tour", icon: "account-group" },
-];
 
 type CarItem = {
   id: string;
@@ -274,8 +265,6 @@ export default function CarRentalPage() {
   const [items, setItems] = useState<CarItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState("");
-  const [location, setLocation] = useState("All");
-  const [filter, setFilter] = useState("All");
   const [selected, setSelected] = useState<CarItem | null>(null);
   const [photo, setPhoto] = useState(0);
   const [bookingOpen, setBookingOpen] = useState(false);
@@ -332,18 +321,14 @@ export default function CarRentalPage() {
 
   useFocusEffect(useCallback(() => { load(); }, [load]));
 
-  const locations = useMemo(() => ["All", ...Array.from(new Set(items.map(x => x.location || "India").filter(Boolean)))], [items]);
   const filtered = useMemo(() => {
     const needle = query.trim().toLowerCase();
+    if (!needle) return items;
     return items.filter((item) => {
       const text = [item.name, item.location, item.category, item.type, item.vendor_name, item.description].filter(Boolean).join(" ").toLowerCase();
-      return (
-        (filter === "All" || item.category === filter) &&
-        (location === "All" || (item.location || "India") === location) &&
-        (!needle || text.includes(needle))
-      );
+      return text.includes(needle);
     });
-  }, [filter, items, location, query]);
+  }, [items, query]);
 
   const heroSearch = () => {
     const q = query.trim();
@@ -474,51 +459,36 @@ export default function CarRentalPage() {
           </View>
         </Animated.View>
 
-        <Text style={styles.sectionTitle}>Book by service</Text>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterRow}>
-          {QUICK_FILTERS.map((f) => (
-            <Pressable key={f.key} onPress={() => setFilter(f.key)} style={[styles.filterChip, filter === f.key && styles.filterChipActive]}>
-              <MaterialCommunityIcons name={f.icon as any} size={18} color={filter === f.key ? WHITE : MUTED} />
-              <Text style={[styles.filterText, filter === f.key && styles.filterTextActive]}>{f.key}</Text>
-            </Pressable>
-          ))}
-        </ScrollView>
-
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.locationRow}>
-          {locations.map((city) => (
-            <Pressable key={city} onPress={() => setLocation(city)} style={[styles.locationChip, location === city && styles.locationActive]}>
-              <Text style={[styles.locationText, location === city && styles.locationTextActive]}>{city}</Text>
-            </Pressable>
-          ))}
-        </ScrollView>
-
         <View style={styles.sectionHeader}>
           <View>
-            <Text style={styles.sectionTitle}>Recommended fleet</Text>
-            <Text style={styles.sectionSub}>{filtered.length} vehicles ready for your next journey</Text>
+            <Text style={styles.sectionTitle}>Available Cars</Text>
+            <Text style={styles.sectionSub}>Choose any car to open its Trip Builder</Text>
           </View>
-          <View style={styles.countPill}><Text style={styles.countText}>{filtered.length}</Text></View>
+          <View style={styles.countPill}><Text style={styles.countText}>{filtered.length} cars</Text></View>
         </View>
 
         {loading ? (
-          <View style={styles.loader}><ActivityIndicator size="large" color={RED} /><Text style={styles.loaderText}>Loading fleet...</Text></View>
+          <View style={styles.loader}>
+            <ActivityIndicator size="large" color={RED} />
+            <Text style={styles.loaderText}>Loading available cars...</Text>
+          </View>
         ) : filtered.length === 0 ? (
           <View style={styles.empty}>
             <MaterialCommunityIcons name="car-off" size={52} color="#5e6570" />
-            <Text style={styles.emptyTitle}>No matching vehicles</Text>
-            <Text style={styles.emptyText}>Try another car name, city or service type.</Text>
-            <Pressable onPress={() => { setQuery(""); setLocation("All"); setFilter("All"); }} style={styles.primaryBtn}>
-              <Text style={styles.primaryBtnText}>Reset search</Text>
+            <Text style={styles.emptyTitle}>No cars found</Text>
+            <Text style={styles.emptyText}>Try a different car name, city or travel keyword.</Text>
+            <Pressable onPress={() => setQuery("")} style={styles.primaryBtn}>
+              <Text style={styles.primaryBtnText}>Show all cars</Text>
             </Pressable>
           </View>
         ) : (
           <View style={styles.grid}>
             {filtered.map((item, index) => (
               <Animated.View key={item.id} entering={FadeInDown.delay(index * 65).duration(520)} style={styles.card}>
-                <Pressable onPress={() => goToTripBuilder(router, item)}>
+                <Pressable onPress={() => goToTripBuilder(router, item)} android_ripple={{ color: "#272b33" }}>
                   <View style={styles.imageWrap}>
                     <Image source={{ uri: item.image }} style={styles.cardImage} contentFit="cover" transition={350} />
-                    <LinearGradient colors={["transparent", "rgba(0,0,0,.72)"]} style={styles.imageShade} />
+                    <LinearGradient colors={["transparent", "rgba(0,0,0,.75)"]} style={styles.imageShade} />
                     <View style={styles.tag}><Text style={styles.tagText}>{item.tag || item.category}</Text></View>
                     <View style={styles.pricePill}><Text style={styles.price}>{money(Number(item.price || 0))}</Text><Text style={styles.priceMeta}>/day</Text></View>
                   </View>
@@ -527,16 +497,18 @@ export default function CarRentalPage() {
                       <Text style={styles.cardTitle} numberOfLines={1}>{item.name}</Text>
                       <View style={styles.rating}><MaterialCommunityIcons name="star" size={13} color="#ffd166" /><Text style={styles.ratingText}>{item.rating}</Text></View>
                     </View>
-                    <Text style={styles.cardLocation}><MaterialCommunityIcons name="map-marker-outline" size={14} color={RED} /> {item.location} · {item.type}</Text>
+                    <Text style={styles.cardLocation}>
+                      <MaterialCommunityIcons name="map-marker-outline" size={14} color={RED} /> {item.location} · {item.type}
+                    </Text>
                     <View style={styles.specRow}>
                       <Spec icon="seat-outline" text={String(item.seats || 4) + " seats"} />
                       <Spec icon="bag-suitcase-outline" text={String(item.bags || 2) + " bags"} />
                       <Spec icon="car-shift-pattern" text={item.transmission || "Manual"} />
                     </View>
-                    <Pressable onPress={() => goToTripBuilder(router, item)} style={styles.bookBtn}>
-                      <Text style={styles.bookBtnText}>Book this car</Text>
+                    <View style={styles.bookBtn}>
+                      <Text style={styles.bookBtnText}>Tap to build trip</Text>
                       <MaterialCommunityIcons name="arrow-right" size={18} color={WHITE} />
-                    </Pressable>
+                    </View>
                   </View>
                 </Pressable>
               </Animated.View>
