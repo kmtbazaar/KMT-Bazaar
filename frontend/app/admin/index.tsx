@@ -86,7 +86,7 @@ const ACTIONS = [
   {
     icon: "briefcase-outline",
     label: "Vendor Service",
-    path: "/admin/vendor-services",
+    path: "/admin/service-vendors",
     color: THEME.orange,
   },
   {
