@@ -529,12 +529,6 @@ export default function CarRentalPage() {
           </View>
         )}
 
-          ))}
-          </View>
-        </View>
-
-        ))}
-        </View>
       </ScrollView>
 
       <Modal visible={!!selected} transparent animationType="fade" onRequestClose={() => { setSelected(null); setBookingOpen(false); }}>
