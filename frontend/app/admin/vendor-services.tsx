@@ -1,7 +1,7 @@
 import React, { useCallback, useState } from "react";
 import { View, Text, StyleSheet, FlatList, Pressable, Modal, TextInput, KeyboardAvoidingView, Platform, Alert } from "react-native";
 import { Image } from "expo-image";
-import { useFocusEffect, useRouter } from "expo-router";
+import { useFocusEffect, useRouter, useLocalSearchParams } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { adminApi } from "@/src/roleApi";
@@ -12,13 +12,14 @@ const EMPTY = { name: "", vendor_name: "", description: "", image: "", gallery: 
 
 export default function AdminVendorServices() {
   const router = useRouter();
+  const { vendor_id } = useLocalSearchParams<{ vendor_id?: string }>();
   const [items, setItems] = useState<any[]>([]);
   const [modal, setModal] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [f, setF] = useState<any>({ ...EMPTY });
 
   const load = useCallback(async () => {
-    try { setItems(await adminApi.vendorServices()); } catch (e) { console.log("Vendor services load error", e); }
+    try { setItems((await adminApi.vendorServices()).filter((x:any)=>!vendor_id || String(x.vendor_id||"")===String(vendor_id))); } catch (e) { console.log("Vendor services load error", e); }
   }, []);
   useFocusEffect(useCallback(() => { load(); }, [load]));
 
@@ -57,7 +58,7 @@ export default function AdminVendorServices() {
     <SafeAreaView style={s.root} edges={["top"]}>
       <View style={s.header}>
         <Pressable onPress={() => router.back()} hitSlop={10}><MaterialCommunityIcons name="arrow-left" size={22} color={COLORS.text} /></Pressable>
-        <Text style={s.title}>Vendor Service ({items.length})</Text>
+        <Text style={s.title}>{vendor_id ? "Vendor Services" : `Vendor Service (${items.length})`}</Text>
         <Pressable onPress={openAdd} hitSlop={10}><MaterialCommunityIcons name="plus-circle" size={26} color={COLORS.brand} /></Pressable>
       </View>
       <FlatList
