@@ -265,6 +265,10 @@ function galleryFor(item: CarItem) {
   return list;
 }
 
+function goToTripBuilder(router: any, item: CarItem) {
+  router.push({ pathname: "/car-trip-builder" as any, params: { carId: item.id } } as any);
+}
+
 export default function CarRentalPage() {
   const router = useRouter();
   const [items, setItems] = useState<CarItem[]>([]);
@@ -511,7 +515,7 @@ export default function CarRentalPage() {
           <View style={styles.grid}>
             {filtered.map((item, index) => (
               <Animated.View key={item.id} entering={FadeInDown.delay(index * 65).duration(520)} style={styles.card}>
-                <Pressable onPress={() => openDetails(item)}>
+                <Pressable onPress={() => goToTripBuilder(router, item)}>
                   <View style={styles.imageWrap}>
                     <Image source={{ uri: item.image }} style={styles.cardImage} contentFit="cover" transition={350} />
                     <LinearGradient colors={["transparent", "rgba(0,0,0,.72)"]} style={styles.imageShade} />
@@ -529,7 +533,7 @@ export default function CarRentalPage() {
                       <Spec icon="bag-suitcase-outline" text={String(item.bags || 2) + " bags"} />
                       <Spec icon="car-shift-pattern" text={item.transmission || "Manual"} />
                     </View>
-                    <Pressable onPress={() => openBooking(item)} style={styles.bookBtn}>
+                    <Pressable onPress={() => goToTripBuilder(router, item)} style={styles.bookBtn}>
                       <Text style={styles.bookBtnText}>Book this car</Text>
                       <MaterialCommunityIcons name="arrow-right" size={18} color={WHITE} />
                     </Pressable>
