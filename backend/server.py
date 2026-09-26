@@ -1869,6 +1869,12 @@ class CommissionIn(BaseModel):
     percent: float
 
 
+class AdminUserUpdateIn(BaseModel):
+    name: str
+    email: Optional[EmailStr] = None
+    phone: Optional[str] = None
+
+
 @api.get("/admin/stats")
 async def admin_stats(_=Depends(require_roles("admin"))):
     users_count, vendors_count, delivery_count, products_count, orders_count, pending_count, delivered_count, revenue_doc, settings = await asyncio.gather(
@@ -1991,6 +1997,38 @@ async def admin_update_roojgar_status(
         "status": data.status
     }
 
+
+@api.put("/admin/service-vendors/{user_id}")
+async def admin_update_service_vendor(
+    user_id: str,
+    data: AdminUserUpdateIn,
+    _=Depends(require_roles("admin"))
+):
+    user = await db.users.find_one({"id": user_id}, {"_id": 0})
+    if not user:
+        raise HTTPException(status_code=404, detail="Vendor not found")
+    if user.get("role") != Role.VENDOR.value or user.get("vendor_type") != VendorType.SERVICE.value:
+        raise HTTPException(status_code=400, detail="This is not a service vendor")
+    if user.get("service_type") not in {ServiceType.HOLIDAY.value, ServiceType.CAR_RENTAL.value}:
+        raise HTTPException(status_code=400, detail="Daily Services are admin-managed")
+    update = {"name": data.name.strip()}
+    if not update["name"]:
+        raise HTTPException(status_code=400, detail="Vendor name is required")
+    if data.email is not None:
+        update["email"] = str(data.email).strip().lower()
+    if data.phone is not None:
+        update["phone"] = str(data.phone).strip()
+    duplicate = await db.users.find_one({
+        "$or": [
+            {"email": update.get("email")} if update.get("email") else {"id": "__none__"},
+            {"phone": update.get("phone")} if update.get("phone") else {"id": "__none__"},
+        ],
+        "id": {"$ne": user_id}
+    })
+    if duplicate:
+        raise HTTPException(status_code=409, detail="Email or mobile number already belongs to another account")
+    await db.users.update_one({"id": user_id}, {"$set": update})
+    return await db.users.find_one({"id": user_id}, {"_id": 0, "password": 0})
 
 @api.get("/admin/users")
 async def admin_users(
