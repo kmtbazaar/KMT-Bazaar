@@ -14,7 +14,9 @@ const EMPTY = { name:"", vendor_name:"", description:"", image:"", gallery:[], l
 export default function VendorServices() {
   const router=useRouter();
   const { user } = useAuth();
-  const isHolidayVendor = user?.service_type === "holiday";
+  const serviceType = user?.service_type || "daily_service";
+  const serviceMeta:any = { holiday:{label:"Holiday",icon:"airplane-takeoff",color:"#2563EB"}, car_rental:{label:"Car Rental",icon:"car",color:"#0f172a"}, daily_service:{label:"Daily Services",icon:"tools",color:"#16A34A"} };
+  const currentService = serviceMeta[serviceType] || serviceMeta.daily_service;
   const [items,setItems]=useState<any[]>([]);
   const [modal,setModal]=useState(false);
   const [editing,setEditing]=useState<string|null>(null);
@@ -26,7 +28,7 @@ export default function VendorServices() {
   const openEdit=(x:any)=>{setEditing(x.id);setF({...x,gallery:Array.isArray(x.gallery)?x.gallery:[],location:x.location||"",order:String(x.order??99)});setModal(true)};
   const save=async()=>{
     if(!f.name?.trim()){Platform.OS==="web"?window.alert("Service name is required"):Alert.alert("Required","Service name is required");return}
-    const data={...f,name:f.name.trim(),order:Number(f.order)||99};
+    const data={...f,name:f.name.trim(),order:Number(f.order)||99,service_type:serviceType};
     if(editing) await vendorApi.updateService(editing,data); else await vendorApi.createService(data);
     setModal(false);load();
   };
@@ -34,7 +36,7 @@ export default function VendorServices() {
   return <SafeAreaView style={s.root} edges={["top"]}>
     <View style={s.header}>
       <Pressable onPress={()=>router.back()}><MaterialCommunityIcons name="arrow-left" size={24} color={COLORS.text}/></Pressable>
-      <Text style={s.title}>My Services</Text>
+      <View style={{alignItems:"center"}}><Text style={s.title}>My {currentService.label}</Text><Text style={{fontSize:10,color:currentService.color,fontWeight:"900",marginTop:2}}>DEDICATED SERVICE VENDOR</Text></View>
       <Pressable onPress={openAdd}><MaterialCommunityIcons name="plus-circle" size={26} color={COLORS.brand}/></Pressable>
     </View>
     <FlatList data={items} numColumns={2} keyExtractor={x=>x.id} contentContainerStyle={{padding:SPACING.lg}} columnWrapperStyle={{gap:10}} ItemSeparatorComponent={()=> <View style={{height:10}}/>}
@@ -49,13 +51,13 @@ export default function VendorServices() {
     <Modal visible={modal} transparent animationType="slide"><View style={m.back}><KeyboardAvoidingView behavior={Platform.OS==="ios"?"padding":undefined} style={m.sheet}>
       <Text style={m.title}>{editing?"Edit Service":"Add Service"}</Text>
       <Input ph="Service Name *" v={f.name} set={(v:string)=>setF({...f,name:v})}/>
-      <Input ph="Category (Holiday / Car Rental / Plumber etc.)" v={f.category} set={(v:string)=>setF({...f,category:v})}/>
+      <Input ph={serviceType==="daily_service"?"Category (Plumber / Electrician / Mistri etc.)":"Category"} v={f.category} set={(v:string)=>setF({...f,category:v})}/>
       <Input ph="Description" v={f.description} set={(v:string)=>setF({...f,description:v})}/>
-      {isHolidayVendor && <Input ph="Holiday Location / Destination" v={f.location} set={(v:string)=>setF({...f,location:v})}/>}
+      {serviceType==="holiday" && <Input ph="Holiday Location / Destination" v={f.location} set={(v:string)=>setF({...f,location:v})}/>}
       <Input ph="Phone" v={f.phone} set={(v:string)=>setF({...f,phone:v})}/>
       <Input ph="Display Order" v={f.order} set={(v:string)=>setF({...f,order:v})}/>
       <ImageUploader value={f.image} onChange={(uri)=>setF({...f,image:uri})} label="Cover Image" aspect={[16,9]}/>
-      {isHolidayVendor && <View style={{marginTop:4}}>
+      {serviceType==="holiday" && <View style={{marginTop:4}}>
         <Text style={m.galleryTitle}>Holiday Gallery · 5 Photos</Text>
         {[0,1,2,3,4].map((i)=><ImageUploader key={i} value={f.gallery?.[i] || ""} onChange={(uri)=>setF({...f,gallery:Object.assign([],f.gallery||[],{[i]:uri}).slice(0,5)})} label={`Destination Photo ${i+1}`} aspect={[4,3]}/>)}
       </View>}
