@@ -20,6 +20,11 @@ export default function ServiceVendorDashboard() {
   const router = useRouter();
   const { user, logout } = useAuth();
   const type = user?.service_type || "holiday";
+  const [serviceStats, setServiceStats] = useState<any>(null);
+  const loadServiceStats = useCallback(async () => {
+    try { setServiceStats(await vendorApi.serviceStats()); } catch {}
+  }, []);
+  useFocusEffect(useCallback(() => { loadServiceStats(); }, [loadServiceStats]));
   const meta:any = {
     holiday:{label:"Holiday Vendor",icon:"airplane-takeoff",color:"#2563EB",sub:"Manage holiday packages and customer bookings"},
     car_rental:{label:"Car Rental Vendor",icon:"car",color:"#0f172a",sub:"Manage cars, rentals and trip bookings"},
@@ -46,13 +51,34 @@ export default function ServiceVendorDashboard() {
           </View>
         </LinearGradient>
       </SafeAreaView>
-      <ScrollView contentContainerStyle={{padding:SPACING.lg}}>
+      <ScrollView style={{flex:1}} contentContainerStyle={{padding:SPACING.lg,paddingBottom:100}}>
+        <View style={s.kpiRow}>
+          <KPI label="Revenue" value={`₹${serviceStats?.revenue ?? 0}`} icon="cash" color={COLORS.success} />
+          <KPI label="Bookings" value={serviceStats?.bookings ?? 0} icon="calendar-check" color={COLORS.accent} />
+        </View>
+        <View style={s.kpiRow}>
+          <KPI label="Completed" value={serviceStats?.completed ?? 0} icon="check-circle-outline" color={COLORS.success} />
+          <KPI label="Pending" value={serviceStats?.pending ?? 0} icon="clock-outline" color="#EAB308" />
+        </View>
+        <View style={{backgroundColor:"#fff",padding:14,borderRadius:RADIUS.md,borderWidth:1,borderColor:COLORS.border,marginBottom:SPACING.lg}}>
+          <Text style={{color:COLORS.textMuted,fontSize:11,fontWeight:"700"}}>ESTIMATED PAYOUT</Text>
+          <Text style={{fontSize:28,fontWeight:"900",color:COLORS.success,marginTop:4}}>{`₹${serviceStats?.payout ?? 0}`}</Text>
+          <Text style={{fontSize:11,color:COLORS.textMuted,marginTop:2}}>After {serviceStats?.commission_percent ?? 10}% platform commission</Text>
+        </View>
         <Text style={s.sectionTitle}>My Services</Text>
         <Pressable style={s.actionCard} onPress={() => router.push("/vendor/services" as any)}>
           <View style={[s.actionIcon,{backgroundColor:"#F973161A"}]}><MaterialCommunityIcons name="briefcase-outline" size={24} color="#F97316"/></View>
           <View style={{flex:1}}>
             <Text style={s.actionLabel}>Manage Services</Text>
             <Text style={{fontSize:12,color:COLORS.textMuted,marginTop:3}}>Add and manage only your assigned service type</Text>
+          </View>
+          <MaterialCommunityIcons name="chevron-right" size={20} color={COLORS.textMuted}/>
+        </Pressable>
+        <Pressable style={s.actionCard} onPress={() => router.push("/vendor/earnings" as any)}>
+          <View style={[s.actionIcon,{backgroundColor:"#16A34A1A"}]}><MaterialCommunityIcons name="chart-line" size={24} color="#16A34A"/></View>
+          <View style={{flex:1}}>
+            <Text style={s.actionLabel}>Earnings</Text>
+            <Text style={{fontSize:12,color:COLORS.textMuted,marginTop:3}}>View revenue, commission and estimated payout</Text>
           </View>
           <MaterialCommunityIcons name="chevron-right" size={20} color={COLORS.textMuted}/>
         </Pressable>
@@ -67,6 +93,14 @@ export default function ServiceVendorDashboard() {
       </ScrollView>
     </View>
   );
+}
+
+function KPI({ label, value, icon, color }: any) {
+  return <View style={s.kpiCard}>
+    <View style={[s.kpiIcon,{backgroundColor:color+"1A"}]}><MaterialCommunityIcons name={icon as any} size={18} color={color}/></View>
+    <Text style={s.kpiValue}>{value}</Text>
+    <Text style={s.kpiLabel}>{label}</Text>
+  </View>;
 }
 
 function VendorDashboard() {
@@ -777,6 +811,11 @@ const s = StyleSheet.create({
   emptySubText: { color: COLORS.textMuted, textAlign: "center", fontSize: 12, marginTop: 4 },
   actions: { gap: 8, marginTop: 10 },
   actionCard: { flexDirection: "row", alignItems: "center", gap: 12, backgroundColor: "#fff", padding: 14, borderRadius: RADIUS.md, borderWidth: 1, borderColor: COLORS.border },
+  kpiRow: { flexDirection: "row", gap: 10, marginBottom: 10 },
+  kpiCard: { flex: 1, backgroundColor: "#fff", padding: 12, borderRadius: RADIUS.md, borderWidth: 1, borderColor: COLORS.border },
+  kpiIcon: { width: 30, height: 30, borderRadius: 15, alignItems: "center", justifyContent: "center", marginBottom: 6 },
+  kpiValue: { fontWeight: "800", color: COLORS.text, fontSize: 18 },
+  kpiLabel: { color: COLORS.textMuted, fontSize: 11, marginTop: 2 },
   actionIcon: { width: 44, height: 44, borderRadius: 22, alignItems: "center", justifyContent: "center" },
   actionLabel: { flex: 1, fontWeight: "700", color: COLORS.text },
   
