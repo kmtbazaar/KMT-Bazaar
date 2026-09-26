@@ -107,7 +107,7 @@ function VendorDashboard() {
   const { user } = useAuth();
   if (user?.vendor_type === "service") return <ServiceVendorDashboard />;
   const router = useRouter();
-  const { user, logout } = useAuth();
+  const { logout } = useAuth();
   const [stats, setStats] = useState<any>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [pendingOrder, setPendingOrder] = useState<any | null>(null);
@@ -750,18 +750,6 @@ function DetailLine({ label, value }: { label: string; value: any }) {
     <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 6 }}>
       <Text style={{ color: COLORS.textMuted, fontSize: 12 }}>{label}</Text>
       <Text style={{ color: COLORS.text, fontSize: 12, fontWeight: "700" }}>₹{Number.isFinite(amount) ? amount : 0}</Text>
-    </View>
-  );
-}
-
-function KPI({ label, value, icon, color }: any) {
-  return (
-    <View style={s.kpiCard}>
-      <View style={[s.kpiIcon, { backgroundColor: color + "1A" }]}>
-        <MaterialCommunityIcons name={icon} size={18} color={color} />
-      </View>
-      <Text style={s.kpiValue}>{value}</Text>
-      <Text style={s.kpiLabel}>{label}</Text>
     </View>
   );
 }
