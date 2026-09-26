@@ -2568,19 +2568,50 @@ class ServiceCartAddIn(BaseModel):
     extra: Dict[str, Any] = {}
 
 
+class ServiceCustomerDetailsIn(BaseModel):
+    full_name: str
+    phone: str
+    email: str = ""
+
+
+class ServicePaymentIn(BaseModel):
+    payment_plan: str = "booking"
+    payment_method: str = "upi"
+    gateway_reference: str = ""
+
+
 @api.post("/service-cart/add")
 async def add_service_cart(data: ServiceCartAddIn, current=Depends(require_roles("customer"))):
     service = await db.vendor_services.find_one(
         {"id": data.service_id, "service_type": data.service_type.value, "active": True},
         {"_id": 0}
     )
-    if not service:
+
+    is_mock = (
+        data.service_type == ServiceType.HOLIDAY
+        and str(data.service_id).startswith("mock-")
+        and (data.extra or {}).get("source") == "mock-package"
+    )
+
+    if not service and not is_mock:
         raise HTTPException(404, "Service is not available")
+
     item = data.dict()
     item["service_type"] = data.service_type.value
-    item["service_name"] = service.get("name", "")
-    item["vendor_id"] = service.get("vendor_id")
-    item["vendor_name"] = service.get("vendor_name", "")
+    item["service_name"] = (
+        service.get("name", "")
+        if service
+        else (data.extra or {}).get("package_name", "Holiday Package")
+    )
+    item["vendor_id"] = service.get("vendor_id") if service else None
+    item["vendor_name"] = (
+        service.get("vendor_name", "")
+        if service
+        else (data.extra or {}).get("vendor_name", "KMT Bazaar Holidays")
+    )
+    item["customer_name"] = (data.extra or {}).get("customer_name", "")
+    item["customer_phone"] = (data.extra or {}).get("customer_phone", "")
+    item["customer_email"] = (data.extra or {}).get("customer_email", "")
     item["added_at"] = now_iso()
     await db.service_carts.update_one(
         {"user_id": current["id"]},
@@ -2588,6 +2619,143 @@ async def add_service_cart(data: ServiceCartAddIn, current=Depends(require_roles
         upsert=True
     )
     return await get_service_cart(current)
+
+
+
+
+
+@api.post("/service-cart/customer")
+async def update_service_cart_customer(data: ServiceCustomerDetailsIn, current=Depends(require_roles("customer"))):
+    full_name = data.full_name.strip()
+    phone = "".join(ch for ch in data.phone if ch.isdigit())
+    email = data.email.strip()
+
+    if len(full_name) < 2:
+        raise HTTPException(400, "Please enter your full name")
+    if len(phone) != 10:
+        raise HTTPException(400, "Please enter a valid 10-digit mobile number")
+
+    cart = await db.service_carts.find_one({"user_id": current["id"]}, {"_id": 0})
+    items = (cart or {}).get("items", [])
+    if not items:
+        raise HTTPException(400, "Service booking cart is empty")
+
+    updated_items = []
+    for item in items:
+        updated = dict(item)
+        updated["customer_name"] = full_name
+        updated["customer_phone"] = phone
+        updated["customer_email"] = email
+        updated_items.append(updated)
+
+    await db.service_carts.update_one(
+        {"user_id": current["id"]},
+        {
+            "$set": {
+                "items": updated_items,
+                "customer": {
+                    "full_name": full_name,
+                    "phone": phone,
+                    "email": email,
+                },
+                "updated_at": now_iso(),
+            }
+        },
+    )
+    return await get_service_cart(current)
+
+
+@api.post("/service-cart/pay")
+async def pay_service_cart(data: ServicePaymentIn, current=Depends(require_roles("customer"))):
+    if data.payment_plan not in {"booking", "full"}:
+        raise HTTPException(400, "Invalid payment plan")
+    if data.payment_method not in {"upi", "card", "netbanking"}:
+        raise HTTPException(400, "Invalid payment method")
+
+    cart = await db.service_carts.find_one({"user_id": current["id"]}, {"_id": 0})
+    items = (cart or {}).get("items", [])
+    if not items:
+        raise HTTPException(400, "Service booking cart is empty")
+
+    customer = (cart or {}).get("customer") or {}
+    customer_name = customer.get("full_name") or current.get("name") or ""
+    customer_phone = customer.get("phone") or current.get("phone") or ""
+    customer_email = customer.get("email") or current.get("email") or ""
+
+    if len(str(customer_name).strip()) < 2 or len("".join(ch for ch in str(customer_phone) if ch.isdigit())) != 10:
+        raise HTTPException(400, "Please complete your booking contact details first")
+
+    total = 0.0
+    for item in items:
+        extra = item.get("extra") or {}
+        try:
+            unit_price = float(extra.get("package_price") or 0)
+        except Exception:
+            unit_price = 0.0
+        qty = max(1, int(item.get("quantity", 1)))
+        total += unit_price * qty
+
+    total = round(total, 2)
+    booking_amount = round(total * 0.20, 2) if total > 0 else 0
+    amount_paid = total if data.payment_plan == "full" else booking_amount
+
+    if total > 0 and amount_paid <= 0:
+        raise HTTPException(400, "Payment amount could not be calculated")
+
+    reference = data.gateway_reference.strip() or ("KMT-" + uuid.uuid4().hex[:10].upper())
+    created = []
+    for item in items:
+        service = await db.vendor_services.find_one(
+            {"id": item.get("service_id"), "service_type": item.get("service_type"), "active": True},
+            {"_id": 0}
+        )
+        extra = item.get("extra") or {}
+        booking_id = "sbk-" + uuid.uuid4().hex[:10]
+
+        doc = {
+            "id": booking_id,
+            "customer_id": current["id"],
+            "customer_name": customer_name,
+            "customer_phone": customer_phone,
+            "customer_email": customer_email,
+            "vendor_id": service.get("vendor_id") if service else item.get("vendor_id"),
+            "service_id": item.get("service_id"),
+            "service_type": item.get("service_type", ServiceType.HOLIDAY.value),
+            "service_name": service.get("name", item.get("service_name", "Holiday Package")) if service else item.get("service_name", "Holiday Package"),
+            "vendor_name": service.get("vendor_name", item.get("vendor_name", "")) if service else item.get("vendor_name", "KMT Bazaar Holidays"),
+            "booking_date": item.get("booking_date", ""),
+            "booking_time": item.get("booking_time", ""),
+            "address_id": item.get("address_id"),
+            "quantity": max(1, int(item.get("quantity", 1))),
+            "notes": item.get("notes", ""),
+            "extra": extra,
+            "total_amount": total,
+            "booking_amount": booking_amount,
+            "paid_amount": amount_paid,
+            "payment_plan": data.payment_plan,
+            "payment_method": data.payment_method,
+            "payment_gateway": "kmt-test-gateway",
+            "gateway_reference": reference,
+            "payment_status": "paid",
+            "status": "pending",
+            "created_at": now_iso(),
+            "updated_at": now_iso(),
+        }
+        await db.service_bookings.insert_one(dict(doc))
+        created.append(doc)
+
+    await db.service_carts.delete_one({"user_id": current["id"]})
+
+    return {
+        "ok": True,
+        "confirmation_id": reference,
+        "payment_plan": data.payment_plan,
+        "payment_method": data.payment_method,
+        "total_amount": total,
+        "paid_amount": amount_paid,
+        "remaining_amount": round(max(0, total - amount_paid), 2),
+        "bookings": created,
+    }
 
 
 @api.delete("/service-cart/clear")
