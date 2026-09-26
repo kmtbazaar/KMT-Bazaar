@@ -1846,13 +1846,20 @@ class VendorServiceIn(BaseModel):
     gallery: list[str] = []
     location: str = ""
     category: str = ""
+    type: str = ""
     phone: str = ""
     order: int = 99
     active: bool = True
     price: float = 0
     unit: str = "visit"
+    duration: str = ""
+    seats: int = 0
+    bags: int = 0
+    transmission: str = ""
+    fuel: str = ""
+    tag: str = ""
+    includes: list[str] = []
     service_type: ServiceType = ServiceType.DAILY_SERVICE
-
 
 class OrderStatusIn(BaseModel):
     status: str
