@@ -14,9 +14,9 @@ const EMPTY = { name:"", vendor_name:"", description:"", image:"", gallery:[], l
 export default function VendorServices() {
   const router=useRouter();
   const { user } = useAuth();
-  const serviceType = user?.service_type || "daily_service";
-  const serviceMeta:any = { holiday:{label:"Holiday",icon:"airplane-takeoff",color:"#2563EB"}, car_rental:{label:"Car Rental",icon:"car",color:"#0f172a"}, daily_service:{label:"Daily Services",icon:"tools",color:"#16A34A"} };
-  const currentService = serviceMeta[serviceType] || serviceMeta.daily_service;
+  const serviceType = user?.service_type || "holiday";
+  const serviceMeta:any = { holiday:{label:"Holiday",icon:"airplane-takeoff",color:"#2563EB"}, car_rental:{label:"Car Rental",icon:"car",color:"#0f172a"} };
+  const currentService = serviceMeta[serviceType] || serviceMeta.holiday;
   const [items,setItems]=useState<any[]>([]);
   const [modal,setModal]=useState(false);
   const [editing,setEditing]=useState<string|null>(null);
