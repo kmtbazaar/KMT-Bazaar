@@ -15,7 +15,7 @@ export default function Cart(){
   if(!x)return;
   if(name.trim().length<2){Alert.alert("Name required","Please enter your full name.");return}
   if(phone.replace(/\D/g,"").length!==10){Alert.alert("Mobile required","Please enter a valid 10-digit mobile number.");return}
-  try{setBusy(true);await api.serviceCartCustomer({full_name:name.trim(),phone:phone.replace(/\D/g,""),email:email.trim()});r.push("/service-checkout" as any)}catch(e:any){Alert.alert("Booking",""+(e?.message||"Could not save details"))}finally{setBusy(false)}
+  try{setBusy(true);await api.serviceCartCustomer({full_name:name.trim(),phone:phone.replace(/\D/g,""),email:email.trim()});r.push({pathname:"/service-checkout" as any,params:{flow:isCar?"car":"holiday"}} as any)}catch(e:any){Alert.alert("Booking",""+(e?.message||"Could not save details"))}finally{setBusy(false)}
  };
  return <SafeAreaView style={s.root}><View style={s.h}><Pressable onPress={()=>r.back()}><MaterialCommunityIcons name="arrow-left" size={24} color={isCar?"#fff":"#0f172a"}/></Pressable><View style={{flex:1}}><Text style={[s.t,isCar&&s.darkT]}>{isCar?"Booking Contact":"Booking Cart"}</Text><Text style={[s.sub,isCar&&s.darkSub]}>{isCar?"Enter contact details for your trip":"Almost ready for your journey"}</Text></View><MaterialCommunityIcons name={isCar?"car-sports":"airplane-takeoff"} size={25} color={isCar?"#ef233c":"#0284C7"}/></View>
  <ScrollView contentContainerStyle={[s.b,isCar&&s.darkBg]}>
