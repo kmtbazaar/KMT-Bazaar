@@ -2588,9 +2588,9 @@ async def add_service_cart(data: ServiceCartAddIn, current=Depends(require_roles
     )
 
     is_mock = (
-        data.service_type in (ServiceType.HOLIDAY, ServiceType.CAR_RENTAL)
+        data.service_type in (ServiceType.HOLIDAY, ServiceType.CAR_RENTAL, ServiceType.DAILY_SERVICE)
         and str(data.service_id).startswith("mock-")
-        and (data.extra or {}).get("source") in ("mock-package", "mock-car")
+        and (data.extra or {}).get("source") in ("mock-package", "mock-car", "mock-daily")
     )
 
     if not service and not is_mock:
