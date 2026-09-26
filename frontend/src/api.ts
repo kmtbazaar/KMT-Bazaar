@@ -322,6 +322,8 @@ export const api = {
   serviceCartAdd: (data: any) => apiFetch<any>("/service-cart/add", { method: "POST", body: JSON.stringify(data) }),
   serviceCartClear: () => apiFetch("/service-cart/clear", { method: "DELETE" }),
   serviceCartCheckout: () => apiFetch<any>("/service-cart/checkout", { method: "POST" }),
+  serviceCartCustomer: (data: any) => apiFetch<any>("/service-cart/customer", { method: "POST", body: JSON.stringify(data) }),
+  serviceCartPay: (data: any) => apiFetch<any>("/service-cart/pay", { method: "POST", body: JSON.stringify(data) }),
 
   serviceBooking: (id: string) => apiFetch<any>(`/service-bookings/${encodeURIComponent(id)}`),
   createServiceBooking: (data: any) => apiFetch<any>("/service-bookings", { method: "POST", body: JSON.stringify(data) }),
