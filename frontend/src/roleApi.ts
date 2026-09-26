@@ -16,6 +16,14 @@ export const adminApi = {
       method: "POST",
     }),
 
+  serviceVendors: () =>
+    apiFetch<any[]>("/admin/users?role=vendor"),
+  updateServiceVendor: (id: string, data: any) =>
+    apiFetch<any>(`/admin/service-vendors/${encodeURIComponent(id)}`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    }),
+
   vendorServices: () =>
     apiFetch<any[]>("/admin/vendor-services"),
 
