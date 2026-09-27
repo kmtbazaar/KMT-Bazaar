@@ -1,10 +1,11 @@
-import React, { useEffect } from "react";
-import { View, Text, Pressable, StyleSheet } from "react-native";
+import React, { useEffect, useMemo, useRef } from "react";
+import { View, Text, StyleSheet, PanResponder, useWindowDimensions } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useCart } from "@/src/CartContext";
 import Animated, { useAnimatedStyle, useSharedValue, withSequence, withSpring, withTiming } from "react-native-reanimated";
 import { shadow } from "@/src/theme";
+import * as Haptics from "expo-haptics";
 
 interface Props {
   /** override destination route; defaults to /cart */
@@ -17,6 +18,13 @@ interface Props {
 export default function CheckoutBar({ route = "/cart", label = "View Cart", bottomOffset = 70 }: Props) {
   const router = useRouter();
   const { cart, itemCount, badgePulse } = useCart();
+  const { width: screenWidth, height: screenHeight } = useWindowDimensions();
+  const dragX = useSharedValue(0);
+  const dragY = useSharedValue(0);
+  const dragStartX = useRef(0);
+  const dragStartY = useRef(0);
+  const didDrag = useRef(false);
+  const lastVibrateAt = useRef(0);
   const cartScale = useSharedValue(1);
   const cartLift = useSharedValue(0);
 
@@ -28,8 +36,61 @@ export default function CheckoutBar({ route = "/cart", label = "View Cart", bott
   }, [badgePulse]);
 
   const cartAnim = useAnimatedStyle(() => ({
-    transform: [{ translateY: cartLift.value }, { scale: cartScale.value }],
+    transform: [
+      { translateX: dragX.value },
+      { translateY: dragY.value + cartLift.value },
+      { scale: cartScale.value },
+    ],
   }));
+
+  const panResponder = useMemo(() => {
+    const minX = -(screenWidth - 92);
+    const maxX = 8;
+    const minY = -(screenHeight - bottomOffset - 92);
+    const maxY = 10;
+    const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(max, value));
+
+    return PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onPanResponderGrant: () => {
+        dragStartX.current = dragX.value;
+        dragStartY.current = dragY.value;
+        didDrag.current = false;
+      },
+      onPanResponderMove: (_, gesture) => {
+        const nextX = clamp(dragStartX.current + gesture.dx, minX, maxX);
+        const nextY = clamp(dragStartY.current + gesture.dy, minY, maxY);
+
+        if (Math.abs(gesture.dx) > 5 || Math.abs(gesture.dy) > 5) {
+          didDrag.current = true;
+          const now = Date.now();
+          if (now - lastVibrateAt.current > 90) {
+            lastVibrateAt.current = now;
+            Haptics.selectionAsync().catch(() => {});
+            try {
+              if (typeof navigator !== "undefined" && "vibrate" in navigator) navigator.vibrate(10);
+            } catch {}
+          }
+        }
+
+        dragX.value = nextX;
+        dragY.value = nextY;
+      },
+      onPanResponderRelease: () => {
+        if (!didDrag.current) {
+          router.push(route as any);
+        } else {
+          dragX.value = withSpring(dragX.value, { damping: 18, stiffness: 220 });
+          dragY.value = withSpring(dragY.value, { damping: 18, stiffness: 220 });
+        }
+      },
+      onPanResponderTerminate: () => {
+        dragX.value = withSpring(dragX.value, { damping: 18, stiffness: 220 });
+        dragY.value = withSpring(dragY.value, { damping: 18, stiffness: 220 });
+      },
+      onPanResponderTerminationRequest: () => false,
+    });
+  }, [bottomOffset, route, router, screenHeight, screenWidth]);
 
   if (!itemCount || itemCount <= 0) return null;
   const subtotal = cart?.subtotal || 0;
@@ -40,11 +101,10 @@ export default function CheckoutBar({ route = "/cart", label = "View Cart", bott
       pointerEvents="box-none"
       testID="checkout-bar"
     >
-      <Pressable
+      <View
         testID="checkout-bar-btn"
-        onPress={() => router.push(route as any)}
         style={styles.cartButton}
-        android_ripple={{ color: "rgba(255,255,255,0.15)", borderless: true }}
+        {...panResponder.panHandlers}
       >
         <Animated.View style={[styles.bagWrap, cartAnim]}>
           <View style={styles.priceBubble}>
@@ -63,7 +123,7 @@ export default function CheckoutBar({ route = "/cart", label = "View Cart", bott
             <Text style={styles.countText}>{itemCount}</Text>
           </View>
         </Animated.View>
-      </Pressable>
+      </View>
     </View>
   );
 }
