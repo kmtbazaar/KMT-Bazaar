@@ -316,8 +316,8 @@ export default function CheckoutBar({ route = "/cart", label = "View Cart", bott
   const subtotal = cart?.subtotal || 0;
 
   return (
-    <View
-      style={[styles.wrap, { bottom: bottomOffset }]}
+    <Animated.View
+      style={[styles.wrap, { bottom: bottomOffset }, cartAnim]}
       pointerEvents="box-none"
       testID="checkout-bar"
     >
@@ -326,7 +326,7 @@ export default function CheckoutBar({ route = "/cart", label = "View Cart", bott
         style={styles.cartButton}
         {...panResponder.panHandlers}
       >
-        <Animated.View style={[styles.bagWrap, cartAnim]}>
+        <View style={styles.bagWrap}>
           <Animated.View style={[styles.dropItem, dropAnim]} pointerEvents="none">
             <MaterialCommunityIcons name="package-variant-closed" size={17} color="#7F1D1D" />
           </Animated.View>
@@ -376,8 +376,8 @@ const styles = StyleSheet.create({
     right: 18,
     padding: 0,
     zIndex: 50,
-    width: 96,
-    height: 108,
+    width: 108,
+    height: 128,
     alignItems: "center",
     justifyContent: "center",
   },
