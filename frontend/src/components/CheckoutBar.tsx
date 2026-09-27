@@ -347,12 +347,10 @@ export default function CheckoutBar({ route = "/cart", label = "View Cart", bott
               <Text style={styles.countText}>{itemCount}</Text>
             </View>
           </Animated.View>
-        </Animated.View>
+        </View>
       </View>
-    </View>
+    </Animated.View>
   );
-}
-
 const styles = StyleSheet.create({
   inlineSack: {
     width: 58,
