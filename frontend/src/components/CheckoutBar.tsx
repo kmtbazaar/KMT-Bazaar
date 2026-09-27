@@ -301,13 +301,12 @@ export default function CheckoutBar({ route = "/cart", label = "View Cart", bott
               <Text style={styles.brandPlateTitle}>KMT BAZAAR</Text>
               <Text style={styles.brandPlatePrice}>₹{subtotal.toFixed(0)}</Text>
             </Animated.View>
+            <View style={styles.countTagConnector} />
             <View style={styles.countBadge}>
+              <Text style={styles.countLabel}>ITEMS</Text>
               <Text style={styles.countText}>{itemCount}</Text>
             </View>
           </Animated.View>
-          <View style={styles.countBadgeHidden}>
-            <Text style={styles.countText}>{itemCount}</Text>
-          </View>
         </Animated.View>
       </View>
     </View>
@@ -394,27 +393,46 @@ const styles = StyleSheet.create({
     top: 20,
     zIndex: 12,
   },
+  countTagConnector: {
+    position: "absolute",
+    right: -1,
+    bottom: 47,
+    width: 14,
+    height: 3,
+    borderRadius: 2,
+    backgroundColor: "#6B4A22",
+    zIndex: 18,
+  },
   countBadge: {
     position: "absolute",
-    right: 5,
-    bottom: 25,
-    minWidth: 21,
-    height: 21,
-    paddingHorizontal: 5,
-    borderRadius: 11,
-    backgroundColor: "#5B3A1E",
+    right: -20,
+    bottom: 31,
+    minWidth: 38,
+    height: 34,
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+    borderRadius: 5,
+    backgroundColor: "#C79A53",
+    borderWidth: 1.5,
+    borderColor: "#6F4A22",
     alignItems: "center",
     justifyContent: "center",
-    borderWidth: 1.5,
-    borderColor: "#F8E7A9",
     zIndex: 20,
+    transform: [{ rotate: "-2deg" }],
     ...shadow.soft,
   },
-  countText: { color: "#fff", fontWeight: "900", fontSize: 10 },
-  countBadgeHidden: {
-    width: 0,
-    height: 0,
-    opacity: 0,
+  countLabel: {
+    color: "#6B481E",
+    fontSize: 6,
+    lineHeight: 7,
+    fontWeight: "900",
+    letterSpacing: 0.7,
+  },
+  countText: {
+    color: "#3B250F",
+    fontWeight: "900",
+    fontSize: 13,
+    lineHeight: 15,
   },
 
 });
