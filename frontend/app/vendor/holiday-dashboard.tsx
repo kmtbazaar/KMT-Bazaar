@@ -50,7 +50,7 @@ export default function HolidayVendorDashboard() {
               <Text style={s.welcome}>Welcome, {user?.name}</Text>
             </View>
             <View style={{flexDirection:"row",alignItems:"center",gap:10}}>
-              <Pressable onPress={() => router.push("/vendor/service-bookings" as any)} hitSlop={10} style={s.bell}><MaterialCommunityIcons name="bell-outline" size={23} color="#fff" />{bookingCount>0&&<View style={s.badge}><Text style={s.badgeText}>{bookingCount}</Text></View>}</Pressable>
+              <Pressable onPress={() => router.push("/service-vendor/service-bookings" as any)} hitSlop={10} style={s.bell}><MaterialCommunityIcons name="bell-outline" size={23} color="#fff" />{bookingCount>0&&<View style={s.badge}><Text style={s.badgeText}>{bookingCount}</Text></View>}</Pressable>
               <Pressable onPress={logout} hitSlop={10}><MaterialCommunityIcons name="logout" size={25} color="#fff" /></Pressable>
             </View>
           </View>
@@ -150,9 +150,9 @@ export default function HolidayVendorDashboard() {
         </View>
 
         <Text style={s.sectionTitle}>Holiday Management</Text>
-        <Action icon="briefcase-outline" title="Holiday Packages" sub="Add, edit and manage your holiday packages" onPress={() => router.push("/vendor/services" as any)} />
-        <Action icon="chart-line" title="Earnings" sub="Revenue, commission and estimated payout" onPress={() => router.push("/vendor/earnings" as any)} />
-        <Action icon="calendar-check-outline" title="Bookings" sub="View and update customer holiday bookings" onPress={() => router.push("/vendor/service-bookings" as any)} />
+        <Action icon="briefcase-outline" title="Holiday Packages" sub="Add, edit and manage your holiday packages" onPress={() => router.push("/service-vendor/services" as any)} />
+        <Action icon="chart-line" title="Earnings" sub="Revenue, commission and estimated payout" onPress={() => router.push("/service-vendor/earnings" as any)} />
+        <Action icon="calendar-check-outline" title="Bookings" sub="View and update customer holiday bookings" onPress={() => router.push("/service-vendor/service-bookings" as any)} />
       </ScrollView>
     </View>
   );
