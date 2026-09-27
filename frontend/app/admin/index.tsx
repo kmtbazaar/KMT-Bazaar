@@ -404,6 +404,7 @@ export default function AdminDashboard() {
             value={`₹${stats?.revenue ?? 0}`}
             icon="cash-multiple"
             color={THEME.success}
+            route="/admin/orders"
             delay={150}
           />
 
@@ -412,6 +413,7 @@ export default function AdminDashboard() {
             value={stats?.orders ?? 0}
             icon="package-variant"
             color={THEME.orange}
+            route="/admin/orders"
             delay={200}
           />
 
@@ -421,6 +423,7 @@ export default function AdminDashboard() {
             icon="currency-inr"
             color={THEME.sky}
             sub={`${stats?.commission_percent ?? 10}% commission`}
+            route="/admin/commission"
             delay={250}
           />
 
@@ -429,6 +432,7 @@ export default function AdminDashboard() {
             value={stats?.users ?? 0}
             icon="account-multiple"
             color={THEME.brownLight}
+            route="/admin/users?role=customer"
             delay={300}
           />
 
@@ -437,6 +441,7 @@ export default function AdminDashboard() {
             value={stats?.vendors ?? 0}
             icon="store"
             color={THEME.orange}
+            route="/admin/users?role=vendor"
             delay={350}
           />
 
@@ -445,6 +450,7 @@ export default function AdminDashboard() {
             value={stats?.delivery ?? 0}
             icon="moped"
             color={THEME.sky}
+            route="/admin/users?role=delivery"
             delay={400}
           />
         </View>
@@ -799,59 +805,93 @@ function KPI({
   icon,
   color,
   sub,
+  route,
   delay = 0,
 }: any) {
+  const router = useRouter();
+
   return (
     <Animated.View
       entering={FadeInUp.delay(delay).duration(500)}
-      style={s.kpiCard}
+      style={s.kpiCardWrap}
     >
-      <View style={s.kpiTop}>
-        <View
-          style={[
-            s.kpiIcon,
-            {
-              backgroundColor: color + "16",
-              borderColor: color + "30",
-            },
-          ]}
+      <Pressable
+        testID={`admin-kpi-${label.toLowerCase().replace(/\\s+/g, "-")}`}
+        onPress={() => router.push(route as any)}
+        style={({ pressed }) => [
+          s.kpiCard,
+          pressed && s.kpiPressed,
+        ]}
+        accessibilityRole="button"
+        accessibilityLabel={`Open ${label}`}
+      >
+        <View style={s.kpiTop}>
+          <View
+            style={[
+              s.kpiIcon,
+              {
+                backgroundColor: color + "16",
+                borderColor: color + "30",
+              },
+            ]}
+          >
+            <MaterialCommunityIcons
+              name={icon}
+              size={20}
+              color={color}
+            />
+          </View>
+
+          <View
+            style={[
+              s.kpiArrow,
+              {
+                backgroundColor: color + "12",
+              },
+            ]}
+          >
+            <MaterialCommunityIcons
+              name="arrow-top-right"
+              size={14}
+              color={color}
+            />
+          </View>
+        </View>
+
+        <Text
+          style={s.kpiValue}
+          numberOfLines={1}
+          adjustsFontSizeToFit
         >
+          {value}
+        </Text>
+
+        <Text style={s.kpiLabel}>
+          {label}
+        </Text>
+
+        {sub && (
+          <Text
+            style={[
+              s.kpiSub,
+              { color },
+            ]}
+          >
+            {sub}
+          </Text>
+        )}
+
+        <View style={s.kpiTapHint}>
+          <Text style={[s.kpiTapHintText, { color }]}>
+            View details
+          </Text>
           <MaterialCommunityIcons
-            name={icon}
-            size={20}
+            name="chevron-right"
+            size={13}
             color={color}
           />
         </View>
-
-        <MaterialCommunityIcons
-          name="arrow-top-right"
-          size={15}
-          color={THEME.muted}
-        />
-      </View>
-
-      <Text
-        style={s.kpiValue}
-        numberOfLines={1}
-        adjustsFontSizeToFit
-      >
-        {value}
-      </Text>
-
-      <Text style={s.kpiLabel}>
-        {label}
-      </Text>
-
-      {sub && (
-        <Text
-          style={[
-            s.kpiSub,
-            { color },
-          ]}
-        >
-          {sub}
-        </Text>
-      )}
+      </Pressable>
     </Animated.View>
   );
 }
@@ -1017,9 +1057,13 @@ const s = StyleSheet.create({
     marginBottom: 8,
   },
 
-  kpiCard: {
+  kpiCardWrap: {
     width: (width - SPACING.lg * 2 - 10) / 2,
-    minHeight: 124,
+  },
+
+  kpiCard: {
+    width: "100%",
+    minHeight: 142,
     backgroundColor: THEME.white,
     borderRadius: 18,
     padding: 13,
@@ -1033,6 +1077,12 @@ const s = StyleSheet.create({
       height: 5,
     },
     elevation: 2,
+  },
+
+  kpiPressed: {
+    transform: [{ scale: 0.975 }],
+    opacity: 0.92,
+    borderColor: THEME.orange,
   },
 
   kpiTop: {
@@ -1068,6 +1118,27 @@ const s = StyleSheet.create({
     fontSize: 9,
     fontWeight: "800",
     marginTop: 4,
+  },
+
+  kpiArrow: {
+    width: 28,
+    height: 28,
+    borderRadius: 10,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  kpiTapHint: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 2,
+    marginTop: 7,
+    opacity: 0.9,
+  },
+
+  kpiTapHintText: {
+    fontSize: 9,
+    fontWeight: "800",
   },
 
   chartCard: {
