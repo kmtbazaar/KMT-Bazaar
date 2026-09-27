@@ -1,4 +1,5 @@
 import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
+import * as Haptics from "expo-haptics";
 import { api } from "./api";
 import { useAuth } from "./AuthContext";
 
@@ -32,7 +33,33 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   useEffect(() => { refresh(); }, [refresh]);
 
+  const playAddFeedback = useCallback(() => {
+    try {
+      if (typeof window !== "undefined") {
+        const AudioCtx = (window.AudioContext || (window as any).webkitAudioContext);
+        if (AudioCtx) {
+          const ctx = new AudioCtx();
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = "sine";
+          osc.frequency.setValueAtTime(720, ctx.currentTime);
+          osc.frequency.exponentialRampToValueAtTime(980, ctx.currentTime + 0.09);
+          gain.gain.setValueAtTime(0.0001, ctx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.16, ctx.currentTime + 0.01);
+          gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.14);
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start();
+          osc.stop(ctx.currentTime + 0.15);
+          window.setTimeout(() => { try { ctx.close(); } catch {} }, 220);
+        }
+      }
+    } catch {}
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+  }, []);
+
   const add = async (productId: string, qty = 1) => {
+    playAddFeedback();
     const c = await api.cartAdd(productId, qty); setCart(c); setPulse((p) => p + 1);
   };
   const update = async (productId: string, qty: number) => {
