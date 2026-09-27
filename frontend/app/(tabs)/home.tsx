@@ -27,7 +27,7 @@ const BANNER_W = width - 32;
 
 // Custom Theme Palette: Clean Pure White, Sky Blue Header & Vibrant Orange
 const THEME = {
-  whiteBg: "#FFFFFF",        // Pure Crisp White Page Background
+  whiteBg: "#FFF9F0",        // Soft warm-white page background
   skyHeader: "#0284C7",      // Deep Sky Blue Header
   skyHeaderDark: "#0369A1",  // Deep Header Accent
   orange: "#FF6B00",         // Vibrant Orange
