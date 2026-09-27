@@ -395,17 +395,6 @@ export default function HolidayPage() {
   return (
     <SafeAreaView style={s.root} edges={["top"]}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.scroll}>
-        <Animated.View entering={FadeIn.duration(500)} style={s.topBannerWrap}>
-          <Animated.View style={[s.topBannerMove, bannerStyle]}>
-          <Animated.Image source={{ uri: holidayBanner }} style={s.topBanner} resizeMode="cover" />
-          <LinearGradient colors={["rgba(2,132,199,0.02)", "rgba(2,132,199,0.72)"]} style={s.topBannerShade} />
-          <Animated.View entering={FadeInUp.duration(700)} style={s.topBannerText}>
-            <Text style={s.topBannerKicker}>KMT BAZAAR HOLIDAYS</Text>
-            <Text style={s.topBannerTitle}>Your next escape starts here</Text>
-          </Animated.View>
-          </Animated.View>
-        </Animated.View>
-
         <LinearGradient
           colors={["#075985", "#0284C7", "#38BDF8", "#BAE6FD"]}
           locations={[0, 0.38, 0.75, 1]}
@@ -441,6 +430,17 @@ export default function HolidayPage() {
               <MaterialCommunityIcons name="calendar-check-outline" size={20} color="#fff" />
             </Pressable>
           </View>
+
+          <Animated.View entering={FadeIn.duration(500)} style={s.topBannerWrap}>
+            <Animated.View style={[s.topBannerMove, bannerStyle]}>
+              <Animated.Image source={{ uri: holidayBanner }} style={s.topBanner} resizeMode="cover" />
+              <LinearGradient colors={["rgba(2,132,199,0.02)", "rgba(2,132,199,0.72)"]} style={s.topBannerShade} />
+              <Animated.View entering={FadeInUp.duration(700)} style={s.topBannerText}>
+                <Text style={s.topBannerKicker}>KMT BAZAAR HOLIDAYS</Text>
+                <Text style={s.topBannerTitle}>Your next escape starts here</Text>
+              </Animated.View>
+            </Animated.View>
+          </Animated.View>
 
           <Animated.View entering={FadeIn.duration(450)} style={s.heroCopy}>
             <View style={s.heroTag}>
@@ -866,14 +866,36 @@ export default function HolidayPage() {
               </View>
 
               <Text style={s.formLabel}>Travel date</Text>
-              <TextInput
-                value={bookingDate}
-                onChangeText={setBookingDate}
-                placeholder="YYYY-MM-DD"
-                placeholderTextColor="#94A3B8"
-                style={s.formInput}
-              />
-              <Text style={s.helperText}>Example: 2026-11-20</Text>
+              {Platform.OS === "web" ? (
+                <View style={s.datePickerWrap}>
+                  <MaterialCommunityIcons name="calendar-month-outline" size={21} color="#0284C7" />
+                  {React.createElement("input", {
+                    type: "date",
+                    value: bookingDate,
+                    min: new Date().toISOString().slice(0, 10),
+                    onChange: (e: any) => setBookingDate(e?.target?.value || ""),
+                    style: {
+                      flex: 1,
+                      border: "none",
+                      outline: "none",
+                      background: "transparent",
+                      color: "#0F172A",
+                      fontSize: 14,
+                      fontFamily: "inherit",
+                      padding: 0,
+                    },
+                  })}
+                </View>
+              ) : (
+                <TextInput
+                  value={bookingDate}
+                  onChangeText={setBookingDate}
+                  placeholder="YYYY-MM-DD"
+                  placeholderTextColor="#94A3B8"
+                  style={s.formInput}
+                />
+              )}
+              <Text style={s.helperText}>Select your travel date from the calendar.</Text>
 
               <Text style={s.formLabel}>Travellers</Text>
               <View style={s.peopleCard}>
@@ -947,7 +969,7 @@ const s = StyleSheet.create({
   root: { flex: 1, backgroundColor: "#F7FBFF" },
   scroll: { paddingBottom: 42 },
 
-  topBannerWrap: { height: 150, marginBottom: 0, overflow: "hidden", position: "relative", backgroundColor: "#0C4A6E" },
+  topBannerWrap: { height: 150, marginTop: 12, marginBottom: 2, overflow: "hidden", position: "relative", backgroundColor: "#0C4A6E", borderRadius: 18 },
   topBannerMove: { ...StyleSheet.absoluteFillObject, width: "100%", height: "100%" },
   topBanner: { width: "100%", height: "100%" },
   topBannerShade: { ...StyleSheet.absoluteFillObject },
@@ -982,10 +1004,10 @@ const s = StyleSheet.create({
   cloudL: { position: "absolute", width: 64, height: 64, borderRadius: 32, left: 86, bottom: 8, backgroundColor: "rgba(255,255,255,.93)" },
   cloudS: { position: "absolute", width: 48, height: 48, borderRadius: 24, left: 132, bottom: 8, backgroundColor: "rgba(255,255,255,.94)" },
   cloudBase: { position: "absolute", left: 15, right: 12, bottom: 0, height: 30, borderRadius: 20, backgroundColor: "rgba(255,255,255,.93)" },
-  plane: { position: "absolute", top: 112, left: 0, flexDirection: "row", alignItems: "center" },
+  plane: { position: "absolute", top: 112, left: 0, zIndex: 20, elevation: 20, flexDirection: "row", alignItems: "center" },
   flightTrail: { width: 80, height: 2, marginRight: 8, borderRadius: 2, backgroundColor: "rgba(255,255,255,.65)" },
 
-  heroCopy: { marginTop: 128, paddingRight: 12 },
+  heroCopy: { marginTop: 20, paddingRight: 12 },
   heroTag: {
     alignSelf: "flex-start", flexDirection: "row", alignItems: "center", gap: 5,
     paddingHorizontal: 10, paddingVertical: 6, borderRadius: 999,
@@ -1164,6 +1186,7 @@ const s = StyleSheet.create({
   bookingSummaryRating: { marginTop: 4, color: "#B45309", fontSize: 9, fontWeight: "900" },
 
   formLabel: { marginTop: 15, marginBottom: 7, color: "#0F172A", fontSize: 12, fontWeight: "900" },
+  datePickerWrap: { minHeight: 50, borderRadius: 13, borderWidth: 1, borderColor: "#CBD5E1", backgroundColor: "#fff", paddingHorizontal: 13, flexDirection: "row", alignItems: "center", gap: 9 },
   formInput: { minHeight: 50, borderRadius: 13, borderWidth: 1, borderColor: "#CBD5E1", backgroundColor: "#fff", paddingHorizontal: 13, color: "#0F172A", fontSize: 13 },
   formTextarea: { minHeight: 92, paddingTop: 12, textAlignVertical: "top" },
   helperText: { marginTop: 5, color: "#94A3B8", fontSize: 9 },
