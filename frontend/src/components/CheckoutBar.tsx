@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef } from "react";
 import { View, Text, StyleSheet, PanResponder, useWindowDimensions } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import { useCart } from "@/src/CartContext";
 import Animated, { useAnimatedStyle, useSharedValue, withSequence, withSpring, withTiming } from "react-native-reanimated";
@@ -202,23 +203,35 @@ export default function CheckoutBar({ route = "/cart", label = "View Cart", bott
             <View style={styles.mouthOpening} />
           </Animated.View>
           <Animated.View style={[styles.bagBody, sackOpenAnim]}>
-            <View style={styles.juteTexture}>
-              <View style={[styles.textureLine, { top: 8 }]} />
-              <View style={[styles.textureLine, { top: 15 }]} />
-              <View style={[styles.textureLine, { top: 22 }]} />
-              <View style={[styles.textureLine, { top: 29 }]} />
-              <View style={[styles.textureLine, { top: 36 }]} />
-              <View style={[styles.textureLine, { top: 43 }]} />
-              <View style={[styles.textureLine, { top: 50 }]} />
-            </View>
-            <View style={styles.juteStitchLeft} />
-            <View style={styles.juteStitchRight} />
-            <View style={styles.bagLogo}>
-              <MaterialCommunityIcons name="package-variant-closed" size={18} color="#3E2815" />
-              <Text style={styles.bagKmt}>KMT</Text>
-              <Text style={styles.bagBazaar}>BAZAAR</Text>
-            </View>
-            <View style={styles.juteFoldBottom} />
+            <LinearGradient
+              colors={["#F3D35B", "#D0AA2C", "#B88D1F", "#E4C64E"]}
+              locations={[0, 0.28, 0.62, 1]}
+              start={{ x: 0.05, y: 0 }}
+              end={{ x: 0.95, y: 1 }}
+              style={styles.sackGradient}
+            >
+              <View style={styles.sackInnerShadow} />
+              <View style={styles.juteTexture}>
+                {Array.from({ length: 12 }).map((_, i) => (
+                  <View key={"h" + i} style={[styles.textureLine, { top: 4 + i * 5 }]} />
+                ))}
+                {Array.from({ length: 10 }).map((_, i) => (
+                  <View
+                    key={"d" + i}
+                    style={[styles.textureDiagonal, { left: -18 + i * 9 }]}
+                  />
+                ))}
+              </View>
+              <View style={styles.juteStitchLeft} />
+              <View style={styles.juteStitchRight} />
+              <View style={styles.sackCenterShade} />
+              <View style={styles.bagLogo}>
+                <MaterialCommunityIcons name="package-variant-closed" size={17} color="#5A4007" />
+                <Text style={styles.bagKmt}>KMT</Text>
+                <Text style={styles.bagBazaar}>BAZAAR</Text>
+              </View>
+              <View style={styles.juteFoldBottom} />
+            </LinearGradient>
           </Animated.View>
           <View style={styles.countBadge}>
             <Text style={styles.countText}>{itemCount}</Text>
@@ -317,10 +330,13 @@ const styles = StyleSheet.create({
   },
   bagBody: {
     position: "absolute",
-    bottom: 3,
-    width: 82,
-    height: 72,
-    borderRadius: 22,
+    bottom: 2,
+    width: 84,
+    height: 78,
+    borderTopLeftRadius: 27,
+    borderTopRightRadius: 27,
+    borderBottomLeftRadius: 30,
+    borderBottomRightRadius: 30,
     backgroundColor: "#D1A524",
     borderWidth: 2,
     borderColor: "#8A6A12",
@@ -329,15 +345,38 @@ const styles = StyleSheet.create({
     overflow: "hidden",
     ...shadow.card,
   },
+  sackGradient: {
+    width: "100%",
+    height: "100%",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  sackInnerShadow: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 17,
+    backgroundColor: "rgba(72,49,9,0.15)",
+  },
+  sackCenterShade: {
+    position: "absolute",
+    left: "42%",
+    top: 0,
+    bottom: 0,
+    width: "16%",
+    backgroundColor: "rgba(255,241,159,0.12)",
+  },
   bagLogo: {
-    width: 60,
-    height: 43,
-    borderRadius: 14,
-    backgroundColor: "rgba(245,220,118,0.45)",
+    width: 62,
+    height: 44,
+    borderRadius: 13,
+    backgroundColor: "rgba(255,236,139,0.34)",
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 1,
-    borderColor: "rgba(81,52,25,0.35)",
+    borderColor: "rgba(93,67,8,0.35)",
+    ...shadow.soft,
   },
   bagKmt: {
     color: "#5A3E08",
@@ -382,19 +421,27 @@ const styles = StyleSheet.create({
   },
   juteTexture: {
     position: "absolute",
-    top: 4,
-    left: 7,
-    right: 7,
-    bottom: 4,
+    top: 3,
+    left: 4,
+    right: 4,
+    bottom: 3,
     opacity: 0.55,
   },
   textureLine: {
     position: "absolute",
-    left: 0,
-    right: 0,
+    left: -2,
+    right: -2,
     height: 1,
-    backgroundColor: "#7C5A0D",
+    backgroundColor: "rgba(107,77,15,0.65)",
     borderRadius: 1,
+  },
+  textureDiagonal: {
+    position: "absolute",
+    top: -18,
+    width: 1,
+    height: 120,
+    backgroundColor: "rgba(255,238,139,0.42)",
+    transform: [{ rotate: "31deg" }],
   },
   mouthOpening: {
     position: "absolute",
