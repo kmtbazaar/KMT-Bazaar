@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 
 import {
   View,
@@ -22,6 +22,10 @@ import Animated, {
   FadeInDown,
   FadeInUp,
   ZoomIn,
+  useAnimatedStyle,
+  useSharedValue,
+  withRepeat,
+  withTiming,
 } from "react-native-reanimated";
 
 import { adminApi } from "@/src/roleApi";
@@ -135,6 +139,20 @@ export default function AdminDashboard() {
   const [pendingStores, setPendingStores] = useState<any[]>([]);
   const [refreshing, setRefreshing] = useState(false);
   const [serviceBookingCount, setServiceBookingCount] = useState(0);
+  const activityPulse = useSharedValue(0.55);
+
+  useEffect(() => {
+    activityPulse.value = withRepeat(
+      withTiming(1, { duration: 1250 }),
+      -1,
+      true
+    );
+  }, [activityPulse]);
+
+  const activityPulseStyle = useAnimatedStyle(() => ({
+    opacity: activityPulse.value,
+    transform: [{ scale: 0.92 + activityPulse.value * 0.08 }],
+  }));
 
   /*
    * EXISTING DATA LOGIC — UNCHANGED
@@ -363,6 +381,60 @@ export default function AdminDashboard() {
         }
       >
         {/* ===================================================
+            PENDING ORDERS
+        =================================================== */}
+
+        <Animated.View
+          entering={FadeInDown.delay(80).duration(520).springify()}
+        >
+          <Pressable
+            testID="pending-orders-shortcut"
+            onPress={() =>
+              router.push(
+                "/admin/orders?status=pending"
+              )
+            }
+            style={({ pressed }) => [
+              s.pendingCard,
+              pressed && s.pressed,
+            ]}
+          >
+            <LinearGradient
+              colors={[THEME.brown, THEME.black]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={s.pendingGradient}
+            >
+              <View style={s.pendingIcon}>
+                <MaterialCommunityIcons
+                  name="clock-alert-outline"
+                  size={23}
+                  color={THEME.orange}
+                />
+              </View>
+
+              <View style={s.pendingContent}>
+                <Text style={s.pendingTitle}>
+                  {stats?.pending_orders ?? 0} Pending Orders
+                </Text>
+
+                <Text style={s.pendingSub}>
+                  Tap to review & accept orders
+                </Text>
+              </View>
+
+              <View style={s.arrowCircle}>
+                <MaterialCommunityIcons
+                  name="arrow-right"
+                  size={18}
+                  color={THEME.white}
+                />
+              </View>
+            </LinearGradient>
+          </Pressable>
+        </Animated.View>
+
+        {/* ===================================================
             OVERVIEW
         =================================================== */}
 
@@ -465,9 +537,13 @@ export default function AdminDashboard() {
         >
           <View style={s.cardHeader}>
             <View>
-              <Text style={s.cardTitle}>
-                Order Activity
-              </Text>
+              <View style={s.activityTitleRow}>
+                <Text style={s.cardTitle}>
+                  Order Activity
+                </Text>
+
+                <Animated.View style={[s.activityLiveDot, activityPulseStyle]} />
+              </View>
 
               <Text style={s.cardSub}>
                 Orders · Last 7 days
@@ -477,7 +553,7 @@ export default function AdminDashboard() {
             <View style={s.chartIcon}>
               <MaterialCommunityIcons
                 name="chart-bar"
-                size={20}
+                size={17}
                 color={THEME.orange}
               />
             </View>
@@ -486,7 +562,14 @@ export default function AdminDashboard() {
           <View style={s.chartRow}>
             {(stats?.chart || []).map(
               (c: any, i: number) => (
-                <View key={i} style={s.chartCol}>
+                <Animated.View
+                  key={i}
+                  entering={FadeInUp
+                    .delay(500 + i * 90)
+                    .duration(520)
+                    .springify()}
+                  style={s.chartCol}
+                >
                   <Text style={s.chartVal}>
                     {c.orders}
                   </Text>
@@ -494,14 +577,15 @@ export default function AdminDashboard() {
                   <View style={s.chartBarWrap}>
                     <Animated.View
                       entering={FadeInUp
-                        .delay(500 + i * 80)
+                        .delay(540 + i * 90)
+                        .duration(620)
                         .springify()}
                       style={[
                         s.chartBar,
                         {
                           height: Math.max(
-                            8,
-                            (c.orders / maxChart) * 105
+                            6,
+                            (c.orders / maxChart) * 72
                           ),
                         },
                       ]}
@@ -511,67 +595,10 @@ export default function AdminDashboard() {
                   <Text style={s.chartDay}>
                     {c.day}
                   </Text>
-                </View>
+                </Animated.View>
               )
             )}
           </View>
-        </Animated.View>
-
-        {/* ===================================================
-            PENDING ORDERS
-        =================================================== */}
-
-        <Animated.View
-          entering={FadeInUp.delay(500).duration(600)}
-        >
-          <Pressable
-            testID="pending-orders-shortcut"
-            onPress={() =>
-              router.push(
-                "/admin/orders?status=pending"
-              )
-            }
-            style={({ pressed }) => [
-              s.pendingCard,
-              pressed && s.pressed,
-            ]}
-          >
-            <LinearGradient
-              colors={[
-                THEME.brown,
-                THEME.black,
-              ]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={s.pendingGradient}
-            >
-              <View style={s.pendingIcon}>
-                <MaterialCommunityIcons
-                  name="clock-alert-outline"
-                  size={25}
-                  color={THEME.orange}
-                />
-              </View>
-
-              <View style={s.pendingContent}>
-                <Text style={s.pendingTitle}>
-                  {stats?.pending_orders ?? 0} Pending Orders
-                </Text>
-
-                <Text style={s.pendingSub}>
-                  Tap to review & accept orders
-                </Text>
-              </View>
-
-              <View style={s.arrowCircle}>
-                <MaterialCommunityIcons
-                  name="arrow-right"
-                  size={19}
-                  color={THEME.white}
-                />
-              </View>
-            </LinearGradient>
-          </Pressable>
         </Animated.View>
 
         {/* ===================================================
@@ -1143,8 +1170,8 @@ const s = StyleSheet.create({
 
   chartCard: {
     backgroundColor: THEME.white,
-    borderRadius: 20,
-    padding: 16,
+    borderRadius: 18,
+    padding: 13,
     marginTop: 10,
     borderWidth: 1,
     borderColor: THEME.border,
@@ -1166,7 +1193,7 @@ const s = StyleSheet.create({
 
   cardTitle: {
     color: THEME.text,
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: "900",
   },
 
@@ -1185,11 +1212,24 @@ const s = StyleSheet.create({
     backgroundColor: THEME.orangeLight,
   },
 
+  activityTitleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+
+  activityLiveDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+    backgroundColor: THEME.success,
+  },
+
   chartRow: {
     flexDirection: "row",
     alignItems: "flex-end",
-    height: 165,
-    marginTop: 12,
+    height: 124,
+    marginTop: 8,
   },
 
   chartCol: {
@@ -1197,35 +1237,35 @@ const s = StyleSheet.create({
     height: "100%",
     alignItems: "center",
     justifyContent: "flex-end",
-    gap: 5,
+    gap: 4,
   },
 
   chartBarWrap: {
-    height: 110,
-    width: "52%",
+    height: 76,
+    width: "42%",
     justifyContent: "flex-end",
     backgroundColor: "#F5F5F4",
-    borderRadius: 8,
+    borderRadius: 7,
     overflow: "hidden",
   },
 
   chartBar: {
     width: "100%",
     backgroundColor: THEME.orange,
-    borderTopLeftRadius: 8,
-    borderTopRightRadius: 8,
+    borderTopLeftRadius: 7,
+    borderTopRightRadius: 7,
   },
 
   chartVal: {
     color: THEME.brown,
-    fontSize: 10,
+    fontSize: 9,
     fontWeight: "900",
   },
 
   chartDay: {
     color: THEME.muted,
-    fontSize: 9,
-    fontWeight: "700",
+    fontSize: 8,
+    fontWeight: "800",
   },
 
   pendingCard: {
