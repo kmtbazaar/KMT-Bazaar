@@ -19,9 +19,9 @@ const SERVICES=[
 const QUICK=["Plumber","Mistri","Labour","AC Technician","Electrician","Carpenter"];
 
 export default function DailyServices(){
- const router=useRouter(),[q,setQ]=useState(""),[liveServices,setLiveServices]=useState<any[]|null>(null);
- useEffect(()=>{let mounted=true;(async()=>{try{const data=await api.serviceCatalog("daily_service");if(mounted&&Array.isArray(data)&&data.length)setLiveServices(data)}catch(e){console.log("daily services catalog",e)}})();return()=>{mounted=false}},[]);
- const source=liveServices?.length?liveServices:SERVICES;
+ const router=useRouter(),[q,setQ]=useState(""),[liveServices,setLiveServices]=useState<any[]|null>(null),[catalogLoaded,setCatalogLoaded]=useState(false);
+ useEffect(()=>{let mounted=true;(async()=>{try{const data=await api.serviceCatalog("daily_service");if(mounted&&Array.isArray(data))setLiveServices(data)}catch(e){console.log("daily services catalog",e)}finally{if(mounted)setCatalogLoaded(true)}})();return()=>{mounted=false}},[]);
+ const source=catalogLoaded?(liveServices||[]):SERVICES;
  const filtered=useMemo(()=>{const n=q.trim().toLowerCase();if(!n)return source;return source.filter((x:any)=>[x.name,x.category,x.vendor_name,x.location,x.description].join(" ").toLowerCase().includes(n))},[q,source]);
  return <SafeAreaView style={s.root}><ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.page}>
  <View style={s.hero}><View style={s.heroTop}><View><Text style={s.kicker}>KMT BAZAAR · HOME SERVICES</Text><Text style={s.heroTitle}>Skilled help,{"\n"}right at your door.</Text></View><View style={s.heroIcon}><MaterialCommunityIcons name="tools" size={28} color="#fff"/></View></View><Text style={s.heroSub}>Find trusted local professionals for everyday repairs, home work and urgent help.</Text>
