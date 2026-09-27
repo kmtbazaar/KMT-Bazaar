@@ -17,7 +17,7 @@ export default function HolidayVendorDashboard() {
   const { user, logout } = useAuth();
   const [stats, setStats] = useState<any>(null);
   const [bookingCount, setBookingCount] = useState(0);
-  const [bannerUrl, setBannerUrl] = useState("");
+  const [bannerUrls, setBannerUrls] = useState<string[]>([]);
   const [uploadingBanner, setUploadingBanner] = useState(false);
 
   const load = useCallback(async () => {
@@ -29,7 +29,9 @@ export default function HolidayVendorDashboard() {
       ]);
       setStats(st);
       setBookingCount((bookings || []).filter((x:any) => ["pending","booking_requested","confirmed","accepted"].includes(String(x.status || "").toLowerCase())).length);
-      setBannerUrl(String(banner?.url || ""));
+      const urls = Array.isArray(banner?.urls) ? banner.urls.map((x:any) => String(x).trim()).filter(Boolean) : [];
+      const fallback = banner?.url ? [String(banner.url)] : [];
+      setBannerUrls(urls.length ? urls : fallback);
     } catch {}
   }, []);
 
@@ -71,17 +73,44 @@ export default function HolidayVendorDashboard() {
           <Text style={s.payoutSub}>After {stats?.commission_percent ?? 10}% platform commission</Text>
         </View>
 
-        <Text style={s.sectionTitle}>Holiday Banner</Text>
+        <Text style={s.sectionTitle}>Holiday Banners</Text>
         <View style={s.bannerCard}>
-          {bannerUrl ? <Image source={{ uri: bannerUrl }} style={s.bannerPreview} contentFit="cover" /> : null}
+          {bannerUrls.length > 0 ? (
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.bannerList}>
+              {bannerUrls.map((url, index) => (
+                <View key={url + index} style={s.bannerItem}>
+                  <Image source={{ uri: url }} style={s.bannerPreview} contentFit="cover" />
+                  <View style={s.bannerItemBar}>
+                    <Text style={s.bannerIndex}>Banner {index + 1}</Text>
+                    <Pressable
+                      disabled={uploadingBanner}
+                      onPress={async () => {
+                        try {
+                          await vendorApi.deleteHolidayBanner(index);
+                          setBannerUrls((prev) => prev.filter((_, i) => i !== index));
+                        } catch (e:any) {
+                          Alert.alert("Delete failed", e?.message || "Please try again.");
+                        }
+                      }}
+                      style={s.bannerDelete}
+                    >
+                      <MaterialCommunityIcons name="delete-outline" size={16} color="#DC2626" />
+                    </Pressable>
+                  </View>
+                </View>
+              ))}
+            </ScrollView>
+          ) : (
+            <View style={s.noBanner}><Text style={s.bannerSub}>No Holiday banners added yet.</Text></View>
+          )}
           <View style={s.bannerInfo}>
             <View style={{ flex: 1 }}>
-              <Text style={s.bannerTitle}>Live page banner</Text>
-              <Text style={s.bannerSub}>Upload a new banner. It appears at the top of the Holiday page.</Text>
+              <Text style={s.bannerTitle}>Live Holiday page banners</Text>
+              <Text style={s.bannerSub}>Add multiple banners. They rotate automatically on the Holiday page.</Text>
             </View>
             <Pressable
-              disabled={uploadingBanner}
-              style={[s.bannerBtn, uploadingBanner && { opacity: 0.6 }]}
+              disabled={uploadingBanner || bannerUrls.length >= 20}
+              style={[s.bannerBtn, (uploadingBanner || bannerUrls.length >= 20) && { opacity: 0.6 }]}
               onPress={async () => {
                 try {
                   const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -104,18 +133,18 @@ export default function HolidayVendorDashboard() {
                     mimeType: asset.mimeType,
                     file: (asset as any).file,
                   });
-                  await vendorApi.updateHolidayBanner(url);
-                  setBannerUrl(url);
-                  Alert.alert("Banner updated", "Your Holiday page banner is now live.");
+                  await vendorApi.addHolidayBanner(url);
+                  setBannerUrls((prev) => [...prev, url]);
+                  Alert.alert("Banner added", "Your new Holiday banner is now live.");
                 } catch (e: any) {
-                  Alert.alert("Banner update failed", e?.message || "Please try again.");
+                  Alert.alert("Banner upload failed", e?.message || "Please try again.");
                 } finally {
                   setUploadingBanner(false);
                 }
               }}
             >
               <MaterialCommunityIcons name="image-plus" size={18} color="#fff" />
-              <Text style={s.bannerBtnText}>{uploadingBanner ? "Uploading..." : "Change banner"}</Text>
+              <Text style={s.bannerBtnText}>{uploadingBanner ? "Uploading..." : "Add banner"}</Text>
             </Pressable>
           </View>
         </View>
@@ -170,7 +199,13 @@ const s = StyleSheet.create({
   payoutSub: { color: "rgba(255,255,255,0.78)", fontSize: 11, marginTop: 2 },
   sectionTitle: { fontSize: 17, fontWeight: "900", color: COLORS.text, marginBottom: 10 },
   bannerCard: { backgroundColor: "#fff", borderRadius: RADIUS.lg, borderWidth: 1, borderColor: "#DBEAFE", overflow: "hidden", marginBottom: 20 },
-  bannerPreview: { width: "100%", height: 130, backgroundColor: "#E0F2FE" },
+  bannerList: { gap: 10, padding: 12 },
+  bannerItem: { width: 250, overflow: "hidden", borderRadius: 14, borderWidth: 1, borderColor: "#DBEAFE", backgroundColor: "#fff" },
+  bannerPreview: { width: "100%", height: 105, backgroundColor: "#F8FAFC" },
+  bannerItemBar: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 10, paddingVertical: 8 },
+  bannerIndex: { color: COLORS.text, fontSize: 11, fontWeight: "900" },
+  bannerDelete: { width: 30, height: 30, borderRadius: 15, backgroundColor: "#FEF2F2", alignItems: "center", justifyContent: "center" },
+  noBanner: { padding: 18 },
   bannerInfo: { flexDirection: "row", alignItems: "center", gap: 12, padding: 14 },
   bannerTitle: { color: COLORS.text, fontWeight: "900", fontSize: 14 },
   bannerSub: { color: COLORS.textMuted, fontSize: 11, lineHeight: 16, marginTop: 3 },
