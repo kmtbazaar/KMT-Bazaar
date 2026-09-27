@@ -133,7 +133,8 @@ export default function AdminDashboard() {
 
   const [stats, setStats] = useState<any>(null);
   const [pendingStores, setPendingStores] = useState<any[]>([]);
-  const [refreshing, setRefreshing] = useState(false);\n  const [serviceBookingCount, setServiceBookingCount] = useState(0);
+  const [refreshing, setRefreshing] = useState(false);
+  const [serviceBookingCount, setServiceBookingCount] = useState(0);
 
   /*
    * EXISTING DATA LOGIC — UNCHANGED
@@ -1357,7 +1358,11 @@ const s = StyleSheet.create({
     lineHeight: 13,
   },
 
-  quickBadge: { position:"absolute", top:7, left:7, minWidth:22, height:22, borderRadius:11, backgroundColor:THEME.danger, alignItems:"center", justifyContent:"center", paddingHorizontal:4 },\n\n  quickBadgeText: { color:THEME.white, fontSize:9, fontWeight:"900" },\n\n  gridArrow: {
+  quickBadge: { position:"absolute", top:7, left:7, minWidth:22, height:22, borderRadius:11, backgroundColor:THEME.danger, alignItems:"center", justifyContent:"center", paddingHorizontal:4 },
+
+  quickBadgeText: { color:THEME.white, fontSize:9, fontWeight:"900" },
+
+  gridArrow: {
     position: "absolute",
     right: 7,
     top: 7,
