@@ -147,6 +147,15 @@ export default function AdminDashboard() {
 
       const storesResponse = await adminApi.stores("pending");
       setPendingStores(storesResponse || []);
+
+      const serviceBookings = await adminApi.serviceBookings();
+      setServiceBookingCount(
+        (serviceBookings || []).filter((x: any) =>
+          ["pending", "booking_requested"].includes(
+            String(x.status || "").toLowerCase()
+          )
+        ).length
+      );
     } catch (e) {
       console.log("Admin dashboard load error:", e);
     }
