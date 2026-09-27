@@ -82,6 +82,12 @@ export default function Login() {
   const { login, googleLogin } = useAuth();
   const insets = useSafeAreaInsets();
 
+  const goToDashboard = (user: any) => {
+    if (user?.role === "customer") return router.replace("/(tabs)/home" as any);
+    if (user?.role === "vendor" && user?.vendor_type === "service") return router.replace("/service-vendor" as any);
+    return router.replace(`/${user?.role}` as any);
+  };
+
   const [loginType, setLoginType] = useState<"email" | "mobile">("email");
   const [identifier, setIdentifier] = useState("");
   const [accountChecked, setAccountChecked] = useState(false);
@@ -178,11 +184,7 @@ export default function Login() {
       const user = await googleLogin(credential);
       if (!user?.role) throw new Error("Google login failed");
 
-      if (user.role === "customer") {
-        router.replace("/(tabs)/home" as any);
-      } else {
-        router.replace(`/${user.role}` as any);
-      }
+      goToDashboard(user);
     } catch (e: any) {
       setError(e?.message || "Google sign-in failed");
     } finally {
@@ -273,11 +275,7 @@ export default function Login() {
         throw new Error("Login failed, no user role returned");
       }
 
-      if (user.role === "customer") {
-        router.replace("/(tabs)/home" as any);
-      } else {
-        router.replace(`/${user.role}` as any);
-      }
+      goToDashboard(user);
     } catch (e: any) {
       setError(e?.message || "Login failed");
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
