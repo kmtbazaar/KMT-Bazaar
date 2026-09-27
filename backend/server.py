@@ -2521,14 +2521,26 @@ async def admin_daily_service_stats(_=Depends(require_roles("admin"))):
 
 @api.get("/admin/service-bookings")
 async def admin_service_bookings(_=Depends(require_roles("admin"))):
-    return await db.service_bookings.find({}, {"_id": 0}).sort("created_at", -1).to_list(500)
+    # Admin Service Bookings is reserved for Daily Services.
+    return await db.service_bookings.find(
+        {"service_type": ServiceType.DAILY_SERVICE.value},
+        {"_id": 0}
+    ).sort("created_at", -1).to_list(500)
 
 
 @api.post("/admin/service-bookings/{booking_id}/status")
 async def admin_service_booking_status(booking_id: str, data: OrderStatusIn, _=Depends(require_roles("admin"))):
+    booking = await db.service_bookings.find_one({"id": booking_id}, {"_id": 0})
+    if not booking:
+        raise HTTPException(404, "Booking not found")
+    if booking.get("service_type") != ServiceType.DAILY_SERVICE.value:
+        raise HTTPException(403, "Holiday and Car Rental bookings are managed by their service vendors")
+    status = data.status.strip().lower()
+    if status not in {"pending", "confirmed", "cancelled", "completed", "delivered"}:
+        raise HTTPException(400, "Invalid Daily Service booking status")
     result = await db.service_bookings.update_one(
-        {"id": booking_id},
-        {"$set": {"status": data.status.strip().lower(), "updated_at": now_iso()}}
+        {"id": booking_id, "service_type": ServiceType.DAILY_SERVICE.value},
+        {"$set": {"status": status, "updated_at": now_iso()}}
     )
     if result.matched_count == 0:
         raise HTTPException(404, "Booking not found")
