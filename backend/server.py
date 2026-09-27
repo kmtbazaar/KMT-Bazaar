@@ -1859,6 +1859,9 @@ class VendorServiceIn(BaseModel):
     fuel: str = ""
     tag: str = ""
     includes: list[str] = []
+    icon: str = "tools"
+    rating: float = 0
+    reviews: int = 0
     service_type: ServiceType = ServiceType.DAILY_SERVICE
 
 class OrderStatusIn(BaseModel):
@@ -2491,6 +2494,30 @@ async def admin_delete_vendor_service(
         raise HTTPException(status_code=404, detail="Vendor service not found")
     return {"ok": True}
 
+
+@api.get("/admin/daily-service-stats")
+async def admin_daily_service_stats(_=Depends(require_roles("admin"))):
+    services, bookings, settings = await asyncio.gather(
+        db.vendor_services.find({"service_type": ServiceType.DAILY_SERVICE.value}, {"_id": 0, "id": 1, "active": 1, "price": 1}).to_list(500),
+        db.service_bookings.find({"service_type": ServiceType.DAILY_SERVICE.value}, {"_id": 0, "paid_amount": 1, "status": 1}).to_list(500),
+        db.settings.find_one({"id": "global"}, {"_id": 0})
+    )
+    revenue = round(sum(float(x.get("paid_amount", 0) or 0) for x in bookings), 2)
+    completed = sum(1 for x in bookings if x.get("status") in {"completed", "delivered"})
+    pending = sum(1 for x in bookings if x.get("status") not in {"completed", "cancelled", "delivered"})
+    commission = float((settings or {}).get("commission_percent", 10.0) or 10.0)
+    payout = round(revenue * (1 - commission / 100), 2)
+    return {
+        "services": len(services),
+        "active_services": sum(1 for x in services if x.get("active") is not False),
+        "bookings": len(bookings),
+        "completed": completed,
+        "pending": pending,
+        "revenue": revenue,
+        "commission_percent": commission,
+        "platform_earnings": round(revenue - payout, 2),
+        "provider_payout": payout,
+    }
 
 @api.get("/admin/service-bookings")
 async def admin_service_bookings(_=Depends(require_roles("admin"))):
