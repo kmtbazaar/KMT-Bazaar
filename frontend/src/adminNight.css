@@ -1,0 +1,25 @@
+/* KMT Bazaar Admin Console — shared night theme */
+.kmt-admin-night,
+.kmt-admin-night body {
+  background: #020617 !important;
+  color: #f8fafc !important;
+}
+.kmt-admin-night [style*="background-color: rgb(255, 255, 255)"],
+.kmt-admin-night [style*="background-color: rgb(248, 250, 252)"],
+.kmt-admin-night [style*="background-color: rgb(245, 245, 244)"],
+.kmt-admin-night [style*="background-color: rgb(244, 247, 252)"] {
+  background-color: #111827 !important;
+}
+.kmt-admin-night [style*="color: rgb(23, 23, 23)"],
+.kmt-admin-night [style*="color: rgb(5, 12, 28)"],
+.kmt-admin-night [style*="color: rgb(15, 23, 42)"],
+.kmt-admin-night [style*="color: rgb(75, 85, 99)"],
+.kmt-admin-night [style*="color: rgb(100, 116, 139)"],
+.kmt-admin-night [style*="color: rgb(115, 115, 115)"] {
+  color: #e2e8f0 !important;
+}
+.kmt-admin-night [style*="border-color: rgb(231, 229, 228)"],
+.kmt-admin-night [style*="border-color: rgb(226, 232, 240)"],
+.kmt-admin-night [style*="border-color: rgb(203, 216, 241)"] {
+  border-color: #334155 !important;
+}
