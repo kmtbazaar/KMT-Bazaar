@@ -156,14 +156,22 @@ export default function CheckoutBar({ route = "/cart", label = "View Cart", bott
           <View style={styles.priceBubble}>
             <Text style={styles.priceBubbleText}>₹{subtotal.toFixed(0)}</Text>
           </View>
-          <View style={styles.bagHandle} />
-          <View style={styles.bag}>
-            <View style={styles.bagTop} />
-            <View style={styles.bagBody}>
-              <MaterialCommunityIcons name="shopping-bag-outline" size={21} color="#fff7ed" />
+          <View style={styles.sackRope} />
+          <View style={styles.sackKnot} />
+          <View style={styles.bagMouth}>
+            <View style={styles.mouthFoldLeft} />
+            <View style={styles.mouthFoldRight} />
+            <View style={styles.mouthTieBand} />
+          </View>
+          <View style={styles.bagBody}>
+            <View style={styles.juteStitchLeft} />
+            <View style={styles.juteStitchRight} />
+            <View style={styles.bagLogo}>
+              <MaterialCommunityIcons name="package-variant-closed" size={18} color="#3E2815" />
               <Text style={styles.bagKmt}>KMT</Text>
               <Text style={styles.bagBazaar}>BAZAAR</Text>
             </View>
+            <View style={styles.juteFoldBottom} />
           </View>
           <View style={styles.countBadge}>
             <Text style={styles.countText}>{itemCount}</Text>
@@ -187,67 +195,143 @@ const styles = StyleSheet.create({
   },
   cartButton: {
     width: 92,
-    height: 92,
+    height: 98,
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: "transparent",
   },
   bagWrap: {
-    width: 88,
-    height: 92,
+    width: 92,
+    height: 98,
     alignItems: "center",
     justifyContent: "flex-end",
     position: "relative",
   },
-  bagHandle: {
+  sackRope: {
     position: "absolute",
-    top: 5,
-    width: 38,
-    height: 22,
-    borderWidth: 4,
-    borderBottomWidth: 0,
-    borderColor: "#6B4F2A",
-    borderTopLeftRadius: 18,
-    borderTopRightRadius: 18,
-    zIndex: 1,
+    top: 13,
+    width: 52,
+    height: 13,
+    borderTopWidth: 3,
+    borderColor: "#6A451F",
+    borderStyle: "dashed",
+    borderRadius: 10,
+    zIndex: 5,
   },
-  bag: {
-    width: 78,
-    height: 68,
-    borderRadius: 5,
+  sackKnot: {
+    position: "absolute",
+    top: 16,
+    width: 15,
+    height: 9,
+    borderRadius: 6,
+    backgroundColor: "#7A5227",
+    zIndex: 6,
+  },
+  bagMouth: {
+    position: "absolute",
+    top: 23,
+    width: 84,
+    height: 18,
+    borderRadius: 12,
+    backgroundColor: "#C18A4C",
+    borderWidth: 2,
+    borderColor: "#714A26",
+    zIndex: 3,
     overflow: "hidden",
+    transform: [{ rotate: "-1deg" }],
+    ...shadow.soft,
+  },
+  mouthFoldLeft: {
+    position: "absolute",
+    left: 7,
+    top: 3,
+    width: 22,
+    height: 9,
+    borderRadius: 8,
+    backgroundColor: "#A86F32",
+  },
+  mouthFoldRight: {
+    position: "absolute",
+    right: 7,
+    top: 3,
+    width: 22,
+    height: 9,
+    borderRadius: 8,
+    backgroundColor: "#A86F32",
+  },
+  mouthTieBand: {
+    position: "absolute",
+    left: 29,
+    right: 29,
+    bottom: 2,
+    height: 3,
+    borderRadius: 2,
+    backgroundColor: "#7A5227",
+  },
+  bagBody: {
+    position: "absolute",
+    bottom: 4,
+    width: 74,
+    height: 62,
+    borderRadius: 18,
     backgroundColor: "#A86F32",
     borderWidth: 2,
     borderColor: "#6F4824",
-    ...shadow.card,
-  },
-  bagTop: {
-    height: 10,
-    backgroundColor: "#C28A4A",
-    borderBottomWidth: 2,
-    borderBottomColor: "#6F4824",
-  },
-  bagBody: {
-    flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    paddingTop: 1,
-    borderTopWidth: 1,
-    borderTopColor: "rgba(111,72,36,0.45)",
+    overflow: "hidden",
+    ...shadow.card,
+  },
+  bagLogo: {
+    width: 58,
+    height: 42,
+    borderRadius: 14,
+    backgroundColor: "rgba(216,165,94,0.45)",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: "rgba(81,52,25,0.35)",
   },
   bagKmt: {
     color: "#3E2815",
-    fontSize: 13,
-    lineHeight: 14,
+    fontSize: 12,
+    lineHeight: 13,
     fontWeight: "900",
-    letterSpacing: 0.6,
+    letterSpacing: 0.7,
   },
   bagBazaar: {
     color: "#5E3D20",
     fontSize: 7,
     lineHeight: 8,
     fontWeight: "900",
-    letterSpacing: 1.1,
+    letterSpacing: 1.2,
+  },
+  juteStitchLeft: {
+    position: "absolute",
+    left: 6,
+    top: 9,
+    bottom: 8,
+    borderLeftWidth: 1,
+    borderStyle: "dashed",
+    borderColor: "rgba(62,40,21,0.5)",
+  },
+  juteStitchRight: {
+    position: "absolute",
+    right: 6,
+    top: 9,
+    bottom: 8,
+    borderRightWidth: 1,
+    borderStyle: "dashed",
+    borderColor: "rgba(62,40,21,0.5)",
+  },
+  juteFoldBottom: {
+    position: "absolute",
+    bottom: 5,
+    left: 18,
+    width: 38,
+    height: 3,
+    borderRadius: 3,
+    backgroundColor: "rgba(73,47,23,0.35)",
   },
   dropItem: {
     position: "absolute",
@@ -257,16 +341,16 @@ const styles = StyleSheet.create({
   priceBubble: {
     position: "absolute",
     top: -8,
-    minWidth: 64,
-    paddingHorizontal: 8,
-    height: 24,
-    borderRadius: 3,
+    minWidth: 70,
+    paddingHorizontal: 10,
+    height: 25,
+    borderRadius: 4,
     backgroundColor: "#D4AF37",
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 1,
     borderColor: "#8A6A12",
-    zIndex: 5,
+    zIndex: 8,
     ...shadow.soft,
   },
   priceBubbleText: { color: "#FFF8DC", fontSize: 11, fontWeight: "900" },
