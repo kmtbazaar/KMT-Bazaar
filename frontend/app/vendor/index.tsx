@@ -10,38 +10,17 @@ import { vendorApi } from "@/src/roleApi";
 import { api, uploadImageAsset } from "@/src/api"; 
 import { useAuth } from "@/src/AuthContext";
 import { COLORS, LOGO_URL, RADIUS, SPACING, shadow } from "@/src/theme";
-import HolidayVendorDashboardScreen from "./holiday-dashboard";
-import CarRentalVendorDashboardScreen from "./car-rental-dashboard";
 
 const ACTIONS = [
   { icon: "clipboard-list-outline", label: "Orders", path: "/vendor/orders", color: "#F97316" },
   { icon: "chart-line", label: "Earnings", path: "/vendor/earnings", color: "#16A34A" },
 ];
 
-function ServiceVendorDashboard() {
-  const { user } = useAuth();
-  if (user?.service_type === "holiday") return <HolidayVendorDashboard />;
-  if (user?.service_type === "car_rental") return <CarRentalVendorDashboard />;
-  return <View style={{ flex: 1, backgroundColor: "#fff" }} />;
-}
-
-function HolidayVendorDashboard() {
-  const { user } = useAuth();
-  const { logout } = useAuth();
-  return <HolidayVendorDashboardScreen user={user} logout={logout} />;
-}
-
-function CarRentalVendorDashboard() {
-  const { user } = useAuth();
-  const { logout } = useAuth();
-  return <CarRentalVendorDashboardScreen user={user} logout={logout} />;
-}
-
 export default function VendorDashboard() {
   const { user } = useAuth();
 
-  if (user?.vendor_type === "service") {
-    return <ServiceVendorDashboard />;
+  if (user?.vendor_type !== "store") {
+    return <View style={{ flex: 1, backgroundColor: "#fff" }} />;
   }
 
   return <StoreVendorDashboard />;
