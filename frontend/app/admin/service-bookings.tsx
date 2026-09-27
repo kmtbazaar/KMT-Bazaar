@@ -14,7 +14,7 @@ const TYPE:any={
 export default function AdminServiceBookings(){
  const r=useRouter(),[d,setD]=useState<any[]>([]),[selected,setSelected]=useState<any>(null);
  const load=()=>adminApi.serviceBookings().then(setD).catch(()=>setD([]));
- useEffect(()=>{load()},[]);
+ useEffect(()=>{load();const timer=setInterval(load,10000);return()=>clearInterval(timer)},[]);
 
  const update=async(x:any,status:string)=>{
   try{
@@ -38,7 +38,7 @@ export default function AdminServiceBookings(){
  return <SafeAreaView style={s.root}>
   <View style={s.h}>
    <Pressable onPress={()=>r.back()}><MaterialCommunityIcons name="arrow-left" size={24}/></Pressable>
-   <View style={{flex:1}}><Text style={s.t}>Service Bookings</Text><Text style={s.sub}>Admin approval queue · Daily Service, Holiday & Car Rental</Text></View>
+   <View style={{flex:1}}><Text style={s.t}>Service Bookings</Text><Text style={s.sub}>Admin approval queue · Daily Service, Holiday & Car Rental</Text></View><View style={s.bell}><MaterialCommunityIcons name="bell-outline" size={20} color="#0284C7"/>{d.filter((x:any)=>["pending","booking_requested"].includes(String(x.status||"").toLowerCase())).length>0&&<View style={s.badge}><Text style={s.badgeText}>{d.filter((x:any)=>["pending","booking_requested"].includes(String(x.status||"").toLowerCase())).length}</Text></View>}</View>
   </View>
 
   <ScrollView contentContainerStyle={s.b}>
