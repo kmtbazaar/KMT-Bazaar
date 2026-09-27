@@ -719,14 +719,6 @@ export default function AdminDashboard() {
                   .duration(400)}
                 style={s.gridWrapper}
               >
-                {a.label === "Service Bookings" && serviceBookingCount > 0 && (
-                  <View pointerEvents="none" style={s.servicePendingNotice}>
-                    <MaterialCommunityIcons name="bell-ring-outline" size={13} color="#fff" />
-                    <Text style={s.servicePendingNoticeText}>
-                      {serviceBookingCount} Pending
-                    </Text>
-                  </View>
-                )}
                 <Pressable
                   testID={`admin-action-${a.label}`}
                   onPress={() =>
@@ -754,6 +746,14 @@ export default function AdminDashboard() {
                       color={a.color}
                     />
                   </View>
+
+                  {a.label === "Service Bookings" && serviceBookingCount > 0 && (
+                    <View pointerEvents="none" style={s.serviceBookingCountBadge}>
+                      <Text style={s.serviceBookingCountBadgeText}>
+                        {serviceBookingCount}
+                      </Text>
+                    </View>
+                  )}
 
                   <Text
                     style={s.gridLabel}
@@ -1388,6 +1388,26 @@ const s = StyleSheet.create({
   },
 
   servicePendingNoticeText: {
+    color: THEME.white,
+    fontSize: 9,
+    fontWeight: "900",
+  },
+
+  serviceBookingCountBadge: {
+    position: "absolute",
+    top: 7,
+    right: 7,
+    minWidth: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: THEME.danger,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 4,
+    zIndex: 20,
+  },
+
+  serviceBookingCountBadgeText: {
     color: THEME.white,
     fontSize: 9,
     fontWeight: "900",
