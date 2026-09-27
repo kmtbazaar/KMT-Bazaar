@@ -1,5 +1,5 @@
 import React, { useEffect } from "react";
-import { View, Text, Pressable, StyleSheet, Platform } from "react-native";
+import { View, Text, Pressable, StyleSheet } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useCart } from "@/src/CartContext";
@@ -95,20 +95,20 @@ const styles = StyleSheet.create({
   },
   bagHandle: {
     position: "absolute",
-    top: 12,
-    width: 28,
-    height: 17,
+    top: 8,
+    width: 30,
+    height: 18,
     borderWidth: 4,
     borderBottomWidth: 0,
-    borderColor: "#FACC15",
-    borderTopLeftRadius: 14,
-    borderTopRightRadius: 14,
+    borderColor: "#7F1D1D",
+    borderTopLeftRadius: 15,
+    borderTopRightRadius: 15,
     zIndex: 1,
   },
   bag: {
-    width: 66,
-    height: 60,
-    borderRadius: 12,
+    width: 68,
+    height: 62,
+    borderRadius: 3,
     overflow: "hidden",
     backgroundColor: "#DC2626",
     borderWidth: 2,
@@ -116,33 +116,35 @@ const styles = StyleSheet.create({
     ...shadow.card,
   },
   bagTop: {
-    height: 12,
+    height: 8,
     backgroundColor: "#FACC15",
   },
   bagBody: {
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    paddingTop: 2,
+    paddingTop: 0,
+    borderTopWidth: 1,
+    borderTopColor: "rgba(127,29,29,0.45)",
   },
   bagKmt: {
     color: "#FFF7ED",
-    fontSize: 13,
-    lineHeight: 14,
+    fontSize: 12,
+    lineHeight: 13,
     fontWeight: "900",
     letterSpacing: 0.6,
   },
   bagBazaar: {
     color: "#FDE68A",
     fontSize: 7,
-    lineHeight: 9,
+    lineHeight: 8,
     fontWeight: "900",
     letterSpacing: 1.1,
   },
   priceBubble: {
     position: "absolute",
-    top: -3,
-    minWidth: 48,
+    top: -7,
+    minWidth: 52,
     paddingHorizontal: 7,
     height: 21,
     borderRadius: 11,
