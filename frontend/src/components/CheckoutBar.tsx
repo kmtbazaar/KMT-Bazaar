@@ -351,6 +351,8 @@ export default function CheckoutBar({ route = "/cart", label = "View Cart", bott
       </View>
     </Animated.View>
   );
+}
+
 const styles = StyleSheet.create({
   inlineSack: {
     width: 58,
