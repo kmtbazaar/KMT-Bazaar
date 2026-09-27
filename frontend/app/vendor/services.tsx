@@ -12,7 +12,7 @@ import ImageUploader from "@/src/components/ImageUploader";
 const EMPTY = {
   name: "", vendor_name: "", description: "", image: "", gallery: [],
   location: "", category: "", type: "", phone: "", order: "99", active: true,
-  price: "", unit: "day", duration: "", seats: "", bags: "",
+  price: "", adult_price: "", child_price: "", unit: "day", duration: "", seats: "", bags: "",
   transmission: "Automatic", fuel: "Petrol", tag: "", includesText: ""
 };
 
@@ -43,6 +43,8 @@ export default function VendorServices() {
     gallery: Array.isArray(x?.gallery) ? x.gallery : [],
     order: String(x?.order ?? 99),
     price: String(x?.price ?? ""),
+    adult_price: String(x?.adult_price ?? x?.price ?? ""),
+    child_price: String(x?.child_price ?? ((Number(x?.adult_price ?? x?.price) || 0) * 0.5 || "")),
     duration: String(x?.duration ?? ""),
     seats: String(x?.seats ?? ""),
     bags: String(x?.bags ?? ""),
@@ -81,7 +83,9 @@ export default function VendorServices() {
       phone: String(f.phone || "").trim(),
       order: Number(f.order) || 99,
       active: f.active !== false,
-      price: Number(f.price) || 0,
+      price: Number(f.adult_price || f.price) || 0,
+      adult_price: Number(f.adult_price || f.price) || 0,
+      child_price: isCar ? 0 : (Number(f.child_price) || ((Number(f.adult_price || f.price) || 0) * 0.5)),
       unit: isCar ? "day" : "per person",
       duration: String(f.duration || "").trim(),
       seats: isCar ? (Number(f.seats) || 0) : 0,
@@ -196,7 +200,11 @@ export default function VendorServices() {
                   <Field label="Category" value={f.category} onChange={(v:any)=>setF({...f,category:v})} placeholder="Beach / Mountains / Spiritual" />
                   <View style={m.two}>
                     <Field label="Duration" value={f.duration} onChange={(v:any)=>setF({...f,duration:v})} placeholder="4 nights / 5 days" />
-                    <Field label="Price / Person (₹)" value={f.price} onChange={(v:any)=>setF({...f,price:v})} placeholder="14999" keyboardType="numeric" />
+                    <View style={m.two}>
+                      <Field label="Adult Price / Person (₹)" value={f.adult_price || f.price} onChange={(v:any)=>setF({...f,adult_price:v,price:v})} placeholder="14999" keyboardType="numeric" />
+                      <Field label="Child Price / Person (₹)" value={f.child_price} onChange={(v:any)=>setF({...f,child_price:v})} placeholder="7499" keyboardType="numeric" />
+                    </View>
+                    <Text style={m.priceHint}>Child price can be set separately. Default is 50% of adult price.</Text>
                   </View>
                   <Field label="Tag" value={f.tag} onChange={(v:any)=>setF({...f,tag:v})} placeholder="Best value" />
                   <Field label="Description" value={f.description} onChange={(v:any)=>setF({...f,description:v})} placeholder="Package details..." multiline />
