@@ -220,10 +220,16 @@ export default function CheckoutBar({ route = "/cart", label = "View Cart", bott
   }));
 
   const panResponder = useMemo(() => {
-    const minX = -(screenWidth - 92);
-    const maxX = 8;
-    const minY = -(screenHeight - bottomOffset - 92);
-    const maxY = 10;
+    // Keep the whole sack + attached tag inside the viewport.
+    // The visual center starts near the lower-right corner.
+    const visualHalfW = 72;
+    const visualHalfH = 72;
+    const centerX = screenWidth - 66;
+    const centerY = screenHeight - bottomOffset - 58;
+    const minX = -(centerX - visualHalfW);
+    const maxX = Math.min(0, screenWidth - visualHalfW - centerX);
+    const minY = -(centerY - visualHalfH);
+    const maxY = Math.min(0, screenHeight - visualHalfH - centerY);
     const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(max, value));
 
     return PanResponder.create({
@@ -290,7 +296,7 @@ export default function CheckoutBar({ route = "/cart", label = "View Cart", bott
           <Animated.View style={[styles.dropItem, dropAnim]} pointerEvents="none">
             <MaterialCommunityIcons name="package-variant-closed" size={17} color="#7F1D1D" />
           </Animated.View>
-          <Animated.View style={[styles.realSack, cartAnim]}>
+          <Animated.View style={styles.realSack}>
             <ExpoImage
               source={{ uri: `data:image/svg+xml;charset=utf-8,${encodeURIComponent(REALISTIC_SACK_SVG)}` }}
               style={styles.realSackImage}
@@ -316,7 +322,7 @@ export default function CheckoutBar({ route = "/cart", label = "View Cart", bott
 const styles = StyleSheet.create({
   wrap: {
     position: "absolute",
-    right: 4,
+    right: 18,
     padding: 0,
     zIndex: 50,
     width: 96,
@@ -375,7 +381,7 @@ const styles = StyleSheet.create({
     ...shadow.soft,
   },
   brandPlateTitle: {
-    color: "#513A08",
+    color: "#0369A1",
     fontSize: 8,
     lineHeight: 10,
     fontWeight: "900",
@@ -395,20 +401,20 @@ const styles = StyleSheet.create({
   },
   countTagConnector: {
     position: "absolute",
-    right: -1,
-    bottom: 47,
-    width: 14,
-    height: 3,
+    right: -2,
+    bottom: 60,
+    width: 18,
+    height: 4,
     borderRadius: 2,
     backgroundColor: "#6B4A22",
     zIndex: 18,
   },
   countBadge: {
     position: "absolute",
-    right: -20,
-    bottom: 31,
-    minWidth: 38,
-    height: 34,
+    right: -26,
+    bottom: 44,
+    minWidth: 42,
+    height: 36,
     paddingHorizontal: 7,
     paddingVertical: 3,
     borderRadius: 5,
