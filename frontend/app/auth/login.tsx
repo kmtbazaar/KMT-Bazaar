@@ -32,6 +32,7 @@ import { api } from "@/src/api";
 import { LOGO_URL, RADIUS, SPACING } from "@/src/theme";
 
 const { width } = Dimensions.get("window");
+const GOOGLE_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID || "";
 
 function AnimatedTile({
   delay = 0,
@@ -78,7 +79,7 @@ function AnimatedTile({
 
 export default function Login() {
   const router = useRouter();
-  const { login } = useAuth();
+  const { login, googleLogin } = useAuth();
   const insets = useSafeAreaInsets();
 
   const [loginType, setLoginType] = useState<"email" | "mobile">("email");
@@ -89,6 +90,7 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
   const keyboardShift = useSharedValue(0);
 
   useEffect(() => {
@@ -161,6 +163,91 @@ export default function Login() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const finishGoogleLogin = async (credential: string) => {
+    if (!credential) {
+      setError("Google sign-in did not return an ID token");
+      return;
+    }
+
+    setGoogleLoading(true);
+    setError(null);
+
+    try {
+      const user = await googleLogin(credential);
+      if (!user?.role) throw new Error("Google login failed");
+
+      if (user.role === "customer") {
+        router.replace("/(tabs)/home" as any);
+      } else {
+        router.replace(`/${user.role}` as any);
+      }
+    } catch (e: any) {
+      setError(e?.message || "Google sign-in failed");
+    } finally {
+      setGoogleLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (Platform.OS !== "web" || !GOOGLE_CLIENT_ID) return;
+
+    const initializeGoogle = () => {
+      const google = (globalThis as any).google;
+      if (!google?.accounts?.id) {
+        setError("Google sign-in could not load.");
+        return;
+      }
+
+      google.accounts.id.initialize({
+        client_id: GOOGLE_CLIENT_ID,
+        auto_select: false,
+        callback: (response: any) => {
+          finishGoogleLogin(response?.credential || "");
+        },
+      });
+    };
+
+    const existing = document.getElementById("google-gsi-script");
+    if (existing) {
+      if ((globalThis as any).google?.accounts?.id) initializeGoogle();
+      return;
+    }
+
+    const script = document.createElement("script");
+    script.id = "google-gsi-script";
+    script.src = "https://accounts.google.com/gsi/client";
+    script.async = true;
+    script.defer = true;
+    script.onload = initializeGoogle;
+    document.head.appendChild(script);
+  }, []);
+
+  const onGoogleLogin = async () => {
+    if (Platform.OS !== "web") {
+      setError("Google login is enabled for the KMT Bazaar website. Native app Google login needs a separate Android/iOS client ID.");
+      return;
+    }
+
+    if (!GOOGLE_CLIENT_ID) {
+      setError("Google login is not configured yet.");
+      return;
+    }
+
+    const google = (globalThis as any).google;
+    if (!google?.accounts?.id) {
+      setError("Google sign-in is still loading. Please tap again.");
+      return;
+    }
+
+    setGoogleLoading(true);
+    google.accounts.id.prompt((notification: any) => {
+      if (notification?.isNotDisplayed?.() || notification?.isSkippedMoment?.()) {
+        setGoogleLoading(false);
+        setError("Google account chooser could not be opened. Please allow pop-ups and try again.");
+      }
+    });
   };
 
   const onLogin = async () => {
@@ -381,6 +468,21 @@ export default function Login() {
                   Login with your registered email or mobile number.
                 </Text>
 
+                <View style={s.googleDivider}>
+                <View style={s.googleLine} />
+                <Text style={s.googleOr}>OR</Text>
+                <View style={s.googleLine} />
+              </View>
+
+              <Pressable
+                testID="google-login-button"
+                onPress={onGoogleLogin}
+                disabled={googleLoading}
+                style={[s.googleButton, googleLoading && { opacity: 0.7 }]}
+              >
+                <MaterialCommunityIcons name="google" size={20} color="#4285F4" />
+                <Text style={s.googleText}>{googleLoading ? "Connecting..." : "Continue with Google"}</Text>
+              </Pressable>
               </>
             )}
           </View>
@@ -570,6 +672,44 @@ const s = StyleSheet.create({
     fontSize: 16,
     fontWeight: "800",
     letterSpacing: 0.5,
+  },
+
+  googleDivider: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    marginTop: SPACING.lg,
+  },
+
+  googleLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: "#E2E8F0",
+  },
+
+  googleOr: {
+    color: "#94A3B8",
+    fontSize: 11,
+    fontWeight: "800",
+  },
+
+  googleButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 10,
+    marginTop: SPACING.md,
+    paddingVertical: 13,
+    borderRadius: RADIUS.pill,
+    borderWidth: 1.5,
+    borderColor: "#E2E8F0",
+    backgroundColor: "#FFFFFF",
+  },
+
+  googleText: {
+    color: "#334155",
+    fontSize: 14,
+    fontWeight: "800",
   },
 
   alt: {
