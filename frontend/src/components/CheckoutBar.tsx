@@ -349,7 +349,8 @@ export default function CheckoutBar({ route = "/cart", label = "View Cart", bott
           </Animated.View>
         </Animated.View>
       </View>
-    </View>
+      </View>
+    </Animated.View>
   );
 }
 
