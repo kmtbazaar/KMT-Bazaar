@@ -44,6 +44,7 @@ UPLOAD_DIR = Path(os.getenv("UPLOAD_DIR", "/var/www/kmt-bazaar/uploads"))
 PUBLIC_BASE_URL = os.getenv("PUBLIC_BASE_URL", "https://kmtbazaar.tech").rstrip("/")
 MAX_UPLOAD_BYTES = 8 * 1024 * 1024
 MAX_IMAGE_SIZE = (1600, 1600)
+DEFAULT_HOLIDAY_BANNER_URL = "https://images.unsplash.com/photo-1516483638261-f4dbaf036963?w=1800&q=85"
 
 mongo_url = os.environ['MONGO_URL']
 client = AsyncIOMotorClient(mongo_url)
@@ -798,6 +799,23 @@ async def list_banners():
 async def list_stores():
     stores = await db.stores.find({"is_approved": True}, {"_id": 0}).to_list(100)
     return stores
+
+
+@api.get("/holiday/banner")
+async def get_holiday_banner():
+    vendor = await db.users.find_one(
+        {
+            "role": Role.VENDOR.value,
+            "vendor_type": VendorType.SERVICE.value,
+            "service_type": ServiceType.HOLIDAY.value,
+            "is_active": {"$ne": False},
+        },
+        {"_id": 0, "name": 1, "holiday_banner_url": 1}
+    )
+    return {
+        "url": (vendor or {}).get("holiday_banner_url") or DEFAULT_HOLIDAY_BANNER_URL,
+        "vendor_name": (vendor or {}).get("name"),
+    }
 
 
 @api.get("/vendor-services")
@@ -3062,6 +3080,26 @@ async def vendor_service_stats(current=Depends(require_roles("vendor"))):
         "commission_percent": commission,
         "payout": payout,
     }
+
+@api.put("/vendor/holiday/banner")
+async def update_holiday_banner(
+    data: Dict[str, Any],
+    current=Depends(require_roles("vendor"))
+):
+    _require_vendor_type(current, "service")
+    if current.get("service_type") != ServiceType.HOLIDAY.value:
+        raise HTTPException(status_code=403, detail="Holiday Vendor access required")
+    url = str(data.get("url") or "").strip()
+    if not url:
+        raise HTTPException(status_code=400, detail="Banner image URL is required")
+    if len(url) > 2000:
+        raise HTTPException(status_code=400, detail="Banner image URL is too long")
+    await db.users.update_one(
+        {"id": current["id"]},
+        {"$set": {"holiday_banner_url": url, "updated_at": now_iso()}}
+    )
+    return {"url": url, "vendor_name": current.get("name")}
+
 
 @api.get("/vendor/services")
 async def vendor_list_services(current=Depends(require_roles("vendor"))):
