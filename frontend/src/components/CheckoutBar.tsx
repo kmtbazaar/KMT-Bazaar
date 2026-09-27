@@ -50,7 +50,7 @@ const REALISTIC_SACK_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="360" 
   </filter>
 </defs>
 
-<ellipse cx="180" cy="429" rx="108" ry="16" fill="#4b3510" fill-opacity=".23" filter="url(#softShadow)"/>
+<ellipse cx="180" cy="429" rx="108" ry="16" fill="#4b3510" fill-opacity=".18"/>
 
 <path d="M82 105
 C74 132 68 171 70 213
@@ -259,7 +259,15 @@ export default function CheckoutBar({ route = "/cart", label = "View Cart", bott
     const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(max, value));
 
     return PanResponder.create({
-      onStartShouldSetPanResponder: () => true,
+      onStartShouldSetPanResponder: (event) => {
+        const x = event.nativeEvent.locationX;
+        const y = event.nativeEvent.locationY;
+
+        // Sack-only hit area: reject the transparent corners/empty space.
+        const dx = (x - 54) / 48;
+        const dy = (y - 66) / 60;
+        return (dx * dx) + (dy * dy) <= 1;
+      },
       onPanResponderGrant: () => {
         dragStartX.current = dragX.value;
         dragStartY.current = dragY.value;
@@ -276,11 +284,11 @@ export default function CheckoutBar({ route = "/cart", label = "View Cart", bott
         if (Math.abs(gesture.dx) > 5 || Math.abs(gesture.dy) > 5) {
           didDrag.current = true;
           const now = Date.now();
-          if (now - lastVibrateAt.current > 90) {
+          if (now - lastVibrateAt.current > 180) {
             lastVibrateAt.current = now;
             Haptics.selectionAsync().catch(() => {});
             try {
-              if (typeof navigator !== "undefined" && "vibrate" in navigator) navigator.vibrate(10);
+              if (typeof navigator !== "undefined" && "vibrate" in navigator) navigator.vibrate(8);
             } catch {}
           }
         }
@@ -374,15 +382,15 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   cartButton: {
-    width: 96,
-    height: 108,
+    width: 108,
+    height: 128,
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: "transparent",
   },
   bagWrap: {
-    width: 96,
-    height: 108,
+    width: 108,
+    height: 128,
     alignItems: "center",
     justifyContent: "flex-end",
     position: "relative",
