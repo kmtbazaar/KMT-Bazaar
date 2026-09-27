@@ -30,7 +30,11 @@ import Animated, {
 
 import { adminApi } from "@/src/roleApi";
 import { useAuth } from "@/src/AuthContext";
-import { COLORS, LOGO_URL, RADIUS, SPACING } from "@/src/theme";
+import { LOGO_URL, SPACING } from "@/src/theme";
+import {
+  DEFAULT_ADMIN_ACTIONS,
+  loadAdminSettings,
+} from "@/src/adminSettings";
 
 const { width } = Dimensions.get("window");
 
@@ -56,89 +60,16 @@ const THEME = {
   danger: "#DC2626",
 };
 
-const ACTIONS = [
-  {
-    icon: "account-group-outline",
-    label: "Customers",
-    path: "/admin/users?role=customer",
-    color: THEME.sky,
-  },
-  {
-    icon: "store-outline",
-    label: "Vendors",
-    path: "/admin/users?role=vendor",
-    color: THEME.orange,
-  },
-  {
-    icon: "moped-outline",
-    label: "Delivery Partners",
-    path: "/admin/users?role=delivery",
-    color: THEME.success,
-  },
-  {
-    icon: "package-variant",
-    label: "Products",
-    path: "/admin/products",
-    color: "#8B5CF6",
-  },
-  {
-    icon: "tag-multiple-outline",
-    label: "Categories",
-    path: "/admin/categories",
-    color: "#EC4899",
-  },
-  {
-    icon: "briefcase-outline",
-    label: "Vendor Service",
-    path: "/admin/service-vendors",
-    color: THEME.orange,
-  },
-  {
-    icon: "tools",
-    label: "Daily Services",
-    path: "/admin/daily-services",
-    color: THEME.sky,
-  },
-  {
-    icon: "calendar-check-outline",
-    label: "Service Bookings",
-    path: "/admin/service-bookings",
-    color: THEME.success,
-  },
-  {
-    icon: "image-multiple-outline",
-    label: "Banners",
-    path: "/admin/banners",
-    color: THEME.sky,
-  },
-  {
-    icon: "clipboard-list-outline",
-    label: "All Orders",
-    path: "/admin/orders",
-    color: THEME.orange,
-  },
-  {
-    icon: "currency-inr",
-    label: "Commission",
-    path: "/admin/commission",
-    color: THEME.brownLight,
-  },
-  {
-    icon: "briefcase-account-outline",
-    label: "Roojgar",
-    path: "/admin/roojgar",
-    color: THEME.brown,
-  },
-];
 
 export default function AdminDashboard() {
   const router = useRouter();
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
 
   const [stats, setStats] = useState<any>(null);
   const [pendingStores, setPendingStores] = useState<any[]>([]);
   const [refreshing, setRefreshing] = useState(false);
   const [serviceBookingCount, setServiceBookingCount] = useState(0);
+  const [quickActions, setQuickActions] = useState(DEFAULT_ADMIN_ACTIONS);
   const activityPulse = useSharedValue(0.55);
 
   useEffect(() => {
@@ -182,6 +113,27 @@ export default function AdminDashboard() {
   useFocusEffect(
     useCallback(() => {
       load();
+
+      let cancelled = false;
+      loadAdminSettings().then((settings) => {
+        if (cancelled) return;
+        const byLabel = new Map(
+          DEFAULT_ADMIN_ACTIONS.map((action) => [action.label, action])
+        );
+
+        const ordered = settings.quickActionOrder
+          .map((label) => byLabel.get(label))
+          .filter(Boolean)
+          .filter(
+            (action) => !settings.hiddenQuickActions.includes(action!.label)
+          ) as typeof DEFAULT_ADMIN_ACTIONS;
+
+        setQuickActions(ordered);
+      });
+
+      return () => {
+        cancelled = true;
+      };
     }, [load])
   );
 
@@ -334,17 +286,16 @@ export default function AdminDashboard() {
             </View>
 
             <Pressable
-              testID="admin-logout"
-              onPress={async () => {
-                await logout();
-                router.replace("/auth/login");
-              }}
+              testID="admin-settings"
+              onPress={() => router.push("/admin/settings")}
               style={s.logoutButton}
               hitSlop={10}
+              accessibilityRole="button"
+              accessibilityLabel="Admin settings"
             >
               <MaterialCommunityIcons
-                name="logout"
-                size={21}
+                name="cog-outline"
+                size={22}
                 color={THEME.white}
               />
             </Pressable>
@@ -744,7 +695,7 @@ export default function AdminDashboard() {
           </View>
 
           <View style={s.grid}>
-            {ACTIONS.map((a, index) => (
+            {quickActions.map((a, index) => (
               <Animated.View
                 key={a.label}
                 entering={ZoomIn
