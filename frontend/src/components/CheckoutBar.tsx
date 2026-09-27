@@ -31,9 +31,17 @@ export default function CheckoutBar({ route = "/cart", label = "View Cart", bott
   const dropY = useSharedValue(-16);
   const dropScale = useSharedValue(0.78);
   const dropOpacity = useSharedValue(0);
+  const sackOpen = useSharedValue(0);
 
   useEffect(() => {
     if (badgePulse > 0) {
+      sackOpen.value = withSequence(
+        withTiming(1, { duration: 260 }),
+        withTiming(1, { duration: 1300 }),
+        withTiming(0.75, { duration: 180 }),
+        withTiming(0, { duration: 760 }),
+        withTiming(0, { duration: 500 })
+      );
       cartScale.value = withSequence(
         withTiming(1.16, { duration: 120 }),
         withTiming(1.04, { duration: 150 }),
@@ -48,23 +56,26 @@ export default function CheckoutBar({ route = "/cart", label = "View Cart", bott
         withSpring(0)
       );
       dropOpacity.value = withSequence(
-        withTiming(1, { duration: 80 }),
-        withTiming(1, { duration: 1050 }),
-        withTiming(0, { duration: 280 })
+        withTiming(1, { duration: 120 }),
+        withTiming(1, { duration: 720 }),
+        withTiming(0.82, { duration: 380 }),
+        withTiming(0, { duration: 420 })
       );
       dropScale.value = withSequence(
         withTiming(1, { duration: 120 }),
-        withTiming(0.9, { duration: 170 }),
-        withTiming(0.72, { duration: 260 }),
-        withTiming(0.78, { duration: 180 }),
-        withTiming(0, { duration: 680 })
+        withTiming(0.94, { duration: 150 }),
+        withTiming(0.76, { duration: 330 }),
+        withTiming(0.62, { duration: 240 }),
+        withTiming(0.8, { duration: 280 }),
+        withTiming(0, { duration: 420 })
       );
       dropY.value = withSequence(
-        withTiming(-16, { duration: 100 }),
-        withTiming(5, { duration: 380 }),
-        withTiming(1, { duration: 180 }),
-        withTiming(6, { duration: 220 }),
-        withTiming(0, { duration: 620 })
+        withTiming(-20, { duration: 100 }),
+        withTiming(-2, { duration: 360 }),
+        withTiming(8, { duration: 300 }),
+        withTiming(4, { duration: 240 }),
+        withTiming(8, { duration: 260 }),
+        withTiming(0, { duration: 420 })
       );
     }
   }, [badgePulse]);
@@ -86,6 +97,28 @@ export default function CheckoutBar({ route = "/cart", label = "View Cart", bott
     ],
   }));
 
+  const sackOpenAnim = useAnimatedStyle(() => ({
+    transform: [
+      { translateY: -3 * sackOpen.value },
+      { scaleY: 1 + 0.07 * sackOpen.value },
+    ],
+  }));
+
+  const mouthOpenAnim = useAnimatedStyle(() => ({
+    transform: [
+      { translateY: -4 * sackOpen.value },
+      { scaleX: 1 + 0.08 * sackOpen.value },
+      { scaleY: 1 + 0.25 * sackOpen.value },
+    ],
+  }));
+
+  const ropeOpenAnim = useAnimatedStyle(() => ({
+    transform: [
+      { scaleX: 1 + 0.18 * sackOpen.value },
+      { translateY: -2 * sackOpen.value },
+    ],
+  }));
+
   const panResponder = useMemo(() => {
     const minX = -(screenWidth - 92);
     const maxX = 8;
@@ -99,6 +132,10 @@ export default function CheckoutBar({ route = "/cart", label = "View Cart", bott
         dragStartX.current = dragX.value;
         dragStartY.current = dragY.value;
         didDrag.current = false;
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+        try {
+          if (typeof navigator !== "undefined" && "vibrate" in navigator) navigator.vibrate(18);
+        } catch {}
       },
       onPanResponderMove: (_, gesture) => {
         const nextX = clamp(dragStartX.current + gesture.dx, minX, maxX);
@@ -156,14 +193,24 @@ export default function CheckoutBar({ route = "/cart", label = "View Cart", bott
           <View style={styles.priceBubble}>
             <Text style={styles.priceBubbleText}>₹{subtotal.toFixed(0)}</Text>
           </View>
-          <View style={styles.sackRope} />
+          <Animated.View style={[styles.sackRope, ropeOpenAnim]} />
           <View style={styles.sackKnot} />
-          <View style={styles.bagMouth}>
+          <Animated.View style={[styles.bagMouth, mouthOpenAnim]}>
             <View style={styles.mouthFoldLeft} />
             <View style={styles.mouthFoldRight} />
             <View style={styles.mouthTieBand} />
-          </View>
-          <View style={styles.bagBody}>
+            <View style={styles.mouthOpening} />
+          </Animated.View>
+          <Animated.View style={[styles.bagBody, sackOpenAnim]}>
+            <View style={styles.juteTexture}>
+              <View style={[styles.textureLine, { top: 8 }]} />
+              <View style={[styles.textureLine, { top: 15 }]} />
+              <View style={[styles.textureLine, { top: 22 }]} />
+              <View style={[styles.textureLine, { top: 29 }]} />
+              <View style={[styles.textureLine, { top: 36 }]} />
+              <View style={[styles.textureLine, { top: 43 }]} />
+              <View style={[styles.textureLine, { top: 50 }]} />
+            </View>
             <View style={styles.juteStitchLeft} />
             <View style={styles.juteStitchRight} />
             <View style={styles.bagLogo}>
@@ -185,33 +232,33 @@ export default function CheckoutBar({ route = "/cart", label = "View Cart", bott
 const styles = StyleSheet.create({
   wrap: {
     position: "absolute",
-    right: 6,
+    right: 4,
     padding: 0,
     zIndex: 50,
-    width: 92,
-    height: 92,
+    width: 96,
+    height: 108,
     alignItems: "center",
     justifyContent: "center",
   },
   cartButton: {
-    width: 92,
-    height: 98,
+    width: 96,
+    height: 108,
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: "transparent",
   },
   bagWrap: {
-    width: 92,
-    height: 98,
+    width: 96,
+    height: 108,
     alignItems: "center",
     justifyContent: "flex-end",
     position: "relative",
   },
   sackRope: {
     position: "absolute",
-    top: 13,
-    width: 52,
-    height: 13,
+    top: 9,
+    width: 58,
+    height: 15,
     borderTopWidth: 3,
     borderColor: "#6A451F",
     borderStyle: "dashed",
@@ -220,7 +267,7 @@ const styles = StyleSheet.create({
   },
   sackKnot: {
     position: "absolute",
-    top: 16,
+    top: 12,
     width: 15,
     height: 9,
     borderRadius: 6,
@@ -230,8 +277,8 @@ const styles = StyleSheet.create({
   bagMouth: {
     position: "absolute",
     top: 23,
-    width: 84,
-    height: 18,
+    width: 90,
+    height: 21,
     borderRadius: 12,
     backgroundColor: "#C18A4C",
     borderWidth: 2,
@@ -270,37 +317,37 @@ const styles = StyleSheet.create({
   },
   bagBody: {
     position: "absolute",
-    bottom: 4,
-    width: 74,
-    height: 62,
-    borderRadius: 18,
-    backgroundColor: "#A86F32",
+    bottom: 3,
+    width: 82,
+    height: 72,
+    borderRadius: 22,
+    backgroundColor: "#D1A524",
     borderWidth: 2,
-    borderColor: "#6F4824",
+    borderColor: "#8A6A12",
     alignItems: "center",
     justifyContent: "center",
     overflow: "hidden",
     ...shadow.card,
   },
   bagLogo: {
-    width: 58,
-    height: 42,
+    width: 60,
+    height: 43,
     borderRadius: 14,
-    backgroundColor: "rgba(216,165,94,0.45)",
+    backgroundColor: "rgba(245,220,118,0.45)",
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 1,
     borderColor: "rgba(81,52,25,0.35)",
   },
   bagKmt: {
-    color: "#3E2815",
+    color: "#5A3E08",
     fontSize: 12,
     lineHeight: 13,
     fontWeight: "900",
     letterSpacing: 0.7,
   },
   bagBazaar: {
-    color: "#5E3D20",
+    color: "#705111",
     fontSize: 7,
     lineHeight: 8,
     fontWeight: "900",
@@ -332,6 +379,32 @@ const styles = StyleSheet.create({
     height: 3,
     borderRadius: 3,
     backgroundColor: "rgba(73,47,23,0.35)",
+  },
+  juteTexture: {
+    position: "absolute",
+    top: 4,
+    left: 7,
+    right: 7,
+    bottom: 4,
+    opacity: 0.55,
+  },
+  textureLine: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    height: 1,
+    backgroundColor: "#7C5A0D",
+    borderRadius: 1,
+  },
+  mouthOpening: {
+    position: "absolute",
+    left: 12,
+    right: 12,
+    top: 5,
+    height: 6,
+    borderRadius: 8,
+    backgroundColor: "#6A4A0A",
+    opacity: 0.65,
   },
   dropItem: {
     position: "absolute",
