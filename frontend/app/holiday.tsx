@@ -860,7 +860,7 @@ export default function HolidayPage() {
                 <Image source={{ uri: selected ? galleryFor(selected)[0] : MOCK_PHOTOS[0] }} style={s.bookingImage} contentFit="cover" />
                 <View style={{ flex: 1 }}>
                   <Text style={s.bookingSummaryTitle}>{selected?.name}</Text>
-                  <Text style={s.bookingSummaryMeta}>{selected ? selected.duration : ""} · From {selected ? money(selected.price) : "—"}</Text>
+                  <Text style={s.bookingSummaryMeta}>{selected ? selected.duration : ""} · Adult {selected ? money(selected.adult_price || selected.price) : "—"} · Child {selected ? money(selected.child_price || ((selected.adult_price || selected.price || 0) * 0.5)) : "—"}</Text>
                   <Text style={s.bookingSummaryRating}>★ {selected ? Number(selected.rating || 4.8).toFixed(1) : "4.8"} · {selected?.reviews || 0} reviews</Text>
                 </View>
               </View>
@@ -876,17 +876,37 @@ export default function HolidayPage() {
               <Text style={s.helperText}>Example: 2026-11-20</Text>
 
               <Text style={s.formLabel}>Travellers</Text>
-              <View style={s.counterRow}>
-                <Pressable onPress={() => setTravellers((v) => Math.max(1, v - 1))} style={s.counterBtn}>
-                  <MaterialCommunityIcons name="minus" size={19} color="#0F172A" />
-                </Pressable>
-                <View style={s.counterValueBox}>
-                  <Text style={s.counterValue}>{travellers}</Text>
-                  <Text style={s.counterLabel}>travellers</Text>
+              <View style={s.peopleCard}>
+                <View style={s.peopleRow}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={s.peopleTitle}>Adults</Text>
+                    <Text style={s.peoplePrice}>₹{Number(selected?.adult_price || selected?.price || 0).toLocaleString("en-IN")} / person</Text>
+                  </View>
+                  <View style={s.counterRowInline}>
+                    <Pressable onPress={() => setAdultCount((v) => Math.max(1, v - 1))} style={s.counterBtn}>
+                      <MaterialCommunityIcons name="minus" size={18} color="#0F172A" />
+                    </Pressable>
+                    <View style={s.counterValueBox}><Text style={s.counterValue}>{adultCount}</Text></View>
+                    <Pressable onPress={() => setAdultCount((v) => Math.min(12, v + 1))} style={s.counterBtn}>
+                      <MaterialCommunityIcons name="plus" size={18} color="#0F172A" />
+                    </Pressable>
+                  </View>
                 </View>
-                <Pressable onPress={() => setTravellers((v) => Math.min(12, v + 1))} style={s.counterBtn}>
-                  <MaterialCommunityIcons name="plus" size={19} color="#0F172A" />
-                </Pressable>
+                <View style={s.peopleRow}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={s.peopleTitle}>Children</Text>
+                    <Text style={s.peoplePrice}>₹{Number(selected?.child_price || (Number(selected?.adult_price || selected?.price || 0) * 0.5)).toLocaleString("en-IN")} / child</Text>
+                  </View>
+                  <View style={s.counterRowInline}>
+                    <Pressable onPress={() => setChildCount((v) => Math.max(0, v - 1))} style={s.counterBtn}>
+                      <MaterialCommunityIcons name="minus" size={18} color="#0F172A" />
+                    </Pressable>
+                    <View style={s.counterValueBox}><Text style={s.counterValue}>{childCount}</Text></View>
+                    <Pressable onPress={() => setChildCount((v) => Math.min(12, v + 1))} style={s.counterBtn}>
+                      <MaterialCommunityIcons name="plus" size={18} color="#0F172A" />
+                    </Pressable>
+                  </View>
+                </View>
               </View>
 
               <Text style={s.formLabel}>Notes (optional)</Text>
@@ -902,9 +922,9 @@ export default function HolidayPage() {
               <View style={s.totalCard}>
                 <View>
                   <Text style={s.totalLabel}>Estimated package total</Text>
-                  <Text style={s.totalSub}>{travellers} travellers × {selected ? money(selected.price) : "₹0"}</Text>
+                  <Text style={s.totalSub}>{adultCount} adults × {selected ? money(selected.adult_price || selected.price) : "₹0"}{childCount > 0 ? " + " + childCount + " children × " + (selected ? money(selected.child_price || ((selected.adult_price || selected.price || 0) * 0.5)) : "₹0") : ""}</Text>
                 </View>
-                <Text style={s.totalValue}>{selected ? money((selected.price || 0) * travellers) : "₹0"}</Text>
+                <Text style={s.totalValue}>{selected ? money((Number(selected.adult_price || selected.price || 0) * adultCount) + (Number(selected.child_price || ((selected.adult_price || selected.price || 0) * 0.5)) * childCount)) : "₹0"}</Text>
               </View>
 
               <Pressable onPress={submitBooking} style={s.confirmBtn}>
@@ -1148,6 +1168,11 @@ const s = StyleSheet.create({
   formTextarea: { minHeight: 92, paddingTop: 12, textAlignVertical: "top" },
   helperText: { marginTop: 5, color: "#94A3B8", fontSize: 9 },
 
+  peopleCard: { backgroundColor: "#F8FAFC", borderRadius: 16, borderWidth: 1, borderColor: "#E2E8F0", padding: 10, marginBottom: 8 },
+  peopleRow: { flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 7 },
+  peopleTitle: { color: "#0F172A", fontSize: 14, fontWeight: "900" },
+  peoplePrice: { color: "#64748B", fontSize: 10, fontWeight: "700", marginTop: 2 },
+  counterRowInline: { flexDirection: "row", alignItems: "center", gap: 7 },
   counterRow: { flexDirection: "row", alignItems: "center", gap: 10 },
   counterBtn: { width: 44, height: 44, borderRadius: 13, backgroundColor: "#F1F5F9", alignItems: "center", justifyContent: "center" },
   counterValueBox: { flex: 1, minHeight: 50, borderRadius: 13, backgroundColor: "#E0F2FE", alignItems: "center", justifyContent: "center" },
