@@ -4,18 +4,33 @@ import { useFocusEffect, useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
+import * as ImagePicker from "expo-image-picker";
+import { Image } from "expo-image";
+import { Alert } from "react-native";
 import { vendorApi } from "@/src/roleApi";
 import { useAuth } from "@/src/AuthContext";
 import { COLORS, RADIUS, SPACING } from "@/src/theme";
+import { uploadImageAsset } from "@/src/api";
 
 export default function HolidayVendorDashboard() {
   const router = useRouter();
   const { user, logout } = useAuth();
   const [stats, setStats] = useState<any>(null);
   const [bookingCount, setBookingCount] = useState(0);
+  const [bannerUrl, setBannerUrl] = useState("");
+  const [uploadingBanner, setUploadingBanner] = useState(false);
 
   const load = useCallback(async () => {
-    try { const [st, bookings] = await Promise.all([vendorApi.serviceStats(), vendorApi.serviceBookings()]); setStats(st); setBookingCount((bookings || []).filter((x:any) => ["pending","booking_requested","confirmed","accepted"].includes(String(x.status || "").toLowerCase())).length); } catch {}
+    try {
+      const [st, bookings, banner] = await Promise.all([
+        vendorApi.serviceStats(),
+        vendorApi.serviceBookings(),
+        vendorApi.holidayBanner(),
+      ]);
+      setStats(st);
+      setBookingCount((bookings || []).filter((x:any) => ["pending","booking_requested","confirmed","accepted"].includes(String(x.status || "").toLowerCase())).length);
+      setBannerUrl(String(banner?.url || ""));
+    } catch {}
   }, []);
 
   useFocusEffect(useCallback(() => { load(); }, [load]));
@@ -54,6 +69,55 @@ export default function HolidayVendorDashboard() {
           <Text style={s.payoutLabel}>ESTIMATED PAYOUT</Text>
           <Text style={s.payoutValue}>{`₹${stats?.payout ?? 0}`}</Text>
           <Text style={s.payoutSub}>After {stats?.commission_percent ?? 10}% platform commission</Text>
+        </View>
+
+        <Text style={s.sectionTitle}>Holiday Banner</Text>
+        <View style={s.bannerCard}>
+          {bannerUrl ? <Image source={{ uri: bannerUrl }} style={s.bannerPreview} contentFit="cover" /> : null}
+          <View style={s.bannerInfo}>
+            <View style={{ flex: 1 }}>
+              <Text style={s.bannerTitle}>Live page banner</Text>
+              <Text style={s.bannerSub}>Upload a new banner. It appears at the top of the Holiday page.</Text>
+            </View>
+            <Pressable
+              disabled={uploadingBanner}
+              style={[s.bannerBtn, uploadingBanner && { opacity: 0.6 }]}
+              onPress={async () => {
+                try {
+                  const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+                  if (!permission.granted) {
+                    Alert.alert("Permission required", "Please allow photo access to choose a banner.");
+                    return;
+                  }
+                  const result = await ImagePicker.launchImageLibraryAsync({
+                    mediaTypes: ["images"],
+                    allowsEditing: true,
+                    aspect: [16, 5],
+                    quality: 0.9,
+                  });
+                  if (result.canceled || !result.assets?.[0]) return;
+                  setUploadingBanner(true);
+                  const asset = result.assets[0];
+                  const url = await uploadImageAsset({
+                    uri: asset.uri,
+                    fileName: asset.fileName,
+                    mimeType: asset.mimeType,
+                    file: (asset as any).file,
+                  });
+                  await vendorApi.updateHolidayBanner(url);
+                  setBannerUrl(url);
+                  Alert.alert("Banner updated", "Your Holiday page banner is now live.");
+                } catch (e: any) {
+                  Alert.alert("Banner update failed", e?.message || "Please try again.");
+                } finally {
+                  setUploadingBanner(false);
+                }
+              }}
+            >
+              <MaterialCommunityIcons name="image-plus" size={18} color="#fff" />
+              <Text style={s.bannerBtnText}>{uploadingBanner ? "Uploading..." : "Change banner"}</Text>
+            </Pressable>
+          </View>
         </View>
 
         <Text style={s.sectionTitle}>Holiday Management</Text>
@@ -105,6 +169,13 @@ const s = StyleSheet.create({
   payoutValue: { color: "#fff", fontSize: 30, fontWeight: "900", marginTop: 3 },
   payoutSub: { color: "rgba(255,255,255,0.78)", fontSize: 11, marginTop: 2 },
   sectionTitle: { fontSize: 17, fontWeight: "900", color: COLORS.text, marginBottom: 10 },
+  bannerCard: { backgroundColor: "#fff", borderRadius: RADIUS.lg, borderWidth: 1, borderColor: "#DBEAFE", overflow: "hidden", marginBottom: 20 },
+  bannerPreview: { width: "100%", height: 130, backgroundColor: "#E0F2FE" },
+  bannerInfo: { flexDirection: "row", alignItems: "center", gap: 12, padding: 14 },
+  bannerTitle: { color: COLORS.text, fontWeight: "900", fontSize: 14 },
+  bannerSub: { color: COLORS.textMuted, fontSize: 11, lineHeight: 16, marginTop: 3 },
+  bannerBtn: { flexDirection: "row", alignItems: "center", gap: 6, backgroundColor: "#2563EB", paddingHorizontal: 12, paddingVertical: 10, borderRadius: 12 },
+  bannerBtnText: { color: "#fff", fontSize: 11, fontWeight: "900" },
   actionCard: { flexDirection: "row", alignItems: "center", gap: 12, backgroundColor: "#fff", padding: 15, borderRadius: RADIUS.md, borderWidth: 1, borderColor: "#DBEAFE", marginBottom: 10 },
   actionIcon: { width: 44, height: 44, borderRadius: 22, backgroundColor: "#DBEAFE", alignItems: "center", justifyContent: "center" },
   actionTitle: { color: COLORS.text, fontWeight: "900", fontSize: 14 },
