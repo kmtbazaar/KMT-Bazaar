@@ -315,6 +315,7 @@ export const api = {
     apiFetch<any[]>("/stores"),
 
   serviceTypes: () => apiFetch<any[]>("/service-types"),
+  holidayBanner: () => apiFetch<any>("/holiday/banner"),
   serviceCatalog: (type: string) => apiFetch<any[]>(`/services/catalog/${encodeURIComponent(type)}`),
   serviceDetail: (type: string, id: string) => apiFetch<any>(`/services/catalog/${encodeURIComponent(type)}/${encodeURIComponent(id)}`),
   serviceBookings: () => apiFetch<any[]>("/service-bookings"),
