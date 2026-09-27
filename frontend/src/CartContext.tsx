@@ -42,30 +42,61 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (AudioCtx) {
           const ctx = audioCtxRef.current || new AudioCtx();
           audioCtxRef.current = ctx;
-          const play = () => {
+
+          const playDrumDrop = () => {
             const now = ctx.currentTime;
-            const osc = ctx.createOscillator();
-            const gain = ctx.createGain();
-            osc.type = "triangle";
-            osc.frequency.setValueAtTime(560, now);
-            osc.frequency.exponentialRampToValueAtTime(900, now + 0.07);
-            gain.gain.setValueAtTime(0.0001, now);
-            gain.gain.exponentialRampToValueAtTime(0.24, now + 0.008);
-            gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.18);
-            osc.connect(gain);
-            gain.connect(ctx.destination);
-            osc.start(now);
-            osc.stop(now + 0.18);
+
+            const makeThump = (time: number, freq: number, volume: number, decay: number) => {
+              const osc = ctx.createOscillator();
+              const gain = ctx.createGain();
+              osc.type = "sine";
+              osc.frequency.setValueAtTime(freq, time);
+              osc.frequency.exponentialRampToValueAtTime(Math.max(55, freq * 0.42), time + decay);
+              gain.gain.setValueAtTime(0.0001, time);
+              gain.gain.exponentialRampToValueAtTime(volume, time + 0.008);
+              gain.gain.exponentialRampToValueAtTime(0.0001, time + decay);
+              osc.connect(gain);
+              gain.connect(ctx.destination);
+              osc.start(time);
+              osc.stop(time + decay + 0.015);
+            };
+
+            const makeClick = (time: number) => {
+              const buffer = ctx.createBuffer(1, Math.floor(ctx.sampleRate * 0.045), ctx.sampleRate);
+              const data = buffer.getChannelData(0);
+              for (let i = 0; i < data.length; i++) {
+                data[i] = (Math.random() * 2 - 1) * (1 - i / data.length);
+              }
+              const src = ctx.createBufferSource();
+              const filter = ctx.createBiquadFilter();
+              const gain = ctx.createGain();
+              filter.type = "bandpass";
+              filter.frequency.setValueAtTime(1200, time);
+              filter.Q.setValueAtTime(0.8, time);
+              gain.gain.setValueAtTime(0.11, time);
+              gain.gain.exponentialRampToValueAtTime(0.0001, time + 0.045);
+              src.buffer = buffer;
+              src.connect(filter);
+              filter.connect(gain);
+              gain.connect(ctx.destination);
+              src.start(time);
+              src.stop(time + 0.05);
+            };
+
+            makeThump(now, 115, 0.34, 0.18);
+            makeClick(now + 0.018);
+            makeThump(now + 0.085, 82, 0.22, 0.15);
           };
+
           if (ctx.state === "suspended") {
-            ctx.resume().then(play).catch(() => {});
+            ctx.resume().then(playDrumDrop).catch(() => {});
           } else {
-            play();
+            playDrumDrop();
           }
         }
       }
     } catch {}
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
   }, []);
 
   const add = async (productId: string, qty = 1) => {
