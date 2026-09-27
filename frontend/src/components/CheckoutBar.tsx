@@ -219,7 +219,7 @@ export default function CheckoutBar({ route = "/cart", label = "View Cart", bott
               <Text style={styles.bagBazaar}>BAZAAR</Text>
             </View>
             <View style={styles.juteFoldBottom} />
-          </View>
+          </Animated.View>
           <View style={styles.countBadge}>
             <Text style={styles.countText}>{itemCount}</Text>
           </View>
