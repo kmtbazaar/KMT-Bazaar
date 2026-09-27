@@ -9,6 +9,7 @@ import * as Haptics from "expo-haptics";
 import { api } from "@/src/api";
 import { useCart } from "@/src/CartContext";
 import { COLORS, RADIUS, SPACING, shadow } from "@/src/theme";
+import { CheckoutSackVisual } from "@/src/components/CheckoutBar";
 
 export default function Product() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -66,6 +67,7 @@ export default function Product() {
 
   if (loading || !p) return <View style={s.center}><ActivityIndicator color={COLORS.brand} size="large" /></View>;
   const discount = p.mrp && p.mrp > p.price ? Math.round(((p.mrp - p.price) / p.mrp) * 100) : 0;
+  const checkoutSubtotal = cart?.subtotal || p.price * currentQty;
 
   return (
     <View style={s.root} testID="product-screen">
@@ -126,6 +128,7 @@ export default function Product() {
             <Pressable onPress={handleCheckout} style={{ flex: 1 }}>
               <LinearGradient colors={[COLORS.success, "#2e7d32"]} style={s.checkoutBtn}>
                 <Text style={s.checkoutBtnText}>Checkout · ₹{p.price * currentQty}</Text>
+                <CheckoutSackVisual subtotal={checkoutSubtotal} itemCount={itemCount} />
                 <MaterialCommunityIcons name="arrow-right" color="#fff" size={18} />
               </LinearGradient>
             </Pressable>
@@ -173,6 +176,6 @@ const s = StyleSheet.create({
   qtyT: { fontWeight: "800", minWidth: 18, textAlign: "center" },
   addBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", paddingVertical: 14, borderRadius: RADIUS.pill, gap: 8 },
   addBtnText: { color: "#fff", fontWeight: "800" },
-  checkoutBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", paddingVertical: 14, borderRadius: RADIUS.pill, gap: 6, ...shadow.soft },
+  checkoutBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", paddingVertical: 14, borderRadius: RADIUS.pill, gap: 4, ...shadow.soft },
   checkoutBtnText: { color: "#fff", fontWeight: "800", fontSize: 14 },
 });
