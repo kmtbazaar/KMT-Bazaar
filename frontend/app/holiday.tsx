@@ -462,17 +462,6 @@ export default function HolidayPage() {
             </Animated.View>
           </Animated.View>
 
-          <Animated.View entering={FadeIn.duration(450)} style={s.heroCopy}>
-            <View style={s.heroTag}>
-              <MaterialCommunityIcons name="star-four-points" size={13} color="#0F172A" />
-              <Text style={s.heroTagText}>DISCOVER • PLAN • ESCAPE</Text>
-            </View>
-            <Text style={s.heroTitle}>Go somewhere{"\n"}you'll remember.</Text>
-            <Text style={s.heroSub}>
-              Explore handpicked holiday packages, view every destination through five photos and book from one simple flow.
-            </Text>
-          </Animated.View>
-
           <Animated.View entering={FadeInUp.delay(100).duration(600)} style={s.searchCard}>
             <View style={s.searchIcon}>
               <MaterialCommunityIcons name="magnify" size={22} color="#0284C7" />
@@ -800,15 +789,16 @@ export default function HolidayPage() {
                   </View>
                 </View>
 
+                <Text style={s.galleryLabel}>5-photo gallery</Text>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.modalThumbRow}>
                   {galleryFor(selected).map((photo, index) => (
-                    <Pressable key={selected.id + "-detail-" + index} onPress={() => setSelectedPhoto(index)}>
+                    <Pressable key={selected.id + "-detail-" + index} onPress={() => setSelectedPhoto(index)} style={s.modalThumbPress}>
                       <Image source={{ uri: photo }} style={[s.modalThumb, index === selectedPhoto && s.modalThumbActive]} contentFit="cover" />
                     </Pressable>
                   ))}
                 </ScrollView>
 
-                <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 400 }}>
+                <ScrollView showsVerticalScrollIndicator={false} style={s.detailContentScroll}>
                   <View style={s.detailStats}>
                     <View style={s.detailStat}>
                       <Text style={s.detailStatLabel}>Starting</Text>
@@ -835,9 +825,6 @@ export default function HolidayPage() {
                       </View>
                     ))}
                   </View>
-
-                  <Text style={s.detailSectionTitle}>Your 5-photo gallery</Text>
-                  <Text style={s.detailHint}>Swipe through the destination photos before you book.</Text>
 
                   <View style={s.ctaBox}>
                     <View style={{ flex: 1 }}>
@@ -1178,11 +1165,14 @@ const s = StyleSheet.create({
   detailHeroImage: { width: "100%", height: 258, borderRadius: 20, backgroundColor: "#E2E8F0" },
   detailCounter: { position: "absolute", right: 11, bottom: 11, flexDirection: "row", alignItems: "center", gap: 5, paddingHorizontal: 9, paddingVertical: 7, borderRadius: 999, backgroundColor: "rgba(15,23,42,.65)" },
   detailCounterText: { color: "#fff", fontSize: 10, fontWeight: "900" },
-  modalThumbRow: { gap: 8, paddingVertical: 10 },
+  galleryLabel: { marginTop: 2, marginBottom: 2, color: "#0F172A", fontSize: 13, fontWeight: "900" },
+  modalThumbRow: { gap: 8, paddingTop: 7, paddingBottom: 14 },
+  modalThumbPress: { width: 70, height: 58 },
   modalThumb: { width: 70, height: 58, borderRadius: 10, borderWidth: 2, borderColor: "transparent" },
   modalThumbActive: { borderColor: "#FF6B00" },
 
-  detailStats: { flexDirection: "row", gap: 8, marginTop: 3 },
+  detailContentScroll: { maxHeight: 400 },
+  detailStats: { flexDirection: "row", gap: 8, marginTop: 2 },
   detailStat: { flex: 1, padding: 10, borderRadius: 14, backgroundColor: "#F0F9FF" },
   detailStatLabel: { color: "#64748B", fontSize: 9, fontWeight: "800" },
   detailStatValue: { marginTop: 3, color: "#0F172A", fontSize: 12, fontWeight: "900" },
