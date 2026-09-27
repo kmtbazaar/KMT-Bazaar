@@ -143,6 +143,8 @@ type HolidayItem = {
   adult_price?: number;
   child_price?: number;
   duration?: string;
+  nights?: number;
+  days?: number;
   rating?: number;
   reviews?: number;
   tag?: string;
@@ -159,6 +161,8 @@ function enrichItem(item: HolidayItem, index = 0): HolidayItem {
     adult_price: Number(item.adult_price) || Number(item.price) || mock.price,
     child_price: Number(item.child_price) || ((Number(item.adult_price) || Number(item.price) || mock.price) * 0.5),
     duration: item.duration || mock.duration,
+    nights: Number(item.nights) || 0,
+    days: Number(item.days) || 0,
     rating: Number(item.rating) || mock.rating,
     reviews: Number(item.reviews) || mock.reviews,
     tag: item.tag || mock.tag,
@@ -193,6 +197,18 @@ function moodFor(item: HolidayItem) {
   if (/temple|spiritual|ayodhya|varanasi|kashi|tirupati|haridwar|rishikesh/.test(text)) return "Spiritual";
   if (/adventure|trek|camp|rafting|safari|wildlife/.test(text)) return "Adventure";
   return "Explore";
+}
+
+function formatStay(item: HolidayItem) {
+  const nights = Number(item.nights || 0);
+  const days = Number(item.days || 0);
+  if (nights > 0 || days > 0) {
+    return `${nights} ${nights === 1 ? "night" : "nights"} / ${days} ${days === 1 ? "day" : "days"}`;
+  }
+  const raw = String(item.duration || "Flexible");
+  const compact = raw.match(/^(\d+)N\s*\/\s*(\d+)D$/i);
+  if (compact) return `${compact[1]} nights / ${compact[2]} days`;
+  return raw;
 }
 
 function money(value?: number) {
@@ -608,7 +624,7 @@ export default function HolidayPage() {
                               </View>
                               <Text style={s.reviewText}>({item.reviews || 0} reviews)</Text>
                               <Text style={s.dotText}>•</Text>
-                              <Text style={s.durationText}>{item.duration || "Flexible"}</Text>
+                              <Text style={s.durationText}>{formatStay(item)}</Text>
                             </View>
                           </View>
                         </View>
