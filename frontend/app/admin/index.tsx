@@ -69,7 +69,10 @@ export default function AdminDashboard() {
   const [pendingStores, setPendingStores] = useState<any[]>([]);
   const [refreshing, setRefreshing] = useState(false);
   const [serviceBookingCount, setServiceBookingCount] = useState(0);
+  const [serviceBookingTotal, setServiceBookingTotal] = useState(0);
+  const [serviceVendorCount, setServiceVendorCount] = useState(0);
   const [quickActions, setQuickActions] = useState(DEFAULT_ADMIN_ACTIONS);
+  const [adminSettings, setAdminSettings] = useState<any>(null);
   const activityPulse = useSharedValue(0.55);
 
   useEffect(() => {
@@ -97,7 +100,17 @@ export default function AdminDashboard() {
       const storesResponse = await adminApi.stores("pending");
       setPendingStores(storesResponse || []);
 
-      const serviceBookings = await adminApi.serviceBookings();
+      const [serviceBookings, serviceVendors] = await Promise.all([
+        adminApi.serviceBookings(),
+        adminApi.serviceVendors(),
+      ]);
+      setServiceBookingTotal((serviceBookings || []).length);
+      setServiceVendorCount(
+        (serviceVendors || []).filter((x: any) =>
+          x.vendor_type === "service" &&
+          ["holiday", "car_rental"].includes(x.service_type)
+        ).length
+      );
       setServiceBookingCount(
         (serviceBookings || []).filter((x: any) =>
           ["pending", "booking_requested"].includes(
@@ -117,6 +130,7 @@ export default function AdminDashboard() {
       let cancelled = false;
       loadAdminSettings().then((settings) => {
         if (cancelled) return;
+        setAdminSettings(settings);
         const byLabel = new Map(
           DEFAULT_ADMIN_ACTIONS.map((action) => [action.label, action])
         );
@@ -245,7 +259,7 @@ export default function AdminDashboard() {
   );
 
   return (
-    <View style={s.root} testID="admin-dashboard">
+    <View style={[s.root, adminSettings?.themeMode === "night" && s.rootNight]} testID="admin-dashboard">
       {/* =====================================================
           HERO HEADER
       ===================================================== */}
@@ -394,11 +408,11 @@ export default function AdminDashboard() {
         >
           <View style={s.sectionHeader}>
             <View>
-              <Text style={s.sectionTitle}>
+              <Text style={[s.sectionTitle, adminSettings?.themeMode === "night" && s.textNight]}>
                 Overview
               </Text>
 
-              <Text style={s.sectionSub}>
+              <Text style={[s.sectionSub, adminSettings?.themeMode === "night" && s.mutedNight]}>
                 Your marketplace at a glance
               </Text>
             </View>
@@ -429,6 +443,7 @@ export default function AdminDashboard() {
             color={THEME.success}
             route="/admin/orders"
             delay={150}
+            dark={adminSettings?.themeMode === "night"}
           />
 
           <KPI
@@ -438,6 +453,7 @@ export default function AdminDashboard() {
             color={THEME.orange}
             route="/admin/orders"
             delay={200}
+            dark={adminSettings?.themeMode === "night"}
           />
 
           <KPI
@@ -448,6 +464,7 @@ export default function AdminDashboard() {
             sub={`${stats?.commission_percent ?? 10}% commission`}
             route="/admin/commission"
             delay={250}
+            dark={adminSettings?.themeMode === "night"}
           />
 
           <KPI
@@ -457,6 +474,27 @@ export default function AdminDashboard() {
             color={THEME.brownLight}
             route="/admin/users?role=customer"
             delay={300}
+            dark={adminSettings?.themeMode === "night"}
+          />
+
+          <KPI
+            label="Service Vendor"
+            value={serviceVendorCount}
+            icon="briefcase-outline"
+            color={THEME.orange}
+            route="/admin/service-vendors"
+            delay={300}
+            dark={adminSettings?.themeMode === "night"}
+          />
+
+          <KPI
+            label="Service Bookings"
+            value={serviceBookingTotal}
+            icon="calendar-check-outline"
+            color={THEME.success}
+            route="/admin/service-bookings"
+            delay={350}
+            dark={adminSettings?.themeMode === "night"}
           />
 
           <KPI
@@ -465,7 +503,8 @@ export default function AdminDashboard() {
             icon="store"
             color={THEME.orange}
             route="/admin/users?role=vendor"
-            delay={350}
+            delay={400}
+            dark={adminSettings?.themeMode === "night"}
           />
 
           <KPI
@@ -474,7 +513,8 @@ export default function AdminDashboard() {
             icon="moped"
             color={THEME.sky}
             route="/admin/users?role=delivery"
-            delay={400}
+            delay={450}
+            dark={adminSettings?.themeMode === "night"}
           />
         </View>
 
@@ -484,19 +524,19 @@ export default function AdminDashboard() {
 
         <Animated.View
           entering={FadeInUp.delay(450).duration(600)}
-          style={s.chartCard}
+          style={[s.chartCard, adminSettings?.themeMode === "night" && s.cardNight]}
         >
           <View style={s.cardHeader}>
             <View>
               <View style={s.activityTitleRow}>
-                <Text style={s.cardTitle}>
+                <Text style={[s.cardTitle, adminSettings?.themeMode === "night" && s.textNight]}>
                   Order Activity
                 </Text>
 
                 <Animated.View style={[s.activityLiveDot, activityPulseStyle]} />
               </View>
 
-              <Text style={s.cardSub}>
+              <Text style={[s.cardSub, adminSettings?.themeMode === "night" && s.mutedNight]}>
                 Orders · Last 7 days
               </Text>
             </View>
@@ -710,6 +750,7 @@ export default function AdminDashboard() {
                   }
                   style={({ pressed }) => [
                     s.gridItem,
+                    adminSettings?.themeMode === "night" && s.cardNight,
                     pressed && s.gridPressed,
                   ]}
                 >
@@ -740,7 +781,7 @@ export default function AdminDashboard() {
                   )}
 
                   <Text
-                    style={s.gridLabel}
+                    style={[s.gridLabel, adminSettings?.themeMode === "night" && s.textNight]}
                     numberOfLines={2}
                   >
                     {a.label}
@@ -784,6 +825,7 @@ function KPI({
   color,
   sub,
   route,
+  dark = false,
   delay = 0,
 }: any) {
   const router = useRouter();
@@ -798,6 +840,7 @@ function KPI({
         onPress={() => router.push(route as any)}
         style={({ pressed }) => [
           s.kpiCard,
+          dark && s.kpiCardNight,
           pressed && s.kpiPressed,
         ]}
         accessibilityRole="button"
@@ -837,7 +880,7 @@ function KPI({
         </View>
 
         <Text
-          style={s.kpiValue}
+          style={[s.kpiValue, dark && s.kpiTextNight]}
           numberOfLines={1}
           adjustsFontSizeToFit
         >
@@ -859,7 +902,7 @@ function KPI({
           </Text>
         )}
 
-        <View style={s.kpiTapHint}>
+        <View style={[s.kpiTapHint, dark && s.kpiTapHintNight]}>
           <Text style={[s.kpiTapHintText, { color }]}>
             View details
           </Text>
@@ -1063,6 +1106,36 @@ const s = StyleSheet.create({
     borderColor: THEME.orange,
   },
 
+  rootNight: {
+    backgroundColor: "#020617",
+  },
+
+  textNight: {
+    color: "#F8FAFC",
+  },
+
+  mutedNight: {
+    color: "#94A3B8",
+  },
+
+  cardNight: {
+    backgroundColor: "#111827",
+    borderColor: "#334155",
+  },
+
+  kpiCardNight: {
+    backgroundColor: "#111827",
+    borderColor: "#334155",
+  },
+
+  kpiTextNight: {
+    color: "#F8FAFC",
+  },
+
+  kpiTapHintNight: {
+    borderTopColor: "#334155",
+  },
+
   kpiTop: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -1220,7 +1293,7 @@ const s = StyleSheet.create({
   },
 
   pendingCard: {
-    marginTop: 12,
+    marginTop: 0,
     borderRadius: 20,
     overflow: "hidden",
     shadowColor: THEME.brown,
