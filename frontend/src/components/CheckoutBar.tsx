@@ -301,8 +301,11 @@ export default function CheckoutBar({ route = "/cart", label = "View Cart", bott
               <Text style={styles.brandPlateTitle}>KMT BAZAAR</Text>
               <Text style={styles.brandPlatePrice}>₹{subtotal.toFixed(0)}</Text>
             </Animated.View>
+            <View style={styles.countBadge}>
+              <Text style={styles.countText}>{itemCount}</Text>
+            </View>
           </Animated.View>
-          <View style={styles.countBadge}>
+          <View style={styles.countBadgeHidden}>
             <Text style={styles.countText}>{itemCount}</Text>
           </View>
         </Animated.View>
@@ -360,13 +363,14 @@ const styles = StyleSheet.create({
   },
   brandPlate: {
     position: "absolute",
-    top: 57,
-    width: 60,
-    height: 47,
+    top: 50,
+    width: 66,
+    height: 54,
     alignItems: "center",
-    justifyContent: "center",
+    justifyContent: "flex-start",
+    paddingTop: 4,
     borderRadius: 10,
-    backgroundColor: "rgba(239,207,97,0.76)",
+    backgroundColor: "rgba(239,207,97,0.78)",
     borderWidth: 1,
     borderColor: "rgba(91,67,12,0.36)",
     ...shadow.soft,
@@ -376,12 +380,13 @@ const styles = StyleSheet.create({
     fontSize: 8,
     lineHeight: 10,
     fontWeight: "900",
-    letterSpacing: 0.7,
+    letterSpacing: 0.8,
+    marginBottom: 2,
   },
   brandPlatePrice: {
-    marginTop: 2,
-    color: "#4A3308",
-    fontSize: 11,
+    color: "#15803D",
+    fontSize: 18,
+    lineHeight: 20,
     fontWeight: "900",
   },
   dropItem: {
@@ -391,18 +396,25 @@ const styles = StyleSheet.create({
   },
   countBadge: {
     position: "absolute",
-    top: 20,
-    right: -4,
-    minWidth: 19,
-    height: 19,
-    paddingHorizontal: 4,
-    borderRadius: 10,
+    right: 5,
+    bottom: 25,
+    minWidth: 21,
+    height: 21,
+    paddingHorizontal: 5,
+    borderRadius: 11,
     backgroundColor: "#5B3A1E",
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 1.5,
-    borderColor: "#fff",
+    borderColor: "#F8E7A9",
+    zIndex: 20,
+    ...shadow.soft,
   },
   countText: { color: "#fff", fontWeight: "900", fontSize: 10 },
+  countBadgeHidden: {
+    width: 0,
+    height: 0,
+    opacity: 0,
+  },
 
 });
