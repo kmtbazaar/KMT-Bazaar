@@ -5,6 +5,7 @@ import {
   Pressable,
   StyleSheet,
   Dimensions,
+  Modal,
 } from "react-native";
 import { Image } from "expo-image";
 import * as Haptics from "expo-haptics";
@@ -47,6 +48,7 @@ export default function ProductCard({
   const router = useRouter();
   const { add, update, cart } = useCart();
   const [imageFailed, setImageFailed] = useState(false);
+  const [imageViewerOpen, setImageViewerOpen] = useState(false);
   const scale = useSharedValue(1);
 
   const qty = useMemo(() => {
@@ -126,14 +128,12 @@ export default function ProductCard({
         compact ? s.cardCompact : s.card,
       ]}
     >
-      <Pressable
-        testID={`product-card-${p.id}`}
-        onPress={() =>
-          router.push(`/product/${p.id}` as any)
-        }
-        style={{ flex: 1 }}
-      >
-        <View style={s.imgWrap}>
+      <View style={{ flex: 1 }}>
+        <Pressable
+          testID={`product-image-${p.id}`}
+          onPress={() => setImageViewerOpen(true)}
+          style={s.imgWrap}
+        >
           <Image
             source={{ uri: imageFailed ? IMAGE_FALLBACK_URL : (p.image || IMAGE_FALLBACK_URL) }}
             style={StyleSheet.absoluteFillObject}
@@ -157,7 +157,7 @@ export default function ProductCard({
               </Text>
             </View>
           )}
-        </View>
+        </Pressable>
 
         <View style={s.body}>
           <Text
@@ -269,7 +269,35 @@ export default function ProductCard({
             )}
           </View>
         </View>
-      </Pressable>
+      </View>
+
+      <Modal
+        visible={imageViewerOpen}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setImageViewerOpen(false)}
+      >
+        <View style={s.imageModal}>
+          <Pressable
+            style={StyleSheet.absoluteFillObject}
+            onPress={() => setImageViewerOpen(false)}
+          />
+          <View style={s.imageModalCard}>
+            <Image
+              source={{ uri: imageFailed ? IMAGE_FALLBACK_URL : (p.image || IMAGE_FALLBACK_URL) }}
+              style={s.imageModalImage}
+              contentFit="contain"
+            />
+            <Pressable
+              onPress={() => setImageViewerOpen(false)}
+              style={s.imageModalClose}
+              hitSlop={8}
+            >
+              <MaterialCommunityIcons name="close" size={22} color="#fff" />
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
     </Animated.View>
   );
 }
@@ -306,6 +334,41 @@ const s = StyleSheet.create({
     backgroundColor: COLORS.surfaceSecondary,
     overflow: "hidden",
     position: "relative",
+  },
+
+  imageModal: {
+    flex: 1,
+    backgroundColor: "rgba(15, 23, 42, 0.82)",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 20,
+  },
+
+  imageModalCard: {
+    width: "92%",
+    height: "72%",
+    maxWidth: 520,
+    backgroundColor: "#fff",
+    borderRadius: 18,
+    overflow: "hidden",
+    position: "relative",
+  },
+
+  imageModalImage: {
+    width: "100%",
+    height: "100%",
+  },
+
+  imageModalClose: {
+    position: "absolute",
+    top: 10,
+    right: 10,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: "rgba(15, 23, 42, 0.72)",
+    alignItems: "center",
+    justifyContent: "center",
   },
 
   badge: {
