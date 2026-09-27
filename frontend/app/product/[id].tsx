@@ -127,7 +127,7 @@ export default function Product() {
             
             <Pressable onPress={handleCheckout} style={{ flex: 1 }}>
               <LinearGradient colors={[COLORS.success, "#2e7d32"]} style={s.checkoutBtn}>
-                <Text style={s.checkoutBtnText}>Checkout · ₹{p.price * currentQty}</Text>
+                <Text style={s.checkoutBtnText}>Add to Cart · ₹{p.price * currentQty}</Text>
                 <CheckoutSackVisual subtotal={checkoutSubtotal} itemCount={itemCount} />
                 <MaterialCommunityIcons name="arrow-right" color="#fff" size={18} />
               </LinearGradient>
