@@ -1869,6 +1869,8 @@ class VendorServiceIn(BaseModel):
     order: int = 99
     active: bool = True
     price: float = 0
+    adult_price: float = 0
+    child_price: float = 0
     unit: str = "visit"
     duration: str = ""
     seats: int = 0
@@ -2847,11 +2849,27 @@ async def pay_service_cart(data: ServicePaymentIn, current=Depends(require_roles
     for item in items:
         extra = item.get("extra") or {}
         try:
-            unit_price = float(extra.get("package_price") or 0)
+            adult_price = float(extra.get("adult_price") or extra.get("package_price") or 0)
         except Exception:
-            unit_price = 0.0
-        qty = max(1, int(item.get("quantity", 1)))
-        total += unit_price * qty
+            adult_price = 0.0
+        try:
+            child_price = float(extra.get("child_price") or (adult_price * 0.5))
+        except Exception:
+            child_price = adult_price * 0.5
+        has_split = "adult_count" in extra or "child_count" in extra
+        if has_split:
+            try:
+                adult_count = max(1, int(extra.get("adult_count", 1) or 1))
+            except Exception:
+                adult_count = 1
+            try:
+                child_count = max(0, int(extra.get("child_count", 0) or 0))
+            except Exception:
+                child_count = 0
+            total += (adult_price * adult_count) + (child_price * child_count)
+        else:
+            qty = max(1, int(item.get("quantity", 1)))
+            total += adult_price * qty
 
     total = round(total, 2)
     booking_amount = round(total * 0.20, 2) if total > 0 else 0
