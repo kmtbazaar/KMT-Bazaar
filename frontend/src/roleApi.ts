@@ -186,6 +186,15 @@ export const vendorApi = {
       method: "PUT",
       body: JSON.stringify({ url }),
     }),
+  addHolidayBanner: (url: string) =>
+    apiFetch<any>("/vendor/holiday/banner", {
+      method: "POST",
+      body: JSON.stringify({ url }),
+    }),
+  deleteHolidayBanner: (index: number) =>
+    apiFetch<any>(`/vendor/holiday/banner/${index}`, {
+      method: "DELETE",
+    }),
   updateServiceBooking: (id: string, status: string) => apiFetch<any>(`/vendor/service-bookings/${encodeURIComponent(id)}/status`, { method: "POST", body: JSON.stringify({ status }) }),
   services: () =>
     apiFetch<any[]>("/vendor/services"),
