@@ -27,11 +27,45 @@ export default function CheckoutBar({ route = "/cart", label = "View Cart", bott
   const lastVibrateAt = useRef(0);
   const cartScale = useSharedValue(1);
   const cartLift = useSharedValue(0);
+  const bagRotate = useSharedValue(0);
+  const dropY = useSharedValue(-16);
+  const dropScale = useSharedValue(0.78);
+  const dropOpacity = useSharedValue(0);
 
   useEffect(() => {
     if (badgePulse > 0) {
-      cartScale.value = withSequence(withTiming(1.18, { duration: 110 }), withSpring(1));
-      cartLift.value = withSequence(withTiming(-8, { duration: 120 }), withSpring(0));
+      cartScale.value = withSequence(
+        withTiming(1.16, { duration: 120 }),
+        withTiming(1.04, { duration: 150 }),
+        withSpring(1)
+      );
+      cartLift.value = withSequence(withTiming(-10, { duration: 140 }), withSpring(0));
+      bagRotate.value = withSequence(
+        withTiming(-5, { duration: 120 }),
+        withTiming(5, { duration: 140 }),
+        withTiming(-3.5, { duration: 120 }),
+        withTiming(3.5, { duration: 120 }),
+        withSpring(0)
+      );
+      dropOpacity.value = withSequence(
+        withTiming(1, { duration: 80 }),
+        withTiming(1, { duration: 1050 }),
+        withTiming(0, { duration: 280 })
+      );
+      dropScale.value = withSequence(
+        withTiming(1, { duration: 120 }),
+        withTiming(0.9, { duration: 170 }),
+        withTiming(0.72, { duration: 260 }),
+        withTiming(0.78, { duration: 180 }),
+        withTiming(0, { duration: 680 })
+      );
+      dropY.value = withSequence(
+        withTiming(-16, { duration: 100 }),
+        withTiming(5, { duration: 380 }),
+        withTiming(1, { duration: 180 }),
+        withTiming(6, { duration: 220 }),
+        withTiming(0, { duration: 620 })
+      );
     }
   }, [badgePulse]);
 
@@ -39,7 +73,16 @@ export default function CheckoutBar({ route = "/cart", label = "View Cart", bott
     transform: [
       { translateX: dragX.value },
       { translateY: dragY.value + cartLift.value },
+      { rotate: bagRotate.value + "deg" },
       { scale: cartScale.value },
+    ],
+  }));
+
+  const dropAnim = useAnimatedStyle(() => ({
+    opacity: dropOpacity.value,
+    transform: [
+      { translateY: dropY.value },
+      { scale: dropScale.value },
     ],
   }));
 
@@ -107,6 +150,9 @@ export default function CheckoutBar({ route = "/cart", label = "View Cart", bott
         {...panResponder.panHandlers}
       >
         <Animated.View style={[styles.bagWrap, cartAnim]}>
+          <Animated.View style={[styles.dropItem, dropAnim]} pointerEvents="none">
+            <MaterialCommunityIcons name="package-variant-closed" size={17} color="#7F1D1D" />
+          </Animated.View>
           <View style={styles.priceBubble}>
             <Text style={styles.priceBubbleText}>₹{subtotal.toFixed(0)}</Text>
           </View>
@@ -200,6 +246,11 @@ const styles = StyleSheet.create({
     lineHeight: 8,
     fontWeight: "900",
     letterSpacing: 1.1,
+  },
+  dropItem: {
+    position: "absolute",
+    top: 19,
+    zIndex: 4,
   },
   priceBubble: {
     position: "absolute",
