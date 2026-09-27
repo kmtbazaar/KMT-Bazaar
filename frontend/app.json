@@ -21,7 +21,7 @@
     },
     "web": {
       "bundler": "metro",
-      "output": "single",
+      "output": "static",
       "name": "KMT Bazaar",
       "shortName": "KMT Bazaar",
       "favicon": "./assets/images/splash-icon.png"
