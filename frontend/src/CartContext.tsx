@@ -33,25 +33,35 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   useEffect(() => { refresh(); }, [refresh]);
 
+  const audioCtxRef = useRef<AudioContext | null>(null);
+
   const playAddFeedback = useCallback(() => {
     try {
       if (typeof window !== "undefined") {
-        const AudioCtx = (window.AudioContext || (window as any).webkitAudioContext);
+        const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
         if (AudioCtx) {
-          const ctx = new AudioCtx();
-          const osc = ctx.createOscillator();
-          const gain = ctx.createGain();
-          osc.type = "sine";
-          osc.frequency.setValueAtTime(720, ctx.currentTime);
-          osc.frequency.exponentialRampToValueAtTime(980, ctx.currentTime + 0.09);
-          gain.gain.setValueAtTime(0.0001, ctx.currentTime);
-          gain.gain.exponentialRampToValueAtTime(0.16, ctx.currentTime + 0.01);
-          gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.14);
-          osc.connect(gain);
-          gain.connect(ctx.destination);
-          osc.start();
-          osc.stop(ctx.currentTime + 0.15);
-          window.setTimeout(() => { try { ctx.close(); } catch {} }, 220);
+          const ctx = audioCtxRef.current || new AudioCtx();
+          audioCtxRef.current = ctx;
+          const play = () => {
+            const now = ctx.currentTime;
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.type = "triangle";
+            osc.frequency.setValueAtTime(560, now);
+            osc.frequency.exponentialRampToValueAtTime(900, now + 0.07);
+            gain.gain.setValueAtTime(0.0001, now);
+            gain.gain.exponentialRampToValueAtTime(0.24, now + 0.008);
+            gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.18);
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.start(now);
+            osc.stop(now + 0.18);
+          };
+          if (ctx.state === "suspended") {
+            ctx.resume().then(play).catch(() => {});
+          } else {
+            play();
+          }
         }
       }
     } catch {}
