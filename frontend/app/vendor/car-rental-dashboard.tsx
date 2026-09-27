@@ -33,7 +33,7 @@ export default function CarRentalVendorDashboard() {
               <Text style={s.welcome}>Welcome, {user?.name}</Text>
             </View>
             <View style={{flexDirection:"row",alignItems:"center",gap:10}}>
-              <Pressable onPress={() => router.push("/vendor/service-bookings" as any)} hitSlop={10} style={s.bell}><MaterialCommunityIcons name="bell-outline" size={23} color="#fff" />{bookingCount>0&&<View style={s.badge}><Text style={s.badgeText}>{bookingCount}</Text></View>}</Pressable>
+              <Pressable onPress={() => router.push("/service-vendor/service-bookings" as any)} hitSlop={10} style={s.bell}><MaterialCommunityIcons name="bell-outline" size={23} color="#fff" />{bookingCount>0&&<View style={s.badge}><Text style={s.badgeText}>{bookingCount}</Text></View>}</Pressable>
               <Pressable onPress={logout} hitSlop={10}><MaterialCommunityIcons name="logout" size={25} color="#fff" /></Pressable>
             </View>
           </View>
@@ -57,9 +57,9 @@ export default function CarRentalVendorDashboard() {
         </View>
 
         <Text style={s.sectionTitle}>Car Rental Management</Text>
-        <Action icon="car-multiple" title="Rental Fleet" sub="Add, edit and manage your rental vehicles" onPress={() => router.push("/vendor/services" as any)} />
-        <Action icon="chart-line" title="Earnings" sub="Revenue, commission and estimated payout" onPress={() => router.push("/vendor/earnings" as any)} />
-        <Action icon="calendar-check-outline" title="Rental Bookings" sub="View and update customer rental bookings" onPress={() => router.push("/vendor/service-bookings" as any)} />
+        <Action icon="car-multiple" title="Rental Fleet" sub="Add, edit and manage your rental vehicles" onPress={() => router.push("/service-vendor/services" as any)} />
+        <Action icon="chart-line" title="Earnings" sub="Revenue, commission and estimated payout" onPress={() => router.push("/service-vendor/earnings" as any)} />
+        <Action icon="calendar-check-outline" title="Rental Bookings" sub="View and update customer rental bookings" onPress={() => router.push("/service-vendor/service-bookings" as any)} />
       </ScrollView>
     </View>
   );
