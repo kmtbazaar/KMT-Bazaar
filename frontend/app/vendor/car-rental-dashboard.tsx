@@ -11,10 +11,10 @@ import { COLORS, RADIUS, SPACING } from "@/src/theme";
 export default function CarRentalVendorDashboard() {
   const router = useRouter();
   const { user, logout } = useAuth();
-  const [stats, setStats] = useState<any>(null);
+  const [stats, setStats] = useState<any>(null);\n  const [bookingCount, setBookingCount] = useState(0);
 
   const load = useCallback(async () => {
-    try { setStats(await vendorApi.serviceStats()); } catch {}
+    try { const [st, bookings] = await Promise.all([vendorApi.serviceStats(), vendorApi.serviceBookings()]); setStats(st); setBookingCount((bookings || []).filter((x:any) => ["pending","booking_requested","confirmed","accepted"].includes(String(x.status || "").toLowerCase())).length); } catch {}
   }, []);
 
   useFocusEffect(useCallback(() => { load(); }, [load]));
@@ -31,7 +31,10 @@ export default function CarRentalVendorDashboard() {
               <Text style={s.headerSub}>Manage vehicles, rentals & trip bookings</Text>
               <Text style={s.welcome}>Welcome, {user?.name}</Text>
             </View>
-            <Pressable onPress={logout} hitSlop={10}><MaterialCommunityIcons name="logout" size={25} color="#fff" /></Pressable>
+            <View style={{flexDirection:"row",alignItems:"center",gap:10}}>
+              <Pressable onPress={() => router.push("/vendor/service-bookings" as any)} hitSlop={10} style={s.bell}><MaterialCommunityIcons name="bell-outline" size={23} color="#fff" />{bookingCount>0&&<View style={s.badge}><Text style={s.badgeText}>{bookingCount}</Text></View>}</Pressable>
+              <Pressable onPress={logout} hitSlop={10}><MaterialCommunityIcons name="logout" size={25} color="#fff" /></Pressable>
+            </View>
           </View>
         </LinearGradient>
       </SafeAreaView>
@@ -83,7 +86,7 @@ function Action({ icon, title, sub, onPress }: any) {
 const s = StyleSheet.create({
   root: { flex: 1, backgroundColor: "#F8FAFC" },
   header: { padding: SPACING.lg, paddingBottom: 22, borderBottomLeftRadius: 26, borderBottomRightRadius: 26 },
-  headerTop: { flexDirection: "row", alignItems: "center" },
+  headerTop: { flexDirection: "row", alignItems: "center" },\n  bell: { width: 40, height: 40, borderRadius: 20, alignItems: "center", justifyContent: "center", position: "relative" },\n  badge: { position: "absolute", right: -4, top: -4, minWidth: 18, height: 18, borderRadius: 9, backgroundColor: "#EF4444", alignItems: "center", justifyContent: "center", paddingHorizontal: 4 },\n  badgeText: { color: "#fff", fontSize: 9, fontWeight: "900" },
   headerIcon: { width: 42, height: 42, borderRadius: 21, backgroundColor: "#fff", alignItems: "center", justifyContent: "center", marginBottom: 7 },
   headerTitle: { color: "#fff", fontWeight: "900", fontSize: 21 },
   headerSub: { color: "rgba(255,255,255,0.84)", fontSize: 12, marginTop: 3, textAlign: "center" },
