@@ -39,7 +39,16 @@ function CarRentalVendorDashboard() {
 
 export default function VendorDashboard() {
   const { user } = useAuth();
-  if (user?.vendor_type === "service") return <ServiceVendorDashboard />;
+
+  if (user?.vendor_type === "service") {
+    return <ServiceVendorDashboard />;
+  }
+
+  return <StoreVendorDashboard />;
+}
+
+function StoreVendorDashboard() {
+  const { user } = useAuth();
   const router = useRouter();
   const { logout } = useAuth();
   const [stats, setStats] = useState<any>(null);
