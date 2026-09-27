@@ -203,6 +203,7 @@ export default function HolidayPage() {
   const [activeMood, setActiveMood] = useState("All");
   const [activeLocation, setActiveLocation] = useState("All");
   const [query, setQuery] = useState("");
+  const [holidayBanner, setHolidayBanner] = useState("https://images.unsplash.com/photo-1516483638261-f4dbaf036963?w=1800&q=85");
 
   const [selected, setSelected] = useState<HolidayItem | null>(null);
   const [selectedPhoto, setSelectedPhoto] = useState(0);
@@ -265,7 +266,11 @@ export default function HolidayPage() {
     setLoading(true);
 
     try {
-      const data = await api.serviceCatalog("holiday");
+      const [data, banner] = await Promise.all([
+        api.serviceCatalog("holiday"),
+        api.holidayBanner(),
+      ]);
+      if (banner?.url) setHolidayBanner(String(banner.url));
       const real = Array.isArray(data) ? data : [];
 
       // Mock content keeps the production UI populated until vendors add live holiday packages.
@@ -370,6 +375,15 @@ export default function HolidayPage() {
   return (
     <SafeAreaView style={s.root} edges={["top"]}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.scroll}>
+        <Animated.View entering={FadeIn.duration(500)} style={s.topBannerWrap}>
+          <Animated.Image source={{ uri: holidayBanner }} style={s.topBanner} resizeMode="cover" />
+          <LinearGradient colors={["rgba(2,132,199,0.02)", "rgba(2,132,199,0.72)"]} style={s.topBannerShade} />
+          <Animated.View entering={FadeInUp.duration(700)} style={s.topBannerText}>
+            <Text style={s.topBannerKicker}>KMT BAZAAR HOLIDAYS</Text>
+            <Text style={s.topBannerTitle}>Your next escape starts here</Text>
+          </Animated.View>
+        </Animated.View>
+
         <LinearGradient
           colors={["#075985", "#0284C7", "#38BDF8", "#BAE6FD"]}
           locations={[0, 0.38, 0.75, 1]}
@@ -891,6 +905,12 @@ const s = StyleSheet.create({
   root: { flex: 1, backgroundColor: "#F7FBFF" },
   scroll: { paddingBottom: 42 },
 
+  topBannerWrap: { height: 150, marginBottom: 0, overflow: "hidden", position: "relative", backgroundColor: "#0C4A6E" },
+  topBanner: { ...StyleSheet.absoluteFillObject, width: "100%", height: "100%" },
+  topBannerShade: { ...StyleSheet.absoluteFillObject },
+  topBannerText: { position: "absolute", left: 20, bottom: 18, right: 20 },
+  topBannerKicker: { color: "#E0F2FE", fontSize: 10, fontWeight: "900", letterSpacing: 1.4 },
+  topBannerTitle: { color: "#fff", fontSize: 24, fontWeight: "900", marginTop: 3 },
   hero: {
     minHeight: 590,
     paddingHorizontal: 16,
