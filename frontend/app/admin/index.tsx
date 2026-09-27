@@ -710,6 +710,14 @@ export default function AdminDashboard() {
                   .duration(400)}
                 style={s.gridWrapper}
               >
+                {a.label === "Service Bookings" && serviceBookingCount > 0 && (
+                  <View pointerEvents="none" style={s.servicePendingNotice}>
+                    <MaterialCommunityIcons name="bell-ring-outline" size={13} color="#fff" />
+                    <Text style={s.servicePendingNoticeText}>
+                      {serviceBookingCount} Pending
+                    </Text>
+                  </View>
+                )}
                 <Pressable
                   testID={`admin-action-${a.label}`}
                   onPress={() =>
@@ -744,10 +752,6 @@ export default function AdminDashboard() {
                   >
                     {a.label}
                   </Text>
-                  {a.label === "Service Bookings" && serviceBookingCount > 0 && (
-                    <View style={s.quickBadge}><Text style={s.quickBadgeText}>{serviceBookingCount}</Text></View>
-                  )}
-
                   <MaterialCommunityIcons
                     name="chevron-right"
                     size={15}
@@ -1358,9 +1362,27 @@ const s = StyleSheet.create({
     lineHeight: 13,
   },
 
-  quickBadge: { position:"absolute", top:7, left:7, minWidth:22, height:22, borderRadius:11, backgroundColor:THEME.danger, alignItems:"center", justifyContent:"center", paddingHorizontal:4 },
+  servicePendingNotice: {
+    position: "absolute",
+    top: -11,
+    alignSelf: "center",
+    minHeight: 24,
+    borderRadius: 12,
+    backgroundColor: THEME.danger,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 4,
+    paddingHorizontal: 9,
+    zIndex: 20,
+    elevation: 4,
+  },
 
-  quickBadgeText: { color:THEME.white, fontSize:9, fontWeight:"900" },
+  servicePendingNoticeText: {
+    color: THEME.white,
+    fontSize: 9,
+    fontWeight: "900",
+  },
 
   gridArrow: {
     position: "absolute",
