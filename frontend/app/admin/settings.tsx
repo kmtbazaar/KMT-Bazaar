@@ -6,7 +6,6 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import Animated, { FadeInDown, FadeInUp } from "react-native-reanimated";
 import { useAuth } from "@/src/AuthContext";
-import { Platform } from "react-native";
 import {
   DEFAULT_ADMIN_ACTIONS,
   DEFAULT_ADMIN_SETTINGS,
