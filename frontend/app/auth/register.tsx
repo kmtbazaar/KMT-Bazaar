@@ -128,7 +128,9 @@ try {
   router.replace(
     user.role === "customer"
       ? "/(tabs)/home"
-      : (`/${user.role}` as any)
+      : user.role === "vendor" && user.vendor_type === "service"
+        ? "/service-vendor"
+        : (`/${user.role}` as any)
   );
 } catch (e: any) {
   setError(e?.message || "Registration failed. Please try again.");
