@@ -2595,6 +2595,42 @@ async def admin_reject_store(store_id: str, _=Depends(require_roles("admin"))):
 
 
 
+async def _notify_service_booking_created(booking: dict):
+    service_type = booking.get("service_type") or ""
+    label = {
+        ServiceType.DAILY_SERVICE.value: "Daily Service",
+        ServiceType.HOLIDAY.value: "Holiday",
+        ServiceType.CAR_RENTAL.value: "Car Rental",
+    }.get(service_type, "Service")
+    service_name = booking.get("service_name") or label
+    customer_name = booking.get("customer_name") or "Customer"
+    body = f"New {label} booking from {customer_name}: {service_name}."
+    base = {
+        "title": f"New {label} booking",
+        "body": body,
+        "type": "service_booking",
+        "read": False,
+        "created_at": now_iso(),
+        "booking_id": booking.get("id"),
+        "service_type": service_type,
+    }
+
+    admins = await db.users.find(
+        {"role": Role.ADMIN.value, "active": {"$ne": False}},
+        {"_id": 0, "id": 1}
+    ).to_list(100)
+    docs = []
+    for admin in admins:
+        docs.append({**base, "id": str(uuid.uuid4()), "user_id": admin["id"]})
+
+    vendor_id = booking.get("vendor_id")
+    if vendor_id and service_type in {ServiceType.HOLIDAY.value, ServiceType.CAR_RENTAL.value}:
+        docs.append({**base, "id": str(uuid.uuid4()), "user_id": vendor_id})
+
+    if docs:
+        await db.notifications.insert_many(docs)
+
+
 # ------------------ SERVICE MARKETPLACE ------------------
 SERVICE_TYPES = {
     "holiday": {
@@ -2846,6 +2882,7 @@ async def pay_service_cart(data: ServicePaymentIn, current=Depends(require_roles
             "updated_at": now_iso(),
         }
         await db.service_bookings.insert_one(dict(doc))
+        await _notify_service_booking_created(doc)
         created.append(doc)
 
     await db.service_carts.delete_one({"user_id": current["id"]})
@@ -2921,6 +2958,7 @@ async def create_service_booking(data: ServiceBookingIn, current=Depends(require
         "updated_at": now_iso(),
     }
     await db.service_bookings.insert_one(dict(doc))
+    await _notify_service_booking_created(doc)
     return doc
 
 
