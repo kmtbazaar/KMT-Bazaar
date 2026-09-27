@@ -140,6 +140,8 @@ type HolidayItem = {
   location?: string;
   category?: string;
   price?: number;
+  adult_price?: number;
+  child_price?: number;
   duration?: string;
   rating?: number;
   reviews?: number;
@@ -154,6 +156,8 @@ function enrichItem(item: HolidayItem, index = 0): HolidayItem {
     image: item.image || mock.image,
     gallery: Array.isArray(item.gallery) && item.gallery.length ? item.gallery : mock.gallery,
     price: Number(item.price) || mock.price,
+    adult_price: Number(item.adult_price) || Number(item.price) || mock.price,
+    child_price: Number(item.child_price) || ((Number(item.adult_price) || Number(item.price) || mock.price) * 0.5),
     duration: item.duration || mock.duration,
     rating: Number(item.rating) || mock.rating,
     reviews: Number(item.reviews) || mock.reviews,
@@ -209,7 +213,8 @@ export default function HolidayPage() {
   const [selectedPhoto, setSelectedPhoto] = useState(0);
   const [bookingOpen, setBookingOpen] = useState(false);
   const [bookingDate, setBookingDate] = useState("");
-  const [travellers, setTravellers] = useState(2);
+  const [adultCount, setAdultCount] = useState(2);
+  const [childCount, setChildCount] = useState(0);
   const [bookingNote, setBookingNote] = useState("");
 
   const planeX = useSharedValue(-170);
@@ -337,7 +342,8 @@ export default function HolidayPage() {
     setSelectedPhoto(0);
     setBookingOpen(true);
     setBookingDate("");
-    setTravellers(2);
+    setAdultCount(2);
+    setChildCount(0);
     setBookingNote("");
   };
 
@@ -357,10 +363,14 @@ export default function HolidayPage() {
         service_id: selected.id,
         booking_date: bookingDate.trim(),
         booking_time: "",
-        quantity: travellers,
+        quantity: adultCount + childCount,
         notes: bookingNote.trim(),
         extra: {
-          travellers,
+          travellers: adultCount + childCount,
+          adult_count: adultCount,
+          child_count: childCount,
+          adult_price: Number(selected.adult_price || selected.price || 0),
+          child_price: Number(selected.child_price || (Number(selected.adult_price || selected.price || 0) * 0.5)),
           package_name: selected.name,
           destination: labelFor(selected),
           package_price: selected.price || 0,
