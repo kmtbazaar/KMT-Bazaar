@@ -46,16 +46,18 @@ export default function CheckoutBar({ route = "/cart", label = "View Cart", bott
         style={styles.cartButton}
         android_ripple={{ color: "rgba(255,255,255,0.15)", borderless: true }}
       >
-        <Animated.View style={[styles.trolleyWrap, cartAnim]}>
+        <Animated.View style={[styles.bagWrap, cartAnim]}>
           <View style={styles.priceBubble}>
             <Text style={styles.priceBubbleText}>₹{subtotal.toFixed(0)}</Text>
           </View>
-          <View style={styles.trolleyCircle}>
-            <MaterialCommunityIcons name="cart-variant" size={27} color="#fff" />
-          </View>
-          <View style={styles.trolleyWheels}>
-            <View style={styles.wheel} />
-            <View style={styles.wheel} />
+          <View style={styles.bagHandle} />
+          <View style={styles.bag}>
+            <View style={styles.bagTop} />
+            <View style={styles.bagBody}>
+              <MaterialCommunityIcons name="shopping-bag-outline" size={21} color="#fff7ed" />
+              <Text style={styles.bagKmt}>KMT</Text>
+              <Text style={styles.bagBazaar}>BAZAAR</Text>
+            </View>
           </View>
           <View style={styles.countBadge}>
             <Text style={styles.countText}>{itemCount}</Text>
@@ -78,30 +80,64 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   cartButton: {
-    width: 56,
-    height: 56,
+    width: 72,
+    height: 78,
     alignItems: "center",
     justifyContent: "center",
-    borderRadius: 28,
     backgroundColor: "transparent",
   },
-  trolleyWrap: {
-    width: 58,
-    height: 62,
+  bagWrap: {
+    width: 70,
+    height: 78,
     alignItems: "center",
     justifyContent: "flex-end",
     position: "relative",
   },
-  trolleyCircle: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    backgroundColor: "#FF6B00",
+  bagHandle: {
+    position: "absolute",
+    top: 12,
+    width: 28,
+    height: 17,
+    borderWidth: 4,
+    borderBottomWidth: 0,
+    borderColor: "#FACC15",
+    borderTopLeftRadius: 14,
+    borderTopRightRadius: 14,
+    zIndex: 1,
+  },
+  bag: {
+    width: 66,
+    height: 60,
+    borderRadius: 12,
+    overflow: "hidden",
+    backgroundColor: "#DC2626",
+    borderWidth: 2,
+    borderColor: "#FACC15",
+    ...shadow.card,
+  },
+  bagTop: {
+    height: 12,
+    backgroundColor: "#FACC15",
+  },
+  bagBody: {
+    flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    borderWidth: 2,
-    borderColor: "#fff",
-    ...shadow.card,
+    paddingTop: 2,
+  },
+  bagKmt: {
+    color: "#FFF7ED",
+    fontSize: 13,
+    lineHeight: 14,
+    fontWeight: "900",
+    letterSpacing: 0.6,
+  },
+  bagBazaar: {
+    color: "#FDE68A",
+    fontSize: 7,
+    lineHeight: 9,
+    fontWeight: "900",
+    letterSpacing: 1.1,
   },
   priceBubble: {
     position: "absolute",
@@ -119,12 +155,11 @@ const styles = StyleSheet.create({
     ...shadow.soft,
   },
   priceBubbleText: { color: "#FF6B00", fontSize: 10, fontWeight: "900" },
-  trolleyWheels: { position: "absolute", bottom: 0, width: 28, flexDirection: "row", justifyContent: "space-between" },
-  wheel: { width: 6, height: 6, borderRadius: 3, backgroundColor: "#334155", borderWidth: 1, borderColor: "#fff" },
+
   countBadge: {
     position: "absolute",
-    top: 18,
-    right: -1,
+    top: 17,
+    right: -2,
     minWidth: 19,
     height: 19,
     paddingHorizontal: 4,
@@ -136,8 +171,5 @@ const styles = StyleSheet.create({
     borderColor: "#fff",
   },
   countText: { color: "#fff", fontWeight: "900", fontSize: 10 },
-  itemsText: { color: "rgba(255,255,255,0.85)", fontSize: 11, fontWeight: "600" },
-  priceText: { color: "#fff", fontSize: 15, fontWeight: "800" },
-  right: { flexDirection: "row", alignItems: "center", gap: 6 },
-  cta: { color: "#fff", fontWeight: "800", fontSize: 14 },
+
 });
