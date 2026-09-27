@@ -200,12 +200,12 @@ export default function VendorServices() {
                   <Field label="Category" value={f.category} onChange={(v:any)=>setF({...f,category:v})} placeholder="Beach / Mountains / Spiritual" />
                   <View style={m.two}>
                     <Field label="Duration" value={f.duration} onChange={(v:any)=>setF({...f,duration:v})} placeholder="4 nights / 5 days" />
-                    <View style={m.two}>
-                      <Field label="Adult Price / Person (₹)" value={f.adult_price || f.price} onChange={(v:any)=>setF({...f,adult_price:v,price:v})} placeholder="14999" keyboardType="numeric" />
-                      <Field label="Child Price / Person (₹)" value={f.child_price} onChange={(v:any)=>setF({...f,child_price:v})} placeholder="7499" keyboardType="numeric" />
-                    </View>
-                    <Text style={m.priceHint}>Child price can be set separately. Default is 50% of adult price.</Text>
                   </View>
+                  <View style={m.two}>
+                    <Field label="Adult Price / Person (₹)" value={f.adult_price || f.price} onChange={(v:any)=>setF({...f,adult_price:v,price:v})} placeholder="14999" keyboardType="numeric" />
+                    <Field label="Child Price / Person (₹)" value={f.child_price} onChange={(v:any)=>setF({...f,child_price:v})} placeholder="7499" keyboardType="numeric" />
+                  </View>
+                  <Text style={m.priceHint}>Child price is separate and defaults to 50% of adult price.</Text>
                   <Field label="Tag" value={f.tag} onChange={(v:any)=>setF({...f,tag:v})} placeholder="Best value" />
                   <Field label="Description" value={f.description} onChange={(v:any)=>setF({...f,description:v})} placeholder="Package details..." multiline />
                   <Field label="Includes" value={f.includesText} onChange={(v:any)=>setF({...f,includesText:v})} placeholder="Hotel, Breakfast, Transfer, Sightseeing" />
