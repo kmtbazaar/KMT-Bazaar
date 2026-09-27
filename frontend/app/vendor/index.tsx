@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState, useRef } from "react";
-import { View, Text, StyleSheet, Pressable, ScrollView, RefreshControl, TextInput, Modal, Alert, Switch, Animated, BackHandler, ActivityIndicator } from "react-native";
+import { View, Text, StyleSheet, Pressable, ScrollView, RefreshControl, TextInput, Modal, Alert, Switch, Animated, BackHandler, ActivityIndicator, Platform } from "react-native";
 import { Image } from "expo-image";
 import * as ImagePicker from "expo-image-picker"; 
 import { useFocusEffect, useRouter } from "expo-router";
@@ -18,10 +18,11 @@ const ACTIONS = [
   { icon: "chart-line", label: "Earnings", path: "/vendor/earnings", color: "#16A34A" },
 ];
 
-export default function ServiceVendorDashboard() {
+function ServiceVendorDashboard() {
   const { user } = useAuth();
+  if (user?.service_type === "holiday") return <HolidayVendorDashboard />;
   if (user?.service_type === "car_rental") return <CarRentalVendorDashboard />;
-  return <HolidayVendorDashboard />;
+  return <View style={{ flex: 1, backgroundColor: "#fff" }} />;
 }
 
 function HolidayVendorDashboard() {
@@ -36,7 +37,7 @@ function CarRentalVendorDashboard() {
   return <CarRentalVendorDashboardScreen user={user} logout={logout} />;
 }
 
-function VendorDashboard() {
+export default function VendorDashboard() {
   const { user } = useAuth();
   if (user?.vendor_type === "service") return <ServiceVendorDashboard />;
   const router = useRouter();
