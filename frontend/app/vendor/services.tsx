@@ -12,7 +12,7 @@ import ImageUploader from "@/src/components/ImageUploader";
 const EMPTY = {
   name: "", vendor_name: "", description: "", image: "", gallery: [],
   location: "", category: "", type: "", phone: "", order: "99", active: true,
-  price: "", adult_price: "", child_price: "", unit: "day", duration: "", seats: "", bags: "",
+  price: "", adult_price: "", child_price: "", unit: "day", duration: "", nights: "4", days: "5", seats: "", bags: "",
   transmission: "Automatic", fuel: "Petrol", tag: "", includesText: ""
 };
 
@@ -46,6 +46,8 @@ export default function VendorServices() {
     adult_price: String(x?.adult_price ?? x?.price ?? ""),
     child_price: String(x?.child_price ?? ((Number(x?.adult_price ?? x?.price) || 0) * 0.5 || "")),
     duration: String(x?.duration ?? ""),
+    nights: String(x?.nights ?? ((String(x?.duration || "").match(/(\d+)\s*N/i)?.[1]) || "4")),
+    days: String(x?.days ?? ((String(x?.duration || "").match(/(\d+)\s*D/i)?.[1]) || "5")),
     seats: String(x?.seats ?? ""),
     bags: String(x?.bags ?? ""),
     transmission: x?.transmission || "Automatic",
@@ -71,6 +73,8 @@ export default function VendorServices() {
       return;
     }
     const includes = String(f.includesText || "").split(",").map((x: string) => x.trim()).filter(Boolean);
+    const nights = Math.max(0, Number(f.nights) || 0);
+    const days = Math.max(0, Number(f.days) || 0);
     const data = {
       name: f.name.trim(),
       vendor_name: String(f.vendor_name || user?.name || "").trim(),
@@ -87,7 +91,9 @@ export default function VendorServices() {
       adult_price: Number(f.adult_price || f.price) || 0,
       child_price: isCar ? 0 : (Number(f.child_price) || ((Number(f.adult_price || f.price) || 0) * 0.5)),
       unit: isCar ? "day" : "per person",
-      duration: String(f.duration || "").trim(),
+      duration: isCar ? String(f.duration || "").trim() : `${nights} ${nights === 1 ? "night" : "nights"} / ${days} ${days === 1 ? "day" : "days"}`,
+      nights: isCar ? 0 : nights,
+      days: isCar ? 0 : days,
       seats: isCar ? (Number(f.seats) || 0) : 0,
       bags: isCar ? (Number(f.bags) || 0) : 0,
       transmission: isCar ? String(f.transmission || "") : "",
@@ -199,8 +205,10 @@ export default function VendorServices() {
                   <Field label="Destination / Location" value={f.location} onChange={(v:any)=>setF({...f,location:v})} placeholder="Goa" />
                   <Field label="Category" value={f.category} onChange={(v:any)=>setF({...f,category:v})} placeholder="Beach / Mountains / Spiritual" />
                   <View style={m.two}>
-                    <Field label="Duration" value={f.duration} onChange={(v:any)=>setF({...f,duration:v})} placeholder="4 nights / 5 days" />
+                    <Field label="Nights" value={f.nights} onChange={(v:any)=>setF({...f,nights:v})} placeholder="4" keyboardType="numeric" />
+                    <Field label="Days" value={f.days} onChange={(v:any)=>setF({...f,days:v})} placeholder="5" keyboardType="numeric" />
                   </View>
+                  <Text style={m.priceHint}>Holiday duration will show as “N nights / D days” on the customer page.</Text>
                   <View style={m.two}>
                     <Field label="Adult Price / Person (₹)" value={f.adult_price || f.price} onChange={(v:any)=>setF({...f,adult_price:v,price:v})} placeholder="14999" keyboardType="numeric" />
                     <Field label="Child Price / Person (₹)" value={f.child_price} onChange={(v:any)=>setF({...f,child_price:v})} placeholder="7499" keyboardType="numeric" />
@@ -290,6 +298,7 @@ const m=StyleSheet.create({
   two:{flexDirection:"row",gap:9},
   twoField:{flex:1},
   galleryTitle:{fontSize:13,fontWeight:"900",color:COLORS.text,marginTop:6,marginBottom:8},
+  priceHint:{fontSize:10,color:COLORS.textMuted,marginBottom:8},
   selectWrap:{flexDirection:"row",flexWrap:"wrap",gap:7},
   chip:{paddingHorizontal:12,paddingVertical:9,borderRadius:20,borderWidth:1,borderColor:COLORS.border,backgroundColor:"#fff"},
   chipActive:{backgroundColor:COLORS.brand,borderColor:COLORS.brand},
