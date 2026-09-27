@@ -1038,9 +1038,9 @@ const s = StyleSheet.create({
   ratingRow: { marginTop: 8, flexDirection: "row", alignItems: "center", gap: 6 },
   ratingPill: { flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 7, paddingVertical: 4, borderRadius: 999, backgroundColor: "rgba(255,255,255,.92)" },
   ratingText: { color: "#0F172A", fontSize: 10, fontWeight: "900" },
-  reviewText: { color: "rgba(255,255,255,.78)", fontSize: 9, fontWeight: "700" },
-  dotText: { color: "rgba(255,255,255,.55)", fontSize: 9 },
-  durationText: { color: "rgba(255,255,255,.80)", fontSize: 9, fontWeight: "700" },
+  reviewText: { color: "rgba(255,255,255,.92)", fontSize: 13, fontWeight: "900" },
+  dotText: { color: "rgba(255,255,255,.65)", fontSize: 12 },
+  durationText: { color: "rgba(255,255,255,.92)", fontSize: 13, fontWeight: "900" },
 
   packageBody: { padding: 12 },
   thumbRow: { flexDirection: "row", gap: 6 },
