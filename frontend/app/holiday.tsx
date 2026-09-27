@@ -412,8 +412,8 @@ export default function HolidayPage() {
     <SafeAreaView style={s.root} edges={["top"]}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.scroll}>
         <LinearGradient
-          colors={["#075985", "#0284C7", "#38BDF8", "#BAE6FD"]}
-          locations={[0, 0.38, 0.75, 1]}
+          colors={["#0369A1", "#0284C7"]}
+          locations={[0, 1]}
           style={s.hero}
         >
           <Animated.View style={[s.sun, sunStyle]} />
@@ -982,16 +982,16 @@ export default function HolidayPage() {
 }
 
 const s = StyleSheet.create({
-  root: { flex: 1, backgroundColor: "#F7FBFF" },
-  scroll: { paddingBottom: 42 },
+  root: { flex: 1, backgroundColor: "#FFFFFF" },
+  scroll: { paddingBottom: 32 },
 
-  topBannerWrap: { height: 150, marginTop: 12, marginBottom: 2, overflow: "hidden", position: "relative", backgroundColor: "#0C4A6E", borderRadius: 18 },
+  topBannerWrap: { height: 158, marginTop: 14, marginBottom: 2, overflow: "hidden", position: "relative", backgroundColor: "#E0F2FE", borderRadius: 20, borderWidth: 1, borderColor: "rgba(255,255,255,.55)" },
   topBannerMove: { ...StyleSheet.absoluteFillObject, width: "100%", height: "100%" },
   topBanner: { width: "100%", height: "100%" },
-  topBannerShade: { ...StyleSheet.absoluteFillObject },
+  topBannerShade: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(15,23,42,.08)" },
   topBannerText: { position: "absolute", left: 20, bottom: 18, right: 20 },
-  topBannerKicker: { color: "#E0F2FE", fontSize: 10, fontWeight: "900", letterSpacing: 1.4 },
-  topBannerTitle: { color: "#fff", fontSize: 24, fontWeight: "900", marginTop: 3 },
+  topBannerKicker: { color: "#fff", fontSize: 10, fontWeight: "900", letterSpacing: 1.4 },
+  topBannerTitle: { color: "#fff", fontSize: 23, lineHeight: 27, fontWeight: "900", marginTop: 3 },
   hero: {
     minHeight: 590,
     paddingHorizontal: 16,
@@ -1023,15 +1023,15 @@ const s = StyleSheet.create({
   plane: { position: "absolute", top: 112, left: 0, zIndex: 20, elevation: 20, flexDirection: "row", alignItems: "center" },
   flightTrail: { width: 80, height: 2, marginRight: 8, borderRadius: 2, backgroundColor: "rgba(255,255,255,.65)" },
 
-  heroCopy: { marginTop: 20, paddingRight: 12 },
+  heroCopy: { marginTop: 16, paddingRight: 8 },
   heroTag: {
     alignSelf: "flex-start", flexDirection: "row", alignItems: "center", gap: 5,
     paddingHorizontal: 10, paddingVertical: 6, borderRadius: 999,
     backgroundColor: "rgba(255,255,255,.24)", borderWidth: 1, borderColor: "rgba(255,255,255,.28)",
   },
   heroTagText: { color: "#0C4A6E", fontSize: 10, fontWeight: "900", letterSpacing: 1.05 },
-  heroTitle: { marginTop: 12, color: "#fff", fontSize: 34, lineHeight: 37, fontWeight: "900", letterSpacing: -0.5 },
-  heroSub: { marginTop: 13, color: "rgba(255,255,255,.93)", fontSize: 14, lineHeight: 21, maxWidth: 560 },
+  heroTitle: { marginTop: 10, color: "#fff", fontSize: 31, lineHeight: 35, fontWeight: "900", letterSpacing: -0.5 },
+  heroSub: { marginTop: 10, color: "rgba(255,255,255,.90)", fontSize: 13, lineHeight: 19, maxWidth: 560 },
 
   searchCard: {
     minHeight: 54, marginTop: 20, paddingHorizontal: 8, paddingRight: 12,
@@ -1051,7 +1051,7 @@ const s = StyleSheet.create({
   statLabel: { marginTop: 2, color: "rgba(255,255,255,.78)", fontSize: 9, fontWeight: "700", textAlign: "center" },
   statDivider: { width: 1, height: 28, backgroundColor: "rgba(255,255,255,.18)" },
 
-  body: { padding: 16, backgroundColor: "#F7FBFF" },
+  body: { padding: 16, backgroundColor: "#FFFFFF" },
   sectionHead: { flexDirection: "row", alignItems: "center", gap: 12, marginBottom: 2 },
   eyebrow: { color: "#0284C7", fontSize: 10, fontWeight: "900", letterSpacing: 1.45 },
   sectionTitle: { marginTop: 4, color: "#0F172A", fontSize: 26, lineHeight: 31, fontWeight: "900" },
@@ -1069,9 +1069,9 @@ const s = StyleSheet.create({
 
   filterRowSmall: { gap: 8, paddingBottom: 18 },
   locationPill: { flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 11, paddingVertical: 8, borderRadius: 999, backgroundColor: "#fff", borderWidth: 1, borderColor: "#E2E8F0" },
-  locationPillActive: { backgroundColor: "#FEF3C7", borderColor: "#FDE68A" },
+  locationPillActive: { backgroundColor: "#E0F2FE", borderColor: "#7DD3FC" },
   locationText: { color: "#64748B", fontSize: 10, fontWeight: "800" },
-  locationTextActive: { color: "#92400E" },
+  locationTextActive: { color: "#0369A1" },
 
   loadingBox: { alignItems: "center", paddingVertical: 82 },
   loadingTitle: { marginTop: 13, color: "#0F172A", fontSize: 17, fontWeight: "900" },
@@ -1091,7 +1091,7 @@ const s = StyleSheet.create({
     overflow: "hidden", borderRadius: 24, backgroundColor: "#fff", borderWidth: 1, borderColor: "#DCECF7",
     shadowColor: "#0C4A6E", shadowOpacity: 0.08, shadowRadius: 16, shadowOffset: { width: 0, height: 8 }, elevation: 3,
   },
-  packageImageWrap: { height: 292, position: "relative" },
+  packageImageWrap: { height: 250, position: "relative" },
   packageImage: { width: "100%", height: "100%" },
   imageShade: { position: "absolute", left: 0, right: 0, bottom: 0, height: 190 },
   topBadgeRow: { position: "absolute", top: 14, left: 14, right: 14, flexDirection: "row", justifyContent: "space-between" },
@@ -1117,9 +1117,9 @@ const s = StyleSheet.create({
   priceCaption: { color: "#64748B", fontSize: 9, fontWeight: "700" },
   price: { marginTop: 1, color: "#0F172A", fontSize: 21, fontWeight: "900" },
   priceSub: { color: "#64748B", fontSize: 9, fontWeight: "700" },
-  viewCircle: { width: 42, height: 42, borderRadius: 21, backgroundColor: "#FF6B00", alignItems: "center", justifyContent: "center" },
+  viewCircle: { width: 42, height: 42, borderRadius: 21, backgroundColor: "#0284C7", alignItems: "center", justifyContent: "center" },
 
-  listCard: { marginBottom: 12, overflow: "hidden", flexDirection: "row", borderRadius: 20, backgroundColor: "#fff", borderWidth: 1, borderColor: "#E2E8F0" },
+  listCard: { marginBottom: 12, overflow: "hidden", flexDirection: "row", borderRadius: 18, backgroundColor: "#fff", borderWidth: 1, borderColor: "#E2E8F0" },
   listImage: { width: 112, minHeight: 166, backgroundColor: "#E2E8F0" },
   listContent: { flex: 1, padding: 12 },
   listMetaRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8 },
@@ -1136,7 +1136,7 @@ const s = StyleSheet.create({
 
   styleSection: { marginTop: 22 },
   inspirationRow: { gap: 10, paddingBottom: 2 },
-  inspirationCard: { width: 205, height: 145, borderRadius: 18, overflow: "hidden", position: "relative", backgroundColor: "#E2E8F0" },
+  inspirationCard: { width: 205, height: 145, borderRadius: 16, overflow: "hidden", position: "relative", backgroundColor: "#E2E8F0" },
   inspirationImage: { width: "100%", height: "100%" },
   inspirationShade: { position: "absolute", left: 0, right: 0, bottom: 0, height: 90 },
   inspirationIcon: { position: "absolute", top: 11, right: 11, width: 34, height: 34, borderRadius: 17, backgroundColor: "rgba(15,23,42,.55)", alignItems: "center", justifyContent: "center" },
@@ -1156,7 +1156,7 @@ const s = StyleSheet.create({
   stepText: { marginTop: 2, color: "rgba(255,255,255,.70)", fontSize: 10, lineHeight: 15 },
 
   trustRow: { marginTop: 12, flexDirection: "row", gap: 10 },
-  trustCard: { flex: 1, minHeight: 154, padding: 13, borderRadius: 18, backgroundColor: "#fff", borderWidth: 1, borderColor: "#E2E8F0" },
+  trustCard: { flex: 1, minHeight: 154, padding: 13, borderRadius: 16, backgroundColor: "#fff", borderWidth: 1, borderColor: "#E2E8F0" },
   trustIcon: { width: 39, height: 39, borderRadius: 13, backgroundColor: "#E0F2FE", alignItems: "center", justifyContent: "center" },
   trustTitle: { marginTop: 11, color: "#0F172A", fontSize: 12, lineHeight: 16, fontWeight: "900" },
   trustText: { marginTop: 5, color: "#64748B", fontSize: 10, lineHeight: 16 },
