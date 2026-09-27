@@ -4,7 +4,7 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useCart } from "@/src/CartContext";
 import Animated, { useAnimatedStyle, useSharedValue, withSequence, withSpring, withTiming } from "react-native-reanimated";
-import { COLORS, RADIUS, SPACING, shadow } from "@/src/theme";
+import { shadow } from "@/src/theme";
 
 interface Props {
   /** override destination route; defaults to /cart */
@@ -43,36 +43,24 @@ export default function CheckoutBar({ route = "/cart", label = "View Cart", bott
       <Pressable
         testID="checkout-bar-btn"
         onPress={() => router.push(route as any)}
-        style={styles.bar}
-        android_ripple={{ color: "rgba(255,255,255,0.15)" }}
+        style={styles.cartButton}
+        android_ripple={{ color: "rgba(255,255,255,0.15)", borderless: true }}
       >
-        <View style={styles.left}>
-          <Animated.View style={[styles.trolleyWrap, cartAnim]}>
-            <View style={styles.priceBubble}>
-              <Text style={styles.priceBubbleText}>₹{subtotal.toFixed(0)}</Text>
-            </View>
-            <View style={styles.trolleyCircle}>
-              <MaterialCommunityIcons name="cart-variant" size={29} color="#fff" />
-            </View>
-            <View style={styles.trolleyWheels}>
-              <View style={styles.wheel} />
-              <View style={styles.wheel} />
-            </View>
-          </Animated.View>
-          <View style={styles.countPill}>
+        <Animated.View style={[styles.trolleyWrap, cartAnim]}>
+          <View style={styles.priceBubble}>
+            <Text style={styles.priceBubbleText}>₹{subtotal.toFixed(0)}</Text>
+          </View>
+          <View style={styles.trolleyCircle}>
+            <MaterialCommunityIcons name="cart-variant" size={27} color="#fff" />
+          </View>
+          <View style={styles.trolleyWheels}>
+            <View style={styles.wheel} />
+            <View style={styles.wheel} />
+          </View>
+          <View style={styles.countBadge}>
             <Text style={styles.countText}>{itemCount}</Text>
           </View>
-          <View>
-            <Text style={styles.itemsText}>
-              {itemCount} {itemCount === 1 ? "item" : "items"}
-            </Text>
-            <Text style={styles.priceText}>₹{subtotal.toFixed(0)}</Text>
-          </View>
-        </View>
-        <View style={styles.right}>
-          <Text style={styles.cta}>{label}</Text>
-          <MaterialCommunityIcons name="arrow-right" size={18} color="#fff" />
-        </View>
+        </Animated.View>
       </Pressable>
     </View>
   );
@@ -81,41 +69,73 @@ export default function CheckoutBar({ route = "/cart", label = "View Cart", bott
 const styles = StyleSheet.create({
   wrap: {
     position: "absolute",
-    left: 0,
-    right: 0,
-    paddingHorizontal: SPACING.md,
-    paddingVertical: 6,
+    right: 10,
+    padding: 0,
     zIndex: 50,
-  },
-  bar: {
-    flexDirection: "row",
+    width: 62,
+    height: 62,
     alignItems: "center",
-    justifyContent: "space-between",
-    backgroundColor: COLORS.brand,
-    paddingVertical: 12,
-    paddingHorizontal: 14,
-    borderRadius: RADIUS.md,
-    ...Platform.select({
-      ios: shadow.card,
-      android: shadow.card,
-    }),
+    justifyContent: "center",
   },
-  left: { flexDirection: "row", alignItems: "center", gap: 10 },
-  trolleyWrap: { width: 62, height: 58, alignItems: "center", justifyContent: "flex-end", position: "relative" },
-  trolleyCircle: { width: 46, height: 46, borderRadius: 23, backgroundColor: "#FF6B00", alignItems: "center", justifyContent: "center", borderWidth: 2, borderColor: "rgba(255,255,255,0.9)", ...shadow.soft },
-  priceBubble: { position: "absolute", top: -2, minWidth: 48, paddingHorizontal: 7, height: 22, borderRadius: 11, backgroundColor: "#fff", alignItems: "center", justifyContent: "center", borderWidth: 1.5, borderColor: "#FF6B00", zIndex: 3 },
-  priceBubbleText: { color: "#FF6B00", fontSize: 11, fontWeight: "900" },
+  cartButton: {
+    width: 56,
+    height: 56,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 28,
+    backgroundColor: "transparent",
+  },
+  trolleyWrap: {
+    width: 58,
+    height: 62,
+    alignItems: "center",
+    justifyContent: "flex-end",
+    position: "relative",
+  },
+  trolleyCircle: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: "#FF6B00",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 2,
+    borderColor: "#fff",
+    ...shadow.card,
+  },
+  priceBubble: {
+    position: "absolute",
+    top: -3,
+    minWidth: 48,
+    paddingHorizontal: 7,
+    height: 21,
+    borderRadius: 11,
+    backgroundColor: "#fff",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1.5,
+    borderColor: "#FF6B00",
+    zIndex: 3,
+    ...shadow.soft,
+  },
+  priceBubbleText: { color: "#FF6B00", fontSize: 10, fontWeight: "900" },
   trolleyWheels: { position: "absolute", bottom: 0, width: 28, flexDirection: "row", justifyContent: "space-between" },
   wheel: { width: 6, height: 6, borderRadius: 3, backgroundColor: "#334155", borderWidth: 1, borderColor: "#fff" },
-  countPill: {
-    backgroundColor: "rgba(255,255,255,0.25)",
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: RADIUS.pill,
-    minWidth: 28,
+  countBadge: {
+    position: "absolute",
+    top: 18,
+    right: -1,
+    minWidth: 19,
+    height: 19,
+    paddingHorizontal: 4,
+    borderRadius: 10,
+    backgroundColor: "#0f172a",
     alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1.5,
+    borderColor: "#fff",
   },
-  countText: { color: "#fff", fontWeight: "800", fontSize: 13 },
+  countText: { color: "#fff", fontWeight: "900", fontSize: 10 },
   itemsText: { color: "rgba(255,255,255,0.85)", fontSize: 11, fontWeight: "600" },
   priceText: { color: "#fff", fontSize: 15, fontWeight: "800" },
   right: { flexDirection: "row", alignItems: "center", gap: 6 },
