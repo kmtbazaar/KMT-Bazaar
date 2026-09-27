@@ -1,9 +1,10 @@
-import React,{useMemo,useState}from"react";
+import React,{useEffect,useMemo,useState}from"react";
 import{View,Text,StyleSheet,ScrollView,Pressable,TextInput}from"react-native";
 import{useRouter}from"expo-router";
 import{SafeAreaView}from"react-native-safe-area-context";
 import{MaterialCommunityIcons}from"@expo/vector-icons";
 import{Image}from"expo-image";
+import{api}from"@/src/api";
 
 const SERVICES=[
 {id:"mock-daily-plumber",name:"Plumber",category:"Plumbing",vendor_name:"KMT Home Experts",location:"Patna",price:399,unit:"visit",rating:4.8,reviews:182,icon:"pipe",description:"Tap repair, leakage, bathroom fitting and pipeline work.",image:"https://images.unsplash.com/photo-1585704032915-c3400ca199e7?w=1200&q=85"},
@@ -18,8 +19,10 @@ const SERVICES=[
 const QUICK=["Plumber","Mistri","Labour","AC Technician","Electrician","Carpenter"];
 
 export default function DailyServices(){
- const router=useRouter(),[q,setQ]=useState("");
- const filtered=useMemo(()=>{const n=q.trim().toLowerCase();if(!n)return SERVICES;return SERVICES.filter(x=>[x.name,x.category,x.vendor_name,x.location,x.description].join(" ").toLowerCase().includes(n))},[q]);
+ const router=useRouter(),[q,setQ]=useState(""),[liveServices,setLiveServices]=useState<any[]|null>(null);
+ useEffect(()=>{let mounted=true;(async()=>{try{const data=await api.serviceCatalog("daily_service");if(mounted&&Array.isArray(data)&&data.length)setLiveServices(data)}catch(e){console.log("daily services catalog",e)}})();return()=>{mounted=false}},[]);
+ const source=liveServices?.length?liveServices:SERVICES;
+ const filtered=useMemo(()=>{const n=q.trim().toLowerCase();if(!n)return source;return source.filter((x:any)=>[x.name,x.category,x.vendor_name,x.location,x.description].join(" ").toLowerCase().includes(n))},[q,source]);
  return <SafeAreaView style={s.root}><ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.page}>
  <View style={s.hero}><View style={s.heroTop}><View><Text style={s.kicker}>KMT BAZAAR · HOME SERVICES</Text><Text style={s.heroTitle}>Skilled help,{"\n"}right at your door.</Text></View><View style={s.heroIcon}><MaterialCommunityIcons name="tools" size={28} color="#fff"/></View></View><Text style={s.heroSub}>Find trusted local professionals for everyday repairs, home work and urgent help.</Text>
  <View style={s.search}><MaterialCommunityIcons name="magnify" size={23} color="#64748b"/><TextInput value={q} onChangeText={setQ} placeholder="Search plumber, labour, mistri, electrician..." placeholderTextColor="#94a3b8" style={s.searchInput}/>{q?<Pressable onPress={()=>setQ("")}><MaterialCommunityIcons name="close-circle" size={21} color="#94a3b8"/></Pressable>:null}</View></View>
