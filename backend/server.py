@@ -810,10 +810,18 @@ async def get_holiday_banner():
             "service_type": ServiceType.HOLIDAY.value,
             "is_active": {"$ne": False},
         },
-        {"_id": 0, "name": 1, "holiday_banner_url": 1}
+        {"_id": 0, "name": 1, "holiday_banner_url": 1, "holiday_banner_urls": 1}
     )
+    urls = [str(x).strip() for x in ((vendor or {}).get("holiday_banner_urls") or []) if str(x).strip()]
+    if not urls:
+        legacy = str((vendor or {}).get("holiday_banner_url") or "").strip()
+        if legacy:
+            urls = [legacy]
+    if not urls:
+        urls = [DEFAULT_HOLIDAY_BANNER_URL]
     return {
-        "url": (vendor or {}).get("holiday_banner_url") or DEFAULT_HOLIDAY_BANNER_URL,
+        "url": urls[0],
+        "urls": urls,
         "vendor_name": (vendor or {}).get("name"),
     }
 
@@ -3099,8 +3107,48 @@ async def vendor_service_stats(current=Depends(require_roles("vendor"))):
         "payout": payout,
     }
 
+@api.get("/vendor/holiday/banner")
+async def vendor_holiday_banner(current=Depends(require_roles("vendor"))):
+    _require_vendor_type(current, "service")
+    if current.get("service_type") != ServiceType.HOLIDAY.value:
+        raise HTTPException(status_code=403, detail="Holiday Vendor access required")
+    user = await db.users.find_one(
+        {"id": current["id"]},
+        {"_id": 0, "name": 1, "holiday_banner_url": 1, "holiday_banner_urls": 1}
+    )
+    urls = [str(x).strip() for x in ((user or {}).get("holiday_banner_urls") or []) if str(x).strip()]
+    if not urls:
+        legacy = str((user or {}).get("holiday_banner_url") or "").strip()
+        if legacy:
+            urls = [legacy]
+    return {"url": urls[0] if urls else "", "urls": urls, "vendor_name": current.get("name")}
+
 @api.put("/vendor/holiday/banner")
 async def update_holiday_banner(
+    data: Dict[str, Any],
+    current=Depends(require_roles("vendor"))
+):
+    _require_vendor_type(current, "service")
+    if current.get("service_type") != ServiceType.HOLIDAY.value:
+        raise HTTPException(status_code=403, detail="Holiday Vendor access required")
+    raw_urls = data.get("urls")
+    if isinstance(raw_urls, list):
+        urls = [str(x).strip() for x in raw_urls if str(x).strip()]
+    else:
+        url = str(data.get("url") or "").strip()
+        urls = [url] if url else []
+    if len(urls) > 20:
+        raise HTTPException(status_code=400, detail="Maximum 20 holiday banners allowed")
+    if any(len(url) > 2000 for url in urls):
+        raise HTTPException(status_code=400, detail="Banner image URL is too long")
+    await db.users.update_one(
+        {"id": current["id"]},
+        {"$set": {"holiday_banner_urls": urls, "holiday_banner_url": urls[0] if urls else "", "updated_at": now_iso()}}
+    )
+    return {"url": urls[0] if urls else "", "urls": urls, "vendor_name": current.get("name")}
+
+@api.post("/vendor/holiday/banner")
+async def add_holiday_banner(
     data: Dict[str, Any],
     current=Depends(require_roles("vendor"))
 ):
@@ -3112,11 +3160,44 @@ async def update_holiday_banner(
         raise HTTPException(status_code=400, detail="Banner image URL is required")
     if len(url) > 2000:
         raise HTTPException(status_code=400, detail="Banner image URL is too long")
+    user = await db.users.find_one({"id": current["id"]}, {"_id": 0, "holiday_banner_url": 1, "holiday_banner_urls": 1})
+    urls = [str(x).strip() for x in ((user or {}).get("holiday_banner_urls") or []) if str(x).strip()]
+    if not urls:
+        legacy = str((user or {}).get("holiday_banner_url") or "").strip()
+        if legacy:
+            urls = [legacy]
+    if len(urls) >= 20:
+        raise HTTPException(status_code=400, detail="Maximum 20 holiday banners allowed")
+    if url not in urls:
+        urls.append(url)
     await db.users.update_one(
         {"id": current["id"]},
-        {"$set": {"holiday_banner_url": url, "updated_at": now_iso()}}
+        {"$set": {"holiday_banner_urls": urls, "holiday_banner_url": urls[0] if urls else "", "updated_at": now_iso()}}
     )
-    return {"url": url, "vendor_name": current.get("name")}
+    return {"url": urls[0] if urls else "", "urls": urls, "vendor_name": current.get("name")}
+
+@api.delete("/vendor/holiday/banner/{index}")
+async def delete_holiday_banner(
+    index: int,
+    current=Depends(require_roles("vendor"))
+):
+    _require_vendor_type(current, "service")
+    if current.get("service_type") != ServiceType.HOLIDAY.value:
+        raise HTTPException(status_code=403, detail="Holiday Vendor access required")
+    user = await db.users.find_one({"id": current["id"]}, {"_id": 0, "holiday_banner_url": 1, "holiday_banner_urls": 1})
+    urls = [str(x).strip() for x in ((user or {}).get("holiday_banner_urls") or []) if str(x).strip()]
+    if not urls:
+        legacy = str((user or {}).get("holiday_banner_url") or "").strip()
+        if legacy:
+            urls = [legacy]
+    if index < 0 or index >= len(urls):
+        raise HTTPException(status_code=404, detail="Banner not found")
+    urls.pop(index)
+    await db.users.update_one(
+        {"id": current["id"]},
+        {"$set": {"holiday_banner_urls": urls, "holiday_banner_url": urls[0] if urls else "", "updated_at": now_iso()}}
+    )
+    return {"url": urls[0] if urls else "", "urls": urls, "vendor_name": current.get("name")}
 
 
 @api.get("/vendor/services")
