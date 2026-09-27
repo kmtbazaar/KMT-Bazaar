@@ -1014,16 +1014,16 @@ const s = StyleSheet.create({
     backgroundColor: "rgba(255,255,255,.24)", borderWidth: 1, borderColor: "rgba(255,255,255,.28)",
   },
   heroTagText: { color: "#0C4A6E", fontSize: 10, fontWeight: "900", letterSpacing: 1.05 },
-  heroTitle: { marginTop: 12, color: "#fff", fontSize: 42, lineHeight: 44, fontWeight: "900", letterSpacing: -0.7 },
+  heroTitle: { marginTop: 12, color: "#fff", fontSize: 34, lineHeight: 37, fontWeight: "900", letterSpacing: -0.5 },
   heroSub: { marginTop: 13, color: "rgba(255,255,255,.93)", fontSize: 14, lineHeight: 21, maxWidth: 560 },
 
   searchCard: {
-    minHeight: 62, marginTop: 24, paddingHorizontal: 9, paddingRight: 14,
-    borderRadius: 19, backgroundColor: "#fff", flexDirection: "row", alignItems: "center", gap: 10,
+    minHeight: 54, marginTop: 20, paddingHorizontal: 8, paddingRight: 12,
+    borderRadius: 16, backgroundColor: "#fff", flexDirection: "row", alignItems: "center", gap: 10,
     shadowColor: "#0C4A6E", shadowOpacity: 0.14, shadowRadius: 22, shadowOffset: { width: 0, height: 11 }, elevation: 7,
   },
-  searchIcon: { width: 44, height: 44, borderRadius: 15, alignItems: "center", justifyContent: "center", backgroundColor: "#E0F2FE" },
-  searchInput: { flex: 1, color: "#0F172A", fontSize: 14 },
+  searchIcon: { width: 38, height: 38, borderRadius: 13, alignItems: "center", justifyContent: "center", backgroundColor: "#E0F2FE" },
+  searchInput: { flex: 1, color: "#0F172A", fontSize: 13 },
 
   heroStats: {
     marginTop: 15, paddingHorizontal: 14, paddingVertical: 12, borderRadius: 16,
