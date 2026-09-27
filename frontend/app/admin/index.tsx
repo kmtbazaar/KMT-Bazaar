@@ -90,6 +90,12 @@ const ACTIONS = [
     color: THEME.orange,
   },
   {
+    icon: "tools",
+    label: "Daily Services",
+    path: "/admin/daily-services",
+    color: THEME.sky,
+  },
+  {
     icon: "calendar-check-outline",
     label: "Service Bookings",
     path: "/admin/service-bookings",
