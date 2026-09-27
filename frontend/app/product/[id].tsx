@@ -14,7 +14,7 @@ import { CheckoutSackVisual } from "@/src/components/CheckoutBar";
 export default function Product() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
-  const { add, update, cart } = useCart();
+  const { add, update, cart, itemCount } = useCart();
   const [p, setP] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [adding, setAdding] = useState(false);
