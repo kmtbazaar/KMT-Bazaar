@@ -217,6 +217,7 @@ export default function HolidayPage() {
   const cloudOneX = useSharedValue(-230);
   const cloudTwoX = useSharedValue(-380);
   const sunPulse = useSharedValue(0.92);
+  const bannerX = useSharedValue(-18);
 
   useEffect(() => {
     planeX.value = withRepeat(
@@ -253,6 +254,14 @@ export default function HolidayPage() {
       -1,
       true
     );
+    bannerX.value = withRepeat(
+      withSequence(
+        withTiming(18, { duration: 5200 }),
+        withTiming(-18, { duration: 5200 })
+      ),
+      -1,
+      true
+    );
   }, [cloudOneX, cloudTwoX, planeX, planeY, sunPulse]);
 
   const planeStyle = useAnimatedStyle(() => ({
@@ -261,6 +270,7 @@ export default function HolidayPage() {
   const cloudOneStyle = useAnimatedStyle(() => ({ transform: [{ translateX: cloudOneX.value }] }));
   const cloudTwoStyle = useAnimatedStyle(() => ({ transform: [{ translateX: cloudTwoX.value }] }));
   const sunStyle = useAnimatedStyle(() => ({ transform: [{ scale: sunPulse.value }] }));
+  const bannerStyle = useAnimatedStyle(() => ({ transform: [{ translateX: bannerX.value }] }));
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -376,11 +386,13 @@ export default function HolidayPage() {
     <SafeAreaView style={s.root} edges={["top"]}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.scroll}>
         <Animated.View entering={FadeIn.duration(500)} style={s.topBannerWrap}>
+          <Animated.View style={[s.topBannerMove, bannerStyle]}>
           <Animated.Image source={{ uri: holidayBanner }} style={s.topBanner} resizeMode="cover" />
           <LinearGradient colors={["rgba(2,132,199,0.02)", "rgba(2,132,199,0.72)"]} style={s.topBannerShade} />
           <Animated.View entering={FadeInUp.duration(700)} style={s.topBannerText}>
             <Text style={s.topBannerKicker}>KMT BAZAAR HOLIDAYS</Text>
             <Text style={s.topBannerTitle}>Your next escape starts here</Text>
+          </Animated.View>
           </Animated.View>
         </Animated.View>
 
@@ -906,7 +918,8 @@ const s = StyleSheet.create({
   scroll: { paddingBottom: 42 },
 
   topBannerWrap: { height: 150, marginBottom: 0, overflow: "hidden", position: "relative", backgroundColor: "#0C4A6E" },
-  topBanner: { ...StyleSheet.absoluteFillObject, width: "100%", height: "100%" },
+  topBannerMove: { ...StyleSheet.absoluteFillObject, width: "100%", height: "100%" },
+  topBanner: { width: "100%", height: "100%" },
   topBannerShade: { ...StyleSheet.absoluteFillObject },
   topBannerText: { position: "absolute", left: 20, bottom: 18, right: 20 },
   topBannerKicker: { color: "#E0F2FE", fontSize: 10, fontWeight: "900", letterSpacing: 1.4 },
