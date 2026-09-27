@@ -115,6 +115,32 @@ interface Props {
   bottomOffset?: number;
 }
 
+export function CheckoutSackVisual({ subtotal = 0, itemCount = 0 }: { subtotal?: number; itemCount?: number }) {
+  return (
+    <View style={styles.inlineSack}>
+      <View style={styles.inlineSackInner}>
+        <View style={styles.realSack}>
+          <ExpoImage
+            source={{ uri: `data:image/svg+xml;charset=utf-8,${encodeURIComponent(REALISTIC_SACK_SVG)}` }}
+            style={styles.realSackImage}
+            contentFit="contain"
+          />
+          <View style={styles.sackOpenOverlay} pointerEvents="none" />
+          <View style={styles.brandPlate}>
+            <Text style={styles.brandPlateTitle}>KMT BAZAAR</Text>
+            <Text style={styles.brandPlatePrice}>₹{subtotal.toFixed(0)}</Text>
+          </View>
+          <View style={styles.countTagConnector} />
+          <View style={styles.countBadge}>
+            <Text style={styles.countLabel}>ITEMS</Text>
+            <Text style={styles.countText}>{itemCount}</Text>
+          </View>
+        </View>
+      </View>
+    </View>
+  );
+}
+
 export default function CheckoutBar({ route = "/cart", label = "View Cart", bottomOffset = 70 }: Props) {
   const router = useRouter();
   const { cart, itemCount, badgePulse } = useCart();
@@ -320,6 +346,23 @@ export default function CheckoutBar({ route = "/cart", label = "View Cart", bott
 }
 
 const styles = StyleSheet.create({
+  inlineSack: {
+    width: 58,
+    height: 58,
+    position: "relative",
+    overflow: "visible",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  inlineSackInner: {
+    position: "absolute",
+    width: 108,
+    height: 128,
+    left: -25,
+    top: -34,
+    overflow: "visible",
+    transform: [{ scale: 0.48 }],
+  },
   wrap: {
     position: "absolute",
     right: 18,
