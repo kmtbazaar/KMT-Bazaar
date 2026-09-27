@@ -43,55 +43,79 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
           const ctx = audioCtxRef.current || new AudioCtx();
           audioCtxRef.current = ctx;
 
-          const playDrumDrop = () => {
+          const playFiberDrop = () => {
             const now = ctx.currentTime;
 
-            const makeThump = (time: number, freq: number, volume: number, decay: number) => {
-              const osc = ctx.createOscillator();
-              const gain = ctx.createGain();
-              osc.type = "sine";
-              osc.frequency.setValueAtTime(freq, time);
-              osc.frequency.exponentialRampToValueAtTime(Math.max(55, freq * 0.42), time + decay);
-              gain.gain.setValueAtTime(0.0001, time);
-              gain.gain.exponentialRampToValueAtTime(volume, time + 0.008);
-              gain.gain.exponentialRampToValueAtTime(0.0001, time + decay);
-              osc.connect(gain);
-              gain.connect(ctx.destination);
-              osc.start(time);
-              osc.stop(time + decay + 0.015);
-            };
+            // Heavy object hitting a hollow fibre/plastic container.
+            const thump = ctx.createOscillator();
+            const thumpGain = ctx.createGain();
+            thump.type = "sine";
+            thump.frequency.setValueAtTime(105, now);
+            thump.frequency.exponentialRampToValueAtTime(48, now + 0.24);
+            thumpGain.gain.setValueAtTime(0.0001, now);
+            thumpGain.gain.exponentialRampToValueAtTime(0.42, now + 0.012);
+            thumpGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.29);
+            thump.connect(thumpGain);
+            thumpGain.connect(ctx.destination);
+            thump.start(now);
+            thump.stop(now + 0.31);
 
-            const makeClick = (time: number) => {
-              const buffer = ctx.createBuffer(1, Math.floor(ctx.sampleRate * 0.045), ctx.sampleRate);
-              const data = buffer.getChannelData(0);
-              for (let i = 0; i < data.length; i++) {
-                data[i] = (Math.random() * 2 - 1) * (1 - i / data.length);
-              }
-              const src = ctx.createBufferSource();
-              const filter = ctx.createBiquadFilter();
-              const gain = ctx.createGain();
-              filter.type = "bandpass";
-              filter.frequency.setValueAtTime(1200, time);
-              filter.Q.setValueAtTime(0.8, time);
-              gain.gain.setValueAtTime(0.11, time);
-              gain.gain.exponentialRampToValueAtTime(0.0001, time + 0.045);
-              src.buffer = buffer;
-              src.connect(filter);
-              filter.connect(gain);
-              gain.connect(ctx.destination);
-              src.start(time);
-              src.stop(time + 0.05);
-            };
+            // Hollow fibre-body resonance.
+            const body = ctx.createOscillator();
+            const bodyGain = ctx.createGain();
+            body.type = "triangle";
+            body.frequency.setValueAtTime(172, now + 0.01);
+            body.frequency.exponentialRampToValueAtTime(92, now + 0.22);
+            bodyGain.gain.setValueAtTime(0.0001, now);
+            bodyGain.gain.exponentialRampToValueAtTime(0.19, now + 0.018);
+            bodyGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.25);
+            body.connect(bodyGain);
+            bodyGain.connect(ctx.destination);
+            body.start(now + 0.01);
+            body.stop(now + 0.27);
 
-            makeThump(now, 115, 0.34, 0.18);
-            makeClick(now + 0.018);
-            makeThump(now + 0.085, 82, 0.22, 0.15);
+            // Short plastic/fibre rattle on impact.
+            const buffer = ctx.createBuffer(1, Math.floor(ctx.sampleRate * 0.12), ctx.sampleRate);
+            const data = buffer.getChannelData(0);
+            for (let i = 0; i < data.length; i++) {
+              const fade = 1 - i / data.length;
+              data[i] = (Math.random() * 2 - 1) * fade;
+            }
+
+            const rattle = ctx.createBufferSource();
+            const filter = ctx.createBiquadFilter();
+            const rattleGain = ctx.createGain();
+            filter.type = "bandpass";
+            filter.frequency.setValueAtTime(1450, now + 0.025);
+            filter.Q.setValueAtTime(2.2, now + 0.025);
+            rattleGain.gain.setValueAtTime(0.075, now + 0.02);
+            rattleGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.14);
+            rattle.buffer = buffer;
+            rattle.connect(filter);
+            filter.connect(rattleGain);
+            rattleGain.connect(ctx.destination);
+            rattle.start(now + 0.02);
+            rattle.stop(now + 0.145);
+
+            // Small second bounce against the fibre wall.
+            const bounce = ctx.createOscillator();
+            const bounceGain = ctx.createGain();
+            bounce.type = "sine";
+            bounce.frequency.setValueAtTime(76, now + 0.13);
+            bounce.frequency.exponentialRampToValueAtTime(52, now + 0.28);
+            bounceGain.gain.setValueAtTime(0.0001, now + 0.13);
+            bounceGain.gain.exponentialRampToValueAtTime(0.16, now + 0.145);
+            bounceGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.31);
+            bounce.connect(bounceGain);
+            bounceGain.connect(ctx.destination);
+            bounce.start(now + 0.13);
+            bounce.stop(now + 0.32);
           };
 
           if (ctx.state === "suspended") {
-            ctx.resume().then(playDrumDrop).catch(() => {});
+            ctx.resume().then(playFiberDrop).catch(() => {});
           } else {
-            playDrumDrop();
+            playFiberDrop();
           }
         }
       }
