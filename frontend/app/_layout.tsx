@@ -7,6 +7,11 @@ import { StatusBar } from "expo-status-bar";
 import { AuthProvider, useAuth } from "@/src/AuthContext";
 import { CartProvider } from "@/src/CartContext";
 
+function vendorHomeRoute(user: any) {
+  if (user?.role !== "vendor") return `/${user?.role || "auth/login"}`;
+  return user?.vendor_type === "service" ? "/service-vendor" : "/vendor";
+}
+
 function RoleRouteGuard({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const segments = useSegments();
@@ -32,7 +37,7 @@ function RoleRouteGuard({ children }: { children: React.ReactNode }) {
     }
 
     if (isAuthRoute) {
-      router.replace(user.role === "customer" ? "/(tabs)/home" : (`/${user.role}` as any));
+      router.replace((user.role === "customer" ? "/(tabs)/home" : vendorHomeRoute(user)) as any);
       return;
     }
 
@@ -63,13 +68,13 @@ function RoleRouteGuard({ children }: { children: React.ReactNode }) {
       user.role === "admin"
         ? first === "admin"
         : user.role === "vendor"
-          ? first === "vendor"
+          ? (user.vendor_type === "service" ? first === "service-vendor" : first === "vendor")
           : user.role === "delivery"
             ? first === "delivery"
             : first === "(tabs)" || customerShared;
 
     if (!allowed) {
-      router.replace(user.role === "customer" ? "/(tabs)/home" : (`/${user.role}` as any));
+      router.replace((user.role === "customer" ? "/(tabs)/home" : vendorHomeRoute(user)) as any);
     }
   }, [loading, user, segments, router]);
 
