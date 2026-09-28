@@ -224,6 +224,38 @@ export const api = {
       }),
     }),
 
+  requestEmailLoginOtp: (email: string, password: string) =>
+    apiFetch<{ sent: boolean; email: string; expires_in_minutes: number }>("/auth/email-login/request", {
+      method: "POST",
+      body: JSON.stringify({ email, password }),
+    }),
+
+  verifyEmailLoginOtp: (email: string, otp: string) =>
+    apiFetch<{ token: string; user: User }>("/auth/email-login/verify", {
+      method: "POST",
+      body: JSON.stringify({ email, otp }),
+    }),
+
+  requestEmailSignupOtp: (data: {
+    name: string;
+    email: string;
+    phone?: string;
+    password: string;
+    role?: string;
+    vendor_type?: VendorType;
+    service_type?: ServiceType;
+  }) =>
+    apiFetch<{ sent: boolean; email: string; expires_in_minutes: number }>("/auth/email-signup/request", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  verifyEmailSignupOtp: (email: string, otp: string) =>
+    apiFetch<{ token: string; user: User }>("/auth/email-signup/verify", {
+      method: "POST",
+      body: JSON.stringify({ email, otp }),
+    }),
+
   register: (
     data: {
       name: string;
