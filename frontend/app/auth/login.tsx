@@ -523,7 +523,7 @@ export default function Login() {
                   </>
                 )}
               </>
-            ) : null
+            ) : null}
 
             {accountChecked && !registered && (
               <Text style={s.alt}>
