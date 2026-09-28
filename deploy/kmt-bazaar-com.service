@@ -1,0 +1,14 @@
+[Unit]
+Description=KMT Bazaar .com FastAPI Backend
+After=network.target
+
+[Service]
+User=root
+WorkingDirectory=/root/KMT-Bazaar-com/backend
+Environment="PATH=/root/KMT-Bazaar-com/backend/venv/bin"
+ExecStart=/root/KMT-Bazaar-com/backend/venv/bin/uvicorn server:app --host 127.0.0.1 --port 8001
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
