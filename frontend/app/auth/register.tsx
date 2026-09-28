@@ -35,7 +35,7 @@ const SERVICE_TYPES = [
 
 export default function Register() {
 const router = useRouter();
-const { register } = useAuth();
+const { register, requestEmailSignupOtp, verifyEmailSignupOtp } = useAuth();
 const params = useLocalSearchParams<{ email?: string; phone?: string }>();
 
 const [name, setName] = useState("");
@@ -48,6 +48,9 @@ const [vendorType, setVendorType] = useState<"store" | "service">("store");
 const [serviceType, setServiceType] = useState<"holiday" | "car_rental">("holiday");
 const [loading, setLoading] = useState(false);
 const [error, setError] = useState<string | null>(null);
+const [otpStep, setOtpStep] = useState(false);
+const [otp, setOtp] = useState("");
+const [otpLoading, setOtpLoading] = useState(false);
 
 // Password validation rules
 const hasMinLength = password.length >= 8;
@@ -69,53 +72,43 @@ password === confirmPassword;
 const onSubmit = async () => {
 setError(null);
 
-// Required field validation
 if (!name.trim()) {
   setError("Please enter your full name.");
   return;
 }
-
 if (!email.trim()) {
   setError("Please enter your email address.");
   return;
 }
-
 const normalizedEmail = email.trim().toLowerCase();
-
 if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
   setError("Please enter a valid email address.");
   return;
 }
-
 if (!phone.trim()) {
   setError("Please enter your phone number.");
   return;
 }
-
 if (!/^[0-9]{10}$/.test(phone.trim())) {
   setError("Please enter a valid 10-digit phone number.");
   return;
 }
-
 if (!passwordValid) {
   setError("Please fulfill all password requirements.");
   return;
 }
-
 if (!confirmPassword) {
   setError("Please confirm your password.");
   return;
 }
-
 if (password !== confirmPassword) {
   setError("Passwords do not match.");
   return;
 }
 
 setLoading(true);
-
 try {
-  const user = await register({
+  await requestEmailSignupOtp({
     name: name.trim(),
     email: normalizedEmail,
     phone: phone.trim(),
@@ -124,7 +117,25 @@ try {
     vendor_type: role === "vendor" ? vendorType : undefined,
     service_type: role === "vendor" && vendorType === "service" ? serviceType : undefined,
   });
+  setOtpStep(true);
+  setOtp("");
+  setError(null);
+} catch (e: any) {
+  setError(e?.message || "Could not send verification OTP.");
+} finally {
+  setLoading(false);
+}
+};
 
+const onVerifyOtp = async () => {
+if (!/^\d{6}$/.test(otp)) {
+  setError("Enter the 6-digit OTP sent to your email.");
+  return;
+}
+setError(null);
+setOtpLoading(true);
+try {
+  const user = await verifyEmailSignupOtp(email.trim().toLowerCase(), otp);
   router.replace(
     user.role === "customer"
       ? "/(tabs)/home"
@@ -133,12 +144,13 @@ try {
         : (`/${user.role}` as any)
   );
 } catch (e: any) {
-  setError(e?.message || "Registration failed. Please try again.");
+  setError(e?.message || "Invalid or expired OTP.");
 } finally {
-  setLoading(false);
+  setOtpLoading(false);
 }
-
 };
+
+;
 
 return (
 <SafeAreaView style={s.root} edges={["top"]} testID="register-screen">
@@ -164,7 +176,39 @@ color={COLORS.text}
     behavior={Platform.OS === "ios" ? "padding" : undefined}
     style={{ flex: 1 }}
   >
-    <ScrollView
+    {otpStep ? (
+      <>
+        <Text style={s.otpTitle}>Verify your email</Text>
+        <Text style={s.otpSub}>
+          We sent a 6-digit OTP to {email.trim().toLowerCase()}
+        </Text>
+        <Field
+          icon="shield-key-outline"
+          placeholder="6-digit OTP"
+          value={otp}
+          onChangeText={(value: string) => setOtp(value.replace(/[^0-9]/g, "").slice(0, 6))}
+          keyboardType="number-pad"
+          maxLength={6}
+          testID="register-email-otp-input"
+        />
+        {error && <Text style={s.err}>{error}</Text>}
+        <Pressable
+          onPress={onVerifyOtp}
+          disabled={otpLoading}
+          testID="register-verify-otp-button"
+          style={[s.cta, otpLoading && { opacity: 0.7 }]}
+        >
+          <LinearGradient colors={[COLORS.accent, COLORS.accentDark]} style={s.ctaGrad}>
+            {otpLoading ? <ActivityIndicator color="#fff" /> : <Text style={s.ctaText}>Verify & Create Account</Text>}
+          </LinearGradient>
+        </Pressable>
+        <Pressable onPress={() => { setOtpStep(false); setOtp(""); setError(null); }}>
+          <Text style={s.backText}>Back to registration</Text>
+        </Pressable>
+      </>
+    ) : (
+      <>
+      <ScrollView
       contentContainerStyle={s.body}
       keyboardShouldPersistTaps="handled"
     >
@@ -349,6 +393,8 @@ color={COLORS.text}
         </LinearGradient>
       </Pressable>
     </ScrollView>
+      </>
+    )}
   </KeyboardAvoidingView>
 </SafeAreaView>
 
@@ -401,6 +447,9 @@ color={valid ? "#16A34A" : COLORS.textMuted}
 }
 
 const s = StyleSheet.create({
+otpTitle: { fontSize: 22, fontWeight: "800", color: COLORS.text, textAlign: "center", marginTop: 24, marginBottom: 8 },
+otpSub: { fontSize: 13, color: COLORS.textSecondary, textAlign: "center", lineHeight: 20, marginHorizontal: 20, marginBottom: 18 },
+backText: { textAlign: "center", marginTop: 16, color: COLORS.brand, fontWeight: "700" },
 root: {
 flex: 1,
 backgroundColor: COLORS.surface,
