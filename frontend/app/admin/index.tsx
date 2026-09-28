@@ -1084,7 +1084,7 @@ const s = StyleSheet.create({
 
   kpiCard: {
     width: "100%",
-    minHeight: 142,
+    minHeight: 124,
     backgroundColor: THEME.white,
     borderRadius: 18,
     padding: 13,
@@ -1498,83 +1498,3 @@ const s = StyleSheet.create({
   },
 
   gridLabel: {
-    color: THEME.text,
-    fontSize: 10,
-    fontWeight: "800",
-    textAlign: "center",
-    marginTop: 8,
-    lineHeight: 13,
-  },
-
-  servicePendingNotice: {
-    position: "absolute",
-    top: -11,
-    alignSelf: "center",
-    minHeight: 24,
-    borderRadius: 12,
-    backgroundColor: THEME.danger,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 4,
-    paddingHorizontal: 9,
-    zIndex: 20,
-    elevation: 4,
-  },
-
-  servicePendingNoticeText: {
-    color: THEME.white,
-    fontSize: 9,
-    fontWeight: "900",
-  },
-
-  serviceBookingCountBadge: {
-    position: "absolute",
-    top: 7,
-    right: 7,
-    minWidth: 22,
-    height: 22,
-    borderRadius: 11,
-    backgroundColor: THEME.danger,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: 4,
-    zIndex: 20,
-  },
-
-  serviceBookingCountBadgeText: {
-    color: THEME.white,
-    fontSize: 9,
-    fontWeight: "900",
-  },
-
-  gridArrow: {
-    position: "absolute",
-    right: 7,
-    top: 7,
-  },
-
-  pressed: {
-    opacity: 0.9,
-  },
-
-  pressedSmall: {
-    transform: [{ scale: 0.94 }],
-    opacity: 0.85,
-  },
-
-  footer: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 6,
-    marginTop: 28,
-    paddingVertical: 12,
-  },
-
-  footerText: {
-    color: THEME.muted,
-    fontSize: 9,
-    fontWeight: "600",
-  },
-});
