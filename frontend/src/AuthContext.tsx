@@ -5,7 +5,11 @@ interface AuthCtx {
   user: User | null;
   loading: boolean;
   login: (email: string, password: string) => Promise<User>;
+  requestEmailLoginOtp: (email: string, password: string) => Promise<any>;
+  verifyEmailLoginOtp: (email: string, otp: string) => Promise<User>;
   register: (data: { name: string; email: string; phone?: string; password: string; role?: string; vendor_type?: "store" | "service"; service_type?: "holiday" | "car_rental" | "daily_service" }) => Promise<User>;
+  requestEmailSignupOtp: (data: any) => Promise<any>;
+  verifyEmailSignupOtp: (email: string, otp: string) => Promise<User>;
   loginOtp: (phone: string, otp: string, name?: string) => Promise<User>;
   googleLogin: (credential: string) => Promise<User>;
   logout: () => Promise<void>;
@@ -49,6 +53,32 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setLoading(false);
     return r.user;
   };
+
+  const requestEmailLoginOtp = async (email: string, password: string) => {
+    return api.requestEmailLoginOtp(email, password);
+  };
+
+  const verifyEmailLoginOtp = async (email: string, otp: string) => {
+    const r = await api.verifyEmailLoginOtp(email, otp);
+    await setToken(r.token);
+    await setUser(r.user);
+    setU(r.user);
+    setLoading(false);
+    return r.user;
+  };
+
+  const requestEmailSignupOtp = async (data: any) => {
+    return api.requestEmailSignupOtp(data);
+  };
+
+  const verifyEmailSignupOtp = async (email: string, otp: string) => {
+    const r = await api.verifyEmailSignupOtp(email, otp);
+    await setToken(r.token);
+    await setUser(r.user);
+    setU(r.user);
+    setLoading(false);
+    return r.user;
+  };
   const loginOtp = async (phone: string, otp: string, name?: string) => {
     const r = await api.otpVerify(phone, otp, name);
     await setToken(r.token);
@@ -79,7 +109,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   return (
     // <-- updateAddress ko Provider mein add kiya hai
-    <Ctx.Provider value={{ user, loading, login, register, loginOtp, googleLogin, logout, refresh: bootstrap, updateAddress }}>
+    <Ctx.Provider value={{ user, loading, login, requestEmailLoginOtp, verifyEmailLoginOtp, register, requestEmailSignupOtp, verifyEmailSignupOtp, loginOtp, googleLogin, logout, refresh: bootstrap, updateAddress }}>
       {children}
     </Ctx.Provider>
   );
@@ -92,6 +122,10 @@ export const useAuth = () => {
   loading: true,
   login: async () => { throw new Error("Auth not ready"); },
   register: async () => { throw new Error("Auth not ready"); },
+  requestEmailLoginOtp: async () => { throw new Error("Auth not ready"); },
+  verifyEmailLoginOtp: async () => { throw new Error("Auth not ready"); },
+  requestEmailSignupOtp: async () => { throw new Error("Auth not ready"); },
+  verifyEmailSignupOtp: async () => { throw new Error("Auth not ready"); },
   loginOtp: async () => { throw new Error("Auth not ready"); },
   googleLogin: async () => { throw new Error("Auth not ready"); },
   logout: async () => {},
