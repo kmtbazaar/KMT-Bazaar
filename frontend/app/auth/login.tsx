@@ -79,7 +79,7 @@ function AnimatedTile({
 
 export default function Login() {
   const router = useRouter();
-  const { login, googleLogin } = useAuth();
+  const { login, requestEmailLoginOtp, verifyEmailLoginOtp, googleLogin } = useAuth();
   const insets = useSafeAreaInsets();
 
   const goToDashboard = (user: any) => {
@@ -97,6 +97,9 @@ export default function Login() {
   const [error, setError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
+  const [emailOtpStep, setEmailOtpStep] = useState(false);
+  const [emailOtp, setEmailOtp] = useState("");
+  const [otpLoading, setOtpLoading] = useState(false);
   const keyboardShift = useSharedValue(0);
 
   useEffect(() => {
@@ -129,6 +132,8 @@ export default function Login() {
     setAccountChecked(false);
     setRegistered(false);
     setPassword("");
+    setEmailOtpStep(false);
+    setEmailOtp("");
     setError(null);
   };
 
@@ -269,6 +274,13 @@ export default function Login() {
           ? identifier.trim().toLowerCase()
           : identifier.replace(/[^0-9]/g, "");
 
+      if (loginType === "email") {
+        await requestEmailLoginOtp(value, password);
+        setEmailOtpStep(true);
+        setError(null);
+        return;
+      }
+
       const user = await login(value, password);
 
       if (!user || !user.role) {
@@ -281,6 +293,26 @@ export default function Login() {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const onVerifyEmailOtp = async () => {
+    if (!/^\\d{6}$/.test(emailOtp)) {
+      setError("Enter the 6-digit OTP sent to your email");
+      return;
+    }
+
+    setError(null);
+    setOtpLoading(true);
+
+    try {
+      const user = await verifyEmailLoginOtp(identifier.trim().toLowerCase(), emailOtp);
+      if (!user?.role) throw new Error("Login verification failed");
+      goToDashboard(user);
+    } catch (e: any) {
+      setError(e?.message || "Invalid or expired OTP");
+    } finally {
+      setOtpLoading(false);
     }
   };
 
@@ -401,58 +433,97 @@ export default function Login() {
               </Pressable>
             ) : registered ? (
               <>
-                <View style={s.fieldWrap}>
-                  <MaterialCommunityIcons name="lock-outline" size={22} color="#64748B" />
-                  <TextInput
-                    testID="login-password-input"
-                    placeholder="Password"
-                    value={password}
-                    onChangeText={setPassword}
-                    secureTextEntry={!showPassword}
-                    autoCapitalize="none"
-                    placeholderTextColor="#94A3B8"
-                    style={s.input}
-                  />
-                  <Pressable onPress={() => setShowPassword(!showPassword)} hitSlop={10}>
-                    <MaterialCommunityIcons
-                      name={showPassword ? "eye-off-outline" : "eye-outline"}
-                      size={22}
-                      color="#64748B"
-                    />
-                  </Pressable>
-                </View>
+                {!emailOtpStep ? (
+                  <>
+                    <View style={s.fieldWrap}>
+                      <MaterialCommunityIcons name="lock-outline" size={22} color="#64748B" />
+                      <TextInput
+                        testID="login-password-input"
+                        placeholder="Password"
+                        value={password}
+                        onChangeText={setPassword}
+                        secureTextEntry={!showPassword}
+                        autoCapitalize="none"
+                        placeholderTextColor="#94A3B8"
+                        style={s.input}
+                      />
+                      <Pressable onPress={() => setShowPassword(!showPassword)} hitSlop={10}>
+                        <MaterialCommunityIcons
+                          name={showPassword ? "eye-off-outline" : "eye-outline"}
+                          size={22}
+                          color="#64748B"
+                        />
+                      </Pressable>
+                    </View>
 
-                {error && <Text style={s.err} testID="login-error">{error}</Text>}
+                    {error && <Text style={s.err} testID="login-error">{error}</Text>}
 
-                <Pressable
-                  testID="login-submit-button"
-                  onPress={onLogin}
-                  disabled={loading}
-                  style={({ pressed }) => [
-                    s.cta,
-                    pressed && { opacity: 0.85 },
-                    loading && { opacity: 0.7 },
-                  ]}
-                >
-                  <LinearGradient
-                    colors={["#FF6E00", "#E05E00"]}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 1 }}
-                    style={s.ctaGrad}
-                  >
-                    {loading ? <ActivityIndicator color="#fff" /> : <Text style={s.ctaText}>Login Securely</Text>}
-                  </LinearGradient>
-                </Pressable>
+                    <Pressable
+                      testID="login-submit-button"
+                      onPress={onLogin}
+                      disabled={loading}
+                      style={({ pressed }) => [
+                        s.cta,
+                        pressed && { opacity: 0.85 },
+                        loading && { opacity: 0.7 },
+                      ]}
+                    >
+                      <LinearGradient
+                        colors={["#FF6E00", "#E05E00"]}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 1 }}
+                        style={s.ctaGrad}
+                      >
+                        {loading ? <ActivityIndicator color="#fff" /> : <Text style={s.ctaText}>Send Login OTP</Text>}
+                      </LinearGradient>
+                    </Pressable>
 
-                <Pressable
-                  onPress={() => router.push("/auth/forgot-password" as any)}
-                  testID="forgot-password"
-                >
-                  <Text style={s.forgotPassword}>Forgot Password?</Text>
-                </Pressable>
-
+                    <Pressable
+                      onPress={() => router.push("/auth/forgot-password" as any)}
+                      testID="forgot-password"
+                    >
+                      <Text style={s.forgotPassword}>Forgot Password?</Text>
+                    </Pressable>
+                  </>
+                ) : (
+                  <>
+                    <Text style={s.otpTitle}>Enter 6-digit OTP</Text>
+                    <Text style={s.otpSub}>We sent a verification code to {identifier.trim().toLowerCase()}</Text>
+                    <View style={s.fieldWrap}>
+                      <MaterialCommunityIcons name="shield-key-outline" size={22} color="#64748B" />
+                      <TextInput
+                        testID="login-email-otp-input"
+                        placeholder="6-digit OTP"
+                        value={emailOtp}
+                        onChangeText={(value) => setEmailOtp(value.replace(/[^0-9]/g, "").slice(0, 6))}
+                        keyboardType="number-pad"
+                        maxLength={6}
+                        style={s.input}
+                      />
+                    </View>
+                    {error && <Text style={s.err} testID="login-error">{error}</Text>}
+                    <Pressable
+                      testID="login-verify-otp-button"
+                      onPress={onVerifyEmailOtp}
+                      disabled={otpLoading}
+                      style={[s.cta, otpLoading && { opacity: 0.7 }]}
+                    >
+                      <LinearGradient
+                        colors={["#FF6E00", "#E05E00"]}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 1 }}
+                        style={s.ctaGrad}
+                      >
+                        {otpLoading ? <ActivityIndicator color="#fff" /> : <Text style={s.ctaText}>Verify & Login</Text>}
+                      </LinearGradient>
+                    </Pressable>
+                    <Pressable onPress={() => { setEmailOtpStep(false); setEmailOtp(""); setError(null); }}>
+                      <Text style={s.forgotPassword}>Back to password</Text>
+                    </Pressable>
+                  </>
+                )}
               </>
-            ) : null}
+            ) : null
 
             {accountChecked && !registered && (
               <Text style={s.alt}>
@@ -717,6 +788,9 @@ const s = StyleSheet.create({
     fontSize: 13,
     lineHeight: 18,
   },
+
+  otpTitle: { textAlign: "center", fontSize: 18, fontWeight: "800", color: "#0F172A", marginBottom: 6 },
+  otpSub: { textAlign: "center", color: "#64748B", fontSize: 12, lineHeight: 18, marginBottom: 14 },
 
   forgotPassword: {
     textAlign: "center",
