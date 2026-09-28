@@ -21,6 +21,7 @@ function RoleRouteGuard({ children }: { children: React.ReactNode }) {
     if (loading) return;
 
     const first = segments[0] || "";
+    const second = segments[1] || "";
     const isAuthRoute = first === "auth";
     const isPublicRoute =
       first === "assistant" ||
@@ -64,11 +65,18 @@ function RoleRouteGuard({ children }: { children: React.ReactNode }) {
       first === "search" ||
       first === "RoojgarForm";
 
+    const serviceVendorRoute =
+      first === "service-vendor";
+
+    const storeVendorRoute =
+      first === "vendor" &&
+      !["holiday-dashboard", "car-rental-dashboard"].includes(second);
+
     const allowed =
       user.role === "admin"
         ? first === "admin"
         : user.role === "vendor"
-          ? (user.vendor_type === "service" ? first === "service-vendor" : first === "vendor")
+          ? (user.vendor_type === "service" ? serviceVendorRoute : storeVendorRoute)
           : user.role === "delivery"
             ? first === "delivery"
             : first === "(tabs)" || customerShared;
