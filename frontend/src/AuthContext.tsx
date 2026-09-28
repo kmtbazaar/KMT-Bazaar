@@ -35,19 +35,35 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const login = async (email: string, password: string) => {
     const r = await api.login(email, password);
-    await setToken(r.token); await setUser(r.user); setU(r.user); return r.user;
+    await setToken(r.token);
+    await setUser(r.user);
+    setU(r.user);
+    setLoading(false);
+    return r.user;
   };
   const register = async (data: any) => {
     const r = await api.register(data);
-    await setToken(r.token); await setUser(r.user); setU(r.user); return r.user;
+    await setToken(r.token);
+    await setUser(r.user);
+    setU(r.user);
+    setLoading(false);
+    return r.user;
   };
   const loginOtp = async (phone: string, otp: string, name?: string) => {
     const r = await api.otpVerify(phone, otp, name);
-    await setToken(r.token); await setUser(r.user); setU(r.user); return r.user;
+    await setToken(r.token);
+    await setUser(r.user);
+    setU(r.user);
+    setLoading(false);
+    return r.user;
   };
   const googleLogin = async (credential: string) => {
     const r = await api.googleLogin(credential);
-    await setToken(r.token); await setUser(r.user); setU(r.user); return r.user;
+    await setToken(r.token);
+    await setUser(r.user);
+    setU(r.user);
+    setLoading(false);
+    return r.user;
   };
   const logout = async () => { await clearAuth(); setU(null); };
 

@@ -17,9 +17,17 @@ const ACTIONS = [
 ];
 
 export default function VendorDashboard() {
-  const { user } = useAuth();
+  const { user, loading } = useAuth();
 
-  if (user?.vendor_type !== "store") {
+  if (loading) {
+    return (
+      <View style={{ flex: 1, backgroundColor: "#fff", alignItems: "center", justifyContent: "center" }}>
+        <ActivityIndicator size="large" color="#0284C7" />
+      </View>
+    );
+  }
+
+  if (user?.role !== "vendor" || user?.vendor_type !== "store") {
     return <View style={{ flex: 1, backgroundColor: "#fff" }} />;
   }
 
@@ -662,6 +670,28 @@ function StoreVendorDashboard() {
         </View>
       </Modal>
 
+    </View>
+  );
+}
+
+function KPI({
+  label,
+  value,
+  icon,
+  color,
+}: {
+  label: string;
+  value: any;
+  icon: string;
+  color: string;
+}) {
+  return (
+    <View style={s.kpiCard}>
+      <View style={[s.kpiIcon, { backgroundColor: color + "1A" }]}>
+        <MaterialCommunityIcons name={icon as any} size={18} color={color} />
+      </View>
+      <Text style={s.kpiValue}>{value}</Text>
+      <Text style={s.kpiLabel}>{label}</Text>
     </View>
   );
 }
