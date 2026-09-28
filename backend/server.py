@@ -70,6 +70,8 @@ api = APIRouter(prefix="/api")
 ALLOWED_ORIGINS = [
     "https://kmtbazaar.tech",
     "https://www.kmtbazaar.tech",
+    "https://kmtbazaar.com",
+    "https://www.kmtbazaar.com",
     "http://localhost:8081",
     "http://localhost:8082",
     "http://localhost:19006",
