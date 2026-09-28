@@ -33,6 +33,7 @@ from datetime import datetime, timezone, timedelta
 from passlib.context import CryptContext
 from PIL import Image, ImageOps
 import io
+from html import escape
 import httpx
 import jwt
 from enum import Enum
@@ -41,7 +42,7 @@ ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
 
 UPLOAD_DIR = Path(os.getenv("UPLOAD_DIR", "/var/www/kmt-bazaar/uploads"))
-PUBLIC_BASE_URL = os.getenv("PUBLIC_BASE_URL", "https://kmtbazaar.tech").rstrip("/")
+PUBLIC_BASE_URL = os.getenv("PUBLIC_BASE_URL", "https://kmtbazaar.com").rstrip("/")
 MAX_UPLOAD_BYTES = 8 * 1024 * 1024
 MAX_IMAGE_SIZE = (1600, 1600)
 DEFAULT_HOLIDAY_BANNER_URL = "https://images.unsplash.com/photo-1516483638261-f4dbaf036963?w=1800&q=85"
@@ -57,6 +58,11 @@ JWT_EXPIRE_MIN = 60 * 24 * 30  # 30 days
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
 GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID", "")
+RESEND_API_KEY = os.getenv("RESEND_API_KEY", "").strip()
+EMAIL_FROM = os.getenv("EMAIL_FROM", "KMT Bazaar <noreply@kmtbazaar.com>").strip()
+EMAIL_OTP_EXPIRE_MINUTES = 10
+EMAIL_OTP_RESEND_COOLDOWN_SECONDS = 60
+EMAIL_OTP_MAX_ATTEMPTS = 5
 
 gemini_client = genai.Client(api_key=GEMINI_API_KEY)
 
@@ -70,6 +76,8 @@ api = APIRouter(prefix="/api")
 ALLOWED_ORIGINS = [
     "https://kmtbazaar.tech",
     "https://www.kmtbazaar.tech",
+    "https://kmtbazaar.com",
+    "https://www.kmtbazaar.com",
     "http://localhost:8081",
     "http://localhost:8082",
     "http://localhost:19006",
@@ -142,6 +150,20 @@ class IdentifierCheckIn(BaseModel):
 
 class GoogleLoginIn(BaseModel):
     credential: str
+
+
+class EmailLoginOtpRequestIn(BaseModel):
+    email: EmailStr
+    password: str
+
+
+class EmailOtpVerifyIn(BaseModel):
+    email: EmailStr
+    otp: str
+
+
+class EmailSignupOtpRequestIn(RegisterIn):
+    pass
 
 
 class OtpRequestIn(BaseModel):
@@ -308,6 +330,164 @@ def hash_reset_otp(otp: str) -> str:
     return hashlib.sha256(otp.encode()).hexdigest()
 
 
+def normalize_email(email: str) -> str:
+    return str(email or "").strip().lower()
+
+
+def normalize_phone(value: str) -> str:
+    digits = "".join(ch for ch in str(value or "") if ch.isdigit())
+    if len(digits) == 12 and digits.startswith("91"):
+        digits = digits[2:]
+    elif len(digits) == 11 and digits.startswith("0"):
+        digits = digits[1:]
+    return digits
+
+
+def validate_signup_password(password: str):
+    if len(password) < 8 or not re.search(r"[A-Z]", password) or not re.search(r"[0-9]", password) or not re.search(r"[^A-Za-z0-9]", password):
+        raise HTTPException(
+            status_code=400,
+            detail="Password must be at least 8 characters and include uppercase, number, and special character",
+        )
+
+
+async def send_resend_email(to_email: str, subject: str, html: str):
+    if not RESEND_API_KEY:
+        raise HTTPException(status_code=503, detail="Email service is not configured")
+
+    payload = {
+        "from": EMAIL_FROM,
+        "to": [normalize_email(to_email)],
+        "subject": subject,
+        "html": html,
+    }
+
+    try:
+        async with httpx.AsyncClient(timeout=20) as client:
+            response = await client.post(
+                "https://api.resend.com/emails",
+                headers={
+                    "Authorization": f"Bearer {RESEND_API_KEY}",
+                    "Content-Type": "application/json",
+                },
+                json=payload,
+            )
+        if response.status_code >= 400:
+            logging.error("Resend email failed: %s %s", response.status_code, response.text[:500])
+            raise HTTPException(status_code=502, detail="Email delivery service is unavailable")
+    except HTTPException:
+        raise
+    except Exception:
+        logging.exception("Resend email request failed")
+        raise HTTPException(status_code=502, detail="Email delivery service is unavailable")
+
+
+async def issue_email_otp(
+    email: str,
+    purpose: str,
+    subject: str,
+    html_template: str,
+    payload: Optional[dict] = None,
+):
+    email = normalize_email(email)
+    now = datetime.now(timezone.utc)
+
+    existing = await db.email_auth_otps.find_one(
+        {"email": email, "purpose": purpose},
+        {"_id": 0, "created_at": 1},
+    )
+    if existing and existing.get("created_at"):
+        created_at = existing["created_at"]
+        if created_at.tzinfo is None:
+            created_at = created_at.replace(tzinfo=timezone.utc)
+        elapsed = (now - created_at).total_seconds()
+        if elapsed < EMAIL_OTP_RESEND_COOLDOWN_SECONDS:
+            retry_after = max(1, int(EMAIL_OTP_RESEND_COOLDOWN_SECONDS - elapsed))
+            raise HTTPException(
+                status_code=429,
+                detail=f"Please wait {retry_after} seconds before requesting another OTP",
+            )
+
+    otp = f"{secrets.randbelow(900000) + 100000}"
+    otp_doc = {
+        "id": str(uuid.uuid4()),
+        "email": email,
+        "purpose": purpose,
+        "otp_hash": hash_reset_otp(otp),
+        "attempts": 0,
+        "expires_at": now + timedelta(minutes=EMAIL_OTP_EXPIRE_MINUTES),
+        "created_at": now,
+        "payload": payload or {},
+    }
+
+    await db.email_auth_otps.delete_many({"email": email, "purpose": purpose})
+    await db.email_auth_otps.insert_one(otp_doc)
+
+    try:
+        await send_resend_email(
+            email,
+            subject,
+            html_template.format(
+                otp=escape(otp),
+                email=escape(email),
+                expires=EMAIL_OTP_EXPIRE_MINUTES,
+            ),
+        )
+    except Exception:
+        await db.email_auth_otps.delete_one({"id": otp_doc["id"]})
+        raise
+
+    return {
+        "sent": True,
+        "email": email,
+        "expires_in_minutes": EMAIL_OTP_EXPIRE_MINUTES,
+    }
+
+
+async def consume_email_otp(email: str, purpose: str, otp: str) -> dict:
+    email = normalize_email(email)
+    if not (len(str(otp).strip()) == 6 and str(otp).strip().isdigit()):
+        raise HTTPException(status_code=400, detail="Enter a valid 6-digit OTP")
+
+    record = await db.email_auth_otps.find_one({
+        "email": email,
+        "purpose": purpose,
+    })
+    if not record:
+        raise HTTPException(status_code=400, detail="OTP not found or expired")
+
+    expires_at = record.get("expires_at")
+    if not expires_at:
+        await db.email_auth_otps.delete_one({"_id": record["_id"]})
+        raise HTTPException(status_code=400, detail="Invalid OTP")
+
+    if expires_at.tzinfo is None:
+        expires_at = expires_at.replace(tzinfo=timezone.utc)
+
+    if datetime.now(timezone.utc) > expires_at:
+        await db.email_auth_otps.delete_one({"_id": record["_id"]})
+        raise HTTPException(status_code=400, detail="OTP expired")
+
+    attempts = int(record.get("attempts", 0))
+    if attempts >= EMAIL_OTP_MAX_ATTEMPTS:
+        await db.email_auth_otps.delete_one({"_id": record["_id"]})
+        raise HTTPException(status_code=429, detail="Too many incorrect OTP attempts. Please request a new OTP")
+
+    if hash_reset_otp(str(otp).strip()) != record.get("otp_hash"):
+        new_attempts = attempts + 1
+        if new_attempts >= EMAIL_OTP_MAX_ATTEMPTS:
+            await db.email_auth_otps.delete_one({"_id": record["_id"]})
+            raise HTTPException(status_code=429, detail="Too many incorrect OTP attempts. Please request a new OTP")
+        await db.email_auth_otps.update_one(
+            {"_id": record["_id"]},
+            {"$set": {"attempts": new_attempts}},
+        )
+        raise HTTPException(status_code=400, detail="Invalid OTP")
+
+    await db.email_auth_otps.delete_one({"_id": record["_id"]})
+    return record
+
+
 def create_token(user_id: str, role: str) -> str:
     payload = {
         "sub": user_id,
@@ -352,46 +532,10 @@ def user_to_out(u: dict) -> dict:
 # ------------------ AUTH ROUTES ------------------
 @api.post("/auth/register", response_model=AuthOut)
 async def register(data: RegisterIn):
-    if data.role == Role.ADMIN:
-        raise HTTPException(status_code=403, detail="Admin accounts cannot be created through public registration")
-    if data.role == Role.VENDOR and data.vendor_type == VendorType.SERVICE:
-        if data.service_type not in {ServiceType.HOLIDAY, ServiceType.CAR_RENTAL}:
-            raise HTTPException(status_code=400, detail="Only Holiday and Car Rental service vendors are supported. Daily Services are admin-managed.")
-        existing_service_vendor = await db.users.find_one({
-            "role": Role.VENDOR.value,
-            "vendor_type": VendorType.SERVICE.value,
-            "service_type": data.service_type.value,
-            "active": {"$ne": False},
-        }, {"_id": 1})
-        if existing_service_vendor:
-            service_label = SERVICE_TYPES.get(data.service_type.value, {}).get("name", data.service_type.value)
-            raise HTTPException(status_code=409, detail=f"{service_label} vendor account already exists")
-    existing = await db.users.find_one({"$or": [{"email": data.email}, {"phone": data.phone}]})
-    if existing:
-        if existing.get("email") == data.email:
-            raise HTTPException(status_code=400, detail="Email already registered")
-        raise HTTPException(status_code=400, detail="Mobile number already registered")
-    uid = str(uuid.uuid4())
-    user_doc = {
-        "id": uid,
-        "name": data.name,
-        "email": data.email,
-        "phone": data.phone,
-        "password": hash_password(data.password),
-        "role": data.role.value,
-        "vendor_type": data.vendor_type.value if data.role == Role.VENDOR else None,
-        "service_type": (
-            (data.service_type.value if data.service_type else ServiceType.DAILY_SERVICE.value)
-            if data.role == Role.VENDOR and data.vendor_type == VendorType.SERVICE
-            else None
-        ),
-        "avatar": None,
-        "created_at": now_iso(),
-    }
-    await db.users.insert_one(user_doc)
-    token = create_token(uid, data.role.value)
-    return {"token": token, "user": user_to_out(user_doc)}
-
+    raise HTTPException(
+        status_code=403,
+        detail="Email verification is required. Please use the signup OTP flow.",
+    )
 
 @api.post("/auth/check-identifier")
 async def check_identifier(data: IdentifierCheckIn):
@@ -412,14 +556,168 @@ async def check_identifier(data: IdentifierCheckIn):
 async def login(data: LoginIn):
     value = data.identifier.strip()
     if "@" in value:
-        value = value.lower()
-    else:
-        value = "".join(ch for ch in value if ch.isdigit())
-    user = await db.users.find_one({"$or": [{"email": value}, {"phone": value}]})
+        value = normalize_email(value)
+        user = await db.users.find_one({"email": value})
+        if not user or not verify_password(data.password, user.get("password", "")):
+            raise HTTPException(status_code=401, detail="Invalid email or password")
+        raise HTTPException(
+            status_code=428,
+            detail="Email OTP verification is required. Request an OTP to continue.",
+        )
+
+    value = normalize_phone(value)
+    user = await db.users.find_one({"phone": value})
     if not user or not verify_password(data.password, user.get("password", "")):
-        raise HTTPException(status_code=401, detail="Invalid email/mobile or password")
+        raise HTTPException(status_code=401, detail="Invalid mobile number or password")
+    if user.get("active", True) is False:
+        raise HTTPException(status_code=403, detail="Account is suspended")
     token = create_token(user["id"], user["role"])
     return {"token": token, "user": user_to_out(user)}
+
+
+@api.post("/auth/email-login/request")
+async def request_email_login_otp(data: EmailLoginOtpRequestIn):
+    email = normalize_email(data.email)
+    user = await db.users.find_one({"email": email})
+    if not user or not verify_password(data.password, user.get("password", "")):
+        raise HTTPException(status_code=401, detail="Invalid email or password")
+    if user.get("active", True) is False:
+        raise HTTPException(status_code=403, detail="Account is suspended")
+
+    return await issue_email_otp(
+        email=email,
+        purpose="login",
+        subject="Your KMT Bazaar login OTP",
+        html_template="""
+        <div style="font-family:Arial,sans-serif;max-width:520px;margin:auto;padding:24px;color:#0f172a">
+          <h2 style="margin-bottom:8px">KMT Bazaar Login Verification</h2>
+          <p>Your 6-digit login OTP is:</p>
+          <div style="font-size:34px;font-weight:800;letter-spacing:8px;margin:20px 0">"{otp}"</div>
+          <p>This OTP expires in {expires} minutes.</p>
+          <p style="color:#64748b;font-size:13px">Do not share this code with anyone.</p>
+        </div>
+        """.replace('\"','"'),
+    )
+
+
+@api.post("/auth/email-login/verify", response_model=AuthOut)
+async def verify_email_login_otp(data: EmailOtpVerifyIn):
+    record = await consume_email_otp(data.email, "login", data.otp)
+    user = await db.users.find_one({"email": normalize_email(data.email)})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    if user.get("active", True) is False:
+        raise HTTPException(status_code=403, detail="Account is suspended")
+    token = create_token(user["id"], user["role"])
+    return {"token": token, "user": user_to_out(user)}
+
+
+@api.post("/auth/email-signup/request")
+async def request_email_signup_otp(data: EmailSignupOtpRequestIn):
+    email = normalize_email(data.email)
+    phone = normalize_phone(data.phone or "")
+
+    validate_signup_password(data.password)
+    if len(phone) != 10:
+        raise HTTPException(status_code=400, detail="Please enter a valid 10-digit phone number")
+
+    if data.role == Role.ADMIN:
+        raise HTTPException(status_code=403, detail="Admin accounts cannot be created through public registration")
+
+    if data.role == Role.VENDOR and data.vendor_type == VendorType.SERVICE:
+        if data.service_type not in {ServiceType.HOLIDAY, ServiceType.CAR_RENTAL}:
+            raise HTTPException(status_code=400, detail="Only Holiday and Car Rental service vendors are supported")
+        existing_service_vendor = await db.users.find_one({
+            "role": Role.VENDOR.value,
+            "vendor_type": VendorType.SERVICE.value,
+            "service_type": data.service_type.value,
+            "active": {"$ne": False},
+        }, {"_id": 1})
+        if existing_service_vendor:
+            service_label = SERVICE_TYPES.get(data.service_type.value, {}).get("name", data.service_type.value)
+            raise HTTPException(status_code=409, detail=f"{service_label} vendor account already exists")
+
+    existing = await db.users.find_one({"$or": [{"email": email}, {"phone": phone}]})
+    if existing:
+        if existing.get("email") == email:
+            raise HTTPException(status_code=400, detail="Email already registered")
+        raise HTTPException(status_code=400, detail="Mobile number already registered")
+
+    pending_payload = {
+        "name": data.name.strip(),
+        "email": email,
+        "phone": phone,
+        "password_hash": hash_password(data.password),
+        "role": data.role.value,
+        "vendor_type": data.vendor_type.value if data.role == Role.VENDOR else None,
+        "service_type": (
+            data.service_type.value
+            if data.role == Role.VENDOR and data.vendor_type == VendorType.SERVICE and data.service_type
+            else None
+        ),
+    }
+
+    return await issue_email_otp(
+        email=email,
+        purpose="signup",
+        subject="Verify your KMT Bazaar account",
+        payload={"registration": pending_payload},
+        html_template="""
+        <div style="font-family:Arial,sans-serif;max-width:520px;margin:auto;padding:24px;color:#0f172a">
+          <h2 style="margin-bottom:8px">Welcome to KMT Bazaar</h2>
+          <p>Use this 6-digit OTP to verify your email and complete your account:</p>
+          <div style="font-size:34px;font-weight:800;letter-spacing:8px;margin:20px 0">"{otp}"</div>
+          <p>This OTP expires in {expires} minutes.</p>
+          <p style="color:#64748b;font-size:13px">Do not share this code with anyone.</p>
+        </div>
+        """.replace('\"','"'),
+    )
+
+
+@api.post("/auth/email-signup/verify", response_model=AuthOut)
+async def verify_email_signup_otp(data: EmailOtpVerifyIn):
+    record = await consume_email_otp(data.email, "signup", data.otp)
+    registration = (record.get("payload") or {}).get("registration") or {}
+    email = normalize_email(data.email)
+
+    if not registration or normalize_email(registration.get("email")) != email:
+        raise HTTPException(status_code=400, detail="Signup verification data is invalid")
+
+    existing = await db.users.find_one({"$or": [{"email": email}, {"phone": registration.get("phone")}]})
+    if existing:
+        if existing.get("email") == email:
+            raise HTTPException(status_code=400, detail="Email already registered")
+        raise HTTPException(status_code=400, detail="Mobile number already registered")
+
+    if registration.get("role") == Role.VENDOR.value and registration.get("vendor_type") == VendorType.SERVICE.value:
+        existing_service_vendor = await db.users.find_one({
+            "role": Role.VENDOR.value,
+            "vendor_type": VendorType.SERVICE.value,
+            "service_type": registration.get("service_type"),
+            "active": {"$ne": False},
+        }, {"_id": 1})
+        if existing_service_vendor:
+            raise HTTPException(status_code=409, detail="This service vendor account already exists")
+
+    uid = str(uuid.uuid4())
+    user_doc = {
+        "id": uid,
+        "name": registration.get("name", "").strip(),
+        "email": email,
+        "phone": registration.get("phone"),
+        "password": registration.get("password_hash"),
+        "role": registration.get("role", Role.CUSTOMER.value),
+        "vendor_type": registration.get("vendor_type"),
+        "service_type": registration.get("service_type"),
+        "avatar": None,
+        "created_at": now_iso(),
+    }
+    await db.users.insert_one(user_doc)
+    token = create_token(uid, user_doc["role"])
+    return {"token": token, "user": user_to_out(user_doc)}
+
+
+
 
 @api.post("/auth/google", response_model=AuthOut)
 async def google_login(data: GoogleLoginIn):
@@ -505,7 +803,24 @@ async def forgot_password(data: ForgotPasswordIn):
         "created_at": datetime.now(timezone.utc),
     })
 
-    # Development-only OTP visibility is intentionally disabled in production.
+    try:
+        await send_resend_email(
+            data.email,
+            "Your KMT Bazaar password reset OTP",
+            """
+            <div style="font-family:Arial,sans-serif;max-width:520px;margin:auto;padding:24px;color:#0f172a">
+              <h2>Password Reset</h2>
+              <p>Your KMT Bazaar password reset OTP is:</p>
+              <div style="font-size:34px;font-weight:800;letter-spacing:8px;margin:20px 0">{otp}</div>
+              <p>This OTP expires in 10 minutes.</p>
+              <p style="color:#64748b;font-size:13px">If you did not request this, you can ignore this email.</p>
+            </div>
+            """.format(otp=escape(otp)),
+        )
+    except HTTPException:
+        await db.password_reset_otps.delete_many({"email": data.email})
+        raise
+
     return {
         "success": True,
         "message": "If the account exists, a reset OTP has been sent.",
