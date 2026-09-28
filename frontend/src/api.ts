@@ -3,7 +3,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const BASE =
   process.env.EXPO_PUBLIC_BACKEND_URL ||
-  "https://kmtbazaar.tech";
+  "https://kmtbazaar.com";
 
 export const API = `${BASE}/api`;
 
