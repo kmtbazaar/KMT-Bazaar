@@ -86,3 +86,15 @@ android-sdk/
 credentials.json
 *.key
 .credentials
+
+# Local VPS backups and runtime files
+*.backup*
+*.bak*
+*.before_*
+*.pre_*
+*.local-backup
+*.log
+
+# Local unused assistant GIF variants
+frontend/assets/images/assistant-optimized-360.gif
+frontend/assets/images/assistant-optimized.gif
