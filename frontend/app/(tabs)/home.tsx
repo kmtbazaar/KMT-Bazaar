@@ -747,13 +747,7 @@ export default function Home() {
               }
             }}
             renderItem={({ item }) => (
-              <Pressable testID={`banner-${item.id}`} onPress={() => {
-                  if (item.target_type === "custom_page" && item.target_slug) {
-                    router.push({ pathname: "/travel/[slug]", params: { slug: item.target_slug } } as any);
-                  } else {
-                    router.push(`/category/${item.category_id}` as any);
-                  }
-                }} style={s.banner}>
+              <View testID={`banner-${item.id}`} style={s.banner}>
                 <Image
                   source={{ uri: brokenImages[`banner:${String(item.id)}`] ? IMAGE_FALLBACK_URL : (item.image || IMAGE_FALLBACK_URL) }}
                   style={s.bannerImg}
@@ -770,7 +764,7 @@ export default function Home() {
                     <Text style={s.bannerCtaText}>{item.cta || "Explore Now"} →</Text>
                   </View>
                 </View>
-              </Pressable>
+              </View>
             )}
             onMomentumScrollEnd={(event) => {
               const offsetX = event.nativeEvent.contentOffset.x;
