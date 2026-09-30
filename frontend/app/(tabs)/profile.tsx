@@ -173,7 +173,7 @@ export default function Profile() {
           <View style={s.cameraBadge}>
             <MaterialCommunityIcons
               name="camera"
-              size={14}
+              size={12}
               color="#fff"
             />
           </View>
@@ -243,7 +243,7 @@ export default function Profile() {
               <View style={s.iconWrap}>
                 <MaterialCommunityIcons
                   name={it.icon as any}
-                  size={20}
+                  size={18}
                   color={COLORS.brand}
                 />
               </View>
@@ -534,11 +534,12 @@ const s = StyleSheet.create({
   },
 
   header: {
-    padding: SPACING.xl,
-    paddingTop: SPACING.xl,
+    paddingHorizontal: SPACING.lg,
+    paddingTop: 12,
+    paddingBottom: 12,
     alignItems: "center",
-    borderBottomLeftRadius: 24,
-    borderBottomRightRadius: 24,
+    borderBottomLeftRadius: 22,
+    borderBottomRightRadius: 22,
   },
 
   avatarContainer: {
@@ -547,9 +548,9 @@ const s = StyleSheet.create({
   },
 
   avatarWrap: {
-    width: 84,
-    height: 84,
-    borderRadius: 42,
+    width: 62,
+    height: 62,
+    borderRadius: 31,
     backgroundColor: "#fff",
     alignItems: "center",
     justifyContent: "center",
@@ -564,12 +565,12 @@ const s = StyleSheet.create({
 
   cameraBadge: {
     position: "absolute",
-    bottom: 0,
-    right: 0,
+    bottom: -1,
+    right: -1,
     backgroundColor: COLORS.brand,
-    width: 26,
-    height: 26,
-    borderRadius: 13,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 2,
@@ -578,28 +579,28 @@ const s = StyleSheet.create({
 
   name: {
     color: "#fff",
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: "800",
-    marginTop: 10,
+    marginTop: 6,
   },
 
   email: {
     color: "rgba(255,255,255,0.85)",
-    marginTop: 2,
-    fontSize: 13,
+    marginTop: 1,
+    fontSize: 12,
   },
 
   rolePill: {
-    marginTop: 10,
+    marginTop: 6,
     backgroundColor: COLORS.accent,
-    paddingHorizontal: 14,
-    paddingVertical: 4,
+    paddingHorizontal: 12,
+    paddingVertical: 3,
     borderRadius: RADIUS.pill,
   },
 
   roleText: {
     color: "#fff",
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: "800",
     letterSpacing: 1,
   },
@@ -615,8 +616,10 @@ const s = StyleSheet.create({
   row: {
     flexDirection: "row",
     alignItems: "center",
-    padding: SPACING.md,
-    gap: SPACING.md,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    gap: 10,
+    minHeight: 48,
   },
 
   rowBorder: {
@@ -625,9 +628,9 @@ const s = StyleSheet.create({
   },
 
   iconWrap: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     backgroundColor: COLORS.brandLight,
     alignItems: "center",
     justifyContent: "center",
@@ -637,6 +640,7 @@ const s = StyleSheet.create({
     flex: 1,
     color: COLORS.text,
     fontWeight: "600",
+    fontSize: 13,
   },
 
   logout: {
@@ -644,8 +648,9 @@ const s = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
-    marginTop: SPACING.lg,
-    padding: 14,
+    marginTop: 10,
+    paddingVertical: 11,
+    paddingHorizontal: 14,
     borderWidth: 1.5,
     borderColor: COLORS.error,
     borderRadius: RADIUS.pill,
@@ -660,8 +665,8 @@ const s = StyleSheet.create({
   version: {
     textAlign: "center",
     color: COLORS.textMuted,
-    marginTop: SPACING.lg,
-    fontSize: 12,
+    marginTop: 8,
+    fontSize: 10,
   },
 
   /* MODAL */
