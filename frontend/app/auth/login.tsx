@@ -296,8 +296,30 @@ export default function Login() {
     }
   };
 
+  const onResendEmailOtp = async () => {
+    if (!password) {
+      setError("Please enter your password again");
+      setEmailOtpStep(false);
+      setEmailOtp("");
+      return;
+    }
+
+    setError(null);
+    setOtpLoading(true);
+
+    try {
+      await requestEmailLoginOtp(identifier.trim().toLowerCase(), password);
+      setEmailOtp("");
+      setError(null);
+    } catch (e: any) {
+      setError(e?.message || "Unable to resend OTP");
+    } finally {
+      setOtpLoading(false);
+    }
+  };
+
   const onVerifyEmailOtp = async () => {
-    if (!/^\\d{6}$/.test(emailOtp)) {
+    if (!/^\d{6}$/.test(emailOtp)) {
       setError("Enter the 6-digit OTP sent to your email");
       return;
     }
@@ -516,6 +538,13 @@ export default function Login() {
                       >
                         {otpLoading ? <ActivityIndicator color="#fff" /> : <Text style={s.ctaText}>Verify & Login</Text>}
                       </LinearGradient>
+                    </Pressable>
+                    <Pressable
+                      onPress={onResendEmailOtp}
+                      disabled={otpLoading}
+                      testID="login-resend-otp"
+                    >
+                      <Text style={s.forgotPassword}>Resend OTP</Text>
                     </Pressable>
                     <Pressable onPress={() => { setEmailOtpStep(false); setEmailOtp(""); setError(null); }}>
                       <Text style={s.forgotPassword}>Back to password</Text>
