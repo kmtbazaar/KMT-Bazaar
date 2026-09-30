@@ -29,7 +29,6 @@ export default function ForgotPassword() {
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [debugOtp, setDebugOtp] = useState("");
 
   const sendOtp = async () => {
     const cleanEmail = email.trim().toLowerCase();
@@ -51,10 +50,6 @@ export default function ForgotPassword() {
       const result = await api.forgotPassword(cleanEmail);
 
       setEmail(cleanEmail);
-
-      if (result.debug_otp) {
-        setDebugOtp(result.debug_otp);
-      }
 
       setStep("otp");
     } catch (e: any) {
@@ -129,7 +124,6 @@ export default function ForgotPassword() {
 
     if (step === "otp") {
       setOtp("");
-      setDebugOtp("");
       setError("");
       setStep("email");
       return;
@@ -232,27 +226,6 @@ export default function ForgotPassword() {
         Enter the 6-digit OTP generated for{" "}
         <Text style={s.emailText}>{email}</Text>
       </Text>
-
-      {debugOtp ? (
-        <View style={s.debugBox}>
-          <MaterialCommunityIcons
-            name="information-outline"
-            size={20}
-            color="#0284C7"
-          />
-
-          <View style={s.debugTextWrap}>
-            <Text style={s.debugTitle}>Development OTP</Text>
-
-            <Text style={s.debugOtp}>{debugOtp}</Text>
-
-            <Text style={s.debugHint}>
-              Email/SMS service is not connected yet, so the OTP is shown here
-              for testing.
-            </Text>
-          </View>
-        </View>
-      ) : null}
 
       <View style={s.inputBox}>
         <MaterialCommunityIcons
