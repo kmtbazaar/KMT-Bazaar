@@ -736,12 +736,18 @@ export default function Home() {
         </View>
 
         {/* Nearby Stores List */}
-        <SectionTitle title="Nearby Stores" subtitle="Fast delivery hubs" />
+        <View style={s.nearbySectionHead}>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+            <View style={s.sectionIndicator} />
+            <Text style={s.sectionTitle}>Nearby Stores</Text>
+          </View>
+          <Text style={s.sectionSub}>Fast delivery hubs</Text>
+        </View>
         <FlatList
           horizontal
           data={stores}
           showsHorizontalScrollIndicator={false}
-          contentContainerStyle={{ paddingHorizontal: SPACING.lg, gap: 10, paddingVertical: 4 }}
+          contentContainerStyle={{ paddingHorizontal: SPACING.lg, gap: 10, paddingTop: 2, paddingBottom: 8 }}
           keyExtractor={(it) => String(it.id)}
           renderItem={({ item }) => {
             const isAvailable = item.is_online !== false;
@@ -936,7 +942,7 @@ const s = StyleSheet.create({
   searchMicListening: { transform: [{ scale: 1.08 }], backgroundColor: THEME.orangeBright },
 
   /* Clean Banner Styling */
-  banner: { width: BANNER_W, height: 165, borderRadius: 24, overflow: "hidden", backgroundColor: THEME.white, position: "relative", borderWidth: 1, borderColor: "rgba(255,107,0,0.22)", shadowColor: THEME.orange, shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.14, shadowRadius: 18, elevation: 7 },
+  banner: { width: BANNER_W, height: 135, borderRadius: 20, overflow: "hidden", backgroundColor: THEME.white, position: "relative", borderWidth: 1, borderColor: "rgba(255,107,0,0.22)", shadowColor: THEME.orange, shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.12, shadowRadius: 14, elevation: 6 },
   bannerImg: { width: "100%", height: "100%" },
   bannerFlashBorder: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, borderRadius: RADIUS.lg, borderWidth: 2.5, borderColor: THEME.orangeBright, pointerEvents: "none" },
   bannerCarouselShell: { position: "relative" },
@@ -949,6 +955,7 @@ const s = StyleSheet.create({
   bannerCtaText: { color: THEME.white, fontWeight: "800", fontSize: 12 },
   
   sectionHead: { paddingHorizontal: SPACING.lg, marginTop: SPACING.md, marginBottom: SPACING.sm },
+  nearbySectionHead: { paddingHorizontal: SPACING.lg, marginTop: 4, marginBottom: 4 },
   sectionIndicator: { width: 4, height: 16, backgroundColor: THEME.orange, borderRadius: 2 },
   sectionTitle: { fontSize: 18, fontWeight: "900", color: THEME.black },
   sectionSub: { fontSize: 12, color: THEME.blackMuted, marginTop: 2, marginLeft: 12 },
@@ -963,9 +970,9 @@ const s = StyleSheet.create({
   catName: { fontSize: 11, fontWeight: "700", color: THEME.black, marginTop: 6, textAlign: "center" },
   
   /* Compact Store Tile Styling */
-  storeCardSmall: { width: 135, backgroundColor: "rgba(255,255,255,0.96)", borderRadius: 18, overflow: "hidden", position: "relative", shadowColor: THEME.orange, shadowOffset: { width: 0, height: 7 }, shadowOpacity: 0.1, shadowRadius: 16, elevation: 5, borderWidth: 1, borderColor: "rgba(255,107,0,0.15)" },
+  storeCardSmall: { width: 145, minHeight: 112, backgroundColor: "rgba(255,255,255,0.98)", borderRadius: 16, overflow: "hidden", position: "relative", shadowColor: THEME.orange, shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.09, shadowRadius: 14, elevation: 5, borderWidth: 1, borderColor: "rgba(255,107,0,0.15)" },
   storeFlashBorder: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, borderRadius: RADIUS.md, borderWidth: 1.5, borderColor: THEME.orangeGlow, pointerEvents: "none", zIndex: 2 },
-  storeImgSmall: { width: "100%", height: 65 },
+  storeImgSmall: { width: "100%", height: 68 },
   storeNameSmall: { fontWeight: "800", color: THEME.black, fontSize: 12 },
   ratePillSmall: { flexDirection: "row", alignItems: "center", backgroundColor: THEME.orange, paddingHorizontal: 5, paddingVertical: 2, borderRadius: 4, gap: 2 },
   rateTextSmall: { color: THEME.white, fontSize: 10, fontWeight: "800" },
