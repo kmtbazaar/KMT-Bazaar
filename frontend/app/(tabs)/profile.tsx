@@ -32,7 +32,7 @@ const ITEMS = [
 ];
 
 export default function Profile() {
-  const { user, logout } = useAuth();
+  const { user, logout, refresh } = useAuth();
   const router = useRouter();
   const [uploading, setUploading] = useState(false);
 
@@ -89,6 +89,7 @@ export default function Profile() {
 
       if (response.ok && resData.avatar) {
         setLocalAvatar(resData.avatar);
+        await refresh();
 
         Alert.alert(
           "Success",
@@ -172,8 +173,8 @@ export default function Profile() {
 
           <View style={s.cameraBadge}>
             <MaterialCommunityIcons
-              name="camera"
-              size={12}
+              name="camera-plus-outline"
+              size={13}
               color="#fff"
             />
           </View>
@@ -567,14 +568,17 @@ const s = StyleSheet.create({
     position: "absolute",
     bottom: -1,
     right: -1,
+    zIndex: 20,
+    elevation: 8,
     backgroundColor: COLORS.brand,
-    width: 22,
-    height: 22,
-    borderRadius: 11,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 2,
     borderColor: "#fff",
+    ...shadow.card,
   },
 
   name: {
