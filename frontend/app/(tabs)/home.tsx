@@ -815,8 +815,14 @@ export default function Home() {
           ))}
         </View>
 
-        {/* Nearby Stores List */}
-        <SectionTitle title="Nearby Stores" subtitle="Fast delivery hubs" />
+        {/* Nearby Stores List — directly below Shop by Category */}
+        <View style={s.nearbySectionHead}>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+            <View style={s.sectionIndicator} />
+            <Text style={s.sectionTitle}>Nearby Stores</Text>
+          </View>
+          <Text style={s.sectionSub}>Fast delivery hubs</Text>
+        </View>
         <FlatList
           horizontal
           data={stores}
