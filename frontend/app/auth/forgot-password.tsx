@@ -259,6 +259,8 @@ export default function ForgotPassword() {
           placeholder="Enter 6-digit OTP"
           placeholderTextColor="#94A3B8"
           keyboardType="number-pad"
+          autoComplete="one-time-code"
+          textContentType="oneTimeCode"
           maxLength={6}
           style={s.input}
           editable={!loading}
