@@ -501,7 +501,7 @@ export default function Login() {
                     </Pressable>
 
                     <Pressable
-                      onPress={() => router.push("/auth/forgot-password" as any)}
+                      onPress={() => router.push(`/auth/forgot-password?email=${encodeURIComponent(identifier.trim().toLowerCase())}` as any)}
                       testID="forgot-password"
                     >
                       <Text style={s.forgotPassword}>Forgot Password?</Text>
