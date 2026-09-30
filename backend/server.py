@@ -776,7 +776,8 @@ async def google_login(data: GoogleLoginIn):
 
 @api.post("/auth/forgot-password")
 async def forgot_password(data: ForgotPasswordIn):
-    user = await db.users.find_one({"email": data.email})
+    email = normalize_email(data.email)
+    user = await db.users.find_one({"email": email})
 
     # Do not reveal whether an email is registered.
     # A real email/SMS provider should deliver the reset OTP.
@@ -792,12 +793,12 @@ async def forgot_password(data: ForgotPasswordIn):
     expires_at = datetime.now(timezone.utc) + timedelta(minutes=10)
 
     await db.password_reset_otps.delete_many({
-        "email": data.email
+        "email": email
     })
 
     await db.password_reset_otps.insert_one({
         "id": str(uuid.uuid4()),
-        "email": data.email,
+        "email": email,
         "otp_hash": hash_reset_otp(otp),
         "expires_at": expires_at,
         "created_at": datetime.now(timezone.utc),
@@ -805,7 +806,7 @@ async def forgot_password(data: ForgotPasswordIn):
 
     try:
         await send_resend_email(
-            data.email,
+            email,
             "Your KMT Bazaar password reset OTP",
             """
             <div style="font-family:Arial,sans-serif;max-width:520px;margin:auto;padding:24px;color:#0f172a">
@@ -818,7 +819,7 @@ async def forgot_password(data: ForgotPasswordIn):
             """.format(otp=escape(otp)),
         )
     except HTTPException:
-        await db.password_reset_otps.delete_many({"email": data.email})
+        await db.password_reset_otps.delete_many({"email": email})
         raise
 
     return {
@@ -830,7 +831,7 @@ async def forgot_password(data: ForgotPasswordIn):
 @api.post("/auth/verify-reset-otp")
 async def verify_reset_otp(data: VerifyResetOtpIn):
     reset = await db.password_reset_otps.find_one({
-        "email": data.email
+        "email": email
     })
 
     if not reset:
@@ -852,7 +853,7 @@ async def verify_reset_otp(data: VerifyResetOtpIn):
 
     if datetime.now(timezone.utc) > expires_at:
         await db.password_reset_otps.delete_many({
-            "email": data.email
+            "email": email
         })
         raise HTTPException(
             status_code=400,
@@ -885,7 +886,7 @@ async def reset_password(data: ResetPasswordIn):
         )
 
     reset = await db.password_reset_otps.find_one({
-        "email": data.email
+        "email": email
     })
 
     if not reset:
@@ -907,7 +908,7 @@ async def reset_password(data: ResetPasswordIn):
 
     if datetime.now(timezone.utc) > expires_at:
         await db.password_reset_otps.delete_many({
-            "email": data.email
+            "email": email
         })
         raise HTTPException(
             status_code=400,
@@ -927,7 +928,7 @@ async def reset_password(data: ResetPasswordIn):
         )
 
     user = await db.users.find_one({
-        "email": data.email
+        "email": email
     })
 
     if not user:
@@ -937,12 +938,12 @@ async def reset_password(data: ResetPasswordIn):
         )
 
     await db.users.update_one(
-        {"email": data.email},
+        {"email": email},
         {"$set": {"password": hash_password(data.new_password)}}
     )
 
     await db.password_reset_otps.delete_many({
-        "email": data.email
+        "email": email
     })
 
     return {
