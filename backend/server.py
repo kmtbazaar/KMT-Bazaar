@@ -450,10 +450,13 @@ async def consume_email_otp(email: str, purpose: str, otp: str) -> dict:
     if not (len(str(otp).strip()) == 6 and str(otp).strip().isdigit()):
         raise HTTPException(status_code=400, detail="Enter a valid 6-digit OTP")
 
-    record = await db.email_auth_otps.find_one({
-        "email": email,
-        "purpose": purpose,
-    })
+    record = await db.email_auth_otps.find_one(
+        {
+            "email": email,
+            "purpose": purpose,
+        },
+        sort=[("created_at", -1)],
+    )
     if not record:
         raise HTTPException(status_code=400, detail="OTP not found or expired")
 
