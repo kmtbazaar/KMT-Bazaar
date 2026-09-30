@@ -27,9 +27,9 @@ const BANNER_W = width - 32;
 
 // Custom Theme Palette: Clean Pure White, Sky Blue Header & Vibrant Orange
 const THEME = {
-  whiteBg: "#FFF9F0",        // Soft warm-white page background
-  skyHeader: "#0284C7",      // Deep Sky Blue Header
-  skyHeaderDark: "#0369A1",  // Deep Header Accent
+  whiteBg: "#FFFFFF",        // Soft warm-white page background
+  skyHeader: "#FF6B00",      // Deep Sky Blue Header
+  skyHeaderDark: "#FF8800",  // Deep Header Accent
   orange: "#FF6B00",         // Vibrant Orange
   orangeBright: "#FF8800",   // Bright Orange Highlight
   orangeGlow: "#F97316",     // Border Glow Orange
@@ -678,7 +678,7 @@ const s = StyleSheet.create({
   locationGatePrivacy: { marginTop: 12, color: THEME.blackMuted, fontSize: 10, lineHeight: 15, textAlign: "center" },
   root: { flex: 1, backgroundColor: THEME.whiteBg },
   /* Header Height Restricted strictly till search box */
-  headerBg: { position: "absolute", top: 0, left: 0, right: 0, height: 155, borderBottomLeftRadius: 18, borderBottomRightRadius: 18 },
+  headerBg: { position: "absolute", top: 0, left: 0, right: 0, height: 170, borderBottomLeftRadius: 28, borderBottomRightRadius: 28, shadowColor: THEME.orangeBright, shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.18, shadowRadius: 20, elevation: 8 },
   headerWrap: { paddingHorizontal: SPACING.lg, paddingBottom: SPACING.xs },
   headerRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingTop: 4 },
   locWrap: { flexDirection: "row", gap: 8, alignItems: "center", flex: 1, marginRight: 12, zIndex: 99, elevation: 5 },
@@ -691,12 +691,12 @@ const s = StyleSheet.create({
   bellBadge: { position: "absolute", top: 2, right: 2, backgroundColor: THEME.orange, minWidth: 18, height: 18, borderRadius: 9, paddingHorizontal: 4, alignItems: "center", justifyContent: "center", borderWidth: 1.5, borderColor: THEME.white },
   bellBadgeText: { color: THEME.white, fontSize: 9, fontWeight: "900" },
   
-  searchWrap: { flexDirection: "row", alignItems: "center", backgroundColor: THEME.white, borderRadius: RADIUS.pill, paddingHorizontal: 14, paddingVertical: 10, marginTop: SPACING.md, ...shadow.card, height: 48, borderWidth: 1.5, borderColor: THEME.orange },
+  searchWrap: { flexDirection: "row", alignItems: "center", backgroundColor: "rgba(255,255,255,0.94)", borderRadius: RADIUS.pill, paddingHorizontal: 15, paddingVertical: 10, marginTop: SPACING.md, height: 52, borderWidth: 1, borderColor: "rgba(255,255,255,0.72)", shadowColor: "#0F172A", shadowOffset: { width: 0, height: 7 }, shadowOpacity: 0.12, shadowRadius: 18, elevation: 6 },
   searchPlaceholderText: { fontSize: 14, color: THEME.blackMuted, fontWeight: "600" },
   searchMicBg: { backgroundColor: THEME.orange, padding: 6, borderRadius: 12 },
 
   /* Clean Banner Styling */
-  banner: { width: BANNER_W, height: 155, borderRadius: RADIUS.lg, overflow: "hidden", backgroundColor: THEME.white, position: "relative", ...shadow.soft },
+  banner: { width: BANNER_W, height: 165, borderRadius: 24, overflow: "hidden", backgroundColor: THEME.white, position: "relative", borderWidth: 1, borderColor: "rgba(255,107,0,0.22)", shadowColor: THEME.orange, shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.14, shadowRadius: 18, elevation: 7 },
   bannerImg: { width: "100%", height: "100%" },
   bannerFlashBorder: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, borderRadius: RADIUS.lg, borderWidth: 2.5, borderColor: THEME.orangeBright, pointerEvents: "none" },
   bannerText: { position: "absolute", left: 16, bottom: 16, right: 16, alignItems: "flex-start" },
@@ -720,7 +720,7 @@ const s = StyleSheet.create({
   catName: { fontSize: 11, fontWeight: "700", color: THEME.black, marginTop: 6, textAlign: "center" },
   
   /* Compact Store Tile Styling */
-  storeCardSmall: { width: 135, backgroundColor: THEME.white, borderRadius: RADIUS.md, overflow: "hidden", position: "relative", ...shadow.soft, borderWidth: 1, borderColor: THEME.borderSoft },
+  storeCardSmall: { width: 135, backgroundColor: "rgba(255,255,255,0.96)", borderRadius: 18, overflow: "hidden", position: "relative", shadowColor: THEME.orange, shadowOffset: { width: 0, height: 7 }, shadowOpacity: 0.1, shadowRadius: 16, elevation: 5, borderWidth: 1, borderColor: "rgba(255,107,0,0.15)" },
   storeFlashBorder: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, borderRadius: RADIUS.md, borderWidth: 1.5, borderColor: THEME.orangeGlow, pointerEvents: "none", zIndex: 2 },
   storeImgSmall: { width: "100%", height: 65 },
   storeNameSmall: { fontWeight: "800", color: THEME.black, fontSize: 12 },
