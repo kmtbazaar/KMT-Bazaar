@@ -1,9 +1,9 @@
 import React, { useEffect, useState, useCallback, useRef } from "react";
-import { View, Text, ScrollView, StyleSheet, Pressable, FlatList, Dimensions, RefreshControl, Platform, ActivityIndicator } from "react-native";
+import { View, Text, ScrollView, StyleSheet, Pressable, FlatList, Dimensions, RefreshControl, Platform, ActivityIndicator, Animated as RNAnimated } from "react-native";
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { useRouter, useFocusEffect } from "expo-router";
+import { useRouter, useFocusEffect, useNavigation } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Location from "expo-location";
@@ -40,6 +40,83 @@ const THEME = {
 };
 
 // Search bar placeholder texts for animation
+
+const CATEGORY_SUBCATEGORIES: Record<string, { label: string; keywords: string[] }[]> = {
+  fashion: [
+    { label: "All", keywords: [] },
+    { label: "Pant", keywords: ["pant", "pants"] },
+    { label: "Shirt", keywords: ["shirt"] },
+    { label: "T-Shirt", keywords: ["t-shirt", "tshirt", "tee"] },
+    { label: "Trouser", keywords: ["trouser", "trousers"] },
+    { label: "Jeans", keywords: ["jeans", "denim"] },
+    { label: "Kurti", keywords: ["kurti"] },
+    { label: "Saree", keywords: ["saree", "sari"] },
+    { label: "Dress", keywords: ["dress", "gown"] },
+    { label: "Shoes", keywords: ["shoe", "shoes", "sneaker", "sandal", "slipper"] },
+  ],
+  electronics: [
+    { label: "All", keywords: [] },
+    { label: "TV", keywords: ["tv", "television"] },
+    { label: "Fridge", keywords: ["fridge", "refrigerator"] },
+    { label: "AC", keywords: ["ac", "air conditioner", "air-conditioner"] },
+    { label: "Mobile", keywords: ["mobile", "phone", "smartphone"] },
+    { label: "Laptop", keywords: ["laptop", "notebook", "computer"] },
+    { label: "Accessories", keywords: ["charger", "cable", "earphone", "headphone", "adapter", "power bank", "cover"] },
+  ],
+  food: [
+    { label: "All", keywords: [] },
+    { label: "Breakfast", keywords: ["breakfast", "paratha", "poha", "upma"] },
+    { label: "Meals", keywords: ["meal", "thali", "biryani", "rice", "roti", "curry"] },
+    { label: "Snacks", keywords: ["snack", "samosa", "burger", "pizza", "roll", "momos"] },
+    { label: "Sweets", keywords: ["sweet", "mithai", "cake", "dessert"] },
+    { label: "Beverages", keywords: ["tea", "coffee", "juice", "shake", "drink"] },
+  ],
+  grocery: [
+    { label: "All", keywords: [] },
+    { label: "Rice & Atta", keywords: ["rice", "atta", "flour"] },
+    { label: "Pulses", keywords: ["dal", "pulse", "lentil", "chana", "rajma"] },
+    { label: "Oil & Masala", keywords: ["oil", "masala", "spice", "salt", "sugar"] },
+    { label: "Snacks", keywords: ["chips", "biscuit", "namkeen", "snack", "cookie"] },
+    { label: "Beverages", keywords: ["juice", "drink", "tea", "coffee", "beverage", "water"] },
+    { label: "Personal Care", keywords: ["soap", "shampoo", "toothpaste", "body wash"] },
+  ],
+  medicines: [
+    { label: "All", keywords: [] },
+    { label: "Tablets", keywords: ["tablet", "tablets"] },
+    { label: "Syrups", keywords: ["syrup", "syrups"] },
+    { label: "Pain Relief", keywords: ["pain", "relief"] },
+    { label: "Cold & Cough", keywords: ["cold", "cough", "flu"] },
+    { label: "Vitamins", keywords: ["vitamin", "calcium"] },
+  ],
+  home: [
+    { label: "All", keywords: [] },
+    { label: "Kitchen", keywords: ["kitchen", "cookware", "utensil", "pan", "plate"] },
+    { label: "Cleaning", keywords: ["clean", "detergent", "dishwash", "floor cleaner"] },
+    { label: "Storage", keywords: ["storage", "box", "container", "organizer"] },
+    { label: "Bathroom", keywords: ["bathroom", "toilet", "towel", "bucket"] },
+    { label: "Home Decor", keywords: ["decor", "curtain", "cushion", "lamp"] },
+  ],
+};
+
+function getCategoryFamily(name = "") {
+  const value = name.toLowerCase().trim();
+  if (value.includes("fashion") || value.includes("cloth") || value.includes("apparel")) return "fashion";
+  if (value.includes("electronic") || value.includes("gadget")) return "electronics";
+  if (value.includes("food") || value.includes("restaurant") || value.includes("meal")) return "food";
+  if (value.includes("grocery") || value.includes("rasan")) return "grocery";
+  if (value.includes("medicine") || value.includes("medical") || value.includes("pharmacy")) return "medicines";
+  if (value.includes("home")) return "home";
+  return "";
+}
+
+function getSubcategories(name = "") {
+  return CATEGORY_SUBCATEGORIES[getCategoryFamily(name)] || [{ label: "All", keywords: [] }];
+}
+
+function getProductSearchText(product: any) {
+  return [product?.name, product?.description, product?.unit].filter(Boolean).join(" ").toLowerCase();
+}
+
 const SEARCH_PLACEHOLDERS = [
   "Search 'groceries'...",
   "Search 'fresh food'...",
@@ -183,6 +260,7 @@ function NightSky() {
 export default function Home() {
   const { user } = useAuth();
   const router = useRouter();
+  const navigation = useNavigation();
   const [banners, setBanners] = useState<any[]>([]);
   const [brokenImages, setBrokenImages] = useState<Record<string, boolean>>({});
   const [cats, setCats] = useState<any[]>([]);
@@ -195,6 +273,15 @@ export default function Home() {
   const [voiceListening, setVoiceListening] = useState(false);
   const bannerListRef = useRef<FlatList<any>>(null);
   const voiceRecognitionRef = useRef<any>(null);
+
+  const [activeHomeCategory, setActiveHomeCategory] = useState<string | null>(null);
+  const [activeHomeSubcategory, setActiveHomeSubcategory] = useState("All");
+  const [homeCategoryProducts, setHomeCategoryProducts] = useState<any[]>([]);
+  const [homeCategoryLoading, setHomeCategoryLoading] = useState(false);
+
+  const tabBarTranslateY = useRef(new RNAnimated.Value(0)).current;
+  const lastHomeOffsetY = useRef(0);
+  const homeTabHidden = useRef(false);
 
   // Customer delivery location state
   const [selectedAddress, setSelectedAddress] = useState("Set your delivery location");
@@ -257,6 +344,120 @@ export default function Home() {
       return () => { mounted = false; };
     }, [user])
   );
+
+  const handleHomeTabBarScroll = useCallback((event: any) => {
+    const currentOffsetY = event.nativeEvent.contentOffset.y;
+    const diff = currentOffsetY - lastHomeOffsetY.current;
+
+    if (Math.abs(diff) > 10) {
+      if (diff > 0 && currentOffsetY > 50 && !homeTabHidden.current) {
+        homeTabHidden.current = true;
+        RNAnimated.timing(tabBarTranslateY, {
+          toValue: 100,
+          duration: 250,
+          useNativeDriver: false,
+        }).start(({ finished }) => {
+          if (finished) {
+            navigation.setOptions({
+              tabBarStyle: {
+                position: "absolute",
+                borderTopColor: THEME.borderSoft,
+                backgroundColor: "#FFFFFF",
+                height: 65,
+                paddingTop: 4,
+                paddingBottom: 12,
+                transform: [{ translateY: 100 }],
+              },
+            });
+          }
+        });
+      } else if (diff < 0 && homeTabHidden.current) {
+        homeTabHidden.current = false;
+        navigation.setOptions({
+          tabBarStyle: {
+            position: "absolute",
+            borderTopColor: THEME.borderSoft,
+            backgroundColor: "#FFFFFF",
+            height: 65,
+            paddingTop: 4,
+            paddingBottom: 12,
+            transform: [{ translateY: tabBarTranslateY }],
+          },
+        });
+        RNAnimated.timing(tabBarTranslateY, {
+          toValue: 0,
+          duration: 250,
+          useNativeDriver: false,
+        }).start();
+      }
+
+      lastHomeOffsetY.current = currentOffsetY;
+    }
+  }, [navigation, tabBarTranslateY]);
+
+  useFocusEffect(
+    useCallback(() => {
+      lastHomeOffsetY.current = 0;
+      homeTabHidden.current = false;
+      tabBarTranslateY.setValue(0);
+      navigation.setOptions({
+        tabBarStyle: {
+          position: "absolute",
+          borderTopColor: THEME.borderSoft,
+          backgroundColor: "#FFFFFF",
+          height: 65,
+          paddingTop: 4,
+          paddingBottom: 12,
+        },
+      });
+
+      return () => {
+        homeTabHidden.current = false;
+        tabBarTranslateY.setValue(0);
+        navigation.setOptions({
+          tabBarStyle: {
+            position: "absolute",
+            borderTopColor: THEME.borderSoft,
+            backgroundColor: "#FFFFFF",
+            height: 65,
+            paddingTop: 4,
+            paddingBottom: 12,
+          },
+        });
+      };
+    }, [navigation, tabBarTranslateY])
+  );
+
+  useEffect(() => {
+    if (!locationReady || !activeHomeCategory) return;
+
+    let cancelled = false;
+    setHomeCategoryLoading(true);
+
+    (async () => {
+      try {
+        const data = await api.products({ category: activeHomeCategory });
+        if (!cancelled) setHomeCategoryProducts(data || []);
+      } catch (e) {
+        console.log("home category products load err", e);
+        if (!cancelled) setHomeCategoryProducts([]);
+      } finally {
+        if (!cancelled) setHomeCategoryLoading(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [activeHomeCategory, locationReady]);
+
+  const selectHomeCategory = useCallback((id: string) => {
+    setActiveHomeCategory(id);
+    setActiveHomeSubcategory("All");
+  }, []);
+
+  const activeHomeCategoryData = cats.find((item) => String(item.id) === String(activeHomeCategory));
+  const activeHomeSubcategories = getSubcategories(activeHomeCategoryData?.name || "");
 
   const captureInitialLocation = useCallback(async () => {
     if (initialLocationLoading) return;
@@ -647,6 +848,8 @@ export default function Home() {
           }
           showsVerticalScrollIndicator={false}
           nestedScrollEnabled={true}
+          onScroll={handleHomeTabBarScroll}
+          scrollEventThrottle={16}
           style={Platform.OS === 'web' ? ({ height: '100%', overflowY: 'auto', touchAction: 'pan-y' } as any) : {}}
         >
 
@@ -708,32 +911,148 @@ export default function Home() {
           )}
         </View>
 
-        {/* Categories Section with Flashing Border Tiles */}
-        <SectionTitle title="Shop by Category" subtitle="Clear & easy ordering" />
-        <View style={s.catsGrid}>
-          {cats.map((c) => (
-            <View key={c.id} style={s.catItemWrap}>
-              <Pressable
-                testID={`category-${c.id}`}
-                onPress={() => router.push({ pathname: `/category/${c.id}`, params: { name: c.name } } as any)}
-                style={s.catItem}
-              >
-                <View style={s.catCircleWrap}>
-                  <Animated.View style={[s.catFlashBorder, animatedFlashStyle]} />
-                  <View style={s.catCircle}>
-                    <Image
-                      source={{ uri: brokenImages[`cat:${String(c.id)}`] ? IMAGE_FALLBACK_URL : (c.image || IMAGE_FALLBACK_URL) }}
-                      style={s.catImg}
-                      contentFit="cover"
-                      onError={() => setBrokenImages(prev => ({ ...prev, [`cat:${String(c.id)}`]: true }))}
-                    />
+        {/* Shop by Category */}
+        <SectionTitle title="Shop by Category" subtitle={activeHomeCategory ? "Choose a subcategory" : "Tap a category to explore"} />
+
+        {!activeHomeCategory ? (
+          <View style={s.catsGrid}>
+            {cats.map((c) => (
+              <View key={c.id} style={s.catItemWrap}>
+                <Pressable
+                  testID={`category-${c.id}`}
+                  onPress={() => selectHomeCategory(String(c.id))}
+                  style={s.catItem}
+                >
+                  <View style={s.catCircleWrap}>
+                    <Animated.View style={[s.catFlashBorder, animatedFlashStyle]} />
+                    <View style={s.catCircle}>
+                      <Image
+                        source={{ uri: brokenImages[`cat:${String(c.id)}`] ? IMAGE_FALLBACK_URL : (c.image || IMAGE_FALLBACK_URL) }}
+                        style={s.catImg}
+                        contentFit="cover"
+                        onError={() => setBrokenImages(prev => ({ ...prev, [`cat:${String(c.id)}`]: true }))}
+                      />
+                    </View>
                   </View>
-                </View>
-                <Text style={s.catName} numberOfLines={1}>{c.name}</Text>
-              </Pressable>
+                  <Text style={s.catName} numberOfLines={1}>{c.name}</Text>
+                </Pressable>
+              </View>
+            ))}
+          </View>
+        ) : (
+          <View style={s.homeCategoryExplorer}>
+            <View style={s.homeCategoryRail}>
+              <ScrollView
+                showsVerticalScrollIndicator={false}
+                nestedScrollEnabled={true}
+                contentContainerStyle={{ paddingBottom: 6 }}
+              >
+                {cats.map((c) => {
+                  const active = String(c.id) === String(activeHomeCategory);
+                  return (
+                    <Pressable
+                      key={c.id}
+                      testID={`home-category-rail-${c.id}`}
+                      onPress={() => selectHomeCategory(String(c.id))}
+                      style={[s.homeCategoryRailItem, active && s.homeCategoryRailItemActive]}
+                    >
+                      {active && <View style={s.homeCategoryRailBar} />}
+                      <View style={[s.homeCategoryRailImageWrap, active && s.homeCategoryRailImageWrapActive]}>
+                        <Image
+                          source={{ uri: brokenImages[`cat:${String(c.id)}`] ? IMAGE_FALLBACK_URL : (c.image || IMAGE_FALLBACK_URL) }}
+                          style={s.homeCategoryRailImage}
+                          contentFit="cover"
+                          onError={() => setBrokenImages(prev => ({ ...prev, [`cat:${String(c.id)}`]: true }))}
+                        />
+                      </View>
+                      <Text style={[s.homeCategoryRailLabel, active && s.homeCategoryRailLabelActive]} numberOfLines={2}>
+                        {c.name}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </ScrollView>
             </View>
-          ))}
-        </View>
+
+            <View style={s.homeCategoryContent}>
+              <View style={s.homeCategoryHeader}>
+                <View style={{ flex: 1 }}>
+                  <Text style={s.homeCategoryTitle} numberOfLines={1}>
+                    {activeHomeCategoryData?.name || "Products"}
+                  </Text>
+                  <Text style={s.homeCategoryHint}>Subcategories</Text>
+                </View>
+                <Pressable
+                  onPress={() => {
+                    setActiveHomeCategory(null);
+                    setActiveHomeSubcategory("All");
+                    setHomeCategoryProducts([]);
+                  }}
+                  hitSlop={8}
+                  style={s.homeCategoryClose}
+                >
+                  <MaterialCommunityIcons name="close" size={18} color={THEME.blackMuted} />
+                </Pressable>
+              </View>
+
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={s.homeSubcategoryRow}
+              >
+                {activeHomeSubcategories.map((sub) => (
+                  <Pressable
+                    key={sub.label}
+                    testID={`home-subcategory-${sub.label.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`}
+                    onPress={() => setActiveHomeSubcategory(sub.label)}
+                    style={[s.homeSubcategoryChip, activeHomeSubcategory === sub.label && s.homeSubcategoryChipActive]}
+                  >
+                    <Text style={[s.homeSubcategoryText, activeHomeSubcategory === sub.label && s.homeSubcategoryTextActive]}>
+                      {sub.label}
+                    </Text>
+                  </Pressable>
+                ))}
+              </ScrollView>
+
+              {homeCategoryLoading ? (
+                <View style={s.homeCategoryLoader}>
+                  <ActivityIndicator size="small" color={THEME.orange} />
+                </View>
+              ) : (
+                <View style={s.homeCategoryProductGrid}>
+                  {homeCategoryProducts
+                    .filter((item) => {
+                      if (activeHomeSubcategory === "All") return true;
+                      const sub = activeHomeSubcategories.find((entry) => entry.label === activeHomeSubcategory);
+                      if (!sub?.keywords?.length) return true;
+                      const textValue = getProductSearchText(item);
+                      return sub.keywords.some((keyword) => textValue.includes(keyword));
+                    })
+                    .slice(0, 6)
+                    .map((item) => (
+                      <View key={item.id} style={s.homeCategoryProductTile}>
+                        <ProductCard p={item} />
+                      </View>
+                    ))}
+                </View>
+              )}
+
+              {!homeCategoryLoading && homeCategoryProducts.filter((item) => {
+                if (activeHomeSubcategory === "All") return true;
+                const sub = activeHomeSubcategories.find((entry) => entry.label === activeHomeSubcategory);
+                if (!sub?.keywords?.length) return true;
+                const textValue = getProductSearchText(item);
+                return sub.keywords.some((keyword) => textValue.includes(keyword));
+              }).length === 0 && (
+                <View style={s.homeCategoryEmpty}>
+                  <MaterialCommunityIcons name="package-variant-closed" size={36} color={THEME.blackMuted} />
+                  <Text style={s.homeCategoryEmptyTitle}>No products found</Text>
+                  <Text style={s.homeCategoryEmptyText}>Products in this subcategory will appear here.</Text>
+                </View>
+              )}
+            </View>
+          </View>
+        )}
 
         {/* Nearby Stores List */}
         <SectionTitle title="Nearby Stores" subtitle="Fast delivery hubs" />
@@ -954,6 +1273,32 @@ const s = StyleSheet.create({
   sectionSub: { fontSize: 12, color: THEME.blackMuted, marginTop: 2, marginLeft: 12 },
   
   catsGrid: { flexDirection: "row", flexWrap: "wrap", paddingHorizontal: SPACING.sm },
+  homeCategoryExplorer: { flexDirection: "row", marginHorizontal: SPACING.lg, backgroundColor: "#FFFFFF", borderRadius: 18, borderWidth: 1, borderColor: THEME.borderSoft, overflow: "hidden", minHeight: 360 },
+  homeCategoryRail: { width: 88, backgroundColor: "#F8FAFC", borderRightWidth: 1, borderRightColor: THEME.borderSoft },
+  homeCategoryRailItem: { paddingVertical: 11, paddingHorizontal: 3, alignItems: "center", borderBottomWidth: 1, borderBottomColor: "#EEF2F7", width: 88 },
+  homeCategoryRailItemActive: { backgroundColor: "#FFFFFF" },
+  homeCategoryRailBar: { position: "absolute", left: 0, top: 8, bottom: 8, width: 3, backgroundColor: THEME.orange, borderTopRightRadius: 4, borderBottomRightRadius: 4 },
+  homeCategoryRailImageWrap: { width: 46, height: 46, borderRadius: 23, overflow: "hidden", backgroundColor: THEME.white, borderWidth: 1.5, borderColor: "transparent", marginBottom: 5 },
+  homeCategoryRailImageWrapActive: { borderColor: THEME.orange },
+  homeCategoryRailImage: { width: "100%", height: "100%" },
+  homeCategoryRailLabel: { fontSize: 10, color: THEME.blackMuted, fontWeight: "600", textAlign: "center", lineHeight: 12, paddingHorizontal: 2 },
+  homeCategoryRailLabelActive: { color: THEME.black, fontWeight: "900" },
+  homeCategoryContent: { flex: 1, minWidth: 0, padding: 8 },
+  homeCategoryHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 5 },
+  homeCategoryTitle: { fontSize: 14, fontWeight: "900", color: THEME.black },
+  homeCategoryHint: { fontSize: 9, color: THEME.blackMuted, marginTop: 1 },
+  homeCategoryClose: { width: 30, height: 30, alignItems: "center", justifyContent: "center", borderRadius: 15, backgroundColor: "#F1F5F9" },
+  homeSubcategoryRow: { gap: 6, paddingBottom: 7 },
+  homeSubcategoryChip: { paddingHorizontal: 9, paddingVertical: 6, borderRadius: 12, backgroundColor: "#F8FAFC", borderWidth: 1, borderColor: THEME.borderSoft },
+  homeSubcategoryChipActive: { backgroundColor: "#FFF1E8", borderColor: THEME.orange },
+  homeSubcategoryText: { color: THEME.blackMuted, fontSize: 9, fontWeight: "700" },
+  homeSubcategoryTextActive: { color: THEME.orange, fontWeight: "900" },
+  homeCategoryProductGrid: { flexDirection: "row", flexWrap: "wrap", justifyContent: "space-between", rowGap: 8 },
+  homeCategoryProductTile: { width: "48.5%", minWidth: 0 },
+  homeCategoryLoader: { minHeight: 250, alignItems: "center", justifyContent: "center" },
+  homeCategoryEmpty: { minHeight: 180, alignItems: "center", justifyContent: "center", paddingHorizontal: 12 },
+  homeCategoryEmptyTitle: { marginTop: 7, fontSize: 13, fontWeight: "900", color: THEME.black, textAlign: "center" },
+  homeCategoryEmptyText: { marginTop: 4, fontSize: 10, lineHeight: 15, color: THEME.blackMuted, textAlign: "center" },
   catItemWrap: { width: "20%", alignItems: "center", marginBottom: SPACING.md },
   catItem: { alignItems: "center" },
   catCircleWrap: { position: "relative", width: 60, height: 60 },
