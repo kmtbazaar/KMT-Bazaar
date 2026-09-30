@@ -1,6 +1,7 @@
 import asyncio
 import hashlib
 import secrets
+import re
 import os
 from dotenv import load_dotenv
 from fastapi import FastAPI, APIRouter, HTTPException, Depends, status, File, UploadFile
