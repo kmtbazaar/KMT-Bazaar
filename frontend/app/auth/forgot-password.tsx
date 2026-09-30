@@ -91,8 +91,23 @@ export default function ForgotPassword() {
       return;
     }
 
-    if (newPassword.length < 6) {
-      setError("Password must be at least 6 characters");
+    if (newPassword.length < 8) {
+      setError("Password must be at least 8 characters");
+      return;
+    }
+
+    if (!/[A-Z]/.test(newPassword)) {
+      setError("Password must include at least one uppercase letter (A-Z)");
+      return;
+    }
+
+    if (!/[0-9]/.test(newPassword)) {
+      setError("Password must include at least one number (0-9)");
+      return;
+    }
+
+    if (!/[^A-Za-z0-9]/.test(newPassword)) {
+      setError("Password must include at least one special character (!@#$)");
       return;
     }
 
@@ -359,9 +374,13 @@ export default function ForgotPassword() {
         />
       </View>
 
-      <Text style={s.passwordHint}>
-        Password must be at least 6 characters.
-      </Text>
+      <View style={s.passwordRequirements}>
+        <Text style={s.passwordHintTitle}>Password requirements</Text>
+        <Text style={s.passwordHint}>At least 8 characters</Text>
+        <Text style={s.passwordHint}>At least one uppercase letter (A-Z)</Text>
+        <Text style={s.passwordHint}>At least one number (0-9)</Text>
+        <Text style={s.passwordHint}>At least one special character (!@#$)</Text>
+      </View>
 
       {error ? <Text style={s.error}>{error}</Text> : null}
 
@@ -709,11 +728,22 @@ const s = StyleSheet.create({
     fontWeight: "800",
   },
 
+  passwordRequirements: {
+    marginTop: -4,
+    marginBottom: 10,
+  },
+
+  passwordHintTitle: {
+    color: "#0F172A",
+    fontSize: 13,
+    fontWeight: "800",
+    marginBottom: 4,
+  },
+
   passwordHint: {
     color: "#64748B",
     fontSize: 12,
-    marginTop: -4,
-    marginBottom: 10,
+    lineHeight: 18,
   },
 
   debugBox: {
