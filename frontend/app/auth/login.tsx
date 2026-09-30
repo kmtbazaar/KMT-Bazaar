@@ -519,6 +519,8 @@ export default function Login() {
                         value={emailOtp}
                         onChangeText={(value) => setEmailOtp(value.replace(/[^0-9]/g, "").slice(0, 6))}
                         keyboardType="number-pad"
+                        autoComplete="one-time-code"
+                        textContentType="oneTimeCode"
                         maxLength={6}
                         style={s.input}
                       />
