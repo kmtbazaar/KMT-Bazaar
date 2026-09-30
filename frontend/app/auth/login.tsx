@@ -93,6 +93,8 @@ export default function Login() {
   const [accountChecked, setAccountChecked] = useState(false);
   const [registered, setRegistered] = useState(false);
   const [password, setPassword] = useState("");
+  const [otp, setOtp] = useState("");
+  const [otpSent, setOtpSent] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
@@ -129,6 +131,8 @@ export default function Login() {
     setAccountChecked(false);
     setRegistered(false);
     setPassword("");
+    setOtp("");
+    setOtpSent(false);
     setError(null);
   };
 
@@ -152,17 +156,27 @@ export default function Login() {
     setLoading(true);
 
     try {
+      if (loginType === "mobile") {
+        const result = await api.checkIdentifier(value);
+        setAccountChecked(true);
+        setRegistered(result.exists);
+
+        if (!result.exists) {
+          router.push(`/auth/register?phone=${encodeURIComponent(value)}` as any);
+          return;
+        }
+
+        await api.otpRequest(value);
+        setOtpSent(true);
+        return;
+      }
+
       const result = await api.checkIdentifier(value);
       setAccountChecked(true);
       setRegistered(result.exists);
 
       if (!result.exists) {
-        const param =
-          loginType === "email"
-            ? `email=${encodeURIComponent(value)}`
-            : `phone=${encodeURIComponent(value)}`;
-
-        router.push(`/auth/register?${param}` as any);
+        router.push(`/auth/register?email=${encodeURIComponent(value)}` as any);
       }
     } catch (e: any) {
       setError(e?.message || "Could not check account");
@@ -253,6 +267,35 @@ export default function Login() {
   };
 
   const onLogin = async () => {
+    if (loginType === "mobile") {
+      if (!otp || !/^\d{6}$/.test(otp)) {
+        setError("Enter the 6-digit OTP");
+        return;
+      }
+
+      setError(null);
+      setLoading(true);
+
+      try {
+        await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        const value = identifier.replace(/[^0-9]/g, "");
+        const result = await api.otpVerify(value, otp);
+
+        if (!result?.user?.role) {
+          throw new Error("OTP login failed");
+        }
+
+        await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        goToDashboard(result.user);
+      } catch (e: any) {
+        setError(e?.message || "Invalid OTP");
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      } finally {
+        setLoading(false);
+      }
+      return;
+    }
+
     if (!password) {
       setError("Please enter your password");
       return;
@@ -263,12 +306,7 @@ export default function Login() {
 
     try {
       await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-
-      const value =
-        loginType === "email"
-          ? identifier.trim().toLowerCase()
-          : identifier.replace(/[^0-9]/g, "");
-
+      const value = identifier.trim().toLowerCase();
       const user = await login(value, password);
 
       if (!user || !user.role) {
@@ -279,6 +317,20 @@ export default function Login() {
     } catch (e: any) {
       setError(e?.message || "Login failed");
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const resendOtp = async () => {
+    const value = identifier.replace(/[^0-9]/g, "");
+    setError(null);
+    setLoading(true);
+    try {
+      await api.otpRequest(value);
+      setOtp("");
+    } catch (e: any) {
+      setError(e?.message || "Unable to resend OTP");
     } finally {
       setLoading(false);
     }
@@ -401,56 +453,110 @@ export default function Login() {
               </Pressable>
             ) : registered ? (
               <>
-                <View style={s.fieldWrap}>
-                  <MaterialCommunityIcons name="lock-outline" size={22} color="#64748B" />
-                  <TextInput
-                    testID="login-password-input"
-                    placeholder="Password"
-                    value={password}
-                    onChangeText={setPassword}
-                    secureTextEntry={!showPassword}
-                    autoCapitalize="none"
-                    placeholderTextColor="#94A3B8"
-                    style={s.input}
-                  />
-                  <Pressable onPress={() => setShowPassword(!showPassword)} hitSlop={10}>
-                    <MaterialCommunityIcons
-                      name={showPassword ? "eye-off-outline" : "eye-outline"}
-                      size={22}
-                      color="#64748B"
-                    />
-                  </Pressable>
-                </View>
+                {loginType === "mobile" ? (
+                  <>
+                    {!otpSent ? null : (
+                      <>
+                        <View style={s.fieldWrap}>
+                          <MaterialCommunityIcons name="shield-key-outline" size={22} color="#64748B" />
+                          <TextInput
+                            testID="login-otp-input"
+                            placeholder="6-digit OTP"
+                            value={otp}
+                            onChangeText={(value) => {
+                              setOtp(value.replace(/[^0-9]/g, "").slice(0, 6));
+                              setError(null);
+                            }}
+                            keyboardType="number-pad"
+                            maxLength={6}
+                            placeholderTextColor="#94A3B8"
+                            style={s.input}
+                          />
+                        </View>
 
-                {error && <Text style={s.err} testID="login-error">{error}</Text>}
+                        <Text style={s.otpHint}>OTP sent to your registered email from KMT Bazaar.</Text>
 
-                <Pressable
-                  testID="login-submit-button"
-                  onPress={onLogin}
-                  disabled={loading}
-                  style={({ pressed }) => [
-                    s.cta,
-                    pressed && { opacity: 0.85 },
-                    loading && { opacity: 0.7 },
-                  ]}
-                >
-                  <LinearGradient
-                    colors={["#FF6E00", "#E05E00"]}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 1 }}
-                    style={s.ctaGrad}
-                  >
-                    {loading ? <ActivityIndicator color="#fff" /> : <Text style={s.ctaText}>Login Securely</Text>}
-                  </LinearGradient>
-                </Pressable>
+                        {error && <Text style={s.err} testID="login-error">{error}</Text>}
 
-                <Pressable
-                  onPress={() => router.push("/auth/forgot-password" as any)}
-                  testID="forgot-password"
-                >
-                  <Text style={s.forgotPassword}>Forgot Password?</Text>
-                </Pressable>
+                        <Pressable
+                          testID="login-submit-button"
+                          onPress={onLogin}
+                          disabled={loading}
+                          style={({ pressed }) => [
+                            s.cta,
+                            pressed && { opacity: 0.85 },
+                            loading && { opacity: 0.7 },
+                          ]}
+                        >
+                          <LinearGradient
+                            colors={["#FF6E00", "#E05E00"]}
+                            start={{ x: 0, y: 0 }}
+                            end={{ x: 1, y: 1 }}
+                            style={s.ctaGrad}
+                          >
+                            {loading ? <ActivityIndicator color="#fff" /> : <Text style={s.ctaText}>Login with OTP</Text>}
+                          </LinearGradient>
+                        </Pressable>
 
+                        <Pressable onPress={resendOtp} disabled={loading}>
+                          <Text style={s.forgotPassword}>Resend OTP</Text>
+                        </Pressable>
+                      </>
+                    )}
+                  </>
+                ) : (
+                  <>
+                    <View style={s.fieldWrap}>
+                      <MaterialCommunityIcons name="lock-outline" size={22} color="#64748B" />
+                      <TextInput
+                        testID="login-password-input"
+                        placeholder="Password"
+                        value={password}
+                        onChangeText={setPassword}
+                        secureTextEntry={!showPassword}
+                        autoCapitalize="none"
+                        placeholderTextColor="#94A3B8"
+                        style={s.input}
+                      />
+                      <Pressable onPress={() => setShowPassword(!showPassword)} hitSlop={10}>
+                        <MaterialCommunityIcons
+                          name={showPassword ? "eye-off-outline" : "eye-outline"}
+                          size={22}
+                          color="#64748B"
+                        />
+                      </Pressable>
+                    </View>
+
+                    {error && <Text style={s.err} testID="login-error">{error}</Text>}
+
+                    <Pressable
+                      testID="login-submit-button"
+                      onPress={onLogin}
+                      disabled={loading}
+                      style={({ pressed }) => [
+                        s.cta,
+                        pressed && { opacity: 0.85 },
+                        loading && { opacity: 0.7 },
+                      ]}
+                    >
+                      <LinearGradient
+                        colors={["#FF6E00", "#E05E00"]}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 1 }}
+                        style={s.ctaGrad}
+                      >
+                        {loading ? <ActivityIndicator color="#fff" /> : <Text style={s.ctaText}>Login Securely</Text>}
+                      </LinearGradient>
+                    </Pressable>
+
+                    <Pressable
+                      onPress={() => router.push("/auth/forgot-password" as any)}
+                      testID="forgot-password"
+                    >
+                      <Text style={s.forgotPassword}>Forgot Password?</Text>
+                    </Pressable>
+                  </>
+                )}
               </>
             ) : null}
 
@@ -716,6 +822,14 @@ const s = StyleSheet.create({
     color: "#64748B",
     fontSize: 13,
     lineHeight: 18,
+  },
+
+  otpHint: {
+    textAlign: "center",
+    marginTop: -4,
+    marginBottom: 10,
+    color: "#64748B",
+    fontSize: 12,
   },
 
   forgotPassword: {
