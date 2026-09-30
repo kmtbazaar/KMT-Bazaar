@@ -40,77 +40,6 @@ const THEME = {
 };
 
 // Search bar placeholder texts for animation
-const CATEGORY_SUBCATEGORIES: Record<string, { label: string; keywords: string[] }[]> = {
-  fashion: [
-    { label: "All", keywords: [] },
-    { label: "Pant", keywords: ["pant", "pants", "bottom"] },
-    { label: "Shirt", keywords: ["shirt", "formal shirt", "casual shirt"] },
-    { label: "T-Shirt", keywords: ["t-shirt", "tshirt", "tee"] },
-    { label: "Trouser", keywords: ["trouser", "trousers"] },
-    { label: "Jeans", keywords: ["jeans", "denim"] },
-    { label: "Kurti", keywords: ["kurti", "kurta"] },
-    { label: "Saree", keywords: ["saree", "sari"] },
-    { label: "Dress", keywords: ["dress", "gown"] },
-    { label: "Shoes", keywords: ["shoe", "shoes", "sandal", "sneaker", "slipper"] },
-  ],
-  grocery: [
-    { label: "All", keywords: [] },
-    { label: "Rice & Atta", keywords: ["rice", "atta", "flour"] },
-    { label: "Pulses", keywords: ["dal", "pulse", "lentil", "chana", "rajma"] },
-    { label: "Oil & Masala", keywords: ["oil", "masala", "spice", "salt", "sugar"] },
-    { label: "Snacks", keywords: ["chips", "biscuit", "namkeen", "snack", "cookie"] },
-    { label: "Beverages", keywords: ["juice", "drink", "tea", "coffee", "beverage", "water"] },
-    { label: "Personal Care", keywords: ["soap", "shampoo", "toothpaste", "body wash"] },
-  ],
-  food: [
-    { label: "All", keywords: [] },
-    { label: "Breakfast", keywords: ["breakfast", "paratha", "poha", "upma"] },
-    { label: "Meals", keywords: ["meal", "thali", "biryani", "rice", "roti", "curry"] },
-    { label: "Snacks", keywords: ["snack", "samosa", "burger", "pizza", "roll", "momos"] },
-    { label: "Sweets", keywords: ["sweet", "mithai", "cake", "dessert"] },
-    { label: "Beverages", keywords: ["tea", "coffee", "juice", "shake", "drink"] },
-  ],
-  electronics: [
-    { label: "All", keywords: [] },
-    { label: "Mobile", keywords: ["mobile", "phone", "smartphone"] },
-    { label: "Laptop", keywords: ["laptop", "notebook", "computer"] },
-    { label: "TV", keywords: ["tv", "television", "smart tv"] },
-    { label: "Accessories", keywords: ["charger", "cable", "earphone", "headphone", "cover", "adapter", "power bank"] },
-    { label: "Appliances", keywords: ["fan", "mixer", "microwave", "iron", "oven", "appliance"] },
-  ],
-  medicines: [
-    { label: "All", keywords: [] },
-    { label: "Tablets", keywords: ["tablet", "tablets"] },
-    { label: "Syrups", keywords: ["syrup", "syrups"] },
-    { label: "Pain Relief", keywords: ["pain", "relief", "analgesic"] },
-    { label: "Cold & Cough", keywords: ["cold", "cough", "flu"] },
-    { label: "Vitamins", keywords: ["vitamin", "supplement", "calcium"] },
-  ],
-  "home essentials": [
-    { label: "All", keywords: [] },
-    { label: "Kitchen", keywords: ["kitchen", "cookware", "utensil", "pan", "plate"] },
-    { label: "Cleaning", keywords: ["clean", "detergent", "dishwash", "floor cleaner"] },
-    { label: "Storage", keywords: ["storage", "box", "container", "organizer"] },
-    { label: "Bathroom", keywords: ["bathroom", "toilet", "towel", "bucket"] },
-    { label: "Home Decor", keywords: ["decor", "curtain", "cushion", "lamp", "decoration"] },
-  ],
-};
-
-function getCategoryFamily(name = "") {
-  const value = name.toLowerCase().trim();
-  if (value.includes("fashion") || value.includes("cloth") || value.includes("apparel")) return "fashion";
-  if (value.includes("grocery") || value.includes("rasan") || value.includes("groceries")) return "grocery";
-  if (value.includes("food") || value.includes("restaurant") || value.includes("meal")) return "food";
-  if (value.includes("electronic") || value.includes("gadget")) return "electronics";
-  if (value.includes("medicine") || value.includes("medical") || value.includes("pharmacy")) return "medicines";
-  if (value.includes("home")) return "home essentials";
-  return "";
-}
-
-function productText(p: any) {
-  return [p?.name, p?.description, p?.unit].filter(Boolean).join(" ").toLowerCase();
-}
-
 const SEARCH_PLACEHOLDERS = [
   "Search 'groceries'...",
   "Search 'fresh food'...",
@@ -260,9 +189,6 @@ export default function Home() {
   const [stores, setStores] = useState<any[]>([]);
   const [vendorServices, setVendorServices] = useState<any[]>([]);
   const [trending, setTrending] = useState<any[]>([]);
-  const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
-  const [selectedSubcategory, setSelectedSubcategory] = useState("All");
-  const [categoryProducts, setCategoryProducts] = useState<any[]>([]);
   const [unread, setUnread] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
   const [bannerIndex, setBannerIndex] = useState(0);
@@ -472,32 +398,6 @@ export default function Home() {
   useEffect(() => {
     if (locationReady) load();
   }, [locationReady, load]);
-
-  useEffect(() => {
-    if (!selectedCategoryId && cats.length) {
-      setSelectedCategoryId(String(cats[0].id));
-      setSelectedSubcategory("All");
-    }
-  }, [cats, selectedCategoryId]);
-
-  useEffect(() => {
-    if (!locationReady || !selectedCategoryId) return;
-
-    let cancelled = false;
-    (async () => {
-      try {
-        const products = await api.products({ category: selectedCategoryId });
-        if (!cancelled) setCategoryProducts(products || []);
-      } catch (e) {
-        console.log("category products load err", e);
-        if (!cancelled) setCategoryProducts([]);
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [locationReady, selectedCategoryId]);
 
   // Animated Search Bar Placeholder Index
   const [placeholderIdx, setPlaceholderIdx] = useState(0);
@@ -808,115 +708,40 @@ export default function Home() {
           )}
         </View>
 
-        {/* Shop by Category: left navigation + 2-column product tiles */}
-        <SectionTitle title="Shop by Category" subtitle="Choose a category, then a subcategory" />
-
-        <View style={s.categoryExplorer}>
-          <ScrollView
-            style={s.categorySidebar}
-            contentContainerStyle={s.categorySidebarContent}
-            showsVerticalScrollIndicator={false}
-            nestedScrollEnabled={true}
-          >
-            {cats.map((c) => {
-              const active = String(c.id) === selectedCategoryId;
-              const family = getCategoryFamily(c.name);
-
-              return (
-                <View key={c.id}>
-                  <Pressable
-                    testID={`category-${c.id}`}
-                    onPress={() => {
-                      setSelectedCategoryId(String(c.id));
-                      setSelectedSubcategory("All");
-                    }}
-                    style={[s.categorySideItem, active && s.categorySideItemActive]}
-                  >
-                    <View style={[s.categorySideIcon, active && s.categorySideIconActive]}>
-                      <Image
-                        source={{ uri: brokenImages[`cat:${String(c.id)}`] ? IMAGE_FALLBACK_URL : (c.image || IMAGE_FALLBACK_URL) }}
-                        style={s.categorySideImg}
-                        contentFit="cover"
-                        onError={() => setBrokenImages(prev => ({ ...prev, [`cat:${String(c.id)}`]: true }))}
-                      />
-                    </View>
-                    <Text style={[s.categorySideName, active && s.categorySideNameActive]} numberOfLines={2}>
-                      {c.name}
-                    </Text>
-                  </Pressable>
-
-                  {active && (
-                    <View style={s.subcategoryList}>
-                      {(CATEGORY_SUBCATEGORIES[family] || [{ label: "All", keywords: [] }]).map((sub) => (
-                        <Pressable
-                          key={sub.label}
-                          testID={`subcategory-${String(c.id)}-${sub.label.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`}
-                          onPress={() => setSelectedSubcategory(sub.label)}
-                          style={[s.subcategoryItem, selectedSubcategory === sub.label && s.subcategoryItemActive]}
-                        >
-                          <Text style={[s.subcategoryText, selectedSubcategory === sub.label && s.subcategoryTextActive]}>
-                            {sub.label}
-                          </Text>
-                        </Pressable>
-                      ))}
-                    </View>
-                  )}
+        {/* Categories Section with Flashing Border Tiles */}
+        <SectionTitle title="Shop by Category" subtitle="Clear & easy ordering" />
+        <View style={s.catsGrid}>
+          {cats.map((c) => (
+            <View key={c.id} style={s.catItemWrap}>
+              <Pressable
+                testID={`category-${c.id}`}
+                onPress={() => router.push({ pathname: `/category/${c.id}`, params: { name: c.name } } as any)}
+                style={s.catItem}
+              >
+                <View style={s.catCircleWrap}>
+                  <Animated.View style={[s.catFlashBorder, animatedFlashStyle]} />
+                  <View style={s.catCircle}>
+                    <Image
+                      source={{ uri: brokenImages[`cat:${String(c.id)}`] ? IMAGE_FALLBACK_URL : (c.image || IMAGE_FALLBACK_URL) }}
+                      style={s.catImg}
+                      contentFit="cover"
+                      onError={() => setBrokenImages(prev => ({ ...prev, [`cat:${String(c.id)}`]: true }))}
+                    />
+                  </View>
                 </View>
-              );
-            })}
-          </ScrollView>
-
-          <View style={s.categoryProductsPane}>
-            <View style={s.categoryProductsHeader}>
-              <Text style={s.categoryProductsTitle} numberOfLines={1}>
-                {cats.find((item) => String(item.id) === selectedCategoryId)?.name || "Products"}
-              </Text>
-              <Text style={s.categoryProductsCount}>
-                {selectedSubcategory}
-              </Text>
+                <Text style={s.catName} numberOfLines={1}>{c.name}</Text>
+              </Pressable>
             </View>
-
-            {categoryProducts.length ? (
-              <View style={s.categoryProductGrid}>
-                {categoryProducts
-                  .filter((item) => {
-                    if (selectedSubcategory === "All") return true;
-                    const family = getCategoryFamily(cats.find((item) => String(item.id) === selectedCategoryId)?.name);
-                    const sub = (CATEGORY_SUBCATEGORIES[family] || []).find((entry) => entry.label === selectedSubcategory);
-                    if (!sub?.keywords?.length) return true;
-                    const text = productText(item);
-                    return sub.keywords.some((keyword) => text.includes(keyword));
-                  })
-                  .slice(0, 6)
-                  .map((item) => (
-                    <View key={item.id} style={s.categoryProductTile}>
-                      <ProductCard p={item} />
-                    </View>
-                  ))}
-              </View>
-            ) : (
-              <View style={s.categoryProductsEmpty}>
-                <MaterialCommunityIcons name="package-variant-closed" size={42} color={THEME.blackMuted} />
-                <Text style={s.categoryProductsEmptyTitle}>No products in this category yet</Text>
-                <Text style={s.categoryProductsEmptyText}>Products from this category will appear here.</Text>
-              </View>
-            )}
-          </View>
+          ))}
         </View>
 
         {/* Nearby Stores List */}
-        <View style={s.nearbySectionHead}>
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-            <View style={s.sectionIndicator} />
-            <Text style={s.sectionTitle}>Nearby Stores</Text>
-          </View>
-          <Text style={s.sectionSub}>Fast delivery hubs</Text>
-        </View>
+        <SectionTitle title="Nearby Stores" subtitle="Fast delivery hubs" />
         <FlatList
           horizontal
           data={stores}
           showsHorizontalScrollIndicator={false}
-          contentContainerStyle={{ paddingHorizontal: SPACING.lg, gap: 10, paddingTop: 2, paddingBottom: 8 }}
+          contentContainerStyle={{ paddingHorizontal: SPACING.lg, gap: 10, paddingVertical: 4 }}
           keyExtractor={(it) => String(it.id)}
           renderItem={({ item }) => {
             const isAvailable = item.is_online !== false;
@@ -1111,7 +936,7 @@ const s = StyleSheet.create({
   searchMicListening: { transform: [{ scale: 1.08 }], backgroundColor: THEME.orangeBright },
 
   /* Clean Banner Styling */
-  banner: { width: BANNER_W, height: 135, borderRadius: 20, overflow: "hidden", backgroundColor: THEME.white, position: "relative", borderWidth: 1, borderColor: "rgba(255,107,0,0.22)", shadowColor: THEME.orange, shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.12, shadowRadius: 14, elevation: 6 },
+  banner: { width: BANNER_W, height: 165, borderRadius: 24, overflow: "hidden", backgroundColor: THEME.white, position: "relative", borderWidth: 1, borderColor: "rgba(255,107,0,0.22)", shadowColor: THEME.orange, shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.14, shadowRadius: 18, elevation: 7 },
   bannerImg: { width: "100%", height: "100%" },
   bannerFlashBorder: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, borderRadius: RADIUS.lg, borderWidth: 2.5, borderColor: THEME.orangeBright, pointerEvents: "none" },
   bannerCarouselShell: { position: "relative" },
@@ -1124,35 +949,11 @@ const s = StyleSheet.create({
   bannerCtaText: { color: THEME.white, fontWeight: "800", fontSize: 12 },
   
   sectionHead: { paddingHorizontal: SPACING.lg, marginTop: SPACING.md, marginBottom: SPACING.sm },
-  nearbySectionHead: { paddingHorizontal: SPACING.lg, marginTop: 4, marginBottom: 4 },
   sectionIndicator: { width: 4, height: 16, backgroundColor: THEME.orange, borderRadius: 2 },
   sectionTitle: { fontSize: 18, fontWeight: "900", color: THEME.black },
   sectionSub: { fontSize: 12, color: THEME.blackMuted, marginTop: 2, marginLeft: 12 },
   
-  categoryExplorer: { flexDirection: "row", marginHorizontal: SPACING.lg, backgroundColor: "#FFFFFF", borderRadius: 18, borderWidth: 1, borderColor: THEME.borderSoft, overflow: "hidden", minHeight: 390 },
-  categorySidebar: { width: 104, backgroundColor: "#F8FAFC", borderRightWidth: 1, borderRightColor: THEME.borderSoft },
-  categorySidebarContent: { paddingVertical: 6 },
-  categorySideItem: { paddingVertical: 10, paddingHorizontal: 6, alignItems: "center", borderLeftWidth: 3, borderLeftColor: "transparent" },
-  categorySideItemActive: { backgroundColor: "#FFFFFF", borderLeftColor: THEME.orange },
-  categorySideIcon: { width: 48, height: 48, borderRadius: 16, overflow: "hidden", backgroundColor: THEME.white, borderWidth: 1, borderColor: THEME.borderSoft, alignItems: "center", justifyContent: "center" },
-  categorySideIconActive: { borderColor: THEME.orange, borderWidth: 1.5 },
-  categorySideImg: { width: "100%", height: "100%" },
-  categorySideName: { marginTop: 5, color: THEME.blackMuted, fontSize: 10, fontWeight: "700", textAlign: "center" },
-  categorySideNameActive: { color: THEME.black, fontWeight: "900" },
-  subcategoryList: { paddingHorizontal: 5, paddingBottom: 7 },
-  subcategoryItem: { paddingVertical: 7, paddingHorizontal: 5, borderRadius: 8, marginTop: 2 },
-  subcategoryItemActive: { backgroundColor: "#FFF1E8" },
-  subcategoryText: { color: THEME.blackMuted, fontSize: 9, fontWeight: "700", textAlign: "center" },
-  subcategoryTextActive: { color: THEME.orange, fontWeight: "900" },
-  categoryProductsPane: { flex: 1, minWidth: 0, padding: 8 },
-  categoryProductsHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 7, paddingHorizontal: 2 },
-  categoryProductsTitle: { flex: 1, color: THEME.black, fontSize: 13, fontWeight: "900" },
-  categoryProductsCount: { color: THEME.orange, fontSize: 10, fontWeight: "800", marginLeft: 6 },
-  categoryProductGrid: { flexDirection: "row", flexWrap: "wrap", justifyContent: "space-between", gap: 8 },
-  categoryProductTile: { width: "48.1%", minWidth: 0 },
-  categoryProductsEmpty: { flex: 1, minHeight: 280, alignItems: "center", justifyContent: "center", padding: 20 },
-  categoryProductsEmptyTitle: { color: THEME.black, fontSize: 13, fontWeight: "900", textAlign: "center", marginTop: 8 },
-  categoryProductsEmptyText: { color: THEME.blackMuted, fontSize: 10, textAlign: "center", marginTop: 5, lineHeight: 15 },
+  catsGrid: { flexDirection: "row", flexWrap: "wrap", paddingHorizontal: SPACING.sm },
   catItemWrap: { width: "20%", alignItems: "center", marginBottom: SPACING.md },
   catItem: { alignItems: "center" },
   catCircleWrap: { position: "relative", width: 60, height: 60 },
@@ -1162,9 +963,9 @@ const s = StyleSheet.create({
   catName: { fontSize: 11, fontWeight: "700", color: THEME.black, marginTop: 6, textAlign: "center" },
   
   /* Compact Store Tile Styling */
-  storeCardSmall: { width: 145, minHeight: 112, backgroundColor: "rgba(255,255,255,0.98)", borderRadius: 16, overflow: "hidden", position: "relative", shadowColor: THEME.orange, shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.09, shadowRadius: 14, elevation: 5, borderWidth: 1, borderColor: "rgba(255,107,0,0.15)" },
+  storeCardSmall: { width: 135, backgroundColor: "rgba(255,255,255,0.96)", borderRadius: 18, overflow: "hidden", position: "relative", shadowColor: THEME.orange, shadowOffset: { width: 0, height: 7 }, shadowOpacity: 0.1, shadowRadius: 16, elevation: 5, borderWidth: 1, borderColor: "rgba(255,107,0,0.15)" },
   storeFlashBorder: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, borderRadius: RADIUS.md, borderWidth: 1.5, borderColor: THEME.orangeGlow, pointerEvents: "none", zIndex: 2 },
-  storeImgSmall: { width: "100%", height: 68 },
+  storeImgSmall: { width: "100%", height: 65 },
   storeNameSmall: { fontWeight: "800", color: THEME.black, fontSize: 12 },
   ratePillSmall: { flexDirection: "row", alignItems: "center", backgroundColor: THEME.orange, paddingHorizontal: 5, paddingVertical: 2, borderRadius: 4, gap: 2 },
   rateTextSmall: { color: THEME.white, fontSize: 10, fontWeight: "800" },
