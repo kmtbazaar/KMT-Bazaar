@@ -879,11 +879,7 @@ async def verify_reset_otp(data: VerifyResetOtpIn):
 
 @api.post("/auth/reset-password")
 async def reset_password(data: ResetPasswordIn):
-    if len(data.new_password) < 6:
-        raise HTTPException(
-            status_code=400,
-            detail="Password must be at least 6 characters"
-        )
+    validate_signup_password(data.new_password)
 
     reset = await db.password_reset_otps.find_one({
         "email": normalize_email(data.email)
