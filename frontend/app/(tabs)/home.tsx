@@ -286,7 +286,7 @@ export default function Home() {
     }
     const interval = setInterval(() => {
       setBannerIndex((prev) => (prev + 1) % banners.length);
-    }, 3000);
+    }, 6000);
     return () => clearInterval(interval);
   }, [banners.length]);
 
@@ -302,8 +302,8 @@ export default function Home() {
   useEffect(() => {
     flashOpacity.value = withRepeat(
       withSequence(
-        withTiming(1, { duration: 1000 }),
-        withTiming(0.3, { duration: 1000 })
+        withTiming(1, { duration: 1800 }),
+        withTiming(0.3, { duration: 1800 })
       ),
       -1,
       true
@@ -678,7 +678,7 @@ const s = StyleSheet.create({
   locationGatePrivacy: { marginTop: 12, color: THEME.blackMuted, fontSize: 10, lineHeight: 15, textAlign: "center" },
   root: { flex: 1, backgroundColor: THEME.whiteBg },
   /* Header Height Restricted strictly till search box */
-  headerBg: { position: "absolute", top: 0, left: 0, right: 0, height: 170, borderBottomLeftRadius: 28, borderBottomRightRadius: 28, shadowColor: THEME.orangeBright, shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.18, shadowRadius: 20, elevation: 8 },
+  headerBg: { position: "absolute", top: 0, left: 0, right: 0, height: 190, borderBottomLeftRadius: 30, borderBottomRightRadius: 30, shadowColor: THEME.orangeBright, shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.18, shadowRadius: 20, elevation: 8 },
   headerWrap: { paddingHorizontal: SPACING.lg, paddingBottom: SPACING.xs },
   headerRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingTop: 4 },
   locWrap: { flexDirection: "row", gap: 8, alignItems: "center", flex: 1, marginRight: 12, zIndex: 99, elevation: 5 },
