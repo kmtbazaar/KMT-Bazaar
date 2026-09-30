@@ -174,18 +174,6 @@ function NightSky() {
         <View style={[s.cloudBase, { backgroundColor: cloudColor }]} />
       </Animated.View>
 
-      <View
-        style={[
-          s.orangeHorizon,
-          {
-            backgroundColor: isNight
-              ? "rgba(249,115,22,0.22)"
-              : isSunset
-                ? "rgba(251,146,60,0.26)"
-                : "rgba(255,255,255,0.10)",
-          },
-        ]}
-      />
     </View>
   );
 }
@@ -202,7 +190,9 @@ export default function Home() {
   const [unread, setUnread] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
   const [bannerIndex, setBannerIndex] = useState(0);
+  const [voiceListening, setVoiceListening] = useState(false);
   const bannerListRef = useRef<FlatList<any>>(null);
+  const voiceRecognitionRef = useRef<any>(null);
 
   // Customer delivery location state
   const [selectedAddress, setSelectedAddress] = useState("Set your delivery location");
@@ -416,7 +406,9 @@ export default function Home() {
 
   useEffect(() => {
     if (banners.length > 1) {
-      bannerListRef.current?.scrollToIndex({ index: bannerIndex, animated: true });
+      try {
+        bannerListRef.current?.scrollToIndex({ index: bannerIndex, animated: true, viewPosition: 0 });
+      } catch {}
     }
   }, [bannerIndex, banners.length]);
 
@@ -428,7 +420,7 @@ export default function Home() {
     }
     const interval = setInterval(() => {
       setBannerIndex((prev) => (prev + 1) % banners.length);
-    }, 3000);
+    }, 5000);
     return () => clearInterval(interval);
   }, [banners.length]);
 
@@ -475,6 +467,59 @@ export default function Home() {
   const animatedFlashStyle = useAnimatedStyle(() => ({
     opacity: flashOpacity.value
   }));
+
+  const startVoiceSearch = useCallback(() => {
+    if (voiceListening) {
+      try { voiceRecognitionRef.current?.stop?.(); } catch {}
+      setVoiceListening(false);
+      return;
+    }
+
+    if (Platform.OS !== "web" || typeof window === "undefined") {
+      return;
+    }
+
+    const SpeechRecognitionCtor = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SpeechRecognitionCtor) {
+      window.alert("Voice search is not supported in this browser. Please use Chrome with microphone permission enabled.");
+      return;
+    }
+
+    try {
+      const recognition = new SpeechRecognitionCtor();
+      voiceRecognitionRef.current = recognition;
+      recognition.continuous = false;
+      recognition.interimResults = false;
+      recognition.maxAlternatives = 1;
+      recognition.lang = "en-IN";
+
+      recognition.onstart = () => setVoiceListening(true);
+      recognition.onresult = (event: any) => {
+        const transcript = event?.results?.[0]?.[0]?.transcript?.trim();
+        setVoiceListening(false);
+        voiceRecognitionRef.current = null;
+        if (transcript) {
+          router.push({ pathname: "/search", params: { q: transcript } } as any);
+        }
+      };
+      recognition.onerror = () => {
+        setVoiceListening(false);
+        voiceRecognitionRef.current = null;
+      };
+      recognition.onend = () => {
+        setVoiceListening(false);
+        voiceRecognitionRef.current = null;
+      };
+      recognition.start();
+    } catch {
+      setVoiceListening(false);
+      voiceRecognitionRef.current = null;
+    }
+  }, [router, voiceListening]);
+
+  useEffect(() => () => {
+    try { voiceRecognitionRef.current?.stop?.(); } catch {}
+  }, []);
 
   const onRefresh = async () => { setRefreshing(true); await load(); setRefreshing(false); };
 
@@ -543,9 +588,18 @@ export default function Home() {
               {SEARCH_PLACEHOLDERS[placeholderIdx]}
             </Text>
           </Animated.View>
-          <View style={s.searchMicBg}>
-            <MaterialCommunityIcons name="tune-variant" size={16} color={THEME.white} />
-          </View>
+          <Pressable
+            testID="home-voice-search"
+            onPress={startVoiceSearch}
+            hitSlop={8}
+            style={[s.searchMicBg, voiceListening && s.searchMicListening]}
+          >
+            <MaterialCommunityIcons
+              name={voiceListening ? "microphone" : "microphone-outline"}
+              size={18}
+              color={THEME.white}
+            />
+          </Pressable>
         </Pressable>
       </SafeAreaView>
 
@@ -636,7 +690,20 @@ export default function Home() {
               </View>
             </Pressable>
           )}
+          onMomentumScrollEnd={(event) => {
+            const offsetX = event.nativeEvent.contentOffset.x;
+            const nextIndex = Math.round(offsetX / (BANNER_W + 12));
+            if (nextIndex >= 0 && nextIndex < banners.length) setBannerIndex(nextIndex);
+          }}
         />
+
+        {banners.length > 1 && (
+          <View style={s.bannerDots}>
+            {banners.map((item, index) => (
+              <BannerDot key={String(item.id)} active={index === bannerIndex} />
+            ))}
+          </View>
+        )}
 
         {/* Categories Section with Flashing Border Tiles */}
         <SectionTitle title="Shop by Category" subtitle="Clear & easy ordering" />
@@ -792,6 +859,21 @@ export default function Home() {
   );
 }
 
+function BannerDot({ active }: { active: boolean }) {
+  const progress = useSharedValue(active ? 1 : 0.35);
+
+  useEffect(() => {
+    progress.value = withTiming(active ? 1 : 0.35, { duration: 320 });
+  }, [active]);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    opacity: 0.35 + progress.value * 0.65,
+    transform: [{ scaleX: progress.value }],
+  }));
+
+  return <Animated.View style={[s.bannerDot, animatedStyle]} />;
+}
+
 function SectionTitle({ title, subtitle }: { title: string; subtitle?: string }) {
   return (
     <View style={s.sectionHead}>
@@ -830,10 +912,9 @@ const s = StyleSheet.create({
   cloudTwo: { top: 88, right: -55 },
   cloudPuff: { position: "absolute", borderRadius: 40 },
   cloudBase: { position: "absolute", left: 0, right: 0, bottom: 6, height: 24, borderRadius: 18 },
-  orangeHorizon: { position: "absolute", left: -20, right: -20, bottom: -42, height: 110, borderRadius: 100 },
   moon: { position: "absolute", top: 24, right: "16%", width: 34, height: 34, borderRadius: 17, backgroundColor: "#F8FAFC", shadowColor: "#FFFFFF", shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.65, shadowRadius: 12, elevation: 4 },
   moonCut: { position: "absolute", top: -2, left: 9, width: 30, height: 30, borderRadius: 15, backgroundColor: "#0F172A" },
-  headerBg: { position: "absolute", top: 0, left: 0, right: 0, height: 205, borderBottomLeftRadius: 30, borderBottomRightRadius: 30, backgroundColor: "transparent", shadowColor: THEME.orangeBright, shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.18, shadowRadius: 20, elevation: 8 },
+  headerBg: { position: "absolute", top: 0, left: 0, right: 0, height: 205, borderBottomLeftRadius: 30, borderBottomRightRadius: 30, backgroundColor: "transparent", shadowColor: "#FFFFFF", shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.14, shadowRadius: 18, elevation: 7 },
   headerWrap: { paddingHorizontal: SPACING.lg, paddingBottom: SPACING.xs },
   headerRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingTop: 4 },
   locWrap: { flexDirection: "row", gap: 8, alignItems: "center", flex: 1, marginRight: 12, zIndex: 99, elevation: 5 },
@@ -846,14 +927,17 @@ const s = StyleSheet.create({
   bellBadge: { position: "absolute", top: 2, right: 2, backgroundColor: THEME.orange, minWidth: 18, height: 18, borderRadius: 9, paddingHorizontal: 4, alignItems: "center", justifyContent: "center", borderWidth: 1.5, borderColor: THEME.white },
   bellBadgeText: { color: THEME.white, fontSize: 9, fontWeight: "900" },
   
-  searchWrap: { flexDirection: "row", alignItems: "center", backgroundColor: "rgba(255,255,255,0.94)", borderRadius: RADIUS.pill, paddingHorizontal: 15, paddingVertical: 10, marginTop: SPACING.md, height: 54, borderWidth: 1, borderColor: "rgba(255,255,255,0.78)", shadowColor: "#000000", shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.18, shadowRadius: 18, elevation: 7 },
+  searchWrap: { flexDirection: "row", alignItems: "center", backgroundColor: "rgba(255,255,255,0.96)", borderRadius: RADIUS.pill, paddingHorizontal: 14, paddingVertical: 7, marginTop: SPACING.md, height: 44, borderWidth: 1, borderColor: "rgba(255,255,255,0.88)", shadowColor: "#000000", shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.14, shadowRadius: 14, elevation: 6 },
   searchPlaceholderText: { fontSize: 14, color: THEME.blackMuted, fontWeight: "600" },
-  searchMicBg: { backgroundColor: THEME.orange, padding: 6, borderRadius: 12 },
+  searchMicBg: { width: 32, height: 32, backgroundColor: THEME.orange, borderRadius: 16, alignItems: "center", justifyContent: "center" },
+  searchMicListening: { transform: [{ scale: 1.08 }], backgroundColor: THEME.orangeBright },
 
   /* Clean Banner Styling */
   banner: { width: BANNER_W, height: 165, borderRadius: 24, overflow: "hidden", backgroundColor: THEME.white, position: "relative", borderWidth: 1, borderColor: "rgba(255,107,0,0.22)", shadowColor: THEME.orange, shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.14, shadowRadius: 18, elevation: 7 },
   bannerImg: { width: "100%", height: "100%" },
   bannerFlashBorder: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, borderRadius: RADIUS.lg, borderWidth: 2.5, borderColor: THEME.orangeBright, pointerEvents: "none" },
+  bannerDots: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 5, paddingTop: 7, paddingBottom: 2 },
+  bannerDot: { width: 18, height: 5, borderRadius: 3, backgroundColor: THEME.orange },
   bannerText: { position: "absolute", left: 16, bottom: 16, right: 16, alignItems: "flex-start" },
   bannerSubtitle: { color: THEME.white, fontSize: 11, fontWeight: "800", letterSpacing: 0.5, textTransform: "uppercase", backgroundColor: "rgba(0,0,0,0.5)", paddingHorizontal: 8, paddingVertical: 2, borderRadius: 4 },
   bannerTitle: { color: THEME.white, fontSize: 18, fontWeight: "900", marginTop: 4, textShadowColor: "rgba(0,0,0,0.7)", textShadowRadius: 6 },
