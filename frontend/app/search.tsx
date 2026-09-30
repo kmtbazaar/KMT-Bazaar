@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, TextInput, FlatList, Pressable, ActivityIndicat
 import { SafeAreaView } from "react-native-safe-area-context";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { useRouter } from "expo-router";
+import { useRouter, useLocalSearchParams } from "expo-router";
 import { api } from "@/src/api";
 import ProductCard from "@/src/components/ProductCard";
 import CheckoutBar from "@/src/components/CheckoutBar";
@@ -14,11 +14,19 @@ import { COLORS, RADIUS, SPACING } from "@/src/theme";
 
 export default function SearchScreen() {
   const router = useRouter();
+  const params = useLocalSearchParams<{ q?: string }>();
   const [query, setQuery] = useState("");
   const [allProducts, setAllProducts] = useState<any[]>([]); // Saare products store karne ke liye
   const [filteredResults, setFilteredResults] = useState<any[]>([]); // Filtered products ke liye
   const [loading, setLoading] = useState(true);
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
+
+  useEffect(() => {
+    const voiceQuery = typeof params.q === "string" ? params.q.trim() : "";
+    if (voiceQuery) {
+      setQuery(voiceQuery);
+    }
+  }, [params.q]);
 
   useEffect(() => {
     (async () => {
@@ -43,7 +51,16 @@ export default function SearchScreen() {
     (async () => {
       try {
         const data = await api.products({}); // Empty query se saare products le aayenge
-        setAllProducts(data || []);
+        const products = data || [];
+        setAllProducts(products);
+        const voiceQuery = typeof params.q === "string" ? params.q.trim() : "";
+        if (voiceQuery) {
+          const keyword = voiceQuery.toLowerCase();
+          setFilteredResults(products.filter((item: any) =>
+            (item.name && item.name.toLowerCase().includes(keyword)) ||
+            (item.description && item.description.toLowerCase().includes(keyword))
+          ));
+        }
       } catch (e) {
         console.error("Failed to load products for search:", e);
       } finally {
