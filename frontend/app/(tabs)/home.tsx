@@ -1,9 +1,9 @@
 import React, { useEffect, useState, useCallback, useRef } from "react";
-import { View, Text, ScrollView, StyleSheet, Pressable, FlatList, Dimensions, RefreshControl, Platform, ActivityIndicator } from "react-native";
+import { View, Text, ScrollView, StyleSheet, Pressable, FlatList, Dimensions, RefreshControl, Platform, ActivityIndicator, Animated as RNAnimated } from "react-native";
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { useRouter, useFocusEffect } from "expo-router";
+import { useRouter, useFocusEffect, useNavigation } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Location from "expo-location";
@@ -183,6 +183,7 @@ function NightSky() {
 export default function Home() {
   const { user } = useAuth();
   const router = useRouter();
+  const navigation = useNavigation();
   const [banners, setBanners] = useState<any[]>([]);
   const [brokenImages, setBrokenImages] = useState<Record<string, boolean>>({});
   const [cats, setCats] = useState<any[]>([]);
@@ -195,6 +196,83 @@ export default function Home() {
   const [voiceListening, setVoiceListening] = useState(false);
   const bannerListRef = useRef<FlatList<any>>(null);
   const voiceRecognitionRef = useRef<any>(null);
+
+  const tabBarTranslateY = useRef(new RNAnimated.Value(0)).current;
+  const lastHomeOffsetY = useRef(0);
+  const homeTabHidden = useRef(false);
+
+  const handleHomeTabBarScroll = useCallback((event: any) => {
+    const currentOffsetY = event.nativeEvent.contentOffset.y;
+    const diff = currentOffsetY - lastHomeOffsetY.current;
+
+    if (Math.abs(diff) > 10) {
+      if (diff > 0 && currentOffsetY > 50 && !homeTabHidden.current) {
+        homeTabHidden.current = true;
+        RNAnimated.timing(tabBarTranslateY, {
+          toValue: 100,
+          duration: 250,
+          useNativeDriver: false,
+        }).start(({ finished }) => {
+          if (finished) {
+            navigation.setOptions({
+              tabBarStyle: {
+                position: "absolute",
+                borderTopColor: THEME.borderSoft,
+                backgroundColor: "#FFFFFF",
+                height: 65,
+                paddingTop: 4,
+                paddingBottom: 12,
+                transform: [{ translateY: 100 }],
+              },
+            });
+          }
+        });
+      } else if (diff < 0 && homeTabHidden.current) {
+        homeTabHidden.current = false;
+        navigation.setOptions({
+          tabBarStyle: {
+            position: "absolute",
+            borderTopColor: THEME.borderSoft,
+            backgroundColor: "#FFFFFF",
+            height: 65,
+            paddingTop: 4,
+            paddingBottom: 12,
+            transform: [{ translateY: tabBarTranslateY }],
+          },
+        });
+        RNAnimated.timing(tabBarTranslateY, {
+          toValue: 0,
+          duration: 250,
+          useNativeDriver: false,
+        }).start();
+      }
+
+      lastHomeOffsetY.current = currentOffsetY;
+    }
+  }, [navigation, tabBarTranslateY]);
+
+  useFocusEffect(
+    useCallback(() => {
+      lastHomeOffsetY.current = 0;
+      homeTabHidden.current = false;
+      tabBarTranslateY.setValue(0);
+      navigation.setOptions({
+        tabBarStyle: {
+          position: "absolute",
+          borderTopColor: THEME.borderSoft,
+          backgroundColor: "#FFFFFF",
+          height: 65,
+          paddingTop: 4,
+          paddingBottom: 12,
+        },
+      });
+
+      return () => {
+        homeTabHidden.current = false;
+        tabBarTranslateY.setValue(0);
+      };
+    }, [navigation, tabBarTranslateY])
+  );
 
   // Customer delivery location state
   const [selectedAddress, setSelectedAddress] = useState("Set your delivery location");
@@ -647,6 +725,8 @@ export default function Home() {
           }
           showsVerticalScrollIndicator={false}
           nestedScrollEnabled={true}
+          onScroll={handleHomeTabBarScroll}
+          scrollEventThrottle={16}
           style={Platform.OS === 'web' ? ({ height: '100%', overflowY: 'auto', touchAction: 'pan-y' } as any) : {}}
         >
 
@@ -741,7 +821,7 @@ export default function Home() {
           horizontal
           data={stores}
           showsHorizontalScrollIndicator={false}
-          contentContainerStyle={{ paddingHorizontal: SPACING.lg, gap: 10, paddingVertical: 4 }}
+          contentContainerStyle={{ paddingHorizontal: SPACING.lg, gap: 10, paddingTop: 2, paddingBottom: 8 }}
           keyExtractor={(it) => String(it.id)}
           renderItem={({ item }) => {
             const isAvailable = item.is_online !== false;
@@ -936,7 +1016,7 @@ const s = StyleSheet.create({
   searchMicListening: { transform: [{ scale: 1.08 }], backgroundColor: THEME.orangeBright },
 
   /* Clean Banner Styling */
-  banner: { width: BANNER_W, height: 165, borderRadius: 24, overflow: "hidden", backgroundColor: THEME.white, position: "relative", borderWidth: 1, borderColor: "rgba(255,107,0,0.22)", shadowColor: THEME.orange, shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.14, shadowRadius: 18, elevation: 7 },
+  banner: { width: BANNER_W, height: 135, borderRadius: 20, overflow: "hidden", backgroundColor: THEME.white, position: "relative", borderWidth: 1, borderColor: "rgba(255,107,0,0.22)", shadowColor: THEME.orange, shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.12, shadowRadius: 14, elevation: 6 },
   bannerImg: { width: "100%", height: "100%" },
   bannerFlashBorder: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, borderRadius: RADIUS.lg, borderWidth: 2.5, borderColor: THEME.orangeBright, pointerEvents: "none" },
   bannerCarouselShell: { position: "relative" },
@@ -963,9 +1043,9 @@ const s = StyleSheet.create({
   catName: { fontSize: 11, fontWeight: "700", color: THEME.black, marginTop: 6, textAlign: "center" },
   
   /* Compact Store Tile Styling */
-  storeCardSmall: { width: 135, backgroundColor: "rgba(255,255,255,0.96)", borderRadius: 18, overflow: "hidden", position: "relative", shadowColor: THEME.orange, shadowOffset: { width: 0, height: 7 }, shadowOpacity: 0.1, shadowRadius: 16, elevation: 5, borderWidth: 1, borderColor: "rgba(255,107,0,0.15)" },
+  storeCardSmall: { width: 145, minHeight: 112, backgroundColor: "rgba(255,255,255,0.98)", borderRadius: 16, overflow: "hidden", position: "relative", shadowColor: THEME.orange, shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.09, shadowRadius: 14, elevation: 5, borderWidth: 1, borderColor: "rgba(255,107,0,0.15)" },
   storeFlashBorder: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, borderRadius: RADIUS.md, borderWidth: 1.5, borderColor: THEME.orangeGlow, pointerEvents: "none", zIndex: 2 },
-  storeImgSmall: { width: "100%", height: 65 },
+  storeImgSmall: { width: "100%", height: 68 },
   storeNameSmall: { fontWeight: "800", color: THEME.black, fontSize: 12 },
   ratePillSmall: { flexDirection: "row", alignItems: "center", backgroundColor: THEME.orange, paddingHorizontal: 5, paddingVertical: 2, borderRadius: 4, gap: 2 },
   rateTextSmall: { color: THEME.white, fontSize: 10, fontWeight: "800" },
