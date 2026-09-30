@@ -103,16 +103,18 @@ function NightSky() {
   const isNight = hour >= 19 || hour < 6;
   const isSunset = hour >= 17 && hour < 19;
 
+  // Time-of-day hero palette: blue day, purple/pink evening, deep blue night.
+  // Orange is intentionally excluded from the entire hero background.
   const skyColors = isNight
-    ? ["#020617", "#0F172A", "#1E1B4B", "#F97316"]
+    ? ["#020617", "#0B1120", "#172554", "#312E81"]
     : isSunset
-      ? ["#312E81", "#7C3AED", "#FB923C", "#FFEDD5"]
+      ? ["#1E1B4B", "#4C1D95", "#7C3AED", "#F5D0FE"]
       : ["#38BDF8", "#0EA5E9", "#7DD3FC", "#FFFFFF"];
 
   const cloudColor = isNight
     ? "rgba(148,163,184,0.22)"
     : isSunset
-      ? "rgba(255,237,213,0.62)"
+      ? "rgba(245,208,254,0.62)"
       : "rgba(255,255,255,0.78)";
 
   const stars = [
