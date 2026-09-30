@@ -50,25 +50,44 @@ const SEARCH_PLACEHOLDERS = [
 ];
 
 export default function NightSky() {
-  const cloudOne = useSharedValue(-30);
+  const cloudOne = useSharedValue(-35);
   const cloudTwo = useSharedValue(0);
   const starPulse = useSharedValue(0.45);
+  const [hour, setHour] = useState(new Date().getHours());
 
   useEffect(() => {
-    cloudOne.value = withRepeat(withSequence(
-      withTiming(45, { duration: 14000 }),
-      withTiming(-30, { duration: 14000 })
-    ), -1, false);
+    const clock = setInterval(() => {
+      setHour(new Date().getHours());
+    }, 60000);
 
-    cloudTwo.value = withRepeat(withSequence(
-      withTiming(-40, { duration: 18000 }),
-      withTiming(55, { duration: 18000 })
-    ), -1, false);
+    cloudOne.value = withRepeat(
+      withSequence(
+        withTiming(50, { duration: 18000 }),
+        withTiming(-35, { duration: 18000 })
+      ),
+      -1,
+      false
+    );
 
-    starPulse.value = withRepeat(withSequence(
-      withTiming(0.9, { duration: 2400 }),
-      withTiming(0.35, { duration: 2400 })
-    ), -1, true);
+    cloudTwo.value = withRepeat(
+      withSequence(
+        withTiming(-45, { duration: 23000 }),
+        withTiming(60, { duration: 23000 })
+      ),
+      -1,
+      false
+    );
+
+    starPulse.value = withRepeat(
+      withSequence(
+        withTiming(1, { duration: 2600 }),
+        withTiming(0.35, { duration: 2600 })
+      ),
+      -1,
+      true
+    );
+
+    return () => clearInterval(clock);
   }, []);
 
   const cloudOneStyle = useAnimatedStyle(() => ({
@@ -82,6 +101,21 @@ export default function NightSky() {
   const starStyle = useAnimatedStyle(() => ({
     opacity: starPulse.value,
   }));
+
+  const isNight = hour >= 19 || hour < 6;
+  const isSunset = hour >= 17 && hour < 19;
+
+  const skyColors = isNight
+    ? ["#020617", "#0F172A", "#1E1B4B", "#F97316"]
+    : isSunset
+      ? ["#312E81", "#7C3AED", "#FB923C", "#FFEDD5"]
+      : ["#38BDF8", "#0EA5E9", "#7DD3FC", "#FFFFFF"];
+
+  const cloudColor = isNight
+    ? "rgba(148,163,184,0.22)"
+    : isSunset
+      ? "rgba(255,237,213,0.62)"
+      : "rgba(255,255,255,0.78)";
 
   const stars = [
     { left: "9%", top: 18, size: 3 },
@@ -97,44 +131,63 @@ export default function NightSky() {
   return (
     <View pointerEvents="none" style={s.nightSky}>
       <LinearGradient
-        colors={["#081226", "#101C3A", "#2A1730", "#FF6B00"]}
-        locations={[0, 0.45, 0.74, 1]}
+        colors={skyColors}
+        locations={[0, 0.42, 0.76, 1]}
         style={s.nightGradient}
       />
 
-      <Animated.View style={[s.starLayer, starStyle]}>
-        {stars.map((star, index) => (
-          <View
-            key={index}
-            style={[
-              s.star,
-              {
-                left: star.left as any,
-                top: star.top,
-                width: star.size,
-                height: star.size,
-                borderRadius: star.size,
-              },
-            ]}
-          />
-        ))}
-      </Animated.View>
+      {isNight && (
+        <>
+          <Animated.View style={[s.starLayer, starStyle]}>
+            {stars.map((star, index) => (
+              <View
+                key={index}
+                style={[
+                  s.star,
+                  {
+                    left: star.left as any,
+                    top: star.top,
+                    width: star.size,
+                    height: star.size,
+                    borderRadius: star.size,
+                  },
+                ]}
+              />
+            ))}
+          </Animated.View>
+
+          <View style={s.moon}>
+            <View style={s.moonCut} />
+          </View>
+        </>
+      )}
 
       <Animated.View style={[s.cloud, s.cloudOne, cloudOneStyle]}>
-        <View style={[s.cloudPuff, { width: 54, height: 30, left: 18, top: 9 }]} />
-        <View style={[s.cloudPuff, { width: 76, height: 40, left: 44, top: 0 }]} />
-        <View style={[s.cloudPuff, { width: 48, height: 27, left: 96, top: 12 }]} />
-        <View style={s.cloudBase} />
+        <View style={[s.cloudPuff, { width: 54, height: 30, left: 18, top: 9, backgroundColor: cloudColor }]} />
+        <View style={[s.cloudPuff, { width: 76, height: 40, left: 44, top: 0, backgroundColor: cloudColor }]} />
+        <View style={[s.cloudPuff, { width: 48, height: 27, left: 96, top: 12, backgroundColor: cloudColor }]} />
+        <View style={[s.cloudBase, { backgroundColor: cloudColor }]} />
       </Animated.View>
 
       <Animated.View style={[s.cloud, s.cloudTwo, cloudTwoStyle]}>
-        <View style={[s.cloudPuff, { width: 44, height: 25, left: 16, top: 11 }]} />
-        <View style={[s.cloudPuff, { width: 68, height: 36, left: 42, top: 0 }]} />
-        <View style={[s.cloudPuff, { width: 52, height: 28, left: 88, top: 9 }]} />
-        <View style={s.cloudBase} />
+        <View style={[s.cloudPuff, { width: 44, height: 25, left: 16, top: 11, backgroundColor: cloudColor }]} />
+        <View style={[s.cloudPuff, { width: 68, height: 36, left: 42, top: 0, backgroundColor: cloudColor }]} />
+        <View style={[s.cloudPuff, { width: 52, height: 28, left: 88, top: 9, backgroundColor: cloudColor }]} />
+        <View style={[s.cloudBase, { backgroundColor: cloudColor }]} />
       </Animated.View>
 
-      <View style={s.orangeHorizon} />
+      <View
+        style={[
+          s.orangeHorizon,
+          {
+            backgroundColor: isNight
+              ? "rgba(249,115,22,0.22)"
+              : isSunset
+                ? "rgba(251,146,60,0.26)"
+                : "rgba(255,255,255,0.10)",
+          },
+        ]}
+      />
     </View>
   );
 }
@@ -437,7 +490,7 @@ function Home() {
     <View style={[s.root, Platform.OS === 'web' ? ({ height: '100vh', overflow: 'hidden' } as any) : {}]} testID="home-screen">
       {/* Sky Blue Header Gradient strictly up to Search Box */}
       <NightSky />
-      <LinearGradient colors={["rgba(255,107,0,0.08)", "rgba(255,136,0,0.02)"]} style={s.headerBg} />
+      <View style={s.headerBg} />
       
       <SafeAreaView edges={["top"]} style={s.headerWrap}>
         <View style={s.headerRow}>
@@ -779,9 +832,11 @@ const s = StyleSheet.create({
   cloudPuff: { position: "absolute", backgroundColor: "rgba(255,255,255,0.84)", borderRadius: 40 },
   cloudBase: { position: "absolute", left: 0, right: 0, bottom: 6, height: 24, borderRadius: 18, backgroundColor: "rgba(255,255,255,0.72)" },
   orangeHorizon: { position: "absolute", left: -20, right: -20, bottom: -42, height: 110, borderRadius: 100, backgroundColor: "rgba(255,107,0,0.25)" },
+  moon: { position: "absolute", top: 24, right: "16%", width: 34, height: 34, borderRadius: 17, backgroundColor: "#F8FAFC", shadowColor: "#FFFFFF", shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.65, shadowRadius: 12, elevation: 4 },
+  moonCut: { position: "absolute", top: -2, left: 9, width: 30, height: 30, borderRadius: 15, backgroundColor: "#0F172A" },
 
   /* Header Height Restricted strictly till search box */
-  headerBg: { position: "absolute", top: 0, left: 0, right: 0, height: 205, borderBottomLeftRadius: 30, borderBottomRightRadius: 30, shadowColor: THEME.orangeBright, shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.18, shadowRadius: 20, elevation: 8 },
+  headerBg: { position: "absolute", top: 0, left: 0, right: 0, height: 205, borderBottomLeftRadius: 30, borderBottomRightRadius: 30, backgroundColor: "transparent", shadowColor: THEME.orangeBright, shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.18, shadowRadius: 20, elevation: 8 },
   headerWrap: { paddingHorizontal: SPACING.lg, paddingBottom: SPACING.xs },
   headerRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingTop: 4 },
   locWrap: { flexDirection: "row", gap: 8, alignItems: "center", flex: 1, marginRight: 12, zIndex: 99, elevation: 5 },
