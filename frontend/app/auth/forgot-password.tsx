@@ -10,7 +10,7 @@ import {
   ScrollView,
   ActivityIndicator,
 } from "react-native";
-import { useRouter } from "expo-router";
+import { useRouter, useLocalSearchParams } from "expo-router";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { api } from "@/src/api";
@@ -19,10 +19,13 @@ type Step = "email" | "otp" | "password" | "success";
 
 export default function ForgotPassword() {
   const router = useRouter();
+  const params = useLocalSearchParams<{ email?: string }>();
 
   const [step, setStep] = useState<Step>("email");
 
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(
+    typeof params.email === "string" ? params.email.trim().toLowerCase() : ""
+  );
   const [otp, setOtp] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
