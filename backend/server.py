@@ -831,7 +831,7 @@ async def forgot_password(data: ForgotPasswordIn):
 @api.post("/auth/verify-reset-otp")
 async def verify_reset_otp(data: VerifyResetOtpIn):
     reset = await db.password_reset_otps.find_one({
-        "email": email
+        "email": normalize_email(data.email)
     })
 
     if not reset:
@@ -853,7 +853,7 @@ async def verify_reset_otp(data: VerifyResetOtpIn):
 
     if datetime.now(timezone.utc) > expires_at:
         await db.password_reset_otps.delete_many({
-            "email": email
+            "email": normalize_email(data.email)
         })
         raise HTTPException(
             status_code=400,
@@ -886,7 +886,7 @@ async def reset_password(data: ResetPasswordIn):
         )
 
     reset = await db.password_reset_otps.find_one({
-        "email": email
+        "email": normalize_email(data.email)
     })
 
     if not reset:
@@ -908,7 +908,7 @@ async def reset_password(data: ResetPasswordIn):
 
     if datetime.now(timezone.utc) > expires_at:
         await db.password_reset_otps.delete_many({
-            "email": email
+            "email": normalize_email(data.email)
         })
         raise HTTPException(
             status_code=400,
@@ -928,7 +928,7 @@ async def reset_password(data: ResetPasswordIn):
         )
 
     user = await db.users.find_one({
-        "email": email
+        "email": normalize_email(data.email)
     })
 
     if not user:
@@ -938,12 +938,12 @@ async def reset_password(data: ResetPasswordIn):
         )
 
     await db.users.update_one(
-        {"email": email},
+        {"email": normalize_email(data.email)},
         {"$set": {"password": hash_password(data.new_password)}}
     )
 
     await db.password_reset_otps.delete_many({
-        "email": email
+        "email": normalize_email(data.email)
     })
 
     return {
