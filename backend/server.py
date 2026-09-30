@@ -1,4 +1,5 @@
 import asyncio
+import base64
 import hashlib
 import secrets
 import re
@@ -190,6 +191,10 @@ class ResetPasswordIn(BaseModel):
     email: EmailStr
     otp: str
     new_password: str
+
+
+class AvatarUpdateIn(BaseModel):
+    avatar: str
 
 
 class UserOut(BaseModel):
@@ -1015,6 +1020,46 @@ async def verify_otp(data: OtpVerifyIn):
 async def me(current=Depends(get_current_user)):
     return user_to_out(current)
 
+@api.post("/auth/update-avatar", response_model=UserOut)
+async def update_avatar(data: AvatarUpdateIn, current=Depends(get_current_user)):
+    avatar = str(data.avatar or "").strip()
+    if not avatar.startswith("data:image/") or ";base64," not in avatar:
+        raise HTTPException(status_code=400, detail="Invalid image data")
+
+    header, encoded = avatar.split(";base64,", 1)
+    mime = header[5:].lower()
+    if mime not in {"image/jpeg", "image/png", "image/webp"}:
+        raise HTTPException(status_code=400, detail="Only JPG, PNG or WebP images are allowed")
+
+    try:
+        raw = base64.b64decode(encoded, validate=True)
+        if len(raw) > MAX_UPLOAD_BYTES:
+            raise HTTPException(status_code=413, detail="Image is too large. Maximum size is 8 MB.")
+
+        image = Image.open(io.BytesIO(raw))
+        image = ImageOps.exif_transpose(image)
+        image.thumbnail((512, 512), Image.Resampling.LANCZOS)
+        if image.mode not in ("RGB", "RGBA"):
+            image = image.convert("RGBA" if "A" in image.getbands() else "RGB")
+
+        UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+        filename = f"avatar-{current['id']}-{uuid.uuid4().hex}.webp"
+        output_path = UPLOAD_DIR / filename
+        image.save(output_path, format="WEBP", quality=86, method=6)
+
+        avatar_url = f"{PUBLIC_BASE_URL}/uploads/{filename}"
+        await db.users.update_one({"id": current["id"]}, {"$set": {"avatar": avatar_url}})
+        return user_to_out({**current, "avatar": avatar_url})
+    except HTTPException:
+        raise
+    except (ValueError, OSError) as e:
+        logging.exception("Avatar upload failed")
+        raise HTTPException(status_code=400, detail=f"Image upload failed: {str(e)}")
+    except Exception:
+        logging.exception("Avatar upload failed")
+        raise HTTPException(status_code=500, detail="Unable to save profile picture")
+
+
 # ------------------ ROOJGAR CATEGORIES ------------------
 
 @api.get("/roojgar-categories")
@@ -1043,10 +1088,6 @@ async def roojgar_categories():
             {"id": "20", "name": "Other", "icon": "📋"},
         ]
     }
-
-# --- NAYA AVATAR UPDATE CODE (Safe Block) ---
-class AvatarUpdateIn(BaseModel):
-    avatar: str
 
 @api.post("/submit-roojgar")
 async def submit_roojgar(data: JobApplicationIn):
