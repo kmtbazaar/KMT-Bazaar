@@ -650,62 +650,63 @@ export default function Home() {
           style={Platform.OS === 'web' ? ({ height: '100%', overflowY: 'auto', touchAction: 'pan-y' } as any) : {}}
         >
 
-        {/* Clean Banner Carousel without Dull Overlays */}
-        <FlatList
-          horizontal
-          style={Platform.OS === 'web' ? { overflowX: 'auto' } : {}}
-          data={banners}
-          showsHorizontalScrollIndicator={false}
-          snapToInterval={BANNER_W + 12}
-          decelerationRate="fast"
-          contentContainerStyle={{ paddingHorizontal: SPACING.lg, paddingTop: SPACING.md, paddingBottom: SPACING.sm, gap: 12 }}
-          keyExtractor={(it) => String(it.id)}
-          ref={(ref) => {
-            if (banners.length > 1 && ref && typeof (ref as any).scrollToIndex === "function") {
-              try { (ref as any).scrollToIndex({ index: bannerIndex, animated: true }); } catch {}
-            }
-          }}
-          renderItem={({ item }) => (
-            <Pressable testID={`banner-${item.id}`} onPress={() => {
-                if (item.target_type === "custom_page" && item.target_slug) {
-                  router.push({ pathname: "/travel/[slug]", params: { slug: item.target_slug } } as any);
-                } else {
-                  router.push(`/category/${item.category_id}` as any);
-                }
-              }} style={s.banner}>
-              <Image
-                source={{ uri: brokenImages[`banner:${String(item.id)}`] ? IMAGE_FALLBACK_URL : (item.image || IMAGE_FALLBACK_URL) }}
-                style={s.bannerImg}
-                contentFit="cover"
-                onError={() => setBrokenImages(prev => ({ ...prev, [`banner:${String(item.id)}`]: true }))}
-              />
-              
-              {/* Animated Gradient Border Flash */}
-              <Animated.View style={[s.bannerFlashBorder, animatedFlashStyle]} />
+        {/* Smooth banner carousel; dots are overlaid inside the banner bottom edge */}
+        <View style={s.bannerCarouselShell}>
+          <FlatList
+            horizontal
+            style={Platform.OS === 'web' ? { overflowX: 'auto' } : {}}
+            data={banners}
+            showsHorizontalScrollIndicator={false}
+            snapToInterval={BANNER_W + 12}
+            decelerationRate="fast"
+            contentContainerStyle={{ paddingHorizontal: SPACING.lg, paddingTop: SPACING.md, paddingBottom: SPACING.xs, gap: 12 }}
+            keyExtractor={(it) => String(it.id)}
+            ref={(ref) => {
+              if (banners.length > 1 && ref && typeof (ref as any).scrollToIndex === "function") {
+                try { (ref as any).scrollToIndex({ index: bannerIndex, animated: true, viewPosition: 0 }); } catch {}
+              }
+            }}
+            renderItem={({ item }) => (
+              <Pressable testID={`banner-${item.id}`} onPress={() => {
+                  if (item.target_type === "custom_page" && item.target_slug) {
+                    router.push({ pathname: "/travel/[slug]", params: { slug: item.target_slug } } as any);
+                  } else {
+                    router.push(`/category/${item.category_id}` as any);
+                  }
+                }} style={s.banner}>
+                <Image
+                  source={{ uri: brokenImages[`banner:${String(item.id)}`] ? IMAGE_FALLBACK_URL : (item.image || IMAGE_FALLBACK_URL) }}
+                  style={s.bannerImg}
+                  contentFit="cover"
+                  onError={() => setBrokenImages(prev => ({ ...prev, [`banner:${String(item.id)}`]: true }))}
+                />
 
-              <View style={s.bannerText}>
-                {item.subtitle ? <Text style={s.bannerSubtitle}>{item.subtitle}</Text> : null}
-                {item.title ? <Text style={s.bannerTitle}>{item.title}</Text> : null}
-                <View style={s.bannerCta}>
-                  <Text style={s.bannerCtaText}>{item.cta || "Explore Now"} →</Text>
+                <Animated.View style={[s.bannerFlashBorder, animatedFlashStyle]} />
+
+                <View style={s.bannerText}>
+                  {item.subtitle ? <Text style={s.bannerSubtitle}>{item.subtitle}</Text> : null}
+                  {item.title ? <Text style={s.bannerTitle}>{item.title}</Text> : null}
+                  <View style={s.bannerCta}>
+                    <Text style={s.bannerCtaText}>{item.cta || "Explore Now"} →</Text>
+                  </View>
                 </View>
-              </View>
-            </Pressable>
-          )}
-          onMomentumScrollEnd={(event) => {
-            const offsetX = event.nativeEvent.contentOffset.x;
-            const nextIndex = Math.round(offsetX / (BANNER_W + 12));
-            if (nextIndex >= 0 && nextIndex < banners.length) setBannerIndex(nextIndex);
-          }}
-        />
+              </Pressable>
+            )}
+            onMomentumScrollEnd={(event) => {
+              const offsetX = event.nativeEvent.contentOffset.x;
+              const nextIndex = Math.round(offsetX / (BANNER_W + 12));
+              if (nextIndex >= 0 && nextIndex < banners.length) setBannerIndex(nextIndex);
+            }}
+          />
 
-        {banners.length > 1 && (
-          <View style={s.bannerDots}>
-            {banners.map((item, index) => (
-              <BannerDot key={String(item.id)} active={index === bannerIndex} />
-            ))}
-          </View>
-        )}
+          {banners.length > 1 && (
+            <View pointerEvents="none" style={s.bannerDotsOverlay}>
+              {banners.map((item, index) => (
+                <BannerDot key={String(item.id)} active={index === bannerIndex} />
+              ))}
+            </View>
+          )}
+        </View>
 
         {/* Categories Section with Flashing Border Tiles */}
         <SectionTitle title="Shop by Category" subtitle="Clear & easy ordering" />
@@ -938,7 +939,8 @@ const s = StyleSheet.create({
   banner: { width: BANNER_W, height: 165, borderRadius: 24, overflow: "hidden", backgroundColor: THEME.white, position: "relative", borderWidth: 1, borderColor: "rgba(255,107,0,0.22)", shadowColor: THEME.orange, shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.14, shadowRadius: 18, elevation: 7 },
   bannerImg: { width: "100%", height: "100%" },
   bannerFlashBorder: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, borderRadius: RADIUS.lg, borderWidth: 2.5, borderColor: THEME.orangeBright, pointerEvents: "none" },
-  bannerDots: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 5, paddingTop: 7, paddingBottom: 2 },
+  bannerCarouselShell: { position: "relative" },
+  bannerDotsOverlay: { position: "absolute", left: 0, right: 0, bottom: 8, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 5 },
   bannerDot: { width: 18, height: 5, borderRadius: 3, backgroundColor: THEME.orange },
   bannerText: { position: "absolute", left: 16, bottom: 16, right: 16, alignItems: "flex-start" },
   bannerSubtitle: { color: THEME.white, fontSize: 11, fontWeight: "800", letterSpacing: 0.5, textTransform: "uppercase", backgroundColor: "rgba(0,0,0,0.5)", paddingHorizontal: 8, paddingVertical: 2, borderRadius: 4 },
