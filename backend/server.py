@@ -57,6 +57,9 @@ JWT_EXPIRE_MIN = 60 * 24 * 30  # 30 days
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
 GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID", "")
+RESEND_API_KEY = os.getenv("RESEND_API_KEY", "")
+RESEND_FROM_EMAIL = os.getenv("RESEND_FROM_EMAIL", "KMT Bazaar <noreply@kmtbazaar.com>")
+
 
 gemini_client = genai.Client(api_key=GEMINI_API_KEY)
 
@@ -310,6 +313,52 @@ def hash_reset_otp(otp: str) -> str:
     return hashlib.sha256(otp.encode()).hexdigest()
 
 
+async def send_resend_email(to_email: str, subject: str, html: str):
+    if not RESEND_API_KEY:
+        logging.error("RESEND_API_KEY is not configured")
+        raise HTTPException(status_code=503, detail="Email service is not configured")
+
+    try:
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            response = await client.post(
+                "https://api.resend.com/emails",
+                headers={
+                    "Authorization": f"Bearer {RESEND_API_KEY}",
+                    "Content-Type": "application/json",
+                },
+                json={
+                    "from": RESEND_FROM_EMAIL,
+                    "to": [to_email],
+                    "subject": subject,
+                    "html": html,
+                },
+            )
+
+        if response.status_code >= 400:
+            logging.error("Resend email failed: %s %s", response.status_code, response.text)
+            raise HTTPException(status_code=502, detail="Unable to send OTP email")
+
+        return response.json()
+    except HTTPException:
+        raise
+    except Exception:
+        logging.exception("Resend email request failed")
+        raise HTTPException(status_code=502, detail="Unable to send OTP email")
+
+
+def otp_email_html(otp: str, title: str) -> str:
+    return f"""
+    <div style="font-family:Arial,sans-serif;max-width:560px;margin:auto;padding:28px;color:#0f172a">
+      <div style="font-size:24px;font-weight:800;color:#0284C7">KMT Bazaar</div>
+      <h2 style="margin-bottom:8px">{title}</h2>
+      <p>Your one-time password is:</p>
+      <div style="font-size:34px;letter-spacing:8px;font-weight:800;padding:18px 20px;background:#f1f5f9;border-radius:14px;text-align:center">{otp}</div>
+      <p style="color:#64748b">This OTP is valid for 10 minutes. Do not share it with anyone.</p>
+      <p style="color:#64748b">If you did not request this code, you can safely ignore this email.</p>
+    </div>
+    """
+
+
 def create_token(user_id: str, role: str) -> str:
     payload = {
         "sub": user_id,
@@ -507,7 +556,12 @@ async def forgot_password(data: ForgotPasswordIn):
         "created_at": datetime.now(timezone.utc),
     })
 
-    # Development-only OTP visibility is intentionally disabled in production.
+    await send_resend_email(
+        str(data.email),
+        "KMT Bazaar - Password Reset OTP",
+        otp_email_html(otp, "Password Reset OTP"),
+    )
+
     return {
         "success": True,
         "message": "If the account exists, a reset OTP has been sent.",
@@ -636,64 +690,129 @@ async def reset_password(data: ResetPasswordIn):
         "success": True,
         "message": "Password reset successfully"
     }
+def normalize_phone(value):
+    digits = "".join(ch for ch in str(value or "") if ch.isdigit())
+    if len(digits) == 12 and digits.startswith("91"):
+        digits = digits[2:]
+    elif len(digits) == 11 and digits.startswith("0"):
+        digits = digits[1:]
+    return digits
+
+
 @api.post("/auth/otp/request")
 async def request_otp(data: OtpRequestIn):
-    # Mock: any phone gets OTP 123456 (or any 6-digit accepted on verify)
-    return {"sent": True, "phone": data.phone, "hint": "Enter any 6-digit code (mock OTP)"}
+    entered_phone = normalize_phone(data.phone)
+
+    if len(entered_phone) != 10:
+        raise HTTPException(status_code=400, detail="Invalid mobile number")
+
+    phone_candidates = [
+        entered_phone,
+        "0" + entered_phone,
+        "91" + entered_phone,
+        "+91" + entered_phone,
+    ]
+
+    user = await db.users.find_one(
+        {
+            "role": Role.CUSTOMER.value,
+            "phone": {"$in": phone_candidates},
+        },
+        {"_id": 0},
+    )
+
+    if not user or not user.get("email"):
+        raise HTTPException(
+            status_code=404,
+            detail="No registered email found for this mobile number",
+        )
+
+    otp = f"{secrets.randbelow(900000) + 100000}"
+    expires_at = datetime.now(timezone.utc) + timedelta(minutes=10)
+
+    await db.login_otps.delete_many({"phone": entered_phone})
+    await db.login_otps.insert_one({
+        "id": str(uuid.uuid4()),
+        "phone": entered_phone,
+        "email": user["email"],
+        "otp_hash": hash_reset_otp(otp),
+        "expires_at": expires_at,
+        "created_at": datetime.now(timezone.utc),
+    })
+
+    await send_resend_email(
+        str(user["email"]),
+        "KMT Bazaar - Login OTP",
+        otp_email_html(otp, "Login OTP"),
+    )
+
+    return {
+        "sent": True,
+        "phone": entered_phone,
+        "expires_in_minutes": 10,
+    }
 
 
 @api.post("/auth/otp/verify", response_model=AuthOut)
 async def verify_otp(data: OtpVerifyIn):
-    # Mock OTP ka existing 6-digit format check
-    if not (len(data.otp) == 6 and data.otp.isdigit()):
-        raise HTTPException(status_code=400, detail="Invalid OTP")
-
-    # Mobile number ko digits-only format mein normalize karo
-    def normalize_phone(value):
-        digits = "".join(ch for ch in str(value or "") if ch.isdigit())
-
-        # India country code / leading zero ko handle karo
-        if len(digits) == 12 and digits.startswith("91"):
-            digits = digits[2:]
-        elif len(digits) == 11 and digits.startswith("0"):
-            digits = digits[1:]
-
-        return digits
-
     entered_phone = normalize_phone(data.phone)
 
     if len(entered_phone) != 10:
         raise HTTPException(
             status_code=400,
-            detail="Invalid mobile number. Please register now."
+            detail="Invalid mobile number",
         )
 
-    # Indexed direct lookup — poori customer collection memory mein load mat karo.
-    # Existing accounts ke stored phone formats ko support karne ke liye
-    # exact normalized lookup ke saath common Indian formats bhi check karo.
-    phone_candidates = [entered_phone, "0" + entered_phone, "91" + entered_phone, "+91" + entered_phone]
+    if not (len(data.otp) == 6 and data.otp.isdigit()):
+        raise HTTPException(status_code=400, detail="Invalid OTP")
+
+    otp_record = await db.login_otps.find_one({"phone": entered_phone})
+
+    if not otp_record:
+        raise HTTPException(status_code=400, detail="OTP not found or expired")
+
+    expires_at = otp_record.get("expires_at")
+    if not expires_at:
+        raise HTTPException(status_code=400, detail="Invalid OTP")
+
+    if expires_at.tzinfo is None:
+        expires_at = expires_at.replace(tzinfo=timezone.utc)
+
+    if datetime.now(timezone.utc) > expires_at:
+        await db.login_otps.delete_many({"phone": entered_phone})
+        raise HTTPException(status_code=400, detail="OTP expired")
+
+    if hash_reset_otp(data.otp) != otp_record.get("otp_hash"):
+        raise HTTPException(status_code=400, detail="Invalid OTP")
 
     user = await db.users.find_one(
         {
             "role": Role.CUSTOMER.value,
-            "phone": {"$in": phone_candidates}
+            "phone": {
+                "$in": [
+                    entered_phone,
+                    "0" + entered_phone,
+                    "91" + entered_phone,
+                    "+91" + entered_phone,
+                ]
+            },
         },
-        {"_id": 0}
+        {"_id": 0},
     )
 
-    # Number registered nahi hai: reject, account create mat karo
     if not user:
         raise HTTPException(
             status_code=404,
-            detail="Invalid mobile number. Please register now."
+            detail="Invalid mobile number. Please register now.",
         )
 
-    # Existing token creation
+    await db.login_otps.delete_many({"phone": entered_phone})
+
     token = create_token(user["id"], user["role"])
 
     return {
         "token": token,
-        "user": user_to_out(user)
+        "user": user_to_out(user),
     }
 
 
