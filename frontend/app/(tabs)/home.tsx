@@ -12,10 +12,9 @@ import Animated, {
   FadeOut, 
   useSharedValue, 
   useAnimatedStyle, 
-  withRepeat,
-  withSequence,
-  withTiming,
-  Easing
+  withRepeat, 
+  withSequence, 
+  withTiming 
 } from "react-native-reanimated";
 import { api } from "@/src/api";
 import { useAuth } from "@/src/AuthContext";
@@ -393,6 +392,7 @@ export default function Home() {
   const [refreshing, setRefreshing] = useState(false);
   const [bannerIndex, setBannerIndex] = useState(0);
   const [voiceListening, setVoiceListening] = useState(false);
+  const bannerListRef = useRef<FlatList<any>>(null);
   const voiceRecognitionRef = useRef<any>(null);
 
   const tabBarTranslateY = useRef(new RNAnimated.Value(0)).current;
@@ -681,21 +681,14 @@ export default function Home() {
   // Shared Values for Flashing Border Animations ONLY
   const bellScale = useSharedValue(1);
   const flashOpacity = useSharedValue(0.3);
-  const bannerTranslateX = useSharedValue(0);
 
   useEffect(() => {
-    bannerTranslateX.value = withTiming(
-      -bannerIndex * (BANNER_W + 12),
-      {
-        duration: 1200,
-        easing: Easing.inOut(Easing.cubic),
-      }
-    );
-  }, [bannerIndex]);
-
-  const animatedBannerSlideStyle = useAnimatedStyle(() => ({
-    transform: [{ translateX: bannerTranslateX.value }],
-  }));
+    if (banners.length > 1) {
+      try {
+        bannerListRef.current?.scrollToIndex({ index: bannerIndex, animated: true, viewPosition: 0 });
+      } catch {}
+    }
+  }, [bannerIndex, banners.length]);
 
   // Automatic banner carousel
   useEffect(() => {
@@ -935,45 +928,48 @@ export default function Home() {
           style={Platform.OS === 'web' ? ({ height: '100%', overflowY: 'auto', touchAction: 'pan-y' } as any) : {}}
         >
 
-        {/* Smooth horizontal banner slide; 7-second rotation */}
+        {/* Smooth banner carousel; dots are overlaid inside the banner bottom edge */}
         <View style={s.bannerCarouselShell}>
-          <View style={s.bannerViewport}>
-            <Animated.View
-              style={[s.bannerTrack, animatedBannerSlideStyle]}
-            >
-              {banners.map((item) => (
-                <View
-                  key={String(item.id)}
-                  testID={`banner-${item.id}`}
-                  style={s.banner}
-                >
-                  <Image
-                    source={{
-                      uri: brokenImages[`banner:${String(item.id)}`]
-                        ? IMAGE_FALLBACK_URL
-                        : (item.image || IMAGE_FALLBACK_URL)
-                    }}
-                    style={s.bannerImg}
-                    contentFit="cover"
-                    onError={() => setBrokenImages(prev => ({
-                      ...prev,
-                      [`banner:${String(item.id)}`]: true
-                    }))}
-                  />
+          <FlatList
+            horizontal
+            style={Platform.OS === 'web' ? { overflowX: 'auto' } : {}}
+            data={banners}
+            showsHorizontalScrollIndicator={false}
+            snapToInterval={BANNER_W + 12}
+            decelerationRate="fast"
+            contentContainerStyle={{ paddingHorizontal: SPACING.lg, paddingTop: 10, paddingBottom: SPACING.xs, gap: 12 }}
+            keyExtractor={(it) => String(it.id)}
+            ref={(ref) => {
+              if (banners.length > 1 && ref && typeof (ref as any).scrollToIndex === "function") {
+                try { (ref as any).scrollToIndex({ index: bannerIndex, animated: true, viewPosition: 0 }); } catch {}
+              }
+            }}
+            renderItem={({ item }) => (
+              <View testID={`banner-${item.id}`} style={s.banner}>
+                <Image
+                  source={{ uri: brokenImages[`banner:${String(item.id)}`] ? IMAGE_FALLBACK_URL : (item.image || IMAGE_FALLBACK_URL) }}
+                  style={s.bannerImg}
+                  contentFit="cover"
+                  onError={() => setBrokenImages(prev => ({ ...prev, [`banner:${String(item.id)}`]: true }))}
+                />
 
-                  <Animated.View style={[s.bannerFlashBorder, animatedFlashStyle]} />
+                <Animated.View style={[s.bannerFlashBorder, animatedFlashStyle]} />
 
-                  <View style={s.bannerText}>
-                    {item.subtitle ? <Text style={s.bannerSubtitle}>{item.subtitle}</Text> : null}
-                    {item.title ? <Text style={s.bannerTitle}>{item.title}</Text> : null}
-                    <View style={s.bannerCta}>
-                      <Text style={s.bannerCtaText}>{item.cta || "Explore Now"} →</Text>
-                    </View>
+                <View style={s.bannerText}>
+                  {item.subtitle ? <Text style={s.bannerSubtitle}>{item.subtitle}</Text> : null}
+                  {item.title ? <Text style={s.bannerTitle}>{item.title}</Text> : null}
+                  <View style={s.bannerCta}>
+                    <Text style={s.bannerCtaText}>{item.cta || "Explore Now"} →</Text>
                   </View>
                 </View>
-              ))}
-            </Animated.View>
-          </View>
+              </View>
+            )}
+            onMomentumScrollEnd={(event) => {
+              const offsetX = event.nativeEvent.contentOffset.x;
+              const nextIndex = Math.round(offsetX / (BANNER_W + 12));
+              if (nextIndex >= 0 && nextIndex < banners.length) setBannerIndex(nextIndex);
+            }}
+          />
 
           {banners.length > 1 && (
             <View pointerEvents="none" style={s.bannerDotsOverlay}>
@@ -1229,9 +1225,7 @@ const s = StyleSheet.create({
   banner: { width: BANNER_W, height: 125, borderRadius: 20, overflow: "hidden", backgroundColor: THEME.white, position: "relative", borderWidth: 1, borderColor: "rgba(255,107,0,0.22)", shadowColor: THEME.orange, shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.12, shadowRadius: 14, elevation: 6 },
   bannerImg: { width: "100%", height: "100%" },
   bannerFlashBorder: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, borderRadius: RADIUS.lg, borderWidth: 2.5, borderColor: THEME.orangeBright, pointerEvents: "none" },
-  bannerCarouselShell: { position: "relative", overflow: "hidden", paddingTop: 12 },
-  bannerViewport: { width: BANNER_W, overflow: "hidden" },
-  bannerTrack: { flexDirection: "row", gap: 12 },
+  bannerCarouselShell: { position: "relative" },
   bannerDotsOverlay: { position: "absolute", left: 0, right: 0, bottom: 8, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 5 },
   bannerDot: { width: 18, height: 5, borderRadius: 3, backgroundColor: THEME.orange },
   bannerText: { position: "absolute", left: 14, bottom: 12, right: 16, alignItems: "flex-start" },
