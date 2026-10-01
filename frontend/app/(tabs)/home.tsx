@@ -392,6 +392,7 @@ export default function Home() {
   const [refreshing, setRefreshing] = useState(false);
   const [bannerIndex, setBannerIndex] = useState(0);
   const [voiceListening, setVoiceListening] = useState(false);
+  const bannerListRef = useRef<FlatList<any>>(null);
   const voiceRecognitionRef = useRef<any>(null);
 
   const tabBarTranslateY = useRef(new RNAnimated.Value(0)).current;
@@ -681,6 +682,14 @@ export default function Home() {
   const bellScale = useSharedValue(1);
   const flashOpacity = useSharedValue(0.3);
 
+  useEffect(() => {
+    if (banners.length > 1) {
+      try {
+        bannerListRef.current?.scrollToIndex({ index: bannerIndex, animated: true, viewPosition: 0 });
+      } catch {}
+    }
+  }, [bannerIndex, banners.length]);
+
   // Automatic banner carousel
   useEffect(() => {
     if (banners.length < 2) {
@@ -919,41 +928,48 @@ export default function Home() {
           style={Platform.OS === 'web' ? ({ height: '100%', overflowY: 'auto', touchAction: 'pan-y' } as any) : {}}
         >
 
-        {/* Soft fade + zoom banner animation; content and timing stay controlled by existing banner data */}
+        {/* Smooth banner carousel; dots are overlaid inside the banner bottom edge */}
         <View style={s.bannerCarouselShell}>
-          {banners.length > 0 && (
-            <Animated.View
-              key={String(banners[bannerIndex]?.id ?? bannerIndex)}
-              entering={FadeIn.duration(650)}
-              exiting={FadeOut.duration(450)}
-              style={[s.banner, s.bannerFadeCard]}
-              testID={`banner-${banners[bannerIndex]?.id ?? bannerIndex}`}
-            >
-              <Image
-                source={{
-                  uri: brokenImages[`banner:${String(banners[bannerIndex]?.id)}`]
-                    ? IMAGE_FALLBACK_URL
-                    : (banners[bannerIndex]?.image || IMAGE_FALLBACK_URL)
-                }}
-                style={s.bannerImg}
-                contentFit="cover"
-                onError={() => setBrokenImages(prev => ({
-                  ...prev,
-                  [`banner:${String(banners[bannerIndex]?.id)}`]: true
-                }))}
-              />
+          <FlatList
+            horizontal
+            style={Platform.OS === 'web' ? { overflowX: 'auto' } : {}}
+            data={banners}
+            showsHorizontalScrollIndicator={false}
+            snapToInterval={BANNER_W + 12}
+            decelerationRate="fast"
+            contentContainerStyle={{ paddingHorizontal: SPACING.lg, paddingTop: 10, paddingBottom: SPACING.xs, gap: 12 }}
+            keyExtractor={(it) => String(it.id)}
+            ref={(ref) => {
+              if (banners.length > 1 && ref && typeof (ref as any).scrollToIndex === "function") {
+                try { (ref as any).scrollToIndex({ index: bannerIndex, animated: true, viewPosition: 0 }); } catch {}
+              }
+            }}
+            renderItem={({ item }) => (
+              <View testID={`banner-${item.id}`} style={s.banner}>
+                <Image
+                  source={{ uri: brokenImages[`banner:${String(item.id)}`] ? IMAGE_FALLBACK_URL : (item.image || IMAGE_FALLBACK_URL) }}
+                  style={s.bannerImg}
+                  contentFit="cover"
+                  onError={() => setBrokenImages(prev => ({ ...prev, [`banner:${String(item.id)}`]: true }))}
+                />
 
-              <Animated.View style={[s.bannerFlashBorder, animatedFlashStyle]} />
+                <Animated.View style={[s.bannerFlashBorder, animatedFlashStyle]} />
 
-              <View style={s.bannerText}>
-                {banners[bannerIndex]?.subtitle ? <Text style={s.bannerSubtitle}>{banners[bannerIndex].subtitle}</Text> : null}
-                {banners[bannerIndex]?.title ? <Text style={s.bannerTitle}>{banners[bannerIndex].title}</Text> : null}
-                <View style={s.bannerCta}>
-                  <Text style={s.bannerCtaText}>{banners[bannerIndex]?.cta || "Explore Now"} →</Text>
+                <View style={s.bannerText}>
+                  {item.subtitle ? <Text style={s.bannerSubtitle}>{item.subtitle}</Text> : null}
+                  {item.title ? <Text style={s.bannerTitle}>{item.title}</Text> : null}
+                  <View style={s.bannerCta}>
+                    <Text style={s.bannerCtaText}>{item.cta || "Explore Now"} →</Text>
+                  </View>
                 </View>
               </View>
-            </Animated.View>
-          )}
+            )}
+            onMomentumScrollEnd={(event) => {
+              const offsetX = event.nativeEvent.contentOffset.x;
+              const nextIndex = Math.round(offsetX / (BANNER_W + 12));
+              if (nextIndex >= 0 && nextIndex < banners.length) setBannerIndex(nextIndex);
+            }}
+          />
 
           {banners.length > 1 && (
             <View pointerEvents="none" style={s.bannerDotsOverlay}>
@@ -1200,7 +1216,7 @@ const s = StyleSheet.create({
   bellBadge: { position: "absolute", top: 2, right: 2, backgroundColor: THEME.orange, minWidth: 18, height: 18, borderRadius: 9, paddingHorizontal: 4, alignItems: "center", justifyContent: "center", borderWidth: 1.5, borderColor: THEME.white },
   bellBadgeText: { color: THEME.white, fontSize: 9, fontWeight: "900" },
   
-  searchWrap: { flex: 1, flexDirection: "row", alignItems: "center", backgroundColor: "rgba(255,255,255,0.96)", borderRadius: RADIUS.pill, paddingHorizontal: 13, paddingVertical: 5, marginTop: 13, height: 38, borderWidth: 1, borderColor: "rgba(255,255,255,0.88)", shadowColor: "#000000", shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.14, shadowRadius: 14, elevation: 6 },
+  searchWrap: { flex: 1, flexDirection: "row", alignItems: "center", backgroundColor: "rgba(255,255,255,0.96)", borderRadius: RADIUS.pill, paddingHorizontal: 14, paddingVertical: 7, height: 44, borderWidth: 1, borderColor: "rgba(255,255,255,0.88)", shadowColor: "#000000", shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.14, shadowRadius: 14, elevation: 6 },
   searchPlaceholderText: { fontSize: 14, color: THEME.blackMuted, fontWeight: "600" },
   searchMicBg: { width: 32, height: 32, backgroundColor: THEME.orange, borderRadius: 16, alignItems: "center", justifyContent: "center" },
   searchMicListening: { transform: [{ scale: 1.08 }], backgroundColor: THEME.orangeBright },
@@ -1210,7 +1226,6 @@ const s = StyleSheet.create({
   bannerImg: { width: "100%", height: "100%" },
   bannerFlashBorder: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, borderRadius: RADIUS.lg, borderWidth: 2.5, borderColor: THEME.orangeBright, pointerEvents: "none" },
   bannerCarouselShell: { position: "relative" },
-  bannerFadeCard: { backfaceVisibility: "hidden" },
   bannerDotsOverlay: { position: "absolute", left: 0, right: 0, bottom: 8, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 5 },
   bannerDot: { width: 18, height: 5, borderRadius: 3, backgroundColor: THEME.orange },
   bannerText: { position: "absolute", left: 14, bottom: 12, right: 16, alignItems: "flex-start" },
