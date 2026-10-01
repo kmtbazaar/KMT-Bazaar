@@ -510,46 +510,51 @@ export default function Login() {
                 ) : (
                   <>
                     <Text style={s.otpTitle}>Enter 6-digit OTP</Text>
-                    <Text style={s.otpSub}>We sent a verification code to {identifier.trim().toLowerCase()}</Text>
-                    <View style={s.fieldWrap}>
-                      <MaterialCommunityIcons name="shield-key-outline" size={22} color="#64748B" />
-                      <TextInput
-                        testID="login-email-otp-input"
-                        placeholder="6-digit OTP"
-                        value={emailOtp}
-                        onChangeText={(value) => setEmailOtp(value.replace(/[^0-9]/g, "").slice(0, 6))}
-                        keyboardType="number-pad"
-                        autoComplete="one-time-code"
-                        textContentType="oneTimeCode"
-                        maxLength={6}
-                        style={s.input}
-                      />
+                    <Text style={s.otpSub}>Code sent to {identifier.trim().toLowerCase()}</Text>
+                    <View style={s.otpInputRow}>
+                      <View style={[s.fieldWrap, s.otpFieldWrap]}>
+                        <MaterialCommunityIcons name="shield-key-outline" size={20} color="#64748B" />
+                        <TextInput
+                          testID="login-email-otp-input"
+                          placeholder="6-digit OTP"
+                          value={emailOtp}
+                          onChangeText={(value) => setEmailOtp(value.replace(/[^0-9]/g, "").slice(0, 6))}
+                          keyboardType="number-pad"
+                          autoComplete="one-time-code"
+                          textContentType="oneTimeCode"
+                          maxLength={6}
+                          style={s.input}
+                        />
+                      </View>
+                    </View>
+                    <View style={s.otpResendRow}>
+                      <Pressable
+                        onPress={onResendEmailOtp}
+                        disabled={otpLoading}
+                        testID="login-resend-otp"
+                        hitSlop={8}
+                      >
+                        <Text style={s.otpResendText}>{otpLoading ? "Please wait…" : "Resend OTP"}</Text>
+                      </Pressable>
                     </View>
                     {error && <Text style={s.err} testID="login-error">{error}</Text>}
                     <Pressable
                       testID="login-verify-otp-button"
                       onPress={onVerifyEmailOtp}
                       disabled={otpLoading}
-                      style={[s.cta, otpLoading && { opacity: 0.7 }]}
+                      style={[s.cta, s.otpCta, otpLoading && { opacity: 0.7 }]}
                     >
                       <LinearGradient
                         colors={["#FF6E00", "#E05E00"]}
                         start={{ x: 0, y: 0 }}
                         end={{ x: 1, y: 1 }}
-                        style={s.ctaGrad}
+                        style={[s.ctaGrad, s.otpCtaGrad]}
                       >
                         {otpLoading ? <ActivityIndicator color="#fff" /> : <Text style={s.ctaText}>Verify & Login</Text>}
                       </LinearGradient>
                     </Pressable>
-                    <Pressable
-                      onPress={onResendEmailOtp}
-                      disabled={otpLoading}
-                      testID="login-resend-otp"
-                    >
-                      <Text style={s.forgotPassword}>Resend OTP</Text>
-                    </Pressable>
                     <Pressable onPress={() => { setEmailOtpStep(false); setEmailOtp(""); setError(null); }}>
-                      <Text style={s.forgotPassword}>Back to password</Text>
+                      <Text style={s.otpBackText}>Back to password</Text>
                     </Pressable>
                   </>
                 )}
@@ -666,14 +671,14 @@ const s = StyleSheet.create({
 
   cardWrapper: {
     paddingHorizontal: SPACING.lg,
-    paddingBottom: 25,
+    paddingBottom: 8,
   },
 
   card: {
     backgroundColor: "#FFFFFF",
     borderRadius: 24,
     padding: SPACING.xl,
-    paddingBottom: 28,
+    paddingBottom: 18,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 12 },
     shadowOpacity: 0.25,
@@ -820,8 +825,15 @@ const s = StyleSheet.create({
     lineHeight: 18,
   },
 
-  otpTitle: { textAlign: "center", fontSize: 18, fontWeight: "800", color: "#0F172A", marginBottom: 6 },
-  otpSub: { textAlign: "center", color: "#64748B", fontSize: 12, lineHeight: 18, marginBottom: 14 },
+  otpTitle: { textAlign: "center", fontSize: 16, fontWeight: "800", color: "#0F172A", marginBottom: 3 },
+  otpSub: { textAlign: "center", color: "#64748B", fontSize: 10, lineHeight: 14, marginBottom: 6 },
+  otpInputRow: { width: "100%" },
+  otpFieldWrap: { marginBottom: 0, paddingHorizontal: 12, minHeight: 46 },
+  otpResendRow: { width: "100%", alignItems: "flex-end", marginTop: -2, marginBottom: 4 },
+  otpResendText: { color: "#0284C7", fontSize: 11, fontWeight: "800" },
+  otpCta: { marginTop: 2 },
+  otpCtaGrad: { paddingVertical: 11 },
+  otpBackText: { textAlign: "center", marginTop: 6, color: "#0284C7", fontSize: 11, fontWeight: "800" },
 
   forgotPassword: {
     textAlign: "center",
@@ -858,8 +870,8 @@ const s = StyleSheet.create({
 
   bottomLeftLogoContainer: {
     position: "absolute",
-    bottom: 25,
-    left: 20,
+    bottom: 12,
+    left: 12,
     zIndex: 10,
   },
 
@@ -874,8 +886,8 @@ const s = StyleSheet.create({
   },
 
   logo: {
-    width: 80,
-    height: 80,
+    width: 56,
+    height: 56,
   },
 
   appName: {
