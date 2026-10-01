@@ -404,6 +404,9 @@ export default function Addresses() {
     };
 
     try {
+      const isFirstAddress = !editingId && addresses.length === 0;
+      let createdAddress: any = null;
+
       if (editingId) {
         await api.updateAddress(editingId, saveData);
       } else {
@@ -412,11 +415,11 @@ export default function Addresses() {
           return;
         }
 
-        await api.createAddress({
+        createdAddress = await api.createAddress({
           ...saveData,
           latitude: locationCaptured.latitude,
           longitude: locationCaptured.longitude,
-          is_default: addresses.length === 0,
+          is_default: isFirstAddress,
         });
       }
 
@@ -426,7 +429,22 @@ export default function Addresses() {
       setLocationError("");
       setExistingLocationSaved(false);
       setGpsPrefillLoading(false);
-      loadAddresses();
+
+      if (isFirstAddress && createdAddress) {
+        const formattedAddressStr = `${createdAddress.label || "Home"} · ${createdAddress.line1 || createdAddress.city || ""}`;
+        await AsyncStorage.setItem("selected_address", JSON.stringify(createdAddress));
+        if (setUser) {
+          setUser({
+            ...user,
+            activeAddress: createdAddress,
+            address: formattedAddressStr,
+          });
+        }
+        router.replace("/(tabs)/home" as any);
+        return;
+      }
+
+      await loadAddresses();
     } catch (e: any) {
       console.log("ADDRESS SAVE ERROR:", e);
       Alert.alert("Address Error", e.message || "Could not save address.");
