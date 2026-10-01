@@ -6,7 +6,6 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRouter, useFocusEffect, useNavigation } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import * as Location from "expo-location";
 import Animated, { 
   FadeIn, 
   FadeOut, 
@@ -534,114 +533,10 @@ export default function Home() {
     }, [user])
   );
 
-  const captureInitialLocation = useCallback(async () => {
-    if (initialLocationLoading) return;
-
-    setInitialLocationLoading(true);
-    setInitialLocationError("");
-
-    try {
-      let coords: { latitude: number; longitude: number; accuracy?: number };
-
-      if (Platform.OS === "web") {
-        if (typeof window !== "undefined" && !window.isSecureContext) {
-          throw new Error("Location requires a secure HTTPS connection.");
-        }
-        if (!navigator.geolocation) {
-          throw new Error("This browser does not support location access.");
-        }
-
-        coords = await new Promise<{ latitude: number; longitude: number; accuracy?: number }>((resolve, reject) => {
-          let watchId: number | null = null;
-          let best: { latitude: number; longitude: number; accuracy?: number } | null = null;
-          let settled = false;
-
-          const finish = (value?: { latitude: number; longitude: number; accuracy?: number }, error?: Error) => {
-            if (settled) return;
-            settled = true;
-            if (watchId !== null) navigator.geolocation.clearWatch(watchId);
-            window.clearTimeout(timeoutId);
-            if (error) reject(error);
-            else resolve(value || best as { latitude: number; longitude: number; accuracy?: number });
-          };
-
-          const timeoutId = window.setTimeout(() => {
-            if (best && Number.isFinite(best.accuracy) && (best.accuracy as number) <= 150) {
-              finish(best);
-            } else {
-              finish(undefined, new Error("Precise GPS is not available yet. Turn on Location/GPS and try again."));
-            }
-          }, 30000);
-
-          watchId = navigator.geolocation.watchPosition(
-            (position) => {
-              const accuracy = Number(position.coords.accuracy);
-              const current = {
-                latitude: position.coords.latitude,
-                longitude: position.coords.longitude,
-                accuracy: Number.isFinite(accuracy) ? accuracy : undefined,
-              };
-
-              if (!best || (current.accuracy ?? Infinity) < (best.accuracy ?? Infinity)) {
-                best = current;
-              }
-
-              if ((current.accuracy ?? Infinity) <= 75) {
-                finish(current);
-              }
-            },
-            (error) => {
-              const messages: Record<number, string> = {
-                1: "Location permission was denied. Allow KMT Bazaar to use your location.",
-                2: "Turn on your device Location/GPS and try again.",
-                3: "Precise GPS timed out. Try again with Location/GPS on.",
-              };
-              finish(undefined, new Error(messages[error?.code] || error?.message || "Could not get your current location."));
-            },
-            { enableHighAccuracy: true, timeout: 30000, maximumAge: 0 }
-          );
-        });
-      } else {
-        const permission = await Location.requestForegroundPermissionsAsync();
-        if (permission.status !== "granted") {
-          throw new Error("Location permission is required. Please allow KMT Bazaar to use your location.");
-        }
-
-        const current = await Location.getCurrentPositionAsync({
-          accuracy: Location.Accuracy.High,
-        });
-
-        coords = {
-          latitude: current.coords.latitude,
-          longitude: current.coords.longitude,
-          accuracy: current.coords.accuracy,
-        };
-      }
-
-      await AsyncStorage.setItem("kmt_current_location", JSON.stringify({
-        id: "initial-" + Date.now(),
-        label: "Home",
-        line1: "",
-        city: "",
-        state: "",
-        pincode: "",
-        phone: user?.phone || "",
-        full_name: user?.name || "",
-        latitude: coords.latitude,
-        longitude: coords.longitude,
-        accuracy: coords.accuracy,
-        source: "device-gps",
-        captured_at: new Date().toISOString(),
-      }));
-
-      router.push({ pathname: "/addresses", params: { mode: "initial" } } as any);
-    } catch (error: any) {
-      console.log("INITIAL LOCATION ERROR:", error);
-      setInitialLocationError(error?.message || "Could not fetch your current location.");
-    } finally {
-      setInitialLocationLoading(false);
-    }
-  }, [initialLocationLoading, router, user?.name, user?.phone]);
+  // Let customers open the map first; GPS is optional and can be requested on the map screen.
+  const captureInitialLocation = useCallback(() => {
+    router.push({ pathname: "/addresses", params: { mode: "initial" } } as any);
+  }, [router]);
 
   const handleHomeLocationPress = useCallback(() => {
     router.push("/addresses" as any);
@@ -889,7 +784,7 @@ export default function Home() {
             </View>
             <Text style={s.locationGateTitle}>Set your delivery location</Text>
             <Text style={s.locationGateText}>
-              KMT Bazaar needs your current location to show stores and products available for delivery near you.
+              Choose your delivery point on the map. You can use live GPS to find yourself automatically, or move the map pin to your home.
             </Text>
             <Pressable
               onPress={captureInitialLocation}
@@ -899,10 +794,10 @@ export default function Home() {
               {initialLocationLoading ? (
                 <ActivityIndicator color="#fff" />
               ) : (
-                <MaterialCommunityIcons name="crosshairs-gps" size={19} color="#fff" />
+                <MaterialCommunityIcons name="map-marker-radius" size={19} color="#fff" />
               )}
               <Text style={s.locationGateButtonText}>
-                {initialLocationLoading ? "DETECTING LOCATION..." : "USE MY CURRENT LOCATION"}
+                {initialLocationLoading ? "DETECTING LOCATION..." : "CHOOSE LOCATION ON MAP"}
               </Text>
             </Pressable>
             {!!initialLocationError && (
