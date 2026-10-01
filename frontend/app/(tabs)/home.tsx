@@ -945,8 +945,9 @@ export default function Home() {
               }
             }}
             renderItem={({ item }) => (
-              <View testID={`banner-${item.id}`} style={s.banner}>
-                <Image
+              <View style={s.bannerItemWrap}>
+                <View testID={`banner-${item.id}`} style={s.banner}>
+                  <Image
                   source={{ uri: brokenImages[`banner:${String(item.id)}`] ? IMAGE_FALLBACK_URL : (item.image || IMAGE_FALLBACK_URL) }}
                   style={s.bannerImg}
                   contentFit="cover"
@@ -962,6 +963,13 @@ export default function Home() {
                     <Text style={s.bannerCtaText}>{item.cta || "Explore Now"} →</Text>
                   </View>
                 </View>
+                </View>
+                {banners.length > 1 && (
+                  <View pointerEvents="none" style={s.bannerRopeConnector}>
+                    <View style={s.bannerRopeLine} />
+                    <View style={s.bannerRopeKnot} />
+                  </View>
+                )}
               </View>
             )}
             onMomentumScrollEnd={(event) => {
@@ -1228,6 +1236,11 @@ const s = StyleSheet.create({
   bannerImg: { width: "100%", height: "100%" },
   bannerFlashBorder: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, borderRadius: RADIUS.lg, borderWidth: 2.5, borderColor: THEME.orangeBright, pointerEvents: "none" },
   bannerCarouselShell: { position: "relative" },
+  bannerItemWrap: { width: BANNER_W, position: "relative" },
+  bannerRopeConnector: { position: "absolute", right: -1, top: "50%", width: 10, height: 52, transform: [{ translateY: -26 }], alignItems: "center", justifyContent: "center", zIndex: 5 },
+  bannerRopeLine: { width: 3, height: 44, borderRadius: 3, backgroundColor: "#8B6B45", opacity: 0.95 },
+  bannerRopeKnot: { position: "absolute", width: 8, height: 8, borderRadius: 4, backgroundColor: "#6B4F32", top: 2 },
+
   bannerDotsOverlay: { position: "absolute", left: 0, right: 0, bottom: 8, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 5 },
   bannerDot: { width: 18, height: 5, borderRadius: 3, backgroundColor: THEME.orange },
   bannerText: { position: "absolute", left: 14, bottom: 12, right: 16, alignItems: "flex-start" },
