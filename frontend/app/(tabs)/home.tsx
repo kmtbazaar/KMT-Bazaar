@@ -677,6 +677,7 @@ export default function Home() {
 
   // Animated Search Bar Placeholder Index
   const [placeholderIdx, setPlaceholderIdx] = useState(0);
+  const [searchExpanded, setSearchExpanded] = useState(false);
 
   // Shared Values for Flashing Border Animations ONLY
   const bellScale = useSharedValue(1);
@@ -849,36 +850,60 @@ export default function Home() {
           </View>
         </View>
 
-        {/* Search Bar */}
-        <Pressable 
-          testID="home-search-trigger"
-          onPress={() => router.push("/search" as any)}
-          style={s.searchWrap}
-        >
-          <MaterialCommunityIcons name="magnify" size={22} color={THEME.skyHeader} />
-          <Animated.View 
-            key={placeholderIdx} 
-            entering={FadeIn.duration(400)} 
-            exiting={FadeOut.duration(400)}
-            style={{ flex: 1, marginLeft: 8 }}
-          >
-            <Text style={s.searchPlaceholderText}>
-              {SEARCH_PLACEHOLDERS[placeholderIdx]}
-            </Text>
+        {/* Collapsible Search */}
+        {!searchExpanded ? (
+          <Animated.View entering={FadeIn.duration(220)}>
+            <Pressable
+              testID="home-search-open"
+              onPress={() => setSearchExpanded(true)}
+              hitSlop={8}
+              style={s.searchCollapsedBtn}
+            >
+              <MaterialCommunityIcons name="magnify" size={24} color={THEME.skyHeader} />
+            </Pressable>
           </Animated.View>
-          <Pressable
-            testID="home-voice-search"
-            onPress={startVoiceSearch}
-            hitSlop={8}
-            style={[s.searchMicBg, voiceListening && s.searchMicListening]}
-          >
-            <MaterialCommunityIcons
-              name={voiceListening ? "microphone" : "microphone-outline"}
-              size={18}
-              color={THEME.white}
-            />
-          </Pressable>
-        </Pressable>
+        ) : (
+          <Animated.View entering={FadeIn.duration(220)} style={s.searchExpandedRow}>
+            <Pressable
+              testID="home-search-trigger"
+              onPress={() => router.push("/search" as any)}
+              style={s.searchWrap}
+            >
+              <MaterialCommunityIcons name="magnify" size={22} color={THEME.skyHeader} />
+              <Animated.View
+                key={placeholderIdx}
+                entering={FadeIn.duration(400)}
+                exiting={FadeOut.duration(400)}
+                style={{ flex: 1, marginLeft: 8 }}
+              >
+                <Text style={s.searchPlaceholderText}>
+                  {SEARCH_PLACEHOLDERS[placeholderIdx]}
+                </Text>
+              </Animated.View>
+              <Pressable
+                testID="home-voice-search"
+                onPress={startVoiceSearch}
+                hitSlop={8}
+                style={[s.searchMicBg, voiceListening && s.searchMicListening]}
+              >
+                <MaterialCommunityIcons
+                  name={voiceListening ? "microphone" : "microphone-outline"}
+                  size={18}
+                  color={THEME.white}
+                />
+              </Pressable>
+            </Pressable>
+
+            <Pressable
+              testID="home-search-close"
+              onPress={() => setSearchExpanded(false)}
+              hitSlop={8}
+              style={s.searchCloseBtn}
+            >
+              <MaterialCommunityIcons name="close" size={18} color={THEME.white} />
+            </Pressable>
+          </Animated.View>
+        )}
       </SafeAreaView>
 
       {!locationReady ? (
@@ -1222,7 +1247,10 @@ const s = StyleSheet.create({
   bellBadge: { position: "absolute", top: 2, right: 2, backgroundColor: THEME.orange, minWidth: 18, height: 18, borderRadius: 9, paddingHorizontal: 4, alignItems: "center", justifyContent: "center", borderWidth: 1.5, borderColor: THEME.white },
   bellBadgeText: { color: THEME.white, fontSize: 9, fontWeight: "900" },
   
-  searchWrap: { flexDirection: "row", alignItems: "center", backgroundColor: "rgba(255,255,255,0.96)", borderRadius: RADIUS.pill, paddingHorizontal: 14, paddingVertical: 7, marginTop: SPACING.md, height: 44, borderWidth: 1, borderColor: "rgba(255,255,255,0.88)", shadowColor: "#000000", shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.14, shadowRadius: 14, elevation: 6 },
+  searchExpandedRow: { marginTop: SPACING.md, flexDirection: "row", alignItems: "center", gap: 8 },
+  searchCollapsedBtn: { width: 46, height: 46, borderRadius: 23, alignItems: "center", justifyContent: "center", alignSelf: "flex-start", backgroundColor: "rgba(255,255,255,0.82)", borderWidth: 1, borderColor: "rgba(255,255,255,0.92)", shadowColor: "#0F172A", shadowOffset: { width: 0, height: 5 }, shadowOpacity: 0.12, shadowRadius: 12, elevation: 5 },
+  searchCloseBtn: { width: 38, height: 38, borderRadius: 19, alignItems: "center", justifyContent: "center", backgroundColor: "rgba(15,23,42,0.48)", borderWidth: 1, borderColor: "rgba(255,255,255,0.34)" },
+  searchWrap: { flex: 1, flexDirection: "row", alignItems: "center", backgroundColor: "rgba(255,255,255,0.96)", borderRadius: RADIUS.pill, paddingHorizontal: 14, paddingVertical: 7, height: 44, borderWidth: 1, borderColor: "rgba(255,255,255,0.88)", shadowColor: "#000000", shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.14, shadowRadius: 14, elevation: 6 },
   searchPlaceholderText: { fontSize: 14, color: THEME.blackMuted, fontWeight: "600" },
   searchMicBg: { width: 32, height: 32, backgroundColor: THEME.orange, borderRadius: 16, alignItems: "center", justifyContent: "center" },
   searchMicListening: { transform: [{ scale: 1.08 }], backgroundColor: THEME.orangeBright },
