@@ -45,7 +45,10 @@ const SEARCH_PLACEHOLDERS = [
   "Search 'fresh food'...",
   "Search 'medicines'...",
   "Search 'electronics'...",
-  "Seafunction NightSky() {
+  "Search 'daily essentials'..."
+];
+
+function NightSky() {
   const canvasRef = useRef<any>(null);
   const [hour, setHour] = useState(new Date().getHours() + new Date().getMinutes() / 60);
 
