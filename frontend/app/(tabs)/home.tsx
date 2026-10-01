@@ -1008,7 +1008,9 @@ export default function Home() {
         </View>
 
         {/* Nearby Stores List — directly below Shop by Category */}
-        <SectionTitle title="Nearby Stores" subtitle="Fast delivery hubs" />
+        <View style={s.nearbySectionLift}>
+          <SectionTitle title="Nearby Stores" subtitle="Fast delivery hubs" />
+        </View>
         <FlatList
           horizontal
           data={stores}
@@ -1238,6 +1240,7 @@ const s = StyleSheet.create({
   sectionIndicator: { width: 4, height: 16, backgroundColor: THEME.orange, borderRadius: 2 },
   sectionTitle: { fontSize: 18, fontWeight: "900", color: THEME.black },
   sectionSub: { fontSize: 12, color: THEME.blackMuted, marginTop: 2, marginLeft: 12 },
+  nearbySectionLift: { marginTop: -8 },
   
   catsGrid: { flexDirection: "row", flexWrap: "wrap", paddingHorizontal: SPACING.sm },
   catItemWrap: { width: "20%", alignItems: "center", marginBottom: SPACING.md },
