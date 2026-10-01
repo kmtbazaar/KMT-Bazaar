@@ -714,8 +714,8 @@ function buildMapHtml(latitude: number, longitude: number) {
     "<link rel=\"stylesheet\" href=\"https://unpkg.com/leaflet@1.9.4/dist/leaflet.css\">",
     "<style>html,body,#map{margin:0;width:100%;height:100%;overflow:hidden}.leaflet-control-attribution{font-size:9px}</style>",
     "</head><body><div id=\"map\"></div>",
-    "<script src=\"https://unpkg.com/leaflet@1.9.4/dist/leaflet.js\"><\\/script>",
-    "<script>(function(){var start=[" + lat + "," + lng + "];var map=L.map('map',{zoomControl:true}).setView(start,18);L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:20,attribution:'© OpenStreetMap contributors'}).addTo(map);var marker=L.marker(start,{draggable:true}).addTo(map);function send(){var p=marker.getLatLng();var msg=JSON.stringify({type:'location',lat:p.lat,lng:p.lng});try{if(window.ReactNativeWebView){window.ReactNativeWebView.postMessage(msg);}}catch(e){}try{if(window.parent&&window.parent!==window){window.parent.postMessage(msg,'*');}}catch(e){}}marker.on('dragend',send);map.on('moveend',function(){var c=map.getCenter();marker.setLatLng(c);send();});send();})();<\\/script>",
+    "<script src=\"https://unpkg.com/leaflet@1.9.4/dist/leaflet.js\"></script>",
+    "<script>(function(){var start=[" + lat + "," + lng + "];var map=L.map('map',{zoomControl:true}).setView(start,18);L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:20,attribution:'© OpenStreetMap contributors'}).addTo(map);var marker=L.marker(start,{draggable:true}).addTo(map);function send(){var p=marker.getLatLng();var msg=JSON.stringify({type:'location',lat:p.lat,lng:p.lng});try{if(window.ReactNativeWebView){window.ReactNativeWebView.postMessage(msg);}}catch(e){}try{if(window.parent&&window.parent!==window){window.parent.postMessage(msg,'*');}}catch(e){}}marker.on('dragend',send);map.on('moveend',function(){var c=map.getCenter();marker.setLatLng(c);send();});send();})();</script>",
     "</body></html>"
   ].join("");
 }
