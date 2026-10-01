@@ -55,6 +55,7 @@ function NightSky() {
   const cloudOne = useSharedValue(-45);
   const cloudTwo = useSharedValue(0);
   const cloudDepth = useSharedValue(0);
+  const smokeDrift = useSharedValue(0);
 
   useEffect(() => {
     const clock = setInterval(() => {
@@ -208,6 +209,58 @@ function NightSky() {
           sky += vec3(0.60, 0.72, 0.95) * moonHalo * 0.25;
           sky += vec3(0.92, 0.96, 1.0) * moonDisc * cut * night * 0.68;
 
+          // Warm village hut anchored at the horizon for stronger depth.
+          float hutCenter = 0.22;
+          float wall = step(abs(p.x - hutCenter), 0.105) * step(0.045, uv.y) * (1.0 - step(0.225, uv.y));
+          float roofY = 0.23 - abs(p.x - hutCenter) * 0.82;
+          float roof = step(uv.y, roofY) * step(0.07, uv.y) * (1.0 - step(0.31, uv.y));
+          float roofSlope = step(abs(p.x - hutCenter), 0.15) * step(uv.y, 0.31) * step(0.205, roofY + 0.012);
+
+          vec3 hutWallDay = vec3(0.30, 0.19, 0.10);
+          vec3 hutWallSunset = vec3(0.24, 0.115, 0.07);
+          vec3 hutWallNight = vec3(0.055, 0.04, 0.032);
+          vec3 hutWall = mix(hutWallNight, hutWallDay, day);
+          hutWall = mix(hutWall, hutWallSunset, sunset);
+
+          vec3 hutRoofDay = vec3(0.18, 0.105, 0.055);
+          vec3 hutRoofSunset = vec3(0.16, 0.055, 0.035);
+          vec3 hutRoofNight = vec3(0.028, 0.023, 0.025);
+          vec3 hutRoofColor = mix(hutRoofNight, hutRoofDay, day);
+          hutRoofColor = mix(hutRoofColor, hutRoofSunset, sunset);
+
+          sky = mix(sky, hutWall, clamp(wall, 0.0, 1.0) * 0.94);
+          sky = mix(sky, hutRoofColor, clamp(roof * 0.72 + roofSlope * 0.28, 0.0, 1.0));
+
+          // Door and warm window, with a subtle evening/night glow.
+          float door = step(abs(p.x - (hutCenter - 0.035)), 0.027) * step(0.045, uv.y) * (1.0 - step(0.145, uv.y));
+          float windowBox = step(abs(p.x - (hutCenter + 0.038)), 0.025) * step(0.115, uv.y) * (1.0 - step(0.165, uv.y));
+          float windowGlow = exp(-distance(vec2(p.x, uv.y), vec2(hutCenter + 0.038, 0.14)) * 34.0);
+          float interiorGlow = (0.20 + night * 0.58 + sunset * 0.38) * windowGlow;
+          vec3 doorColor = mix(vec3(0.075, 0.05, 0.032), vec3(0.035, 0.025, 0.02), night);
+          sky = mix(sky, doorColor, door);
+          sky += vec3(1.0, 0.52, 0.16) * (windowBox * 0.72 + interiorGlow * 0.18);
+
+          // Chimney and living smoke: soft FBM blobs drift upward.
+          float chimney = step(abs(p.x - (hutCenter + 0.064)), 0.014) * step(0.27, uv.y) * (1.0 - step(0.34, uv.y));
+          sky = mix(sky, mix(vec3(0.16, 0.10, 0.065), vec3(0.035, 0.03, 0.035), night), chimney);
+
+          float st = u_time * 0.00008;
+          vec2 smokeP = vec2(
+            p.x - (hutCenter + 0.064) - 0.012 * sin(st * 3.0),
+            uv.y - 0.34
+          );
+          float smokeNoise = fbm(smokeP * vec2(13.0, 7.5) + vec2(st * 0.6, -st * 0.35));
+          float smokeShape = exp(-abs(smokeP.x - 0.022 * sin(uv.y * 15.0 + st * 5.0)) * (20.0 - uv.y * 4.0));
+          smokeShape *= smoothstep(0.33, 0.40, uv.y) * (1.0 - smoothstep(0.68, 0.84, uv.y));
+          smokeShape *= 0.28 + smokeNoise * 0.62;
+          vec3 smokeColor = mix(vec3(0.72, 0.76, 0.79), vec3(0.20, 0.23, 0.28), night);
+          smokeColor = mix(smokeColor, vec3(0.80, 0.57, 0.46), sunset);
+          sky = mix(sky, smokeColor, clamp(smokeShape * (0.24 + 0.16 * night + 0.10 * sunset), 0.0, 0.34));
+
+          // Subtle foreground haze to blend the hut naturally into the atmosphere.
+          float foregroundHaze = smoothstep(0.0, 0.20, uv.y) * (1.0 - smoothstep(0.20, 0.34, uv.y));
+          sky = mix(sky, mix(vec3(0.83,0.90,0.96), vec3(0.13,0.18,0.25), night), foregroundHaze * 0.12);
+
           // Fine film-like luminance variation for less synthetic flatness.
           float grain = (hash(uv * u_resolution + u_time * 0.01) - 0.5) * 0.018;
           sky += grain;
@@ -320,10 +373,38 @@ function NightSky() {
       -1,
       true
     );
+
+    smokeDrift.value = withRepeat(
+      withSequence(
+        withTiming(1, { duration: 3600 }),
+        withTiming(-0.25, { duration: 2600 }),
+        withTiming(0, { duration: 1400 })
+      ),
+      -1,
+      false
+    );
   }, [hour]);
 
   const isNight = hour >= 19 || hour < 6;
   const isSunset = hour >= 17 && hour < 19;
+
+  const smokeOneStyle = useAnimatedStyle(() => ({
+    transform: [
+      { translateX: smokeDrift.value * 9 },
+      { translateY: -smokeDrift.value * 5 },
+      { scale: 1 + smokeDrift.value * 0.05 },
+    ],
+    opacity: 0.22,
+  }));
+
+  const smokeTwoStyle = useAnimatedStyle(() => ({
+    transform: [
+      { translateX: smokeDrift.value * 15 + 5 },
+      { translateY: -smokeDrift.value * 11 - 5 },
+      { scale: 1 + smokeDrift.value * 0.09 },
+    ],
+    opacity: 0.14,
+  }));
 
   if (Platform.OS === "web") {
     return (
@@ -372,6 +453,17 @@ function NightSky() {
         <View style={[s.cloudPuff, { width: 72, height: 38, left: 40, top: 0, backgroundColor: "rgba(255,255,255,0.82)" }]} />
         <View style={[s.cloudPuff, { width: 54, height: 29, left: 86, top: 10, backgroundColor: "rgba(255,255,255,0.68)" }]} />
       </Animated.View>
+
+      <View style={s.hutScene}>
+        <View style={s.hutRoofFallback} />
+        <View style={s.hutBodyFallback}>
+          <View style={s.hutDoorFallback} />
+          <View style={s.hutWindowFallback} />
+        </View>
+        <View style={s.hutChimneyFallback} />
+        <Animated.View style={[s.hutSmokeBubble, { left: 112, top: 36 }, smokeOneStyle]} />
+        <Animated.View style={[s.hutSmokeBubbleLarge, { left: 123, top: 19 }, smokeTwoStyle]} />
+      </View>
     </View>
   );
 }
@@ -937,7 +1029,7 @@ export default function Home() {
             showsHorizontalScrollIndicator={false}
             snapToInterval={BANNER_W + 12}
             decelerationRate="fast"
-            contentContainerStyle={{ paddingHorizontal: SPACING.lg, paddingTop: SPACING.md, paddingBottom: SPACING.xs, gap: 12 }}
+            contentContainerStyle={{ paddingHorizontal: SPACING.lg, paddingTop: 4, paddingBottom: SPACING.xs, gap: 12 }}
             keyExtractor={(it) => String(it.id)}
             ref={(ref) => {
               if (banners.length > 1 && ref && typeof (ref as any).scrollToIndex === "function") {
@@ -1203,6 +1295,14 @@ const s = StyleSheet.create({
   cloudHighlightOne: { position: "absolute", left: 42, top: 8, width: 38, height: 10, borderRadius: 10, backgroundColor: "rgba(255,255,255,0.22)" },
   cloudHighlightTwo: { position: "absolute", left: 38, top: 7, width: 32, height: 9, borderRadius: 10, backgroundColor: "rgba(255,255,255,0.2)" },
   cloudBase: { position: "absolute", left: 2, right: 2, bottom: 4, height: 24, borderRadius: 18, backgroundColor: "rgba(100,116,139,0.12)" },
+  hutScene: { position: "absolute", left: 18, bottom: 1, width: 150, height: 92, alignItems: "center" },
+  hutBodyFallback: { position: "absolute", bottom: 6, left: 25, width: 100, height: 48, borderRadius: 4, backgroundColor: "rgba(77,48,28,0.94)", borderWidth: 1, borderColor: "rgba(255,205,150,0.18)" },
+  hutRoofFallback: { position: "absolute", bottom: 48, left: 13, width: 0, height: 0, borderLeftWidth: 62, borderRightWidth: 62, borderBottomWidth: 36, borderLeftColor: "transparent", borderRightColor: "transparent", borderBottomColor: "rgba(56,34,22,0.98)" },
+  hutDoorFallback: { position: "absolute", bottom: 0, left: 17, width: 24, height: 38, borderTopLeftRadius: 5, borderTopRightRadius: 5, backgroundColor: "rgba(33,22,15,0.98)" },
+  hutWindowFallback: { position: "absolute", bottom: 20, right: 14, width: 22, height: 18, borderRadius: 3, backgroundColor: "rgba(255,169,76,0.88)", borderWidth: 2, borderColor: "rgba(111,67,36,0.95)" },
+  hutChimneyFallback: { position: "absolute", bottom: 72, left: 91, width: 12, height: 21, borderRadius: 2, backgroundColor: "rgba(61,43,34,0.95)" },
+  hutSmokeBubble: { position: "absolute", width: 17, height: 17, borderRadius: 9, backgroundColor: "rgba(220,226,232,0.28)" },
+  hutSmokeBubbleLarge: { position: "absolute", width: 28, height: 28, borderRadius: 14, backgroundColor: "rgba(220,226,232,0.18)" },
   headerBg: { position: "absolute", top: 0, left: 0, right: 0, height: 205, borderBottomLeftRadius: 30, borderBottomRightRadius: 30, backgroundColor: "transparent", shadowColor: "#FFFFFF", shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.14, shadowRadius: 18, elevation: 7 },
   headerWrap: { paddingHorizontal: SPACING.lg, paddingBottom: SPACING.xs },
   headerRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingTop: 4 },
