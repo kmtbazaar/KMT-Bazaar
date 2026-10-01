@@ -65,27 +65,22 @@ export default function Addresses() {
     (async () => {
       try {
         const raw = await AsyncStorage.getItem("kmt_current_location");
-        if (!raw) return;
-
-        const gps = JSON.parse(raw);
+        const gps = raw ? JSON.parse(raw) : null;
         const latitude = Number(gps?.latitude);
         const longitude = Number(gps?.longitude);
-        if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return;
+        const hasGps = Number.isFinite(latitude) && Number.isFinite(longitude);
 
-        await AsyncStorage.removeItem("kmt_current_location");
+        if (raw) await AsyncStorage.removeItem("kmt_current_location");
         setEditingId(null);
         setFormVisible(false);
         setMapVisible(true);
-        setPendingMapLocation({
-          latitude,
-          longitude,
-          accuracy: Number(gps?.accuracy) || undefined,
-        });
-        setLocationCaptured({
-          latitude,
-          longitude,
-          accuracy: Number(gps?.accuracy) || undefined,
-        });
+        // Open the map even if GPS was unavailable; user can move the map manually.
+        const initialPoint = hasGps
+          ? { latitude, longitude, accuracy: Number(gps?.accuracy) || undefined }
+          : { latitude: 25.5941, longitude: 85.1376 };
+        setPendingMapLocation(initialPoint);
+        if (hasGps) setLocationCaptured(initialPoint);
+        else setLocationCaptured(null);
         setExistingLocationSaved(false);
         setGpsPrefillLoading(true);
         let profileName = user?.name || "";
@@ -578,43 +573,29 @@ export default function Addresses() {
 
           <View style={s.mapWrap}>
             {Platform.OS === "web" ? (
-              pendingMapLocation ? (
-                <iframe
-                  title="Set delivery location"
-                  srcDoc={buildMapHtml(pendingMapLocation.latitude, pendingMapLocation.longitude)}
-                  style={{ width: "100%", height: "100%", border: 0 } as any}
-                />
-              ) : (
-                <View style={s.mapLoading}>
-                  <ActivityIndicator size="large" color={COLORS.brand} />
-                  <Text style={s.mapLoadingText}>Getting your current location…</Text>
-                </View>
-              )
+              <iframe
+                title="Set delivery location"
+                srcDoc={buildMapHtml(pendingMapLocation?.latitude ?? 25.5941, pendingMapLocation?.longitude ?? 85.1376)}
+                style={{ width: "100%", height: "100%", border: 0 } as any}
+              />
             ) : (
-              pendingMapLocation ? (
-                <WebView
-                  originWhitelist={["*"]}
-                  source={{ html: buildMapHtml(pendingMapLocation.latitude, pendingMapLocation.longitude) }}
-                  onMessage={(event) => {
-                    try {
-                      const data = JSON.parse(event.nativeEvent.data || "{}");
-                      if (data?.type === "location" && Number.isFinite(Number(data.lat)) && Number.isFinite(Number(data.lng))) {
-                        setPendingMapLocation(prev => ({
-                          latitude: Number(data.lat),
-                          longitude: Number(data.lng),
-                          accuracy: prev?.accuracy,
-                        }));
-                      }
-                    } catch {}
-                  }}
-                  style={{ flex: 1 }}
-                />
-              ) : (
-                <View style={s.mapLoading}>
-                  <ActivityIndicator size="large" color={COLORS.brand} />
-                  <Text style={s.mapLoadingText}>Getting your current location…</Text>
-                </View>
-              )
+              <WebView
+                originWhitelist={["*"]}
+                source={{ html: buildMapHtml(pendingMapLocation?.latitude ?? 25.5941, pendingMapLocation?.longitude ?? 85.1376) }}
+                onMessage={(event) => {
+                  try {
+                    const data = JSON.parse(event.nativeEvent.data || "{}");
+                    if (data?.type === "location" && Number.isFinite(Number(data.lat)) && Number.isFinite(Number(data.lng))) {
+                      setPendingMapLocation(prev => ({
+                        latitude: Number(data.lat),
+                        longitude: Number(data.lng),
+                        accuracy: prev?.accuracy,
+                      }));
+                    }
+                  } catch {}
+                }}
+                style={{ flex: 1 }}
+              />
             )}
             <View pointerEvents="none" style={s.centerPin}>
               <MaterialCommunityIcons name="map-marker" size={48} color="#E11D48" />
