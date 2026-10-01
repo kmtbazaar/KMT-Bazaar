@@ -698,7 +698,7 @@ export default function Home() {
     }
     const interval = setInterval(() => {
       setBannerIndex((prev) => (prev + 1) % banners.length);
-    }, 7000);
+    }, 5000);
     return () => clearInterval(interval);
   }, [banners.length]);
 
@@ -935,9 +935,9 @@ export default function Home() {
             style={Platform.OS === 'web' ? { overflowX: 'auto' } : {}}
             data={banners}
             showsHorizontalScrollIndicator={false}
-            snapToInterval={BANNER_W}
-            decelerationRate={0.92}
-            contentContainerStyle={{ paddingHorizontal: SPACING.lg, paddingTop: SPACING.md, paddingBottom: SPACING.xs, gap: 0 }}
+            snapToInterval={BANNER_W + 12}
+            decelerationRate="fast"
+            contentContainerStyle={{ paddingHorizontal: SPACING.lg, paddingTop: SPACING.md, paddingBottom: SPACING.xs, gap: 12 }}
             keyExtractor={(it) => String(it.id)}
             ref={(ref) => {
               if (banners.length > 1 && ref && typeof (ref as any).scrollToIndex === "function") {
@@ -974,7 +974,7 @@ export default function Home() {
             )}
             onMomentumScrollEnd={(event) => {
               const offsetX = event.nativeEvent.contentOffset.x;
-              const nextIndex = Math.round(offsetX / BANNER_W);
+              const nextIndex = Math.round(offsetX / (BANNER_W + 12));
               if (nextIndex >= 0 && nextIndex < banners.length) setBannerIndex(nextIndex);
             }}
           />
