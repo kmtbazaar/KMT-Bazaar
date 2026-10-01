@@ -737,11 +737,10 @@ export default function Home() {
   return (
     <View style={[s.root, Platform.OS === 'web' ? ({ height: '100vh', overflow: 'hidden' } as any) : {}]} testID="home-screen">
       {/* Dynamic time-of-day hero: day, sunset and night */}
-      <View style={s.heroArea}>
-        <NightSky />
-        <View style={s.headerBg} />
-        
-        <SafeAreaView edges={["top"]} style={s.headerWrap}>
+      <NightSky />
+      <View style={s.headerBg} />
+      
+      <SafeAreaView edges={["top"]} style={s.headerWrap}>
         <View style={s.headerRow}>
           {/* 1. Address Selector (Route: /addresses) */}
           <Pressable 
@@ -807,8 +806,7 @@ export default function Home() {
             />
           </Pressable>
         </Pressable>
-        </SafeAreaView>
-      </View>
+      </SafeAreaView>
 
       {!locationReady ? (
         <View style={s.locationGate}>
@@ -866,7 +864,7 @@ export default function Home() {
             showsHorizontalScrollIndicator={false}
             snapToInterval={BANNER_W + 12}
             decelerationRate="fast"
-            contentContainerStyle={{ paddingHorizontal: SPACING.lg, paddingTop: 0, paddingBottom: SPACING.xs, gap: 12 }}
+            contentContainerStyle={{ paddingHorizontal: SPACING.lg, paddingTop: SPACING.md, paddingBottom: SPACING.xs, gap: 12 }}
             keyExtractor={(it) => String(it.id)}
             ref={(ref) => {
               if (banners.length > 1 && ref && typeof (ref as any).scrollToIndex === "function") {
@@ -1112,9 +1110,8 @@ const s = StyleSheet.create({
   locationGateError: { marginTop: 10, color: "#B91C1C", fontSize: 11, lineHeight: 16, textAlign: "center" },
   locationGatePrivacy: { marginTop: 12, color: THEME.blackMuted, fontSize: 10, lineHeight: 15, textAlign: "center" },
   root: { flex: 1, backgroundColor: THEME.whiteBg },
-  heroArea: { position: "relative" },
-  /* Realistic 3D-style sky layers stay exactly behind the hero/header/search */
-  nightSky: { position: "absolute", top: 0, left: 0, right: 0, height: "100%", overflow: "hidden", zIndex: 0 },
+  /* Realistic 3D-style sky layers stay behind the existing header/search only */
+  nightSky: { position: "absolute", top: 0, left: 0, right: 0, height: 205, overflow: "hidden", zIndex: 0 },
   nightGradientLayer: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0 },
   nightGradient: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0 },
   starLayer: { position: "absolute", top: 0, left: 0, right: 0, height: 92 },
@@ -1139,7 +1136,7 @@ const s = StyleSheet.create({
   cloudHighlightOne: { position: "absolute", left: 42, top: 8, width: 38, height: 10, borderRadius: 10, backgroundColor: "rgba(255,255,255,0.22)" },
   cloudHighlightTwo: { position: "absolute", left: 38, top: 7, width: 32, height: 9, borderRadius: 10, backgroundColor: "rgba(255,255,255,0.2)" },
   cloudBase: { position: "absolute", left: 2, right: 2, bottom: 4, height: 24, borderRadius: 18, backgroundColor: "rgba(100,116,139,0.12)" },
-  headerBg: { position: "absolute", top: 0, left: 0, right: 0, height: "100%", borderBottomLeftRadius: 30, borderBottomRightRadius: 30, backgroundColor: "transparent", shadowColor: "#FFFFFF", shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.14, shadowRadius: 18, elevation: 7 },
+  headerBg: { position: "absolute", top: 0, left: 0, right: 0, height: 205, borderBottomLeftRadius: 30, borderBottomRightRadius: 30, backgroundColor: "transparent", shadowColor: "#FFFFFF", shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.14, shadowRadius: 18, elevation: 7 },
   headerWrap: { height: 205, paddingHorizontal: SPACING.lg, paddingBottom: SPACING.xs },
   headerRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingTop: 4 },
   locWrap: { flexDirection: "row", gap: 8, alignItems: "center", flex: 1, marginRight: 12, zIndex: 99, elevation: 5 },
