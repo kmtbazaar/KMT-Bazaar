@@ -102,23 +102,26 @@ export default function Addresses() {
           phone: normalizeMobile(profilePhone) || normalizeMobile(prev.phone),
         }));
 
-        try {
-          const geo = await reverseGeocodeDevice(latitude, longitude);
-          setFormData(prev => ({
-            ...prev,
-            line1: geo?.line1 || prev.line1,
-            line2: geo?.line2 || prev.line2,
-            district: geo?.district || prev.district,
-            city: geo?.city || prev.city,
-            state: geo?.state || prev.state,
-            pincode: geo?.pincode || prev.pincode,
-          }));
-        } catch (error) {
-          console.log("Initial reverse geocode failed:", error);
-          setLocationError("GPS captured. Please enter the address details manually.");
-        } finally {
-          setGpsPrefillLoading(false);
+        if (hasGps) {
+          try {
+            const geo = await reverseGeocodeDevice(latitude, longitude);
+            setFormData(prev => ({
+              ...prev,
+              line1: geo?.line1 || prev.line1,
+              line2: geo?.line2 || prev.line2,
+              district: geo?.district || prev.district,
+              city: geo?.city || prev.city,
+              state: geo?.state || prev.state,
+              pincode: geo?.pincode || prev.pincode,
+            }));
+          } catch (error) {
+            console.log("Initial reverse geocode failed:", error);
+            setLocationError("GPS captured. Please enter the address details manually.");
+          }
+        } else {
+          setLocationError("Map is ready. Use live GPS or move the map pin to your delivery point.");
         }
+        setGpsPrefillLoading(false);
       } catch (error) {
         console.log("Initial location setup failed:", error);
         setGpsPrefillLoading(false);
@@ -611,6 +614,15 @@ export default function Addresses() {
               <Text style={s.mapSelectedText}>{pendingMapLocation ? "Location selected" : "Finding your location…"}</Text>
             </View>
             <TouchableOpacity
+              onPress={() => getCurrentLocation().catch(() => {})}
+              disabled={locationLoading}
+              style={[s.useLiveGpsBtn, locationLoading && { opacity: 0.65 }]}
+            >
+              {locationLoading ? <ActivityIndicator size="small" color={COLORS.brand} /> : <MaterialCommunityIcons name="crosshairs-gps" size={18} color={COLORS.brand} />}
+              <Text style={s.useLiveGpsText}>{locationLoading ? "FINDING LIVE GPS…" : "USE MY LIVE LOCATION"}</Text>
+            </TouchableOpacity>
+            {!!locationError && <Text style={s.locationErrorText}>{locationError}</Text>}
+            <TouchableOpacity
               disabled={!pendingMapLocation}
               onPress={() => pendingMapLocation && openDetailsAfterMap(pendingMapLocation)}
               style={[s.confirmLocationBtn, !pendingMapLocation && { opacity: 0.5 }]}
@@ -739,6 +751,8 @@ const s = StyleSheet.create({
   mapHint: { position: "absolute", top: 14, left: 18, right: 18, alignItems: "center" },
   mapHintText: { backgroundColor: "rgba(255,255,255,0.94)", color: COLORS.text, paddingHorizontal: 14, paddingVertical: 8, borderRadius: RADIUS.pill, fontSize: 12, fontWeight: "800" },
   mapFooter: { backgroundColor: "#fff", paddingHorizontal: 16, paddingTop: 12, paddingBottom: 14, borderTopWidth: 1, borderColor: COLORS.border },
+  useLiveGpsBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 11, marginBottom: 10, borderRadius: RADIUS.pill, backgroundColor: "#EFF6FF", borderWidth: 1, borderColor: "#BFDBFE" },
+  useLiveGpsText: { color: COLORS.brand, fontSize: 12, fontWeight: "900" },
   mapSelectedRow: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 10 },
   mapSelectedText: { color: COLORS.text, fontSize: 13, fontWeight: "800" },
   confirmLocationBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, backgroundColor: COLORS.brand, borderRadius: RADIUS.pill, paddingVertical: 14 },
