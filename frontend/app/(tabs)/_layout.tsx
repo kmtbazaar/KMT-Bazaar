@@ -70,12 +70,12 @@ function RoojgarCharacterIcon() {
   }));
 
   return (
-    <Animated.View style={[s.roojgarCharacterWrap, animatedStyle]} testID="roojgar-character">
-      <View style={s.roojgarGlow} />
-      <View style={s.roojgarCharacterCard}>
+    <Animated.View style={[s.centerCharacterWrap, animatedStyle]} testID="center-character">
+      <View style={s.centerCharacterGlow} />
+      <View style={s.centerCharacterCard}>
         <Image
           source={require("../../assets/ai/kmt-bot.png")}
-          style={s.roojgarCharacter}
+          style={s.centerCharacter}
           contentFit="contain"
         />
       </View>
@@ -143,17 +143,17 @@ export default function TabsLayout() {
         }}
       />
 
-      {/* Roojgar */}
+      {/* Center character / next page */}
       <Tabs.Screen
         name="ai"
         listeners={{
           tabPress: (e) => {
             e.preventDefault();
-            router.push("/RoojgarForm");
+            router.push("/assistant");
           },
         }}
         options={{
-          title: "Roojgar",
+          title: "AI",
           tabBarIcon: () => <RoojgarCharacterIcon />,
         }}
       />
