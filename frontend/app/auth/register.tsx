@@ -51,6 +51,7 @@ const [error, setError] = useState<string | null>(null);
 const [otpStep, setOtpStep] = useState(false);
 const [otp, setOtp] = useState("");
 const [otpLoading, setOtpLoading] = useState(false);
+const [resendLoading, setResendLoading] = useState(false);
 
 // Password validation rules
 const hasMinLength = password.length >= 8;
@@ -127,6 +128,28 @@ try {
 }
 };
 
+const onResendOtp = async () => {
+setError(null);
+setResendLoading(true);
+try {
+  await requestEmailSignupOtp({
+    name: name.trim(),
+    email: email.trim().toLowerCase(),
+    phone: phone.trim(),
+    password,
+    role,
+    vendor_type: role === "vendor" ? vendorType : undefined,
+    service_type: role === "vendor" && vendorType === "service" ? serviceType : undefined,
+  });
+  setOtp("");
+  setError(null);
+} catch (e: any) {
+  setError(e?.message || "Could not resend verification OTP.");
+} finally {
+  setResendLoading(false);
+}
+};
+
 const onVerifyOtp = async () => {
 if (!/^\d{6}$/.test(otp)) {
   setError("Enter the 6-digit OTP sent to your email.");
@@ -195,6 +218,17 @@ color={COLORS.text}
           maxLength={6}
           testID="register-email-otp-input"
         />
+        <View style={s.resendRow}>
+          <Pressable
+            onPress={onResendOtp}
+            disabled={resendLoading || otpLoading}
+            testID="register-resend-otp"
+            hitSlop={8}
+            style={resendLoading ? { opacity: 0.6 } : undefined}
+          >
+            <Text style={s.resendText}>{resendLoading ? "Sending…" : "Resend OTP"}</Text>
+          </Pressable>
+        </View>
         {error && <Text style={s.err}>{error}</Text>}
         <Pressable
           onPress={onVerifyOtp}
@@ -455,6 +489,8 @@ otpScreen: { flexGrow: 1, justifyContent: "center", paddingHorizontal: SPACING.l
 otpTitle: { fontSize: 22, fontWeight: "800", color: COLORS.text, textAlign: "center", marginTop: 0, marginBottom: 8 },
 otpSub: { fontSize: 13, color: COLORS.textSecondary, textAlign: "center", lineHeight: 20, marginHorizontal: 8, marginBottom: 18 },
 backText: { textAlign: "center", marginTop: 16, color: COLORS.brand, fontWeight: "700" },
+resendRow: { width: "100%", alignItems: "flex-end", marginTop: -6, marginBottom: 4 },
+resendText: { color: COLORS.brand, fontSize: 12, fontWeight: "800" },
 root: {
 flex: 1,
 backgroundColor: COLORS.surface,
