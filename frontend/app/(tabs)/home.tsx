@@ -685,7 +685,7 @@ export default function Home() {
   useEffect(() => {
     if (banners.length > 1) {
       try {
-        bannerListRef.current?.scrollToIndex({ index: bannerIndex, animated: true, viewPosition: 0 });
+        bannerListRef.current?.scrollToOffset({ offset: bannerIndex * (BANNER_W + 12), animated: true });
       } catch {}
     }
   }, [bannerIndex, banners.length]);
@@ -698,7 +698,7 @@ export default function Home() {
     }
     const interval = setInterval(() => {
       setBannerIndex((prev) => (prev + 1) % banners.length);
-    }, 5000);
+    }, 7000);
     return () => clearInterval(interval);
   }, [banners.length]);
 
@@ -936,7 +936,7 @@ export default function Home() {
             data={banners}
             showsHorizontalScrollIndicator={false}
             snapToInterval={BANNER_W + 12}
-            decelerationRate="fast"
+            decelerationRate={0.98}
             contentContainerStyle={{ paddingHorizontal: SPACING.lg, paddingTop: SPACING.md, paddingBottom: SPACING.xs, gap: 12 }}
             keyExtractor={(it) => String(it.id)}
             ref={(ref) => {
