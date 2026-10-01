@@ -1006,7 +1006,19 @@ export default function Home() {
         </View>
 
         {/* Categories Section with Flashing Border Tiles */}
-        <SectionTitle title="Shop by Category" subtitle="Clear & easy ordering" />
+        <View style={s.sectionTitleWithSearch}>
+          <View style={{ flex: 1 }}>
+            <SectionTitle title="Shop by Category" subtitle="Clear & easy ordering" />
+          </View>
+          <Pressable
+            testID="home-search-open-category"
+            onPress={() => setSearchExpanded(true)}
+            hitSlop={8}
+            style={s.categorySearchBtn}
+          >
+            <MaterialCommunityIcons name="magnify" size={21} color={THEME.skyHeader} />
+          </Pressable>
+        </View>
         <View style={s.catsGrid}>
           {cats.map((c) => (
             <View key={c.id} style={s.catItemWrap}>
