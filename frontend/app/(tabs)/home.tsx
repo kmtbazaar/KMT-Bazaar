@@ -50,9 +50,17 @@ const SEARCH_PLACEHOLDERS = [
 
 
 function NightSky() {
-  const cloudOne = useSharedValue(-35);
+  const cloudOne = useSharedValue(-45);
   const cloudTwo = useSharedValue(0);
+  const cloudDepth = useSharedValue(0);
   const starPulse = useSharedValue(0.45);
+  const sunPulse = useSharedValue(0.88);
+  const moonPulse = useSharedValue(0.82);
+  const airplaneX = useSharedValue(-140);
+  const airplaneY = useSharedValue(92);
+  const dayOpacity = useSharedValue(1);
+  const sunsetOpacity = useSharedValue(0);
+  const nightOpacity = useSharedValue(0);
   const [hour, setHour] = useState(new Date().getHours());
 
   useEffect(() => {
@@ -60,8 +68,8 @@ function NightSky() {
 
     cloudOne.value = withRepeat(
       withSequence(
-        withTiming(50, { duration: 18000 }),
-        withTiming(-35, { duration: 18000 })
+        withTiming(58, { duration: 19000 }),
+        withTiming(-45, { duration: 19000 })
       ),
       -1,
       false
@@ -69,116 +77,233 @@ function NightSky() {
 
     cloudTwo.value = withRepeat(
       withSequence(
-        withTiming(-45, { duration: 23000 }),
-        withTiming(60, { duration: 23000 })
+        withTiming(-58, { duration: 24000 }),
+        withTiming(72, { duration: 24000 })
       ),
       -1,
       false
     );
 
-    starPulse.value = withRepeat(
+    cloudDepth.value = withRepeat(
       withSequence(
-        withTiming(1, { duration: 2600 }),
-        withTiming(0.35, { duration: 2600 })
+        withTiming(1, { duration: 5200 }),
+        withTiming(0, { duration: 5200 })
       ),
       -1,
       true
     );
 
+    starPulse.value = withRepeat(
+      withSequence(
+        withTiming(1, { duration: 2800 }),
+        withTiming(0.3, { duration: 2200 })
+      ),
+      -1,
+      true
+    );
+
+    sunPulse.value = withRepeat(
+      withSequence(
+        withTiming(1, { duration: 2600 }),
+        withTiming(0.82, { duration: 2600 })
+      ),
+      -1,
+      true
+    );
+
+    moonPulse.value = withRepeat(
+      withSequence(
+        withTiming(1, { duration: 3600 }),
+        withTiming(0.78, { duration: 3600 })
+      ),
+      -1,
+      true
+    );
+
+    airplaneX.value = withRepeat(
+      withSequence(
+        withTiming(width + 140, { duration: 26000 }),
+        withTiming(-140, { duration: 1 })
+      ),
+      -1,
+      false
+    );
+
+    airplaneY.value = withRepeat(
+      withSequence(
+        withTiming(32, { duration: 13000 }),
+        withTiming(92, { duration: 13000 }),
+        withTiming(92, { duration: 1 })
+      ),
+      -1,
+      false
+    );
+
     return () => clearInterval(clock);
   }, []);
 
+  const isNight = hour >= 19 || hour < 6;
+  const isSunset = hour >= 17 && hour < 19;
+  const isDay = !isNight && !isSunset;
+
+  useEffect(() => {
+    dayOpacity.value = withTiming(isDay ? 1 : 0, { duration: 1400 });
+    sunsetOpacity.value = withTiming(isSunset ? 1 : 0, { duration: 1400 });
+    nightOpacity.value = withTiming(isNight ? 1 : 0, { duration: 1400 });
+  }, [hour, isDay, isSunset, isNight]);
+
   const cloudOneStyle = useAnimatedStyle(() => ({
-    transform: [{ translateX: cloudOne.value }],
+    transform: [
+      { translateX: cloudOne.value },
+      { translateY: -cloudDepth.value * 2 },
+      { scale: 1 + cloudDepth.value * 0.025 },
+    ],
   }));
 
   const cloudTwoStyle = useAnimatedStyle(() => ({
-    transform: [{ translateX: cloudTwo.value }],
+    transform: [
+      { translateX: cloudTwo.value },
+      { translateY: cloudDepth.value * 2 },
+      { scale: 1.02 - cloudDepth.value * 0.02 },
+    ],
   }));
+
+  const daySkyStyle = useAnimatedStyle(() => ({ opacity: dayOpacity.value }));
+  const sunsetSkyStyle = useAnimatedStyle(() => ({ opacity: sunsetOpacity.value }));
+  const nightSkyStyle = useAnimatedStyle(() => ({ opacity: nightOpacity.value }));
 
   const starStyle = useAnimatedStyle(() => ({
     opacity: starPulse.value,
   }));
 
-  const isNight = hour >= 19 || hour < 6;
-  const isSunset = hour >= 17 && hour < 19;
+  const sunStyle = useAnimatedStyle(() => ({
+    opacity: dayOpacity.value + sunsetOpacity.value * 0.8,
+    transform: [{ scale: sunPulse.value }],
+  }));
 
-  // Time-of-day hero palette: blue day, purple/pink evening, deep blue night.
-  // Orange is intentionally excluded from the entire hero background.
-  const skyColors = isNight
-    ? ["#020617", "#0B1120", "#172554", "#312E81"]
-    : isSunset
-      ? ["#1E1B4B", "#4C1D95", "#7C3AED", "#F5D0FE"]
-      : ["#38BDF8", "#0EA5E9", "#7DD3FC", "#FFFFFF"];
+  const moonStyle = useAnimatedStyle(() => ({
+    opacity: nightOpacity.value,
+    transform: [{ scale: moonPulse.value }],
+  }));
 
-  const cloudColor = isNight
-    ? "rgba(148,163,184,0.22)"
-    : isSunset
-      ? "rgba(245,208,254,0.62)"
-      : "rgba(255,255,255,0.78)";
+  const airplaneStyle = useAnimatedStyle(() => ({
+    opacity: dayOpacity.value * 0.78 + sunsetOpacity.value * 0.7,
+    transform: [
+      { translateX: airplaneX.value },
+      { translateY: airplaneY.value },
+      { rotate: "-8deg" },
+      { scale: 0.82 },
+    ],
+  }));
+
+  const dayCloudColor = "rgba(255,255,255,0.88)";
+  const sunsetCloudColor = "rgba(250,232,255,0.68)";
+  const nightCloudColor = "rgba(148,163,184,0.23)";
+  const cloudColor = isNight ? nightCloudColor : isSunset ? sunsetCloudColor : dayCloudColor;
 
   const stars = [
-    { left: "9%", top: 18, size: 3 },
-    { left: "18%", top: 45, size: 2 },
-    { left: "29%", top: 22, size: 2 },
-    { left: "41%", top: 52, size: 3 },
-    { left: "53%", top: 20, size: 2 },
-    { left: "64%", top: 42, size: 3 },
-    { left: "77%", top: 19, size: 2 },
-    { left: "88%", top: 51, size: 3 },
+    { left: "8%", top: 18, size: 2 },
+    { left: "17%", top: 46, size: 3 },
+    { left: "29%", top: 24, size: 2 },
+    { left: "40%", top: 54, size: 2 },
+    { left: "52%", top: 18, size: 3 },
+    { left: "64%", top: 43, size: 2 },
+    { left: "76%", top: 21, size: 3 },
+    { left: "88%", top: 49, size: 2 },
+    { left: "94%", top: 28, size: 2 },
   ];
 
   return (
     <View pointerEvents="none" style={s.nightSky}>
-      <LinearGradient
-        colors={skyColors}
-        locations={[0, 0.42, 0.76, 1]}
-        style={s.nightGradient}
-      />
+      <Animated.View style={[s.nightGradientLayer, daySkyStyle]}>
+        <LinearGradient
+          colors={["#7DD3FC", "#38BDF8", "#0EA5E9", "#E0F2FE"]}
+          locations={[0, 0.3, 0.72, 1]}
+          style={s.nightGradient}
+        />
+      </Animated.View>
 
-      {isNight && (
-        <>
-          <Animated.View style={[s.starLayer, starStyle]}>
-            {stars.map((star, index) => (
-              <View
-                key={index}
-                style={[
-                  s.star,
-                  {
-                    left: star.left as any,
-                    top: star.top,
-                    width: star.size,
-                    height: star.size,
-                    borderRadius: star.size,
-                  },
-                ]}
-              />
-            ))}
-          </Animated.View>
+      <Animated.View style={[s.nightGradientLayer, sunsetSkyStyle]}>
+        <LinearGradient
+          colors={["#1E1B4B", "#4C1D95", "#8B5CF6", "#F5D0FE"]}
+          locations={[0, 0.28, 0.68, 1]}
+          style={s.nightGradient}
+        />
+      </Animated.View>
 
-          <View style={s.moon}>
-            <View style={s.moonCut} />
-          </View>
-        </>
-      )}
+      <Animated.View style={[s.nightGradientLayer, nightSkyStyle]}>
+        <LinearGradient
+          colors={["#020617", "#0B1120", "#172554", "#312E81"]}
+          locations={[0, 0.42, 0.76, 1]}
+          style={s.nightGradient}
+        />
+      </Animated.View>
+
+      <Animated.View style={[s.sunGlow, sunStyle]}>
+        <View style={s.sunHaloOuter} />
+        <View style={s.sunHalo} />
+        <View style={s.sunCore} />
+      </Animated.View>
+
+      <Animated.View style={[s.sunsetGlow, sunsetSkyStyle]}>
+        <View style={s.sunsetHalo} />
+      </Animated.View>
+
+      <Animated.View style={s.starLayer} >
+        <Animated.View style={starStyle}>
+          {stars.map((star, index) => (
+            <View
+              key={index}
+              style={[
+                s.star,
+                {
+                  left: star.left as any,
+                  top: star.top,
+                  width: star.size,
+                  height: star.size,
+                  borderRadius: star.size,
+                  opacity: 0.35 + ((index % 3) * 0.18),
+                },
+              ]}
+            />
+          ))}
+        </Animated.View>
+      </Animated.View>
+
+      <Animated.View style={[s.moon, moonStyle]}>
+        <View style={s.moonHalo} />
+        <View style={s.moonBody}>
+          <View style={s.moonCut} />
+        </View>
+      </Animated.View>
+
+      <Animated.View style={[s.airplane, airplaneStyle]}>
+        <MaterialCommunityIcons name="airplane" size={18} color="rgba(255,255,255,0.94)" />
+        <View style={s.airplaneTrail} />
+      </Animated.View>
 
       <Animated.View style={[s.cloud, s.cloudOne, cloudOneStyle]}>
-        <View style={[s.cloudPuff, { width: 54, height: 30, left: 18, top: 9, backgroundColor: cloudColor }]} />
-        <View style={[s.cloudPuff, { width: 76, height: 40, left: 44, top: 0, backgroundColor: cloudColor }]} />
-        <View style={[s.cloudPuff, { width: 48, height: 27, left: 96, top: 12, backgroundColor: cloudColor }]} />
-        <View style={[s.cloudBase, { backgroundColor: cloudColor }]} />
+        <View style={[s.cloudShade, { backgroundColor: cloudColor }]} />
+        <View style={[s.cloudPuff, { width: 58, height: 32, left: 14, top: 10, backgroundColor: cloudColor }]} />
+        <View style={[s.cloudPuff, { width: 82, height: 44, left: 42, top: -1, backgroundColor: cloudColor }]} />
+        <View style={[s.cloudPuff, { width: 54, height: 30, left: 102, top: 12, backgroundColor: cloudColor }]} />
+        <View style={s.cloudHighlightOne} />
+        <View style={s.cloudBase} />
       </Animated.View>
 
       <Animated.View style={[s.cloud, s.cloudTwo, cloudTwoStyle]}>
-        <View style={[s.cloudPuff, { width: 44, height: 25, left: 16, top: 11, backgroundColor: cloudColor }]} />
-        <View style={[s.cloudPuff, { width: 68, height: 36, left: 42, top: 0, backgroundColor: cloudColor }]} />
-        <View style={[s.cloudPuff, { width: 52, height: 28, left: 88, top: 9, backgroundColor: cloudColor }]} />
-        <View style={[s.cloudBase, { backgroundColor: cloudColor }]} />
+        <View style={[s.cloudShade, { backgroundColor: cloudColor }]} />
+        <View style={[s.cloudPuff, { width: 46, height: 26, left: 14, top: 11, backgroundColor: cloudColor }]} />
+        <View style={[s.cloudPuff, { width: 72, height: 38, left: 40, top: 0, backgroundColor: cloudColor }]} />
+        <View style={[s.cloudPuff, { width: 54, height: 29, left: 86, top: 10, backgroundColor: cloudColor }]} />
+        <View style={s.cloudHighlightTwo} />
+        <View style={s.cloudBase} />
       </Animated.View>
-
     </View>
   );
 }
+
+
 
 export default function Home() {
   const { user } = useAuth();
@@ -985,18 +1110,32 @@ const s = StyleSheet.create({
   locationGateError: { marginTop: 10, color: "#B91C1C", fontSize: 11, lineHeight: 16, textAlign: "center" },
   locationGatePrivacy: { marginTop: 12, color: THEME.blackMuted, fontSize: 10, lineHeight: 15, textAlign: "center" },
   root: { flex: 1, backgroundColor: THEME.whiteBg },
-  /* Dynamic hero background stays behind the existing header/search only */
+  /* Realistic 3D-style sky layers stay behind the existing header/search only */
   nightSky: { position: "absolute", top: 0, left: 0, right: 0, height: 205, overflow: "hidden", zIndex: 0 },
+  nightGradientLayer: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0 },
   nightGradient: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0 },
-  starLayer: { position: "absolute", top: 0, left: 0, right: 0, height: 80 },
-  star: { position: "absolute", backgroundColor: "#FFFFFF", shadowColor: "#FFFFFF", shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.9, shadowRadius: 4, elevation: 2 },
-  cloud: { position: "absolute", width: 150, height: 62, opacity: 0.5 },
-  cloudOne: { top: 62, left: -35 },
-  cloudTwo: { top: 88, right: -55 },
-  cloudPuff: { position: "absolute", borderRadius: 40 },
-  cloudBase: { position: "absolute", left: 0, right: 0, bottom: 6, height: 24, borderRadius: 18 },
-  moon: { position: "absolute", top: 24, right: "16%", width: 34, height: 34, borderRadius: 17, backgroundColor: "#F8FAFC", shadowColor: "#FFFFFF", shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.65, shadowRadius: 12, elevation: 4 },
-  moonCut: { position: "absolute", top: -2, left: 9, width: 30, height: 30, borderRadius: 15, backgroundColor: "#0F172A" },
+  starLayer: { position: "absolute", top: 0, left: 0, right: 0, height: 92 },
+  star: { position: "absolute", backgroundColor: "#FFFFFF", shadowColor: "#FFFFFF", shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.95, shadowRadius: 5, elevation: 3 },
+  sunGlow: { position: "absolute", top: 18, right: "12%", width: 74, height: 74, alignItems: "center", justifyContent: "center" },
+  sunHaloOuter: { position: "absolute", width: 74, height: 74, borderRadius: 37, backgroundColor: "rgba(255,255,255,0.12)" },
+  sunHalo: { position: "absolute", width: 58, height: 58, borderRadius: 29, backgroundColor: "rgba(255,248,220,0.22)" },
+  sunCore: { width: 38, height: 38, borderRadius: 19, backgroundColor: "#FFF7CC", shadowColor: "#FFFFFF", shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.75, shadowRadius: 16, elevation: 5 },
+  sunsetGlow: { position: "absolute", left: "28%", right: "28%", bottom: 0, height: 78, alignItems: "center", justifyContent: "flex-end" },
+  sunsetHalo: { width: "100%", height: 78, borderTopLeftRadius: 140, borderTopRightRadius: 140, backgroundColor: "rgba(255,190,120,0.16)" },
+  moon: { position: "absolute", top: 20, right: "15%", width: 58, height: 58, alignItems: "center", justifyContent: "center" },
+  moonHalo: { position: "absolute", width: 58, height: 58, borderRadius: 29, backgroundColor: "rgba(226,232,240,0.07)" },
+  moonBody: { width: 34, height: 34, borderRadius: 17, backgroundColor: "#F8FAFC", shadowColor: "#FFFFFF", shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.7, shadowRadius: 14, elevation: 4, overflow: "hidden" },
+  moonCut: { position: "absolute", top: -2, left: 10, width: 30, height: 30, borderRadius: 15, backgroundColor: "#0B1120" },
+  airplane: { position: "absolute", top: 0, left: -20, width: 46, height: 24, alignItems: "center", justifyContent: "center" },
+  airplaneTrail: { position: "absolute", width: 26, height: 2, left: -23, top: 13, borderRadius: 2, backgroundColor: "rgba(255,255,255,0.3)" },
+  cloud: { position: "absolute", width: 164, height: 70, opacity: 0.58 },
+  cloudOne: { top: 60, left: -42 },
+  cloudTwo: { top: 92, right: -62 },
+  cloudPuff: { position: "absolute", borderRadius: 40, shadowColor: "#FFFFFF", shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.16, shadowRadius: 8, elevation: 2 },
+  cloudShade: { position: "absolute", left: 4, right: 4, bottom: 2, height: 28, borderRadius: 20, opacity: 0.34 },
+  cloudHighlightOne: { position: "absolute", left: 42, top: 8, width: 38, height: 10, borderRadius: 10, backgroundColor: "rgba(255,255,255,0.22)" },
+  cloudHighlightTwo: { position: "absolute", left: 38, top: 7, width: 32, height: 9, borderRadius: 10, backgroundColor: "rgba(255,255,255,0.2)" },
+  cloudBase: { position: "absolute", left: 2, right: 2, bottom: 4, height: 24, borderRadius: 18, backgroundColor: "rgba(100,116,139,0.12)" },
   headerBg: { position: "absolute", top: 0, left: 0, right: 0, height: 205, borderBottomLeftRadius: 30, borderBottomRightRadius: 30, backgroundColor: "transparent", shadowColor: "#FFFFFF", shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.14, shadowRadius: 18, elevation: 7 },
   headerWrap: { paddingHorizontal: SPACING.lg, paddingBottom: SPACING.xs },
   headerRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingTop: 4 },
