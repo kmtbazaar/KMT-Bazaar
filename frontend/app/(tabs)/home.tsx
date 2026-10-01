@@ -50,21 +50,249 @@ const SEARCH_PLACEHOLDERS = [
 
 
 function NightSky() {
+  const canvasRef = useRef<any>(null);
+  const [hour, setHour] = useState(new Date().getHours() + new Date().getMinutes() / 60);
   const cloudOne = useSharedValue(-45);
   const cloudTwo = useSharedValue(0);
   const cloudDepth = useSharedValue(0);
-  const starPulse = useSharedValue(0.45);
-  const sunPulse = useSharedValue(0.88);
-  const moonPulse = useSharedValue(0.82);
-  const airplaneX = useSharedValue(-140);
-  const airplaneY = useSharedValue(92);
-  const dayOpacity = useSharedValue(1);
-  const sunsetOpacity = useSharedValue(0);
-  const nightOpacity = useSharedValue(0);
-  const [hour, setHour] = useState(new Date().getHours());
 
   useEffect(() => {
-    const clock = setInterval(() => setHour(new Date().getHours()), 60000);
+    const clock = setInterval(() => {
+      const now = new Date();
+      setHour(now.getHours() + now.getMinutes() / 60);
+    }, 30000);
+    return () => clearInterval(clock);
+  }, []);
+
+  useEffect(() => {
+    if (Platform.OS === "web") {
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+
+      const gl = canvas.getContext("webgl", {
+        alpha: true,
+        antialias: true,
+        premultipliedAlpha: true,
+      });
+      if (!gl) return;
+
+      const vertexSource = `
+        attribute vec2 a_position;
+        varying vec2 v_uv;
+        void main() {
+          v_uv = a_position * 0.5 + 0.5;
+          gl_Position = vec4(a_position, 0.0, 1.0);
+        }
+      `;
+
+      const fragmentSource = `
+        precision highp float;
+        varying vec2 v_uv;
+        uniform float u_time;
+        uniform float u_hour;
+        uniform vec2 u_resolution;
+
+        float hash(vec2 p) {
+          p = fract(p * vec2(123.34, 456.21));
+          p += dot(p, p + 45.32);
+          return fract(p.x * p.y);
+        }
+
+        float noise(vec2 p) {
+          vec2 i = floor(p);
+          vec2 f = fract(p);
+          f = f * f * (3.0 - 2.0 * f);
+          float a = hash(i);
+          float b = hash(i + vec2(1.0, 0.0));
+          float c = hash(i + vec2(0.0, 1.0));
+          float d = hash(i + vec2(1.0, 1.0));
+          return mix(mix(a, b, f.x), mix(c, d, f.x), f.y);
+        }
+
+        float fbm(vec2 p) {
+          float v = 0.0;
+          float a = 0.5;
+          for (int i = 0; i < 5; i++) {
+            v += noise(p) * a;
+            p = p * 2.02 + vec2(17.1, 9.7);
+            a *= 0.5;
+          }
+          return v;
+        }
+
+        float phaseSun(float x) {
+          return smoothstep(5.0, 8.0, x) * (1.0 - smoothstep(16.5, 20.0, x));
+        }
+
+        void main() {
+          vec2 uv = v_uv;
+          float aspect = u_resolution.x / max(u_resolution.y, 1.0);
+          vec2 p = uv;
+          p.x = (p.x - 0.5) * aspect + 0.5;
+
+          float day = phaseSun(u_hour);
+          float sunset = smoothstep(16.0, 18.8, u_hour) * (1.0 - smoothstep(18.8, 20.5, u_hour));
+          float night = 1.0 - day;
+
+          vec3 daylightTop = vec3(0.08, 0.45, 0.78);
+          vec3 daylightMid = vec3(0.18, 0.66, 0.92);
+          vec3 daylightHorizon = vec3(0.82, 0.94, 1.0);
+
+          vec3 sunsetTop = vec3(0.09, 0.06, 0.25);
+          vec3 sunsetMid = vec3(0.38, 0.12, 0.52);
+          vec3 sunsetHorizon = vec3(1.0, 0.46, 0.26);
+
+          vec3 nightTop = vec3(0.005, 0.012, 0.035);
+          vec3 nightMid = vec3(0.025, 0.075, 0.20);
+          vec3 nightHorizon = vec3(0.10, 0.16, 0.32);
+
+          float horizon = pow(1.0 - uv.y, 1.35);
+          float upper = smoothstep(0.0, 0.85, uv.y);
+
+          vec3 daySky = mix(daylightHorizon, daylightTop, upper);
+          daySky = mix(daySky, daylightMid, 0.35 + horizon * 0.2);
+
+          vec3 sunsetSky = mix(sunsetHorizon, sunsetTop, upper);
+          sunsetSky = mix(sunsetSky, sunsetMid, 0.45 + horizon * 0.18);
+
+          vec3 nightSky = mix(nightHorizon, nightTop, upper);
+          nightSky = mix(nightSky, nightMid, 0.4 + horizon * 0.18);
+
+          vec3 sky = mix(nightSky, daySky, day);
+          sky = mix(sky, sunsetSky, sunset);
+
+          // Atmospheric scattering / horizon haze.
+          float haze = pow(max(1.0 - uv.y, 0.0), 2.8);
+          vec3 hazeColor = mix(vec3(1.0), vec3(1.0, 0.78, 0.57), sunset);
+          sky = mix(sky, hazeColor, haze * (0.20 + sunset * 0.55));
+
+          // Sun: low-frequency halo + bright disk.
+          float sunPhase = clamp((u_hour - 5.8) / 13.0, 0.0, 1.0);
+          float sunX = mix(0.15, 0.86, sunPhase);
+          float sunY = 0.16 + 0.58 * sin(sunPhase * 3.1415926);
+          float sunDist = distance(vec2(p.x, uv.y), vec2(sunX, sunY));
+          float sunHalo = exp(-sunDist * 16.0);
+          float sunDisc = 1.0 - smoothstep(0.018, 0.032, sunDist);
+          sky += vec3(1.0, 0.84, 0.46) * sunHalo * (day * 0.18 + sunset * 0.30);
+          sky += vec3(1.0, 0.92, 0.62) * sunDisc * (day * 0.55 + sunset * 0.38);
+
+          // Moving multilayer cloud field.
+          float t = u_time * 0.000028;
+          float farCloud = fbm(vec2(p.x * 1.8 + t * 0.55, uv.y * 3.2 + 4.0));
+          float midCloud = fbm(vec2(p.x * 3.2 - t * 0.9, uv.y * 6.0 + 9.0));
+          float cloudField = farCloud * 0.62 + midCloud * 0.38;
+          float cloudBand = smoothstep(0.50, 0.70, cloudField) * smoothstep(0.03, 0.25, uv.y) * (0.75 + 0.25 * sin(p.x * 7.0));
+          vec3 cloudLight = mix(vec3(1.0), vec3(0.78, 0.84, 0.91), 0.55);
+          vec3 cloudShade = mix(vec3(0.44, 0.55, 0.66), vec3(0.18, 0.25, 0.36), night);
+          vec3 cloudColor = mix(cloudLight, cloudShade, night * 0.72);
+          sky = mix(sky, cloudColor, cloudBand * (0.18 + day * 0.28 + sunset * 0.24 + night * 0.22));
+
+          // Soft atmospheric mist near the bottom.
+          float mist = smoothstep(0.0, 0.22, uv.y) * (1.0 - smoothstep(0.22, 0.46, uv.y));
+          sky = mix(sky, vec3(0.85, 0.92, 0.98), mist * (0.08 + day * 0.12));
+
+          // Stars: tiny depth-layered points at night.
+          vec2 sp = floor(vec2(p.x * 120.0, uv.y * 70.0));
+          float starSeed = hash(sp);
+          float star = step(0.994, starSeed) * smoothstep(0.12, 0.78, uv.y) * night;
+          float starFlicker = 0.55 + 0.45 * sin(u_time * 0.0015 + starSeed * 19.0);
+          sky += vec3(0.85, 0.92, 1.0) * star * starFlicker * 0.75;
+
+          // Crescent moon + halo.
+          float moonX = 0.80;
+          float moonY = 0.70;
+          float md = distance(vec2(p.x, uv.y), vec2(moonX, moonY));
+          float moonHalo = exp(-md * 22.0) * night;
+          float moonDisc = 1.0 - smoothstep(0.032, 0.038, md);
+          float cut = 1.0 - smoothstep(0.018, 0.028, distance(vec2(p.x - 0.012, uv.y + 0.008), vec2(moonX, moonY)));
+          sky += vec3(0.60, 0.72, 0.95) * moonHalo * 0.25;
+          sky += vec3(0.92, 0.96, 1.0) * moonDisc * cut * night * 0.68;
+
+          // Fine film-like luminance variation for less synthetic flatness.
+          float grain = (hash(uv * u_resolution + u_time * 0.01) - 0.5) * 0.018;
+          sky += grain;
+
+          gl_FragColor = vec4(clamp(sky, 0.0, 1.0), 1.0);
+        }
+      `;
+
+      const compile = (type: number, source: string) => {
+        const shader = gl.createShader(type);
+        if (!shader) return null;
+        gl.shaderSource(shader, source);
+        gl.compileShader(shader);
+        if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+          console.error("Sky shader compile failed:", gl.getShaderInfoLog(shader));
+          gl.deleteShader(shader);
+          return null;
+        }
+        return shader;
+      };
+
+      const vertexShader = compile(gl.VERTEX_SHADER, vertexSource);
+      const fragmentShader = compile(gl.FRAGMENT_SHADER, fragmentSource);
+      if (!vertexShader || !fragmentShader) return;
+
+      const program = gl.createProgram();
+      if (!program) return;
+      gl.attachShader(program, vertexShader);
+      gl.attachShader(program, fragmentShader);
+      gl.linkProgram(program);
+      if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+        console.error("Sky shader link failed:", gl.getProgramInfoLog(program));
+        return;
+      }
+
+      const buffer = gl.createBuffer();
+      gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+      gl.bufferData(
+        gl.ARRAY_BUFFER,
+        new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]),
+        gl.STATIC_DRAW
+      );
+
+      const position = gl.getAttribLocation(program, "a_position");
+      const timeUniform = gl.getUniformLocation(program, "u_time");
+      const hourUniform = gl.getUniformLocation(program, "u_hour");
+      const resolutionUniform = gl.getUniformLocation(program, "u_resolution");
+
+      const resize = () => {
+        const widthPx = Math.max(1, Math.floor(window.innerWidth * window.devicePixelRatio));
+        const heightPx = Math.max(1, Math.floor(205 * window.devicePixelRatio));
+        canvas.width = widthPx;
+        canvas.height = heightPx;
+        canvas.style.width = "100%";
+        canvas.style.height = "205px";
+        gl.viewport(0, 0, widthPx, heightPx);
+      };
+
+      resize();
+      window.addEventListener("resize", resize);
+
+      let frame = 0;
+      const render = (time: number) => {
+        gl.useProgram(program);
+        gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+        gl.enableVertexAttribArray(position);
+        gl.vertexAttribPointer(position, 2, gl.FLOAT, false, 0, 0);
+        gl.uniform1f(timeUniform, time);
+        gl.uniform1f(hourUniform, hour);
+        gl.uniform2f(resolutionUniform, canvas.width, canvas.height);
+        gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+        frame = window.requestAnimationFrame(render);
+      };
+
+      frame = window.requestAnimationFrame(render);
+
+      return () => {
+        window.cancelAnimationFrame(frame);
+        window.removeEventListener("resize", resize);
+        if (program) gl.deleteProgram(program);
+        if (vertexShader) gl.deleteShader(vertexShader);
+        if (fragmentShader) gl.deleteShader(fragmentShader);
+        if (buffer) gl.deleteBuffer(buffer);
+      };
+    }
 
     cloudOne.value = withRepeat(
       withSequence(
@@ -92,65 +320,18 @@ function NightSky() {
       -1,
       true
     );
-
-    starPulse.value = withRepeat(
-      withSequence(
-        withTiming(1, { duration: 2800 }),
-        withTiming(0.3, { duration: 2200 })
-      ),
-      -1,
-      true
-    );
-
-    sunPulse.value = withRepeat(
-      withSequence(
-        withTiming(1, { duration: 2600 }),
-        withTiming(0.82, { duration: 2600 })
-      ),
-      -1,
-      true
-    );
-
-    moonPulse.value = withRepeat(
-      withSequence(
-        withTiming(1, { duration: 3600 }),
-        withTiming(0.78, { duration: 3600 })
-      ),
-      -1,
-      true
-    );
-
-    airplaneX.value = withRepeat(
-      withSequence(
-        withTiming(width + 140, { duration: 26000 }),
-        withTiming(-140, { duration: 1 })
-      ),
-      -1,
-      false
-    );
-
-    airplaneY.value = withRepeat(
-      withSequence(
-        withTiming(32, { duration: 13000 }),
-        withTiming(92, { duration: 13000 }),
-        withTiming(92, { duration: 1 })
-      ),
-      -1,
-      false
-    );
-
-    return () => clearInterval(clock);
-  }, []);
+  }, [hour]);
 
   const isNight = hour >= 19 || hour < 6;
   const isSunset = hour >= 17 && hour < 19;
-  const isDay = !isNight && !isSunset;
 
-  useEffect(() => {
-    dayOpacity.value = withTiming(isDay ? 1 : 0, { duration: 1400 });
-    sunsetOpacity.value = withTiming(isSunset ? 1 : 0, { duration: 1400 });
-    nightOpacity.value = withTiming(isNight ? 1 : 0, { duration: 1400 });
-  }, [hour, isDay, isSunset, isNight]);
+  if (Platform.OS === "web") {
+    return (
+      <View pointerEvents="none" style={s.nightSky}>
+        {React.createElement("canvas" as any, { ref: canvasRef, style: { width: "100%", height: "205px", display: "block" } })}
+      </View>
+    );
+  }
 
   const cloudOneStyle = useAnimatedStyle(() => ({
     transform: [
@@ -168,136 +349,28 @@ function NightSky() {
     ],
   }));
 
-  const daySkyStyle = useAnimatedStyle(() => ({ opacity: dayOpacity.value }));
-  const sunsetSkyStyle = useAnimatedStyle(() => ({ opacity: sunsetOpacity.value }));
-  const nightSkyStyle = useAnimatedStyle(() => ({ opacity: nightOpacity.value }));
-
-  const starStyle = useAnimatedStyle(() => ({
-    opacity: starPulse.value,
-  }));
-
-  const sunStyle = useAnimatedStyle(() => ({
-    opacity: dayOpacity.value + sunsetOpacity.value * 0.8,
-    transform: [{ scale: sunPulse.value }],
-  }));
-
-  const moonStyle = useAnimatedStyle(() => ({
-    opacity: nightOpacity.value,
-    transform: [{ scale: moonPulse.value }],
-  }));
-
-  const airplaneStyle = useAnimatedStyle(() => ({
-    opacity: dayOpacity.value * 0.78 + sunsetOpacity.value * 0.7,
-    transform: [
-      { translateX: airplaneX.value },
-      { translateY: airplaneY.value },
-      { rotate: "-8deg" },
-      { scale: 0.82 },
-    ],
-  }));
-
-  const dayCloudColor = "rgba(255,255,255,0.88)";
-  const sunsetCloudColor = "rgba(250,232,255,0.68)";
-  const nightCloudColor = "rgba(148,163,184,0.23)";
-  const cloudColor = isNight ? nightCloudColor : isSunset ? sunsetCloudColor : dayCloudColor;
-
-  const stars = [
-    { left: "8%", top: 18, size: 2 },
-    { left: "17%", top: 46, size: 3 },
-    { left: "29%", top: 24, size: 2 },
-    { left: "40%", top: 54, size: 2 },
-    { left: "52%", top: 18, size: 3 },
-    { left: "64%", top: 43, size: 2 },
-    { left: "76%", top: 21, size: 3 },
-    { left: "88%", top: 49, size: 2 },
-    { left: "94%", top: 28, size: 2 },
-  ];
-
   return (
     <View pointerEvents="none" style={s.nightSky}>
-      <Animated.View style={[s.nightGradientLayer, daySkyStyle]}>
-        <LinearGradient
-          colors={["#7DD3FC", "#38BDF8", "#0EA5E9", "#E0F2FE"]}
-          locations={[0, 0.3, 0.72, 1]}
-          style={s.nightGradient}
-        />
-      </Animated.View>
-
-      <Animated.View style={[s.nightGradientLayer, sunsetSkyStyle]}>
-        <LinearGradient
-          colors={["#1E1B4B", "#4C1D95", "#8B5CF6", "#F5D0FE"]}
-          locations={[0, 0.28, 0.68, 1]}
-          style={s.nightGradient}
-        />
-      </Animated.View>
-
-      <Animated.View style={[s.nightGradientLayer, nightSkyStyle]}>
-        <LinearGradient
-          colors={["#020617", "#0B1120", "#172554", "#312E81"]}
-          locations={[0, 0.42, 0.76, 1]}
-          style={s.nightGradient}
-        />
-      </Animated.View>
-
-      <Animated.View style={[s.sunGlow, sunStyle]}>
-        <View style={s.sunHaloOuter} />
-        <View style={s.sunHalo} />
-        <View style={s.sunCore} />
-      </Animated.View>
-
-      <Animated.View style={[s.sunsetGlow, sunsetSkyStyle]}>
-        <View style={s.sunsetHalo} />
-      </Animated.View>
-
-      <Animated.View style={s.starLayer} >
-        <Animated.View style={starStyle}>
-          {stars.map((star, index) => (
-            <View
-              key={index}
-              style={[
-                s.star,
-                {
-                  left: star.left as any,
-                  top: star.top,
-                  width: star.size,
-                  height: star.size,
-                  borderRadius: star.size,
-                  opacity: 0.35 + ((index % 3) * 0.18),
-                },
-              ]}
-            />
-          ))}
-        </Animated.View>
-      </Animated.View>
-
-      <Animated.View style={[s.moon, moonStyle]}>
-        <View style={s.moonHalo} />
-        <View style={s.moonBody}>
-          <View style={s.moonCut} />
-        </View>
-      </Animated.View>
-
-      <Animated.View style={[s.airplane, airplaneStyle]}>
-        <MaterialCommunityIcons name="airplane" size={18} color="rgba(255,255,255,0.94)" />
-        <View style={s.airplaneTrail} />
-      </Animated.View>
-
+      <LinearGradient
+        colors={
+          isNight
+            ? ["#020617", "#0B1120", "#172554", "#312E81"]
+            : isSunset
+              ? ["#1E1B4B", "#4C1D95", "#8B5CF6", "#F5D0FE"]
+              : ["#7DD3FC", "#38BDF8", "#0EA5E9", "#E0F2FE"]
+        }
+        locations={[0, 0.28, 0.68, 1]}
+        style={s.nightGradient}
+      />
       <Animated.View style={[s.cloud, s.cloudOne, cloudOneStyle]}>
-        <View style={[s.cloudShade, { backgroundColor: cloudColor }]} />
-        <View style={[s.cloudPuff, { width: 58, height: 32, left: 14, top: 10, backgroundColor: cloudColor }]} />
-        <View style={[s.cloudPuff, { width: 82, height: 44, left: 42, top: -1, backgroundColor: cloudColor }]} />
-        <View style={[s.cloudPuff, { width: 54, height: 30, left: 102, top: 12, backgroundColor: cloudColor }]} />
-        <View style={s.cloudHighlightOne} />
-        <View style={s.cloudBase} />
+        <View style={[s.cloudPuff, { width: 58, height: 32, left: 14, top: 10, backgroundColor: "rgba(255,255,255,0.82)" }]} />
+        <View style={[s.cloudPuff, { width: 82, height: 44, left: 42, top: -1, backgroundColor: "rgba(255,255,255,0.88)" }]} />
+        <View style={[s.cloudPuff, { width: 54, height: 30, left: 102, top: 12, backgroundColor: "rgba(255,255,255,0.76)" }]} />
       </Animated.View>
-
       <Animated.View style={[s.cloud, s.cloudTwo, cloudTwoStyle]}>
-        <View style={[s.cloudShade, { backgroundColor: cloudColor }]} />
-        <View style={[s.cloudPuff, { width: 46, height: 26, left: 14, top: 11, backgroundColor: cloudColor }]} />
-        <View style={[s.cloudPuff, { width: 72, height: 38, left: 40, top: 0, backgroundColor: cloudColor }]} />
-        <View style={[s.cloudPuff, { width: 54, height: 29, left: 86, top: 10, backgroundColor: cloudColor }]} />
-        <View style={s.cloudHighlightTwo} />
-        <View style={s.cloudBase} />
+        <View style={[s.cloudPuff, { width: 46, height: 26, left: 14, top: 11, backgroundColor: "rgba(255,255,255,0.74)" }]} />
+        <View style={[s.cloudPuff, { width: 72, height: 38, left: 40, top: 0, backgroundColor: "rgba(255,255,255,0.82)" }]} />
+        <View style={[s.cloudPuff, { width: 54, height: 29, left: 86, top: 10, backgroundColor: "rgba(255,255,255,0.68)" }]} />
       </Animated.View>
     </View>
   );
@@ -1111,7 +1184,7 @@ const s = StyleSheet.create({
   locationGatePrivacy: { marginTop: 12, color: THEME.blackMuted, fontSize: 10, lineHeight: 15, textAlign: "center" },
   root: { flex: 1, backgroundColor: THEME.whiteBg },
   /* Realistic 3D-style sky layers stay behind the existing header/search only */
-  nightSky: { position: "absolute", top: 0, left: 0, right: 0, height: 205, overflow: "hidden", zIndex: 0 },
+  nightSky: { position: "absolute", top: 0, left: 0, right: 0, height: 205, overflow: "hidden", zIndex: 0, pointerEvents: "none" },
   nightGradientLayer: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0 },
   nightGradient: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0 },
   starLayer: { position: "absolute", top: 0, left: 0, right: 0, height: 92 },
