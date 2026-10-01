@@ -75,16 +75,16 @@ function NightSky() {
       });
       if (!gl) return;
 
-      const vertexSource = `
+      const vertexSource = \`
         attribute vec2 a_position;
         varying vec2 v_uv;
         void main() {
           v_uv = a_position * 0.5 + 0.5;
           gl_Position = vec4(a_position, 0.0, 1.0);
         }
-      `;
+      \`;
 
-      const fragmentSource = `
+      const fragmentSource = \`
         precision highp float;
         varying vec2 v_uv;
         uniform float u_time;
@@ -92,8 +92,8 @@ function NightSky() {
         uniform vec2 u_resolution;
 
         float hash(vec2 p) {
-          p = fract(p * vec2(123.34, 456.21));
-          p += dot(p, p + 45.32);
+          p = fract(p * vec2(127.1, 311.7));
+          p += dot(p, p + 31.19);
           return fract(p.x * p.y);
         }
 
@@ -109,14 +109,19 @@ function NightSky() {
         }
 
         float fbm(vec2 p) {
-          float v = 0.0;
-          float a = 0.5;
-          for (int i = 0; i < 5; i++) {
-            v += noise(p) * a;
-            p = p * 2.02 + vec2(17.1, 9.7);
-            a *= 0.5;
+          float value = 0.0;
+          float amp = 0.5;
+          for (int i = 0; i < 6; i++) {
+            value += noise(p) * amp;
+            p = p * 2.03 + vec2(17.0, 9.0);
+            amp *= 0.5;
           }
-          return v;
+          return value;
+        }
+
+        float boxMask(vec2 p, vec2 center, vec2 halfSize, float softness) {
+          float d = max(abs(p.x - center.x) - halfSize.x, abs(p.y - center.y) - halfSize.y);
+          return 1.0 - smoothstep(0.0, softness, d);
         }
 
         float phaseSun(float x) {
@@ -126,94 +131,159 @@ function NightSky() {
         void main() {
           vec2 uv = v_uv;
           float aspect = u_resolution.x / max(u_resolution.y, 1.0);
-          vec2 p = uv;
-          p.x = (p.x - 0.5) * aspect + 0.5;
+          float t = u_time * 0.00002;
 
           float day = phaseSun(u_hour);
           float sunset = smoothstep(16.0, 18.8, u_hour) * (1.0 - smoothstep(18.8, 20.5, u_hour));
           float night = 1.0 - day;
 
-          vec3 daylightTop = vec3(0.08, 0.45, 0.78);
-          vec3 daylightMid = vec3(0.18, 0.66, 0.92);
-          vec3 daylightHorizon = vec3(0.82, 0.94, 1.0);
+          float horizon = pow(1.0 - uv.y, 1.45);
+          float upper = smoothstep(0.0, 0.92, uv.y);
 
-          vec3 sunsetTop = vec3(0.09, 0.06, 0.25);
-          vec3 sunsetMid = vec3(0.38, 0.12, 0.52);
-          vec3 sunsetHorizon = vec3(1.0, 0.46, 0.26);
+          vec3 daylightTop = vec3(0.055, 0.34, 0.68);
+          vec3 daylightMid = vec3(0.14, 0.58, 0.88);
+          vec3 daylightHorizon = vec3(0.88, 0.95, 1.0);
 
-          vec3 nightTop = vec3(0.005, 0.012, 0.035);
-          vec3 nightMid = vec3(0.025, 0.075, 0.20);
-          vec3 nightHorizon = vec3(0.10, 0.16, 0.32);
+          vec3 sunsetTop = vec3(0.035, 0.025, 0.11);
+          vec3 sunsetMid = vec3(0.30, 0.075, 0.33);
+          vec3 sunsetHorizon = vec3(1.0, 0.42, 0.18);
 
-          float horizon = pow(1.0 - uv.y, 1.35);
-          float upper = smoothstep(0.0, 0.85, uv.y);
+          vec3 nightTop = vec3(0.002, 0.006, 0.022);
+          vec3 nightMid = vec3(0.012, 0.045, 0.14);
+          vec3 nightHorizon = vec3(0.06, 0.11, 0.22);
 
           vec3 daySky = mix(daylightHorizon, daylightTop, upper);
-          daySky = mix(daySky, daylightMid, 0.35 + horizon * 0.2);
+          daySky = mix(daySky, daylightMid, 0.32 + horizon * 0.20);
 
           vec3 sunsetSky = mix(sunsetHorizon, sunsetTop, upper);
-          sunsetSky = mix(sunsetSky, sunsetMid, 0.45 + horizon * 0.18);
+          sunsetSky = mix(sunsetSky, sunsetMid, 0.42 + horizon * 0.18);
 
           vec3 nightSky = mix(nightHorizon, nightTop, upper);
-          nightSky = mix(nightSky, nightMid, 0.4 + horizon * 0.18);
+          nightSky = mix(nightSky, nightMid, 0.36 + horizon * 0.20);
 
           vec3 sky = mix(nightSky, daySky, day);
           sky = mix(sky, sunsetSky, sunset);
 
-          // Atmospheric scattering / horizon haze.
-          float haze = pow(max(1.0 - uv.y, 0.0), 2.8);
-          vec3 hazeColor = mix(vec3(1.0), vec3(1.0, 0.78, 0.57), sunset);
-          sky = mix(sky, hazeColor, haze * (0.20 + sunset * 0.55));
+          float haze = pow(max(1.0 - uv.y, 0.0), 3.1);
+          vec3 hazeColor = mix(vec3(0.64, 0.79, 0.92), vec3(1.0, 0.54, 0.30), sunset);
+          hazeColor = mix(hazeColor, vec3(0.12, 0.20, 0.34), night * 0.68);
+          sky = mix(sky, hazeColor, haze * (0.20 + sunset * 0.42 + night * 0.08));
 
-          // Sun: low-frequency halo + bright disk.
+          // Layered volumetric-style cloud banks with independent motion.
+          float highA = fbm(vec2(uv.x * 2.0 + t * 0.34, uv.y * 4.2 + 1.7));
+          float highB = fbm(vec2(uv.x * 4.5 - t * 0.22, uv.y * 7.5 + 7.0));
+          float highCloud = smoothstep(0.54, 0.74, highA * 0.72 + highB * 0.28);
+          highCloud *= smoothstep(0.40, 0.58, uv.y) * (1.0 - smoothstep(0.82, 0.98, uv.y));
+
+          float lowA = fbm(vec2(uv.x * 3.6 - t * 0.55, uv.y * 7.0 + 15.0));
+          float lowB = fbm(vec2(uv.x * 7.5 + t * 0.30, uv.y * 13.0 + 4.0));
+          float lowCloud = smoothstep(0.50, 0.71, lowA * 0.67 + lowB * 0.33);
+          lowCloud *= smoothstep(0.10, 0.24, uv.y) * (1.0 - smoothstep(0.42, 0.62, uv.y));
+
+          vec3 cloudTop = mix(vec3(0.98, 0.99, 1.0), vec3(0.52, 0.62, 0.74), night);
+          vec3 cloudMid = mix(vec3(0.76, 0.84, 0.92), vec3(0.17, 0.24, 0.36), night);
+          vec3 cloudHighColor = mix(cloudMid, cloudTop, 0.58 + 0.42 * highA);
+          vec3 cloudLowColor = mix(vec3(0.58, 0.68, 0.78), vec3(0.09, 0.14, 0.23), night);
+
+          sky = mix(sky, cloudHighColor, highCloud * (0.16 + 0.24 * (day + sunset * 0.7 + night * 0.16)));
+          sky = mix(sky, cloudLowColor, lowCloud * (0.18 + 0.22 * night));
+
+          // Sun bloom and atmospheric disk.
           float sunPhase = clamp((u_hour - 5.8) / 13.0, 0.0, 1.0);
-          float sunX = mix(0.15, 0.86, sunPhase);
+          float sunX = mix(0.14, 0.86, sunPhase);
           float sunY = 0.16 + 0.58 * sin(sunPhase * 3.1415926);
-          float sunDist = distance(vec2(p.x, uv.y), vec2(sunX, sunY));
-          float sunHalo = exp(-sunDist * 16.0);
+          vec2 sunDelta = vec2((uv.x - sunX) * aspect, uv.y - sunY);
+          float sunDist = length(sunDelta);
+          float sunHalo = exp(-sunDist * 5.2);
           float sunDisc = 1.0 - smoothstep(0.018, 0.032, sunDist);
-          sky += vec3(1.0, 0.84, 0.46) * sunHalo * (day * 0.18 + sunset * 0.30);
-          sky += vec3(1.0, 0.92, 0.62) * sunDisc * (day * 0.55 + sunset * 0.38);
+          sky += vec3(1.0, 0.70, 0.32) * sunHalo * (day * 0.16 + sunset * 0.30);
+          sky += vec3(1.0, 0.90, 0.62) * sunDisc * (day * 0.52 + sunset * 0.34);
 
-          // Moving multilayer cloud field.
-          float t = u_time * 0.000028;
-          float farCloud = fbm(vec2(p.x * 1.8 + t * 0.55, uv.y * 3.2 + 4.0));
-          float midCloud = fbm(vec2(p.x * 3.2 - t * 0.9, uv.y * 6.0 + 9.0));
-          float cloudField = farCloud * 0.62 + midCloud * 0.38;
-          float cloudBand = smoothstep(0.50, 0.70, cloudField) * smoothstep(0.03, 0.25, uv.y) * (0.75 + 0.25 * sin(p.x * 7.0));
-          vec3 cloudLight = mix(vec3(1.0), vec3(0.78, 0.84, 0.91), 0.55);
-          vec3 cloudShade = mix(vec3(0.44, 0.55, 0.66), vec3(0.18, 0.25, 0.36), night);
-          vec3 cloudColor = mix(cloudLight, cloudShade, night * 0.72);
-          sky = mix(sky, cloudColor, cloudBand * (0.18 + day * 0.28 + sunset * 0.24 + night * 0.22));
+          // Dense stars with gentle twinkle at night.
+          vec2 starGrid = floor(vec2(uv.x * 250.0, uv.y * 140.0));
+          float starRnd = hash(starGrid);
+          float starLayer = step(0.993, starRnd) * smoothstep(0.18, 0.72, uv.y);
+          float starTwinkle = 0.62 + 0.38 * sin(u_time * 0.0013 + starRnd * 37.0);
+          sky += vec3(0.72, 0.84, 1.0) * starLayer * starTwinkle * night * 0.72;
 
-          // Soft atmospheric mist near the bottom.
-          float mist = smoothstep(0.0, 0.22, uv.y) * (1.0 - smoothstep(0.22, 0.46, uv.y));
-          sky = mix(sky, vec3(0.85, 0.92, 0.98), mist * (0.08 + day * 0.12));
+          vec2 brightGrid = floor(vec2(uv.x * 92.0 + 3.0, uv.y * 58.0 + 11.0));
+          float brightRnd = hash(brightGrid);
+          float brightStar = step(0.986, brightRnd) * smoothstep(0.24, 0.76, uv.y);
+          sky += vec3(0.90, 0.95, 1.0) * brightStar * night * 0.55;
 
-          // Stars: tiny depth-layered points at night.
-          vec2 sp = floor(vec2(p.x * 120.0, uv.y * 70.0));
-          float starSeed = hash(sp);
-          float star = step(0.994, starSeed) * smoothstep(0.12, 0.78, uv.y) * night;
-          float starFlicker = 0.55 + 0.45 * sin(u_time * 0.0015 + starSeed * 19.0);
-          sky += vec3(0.85, 0.92, 1.0) * star * starFlicker * 0.75;
+          // Moon with surface variation and cloud occlusion.
+          vec2 moonPos = vec2(0.79, 0.71);
+          vec2 moonDelta = vec2((uv.x - moonPos.x) * aspect, uv.y - moonPos.y);
+          float moonDist = length(moonDelta);
+          float moonMask = 1.0 - smoothstep(0.045, 0.053, moonDist);
+          float moonHalo = exp(-moonDist * 9.0);
+          float moonCrater1 = exp(-length(moonDelta - vec2(-0.011, 0.009)) * 42.0);
+          float moonCrater2 = exp(-length(moonDelta - vec2(0.015, -0.011)) * 50.0);
+          float moonCrater3 = exp(-length(moonDelta - vec2(0.005, 0.018)) * 65.0);
+          float moonSurface = 0.92 - moonCrater1 * 0.12 - moonCrater2 * 0.09 - moonCrater3 * 0.06;
+          float moonCloudOcclusion = highCloud * 0.75;
 
-          // Crescent moon + halo.
-          float moonX = 0.80;
-          float moonY = 0.70;
-          float md = distance(vec2(p.x, uv.y), vec2(moonX, moonY));
-          float moonHalo = exp(-md * 22.0) * night;
-          float moonDisc = 1.0 - smoothstep(0.032, 0.038, md);
-          float cut = 1.0 - smoothstep(0.018, 0.028, distance(vec2(p.x - 0.012, uv.y + 0.008), vec2(moonX, moonY)));
-          sky += vec3(0.60, 0.72, 0.95) * moonHalo * 0.25;
-          sky += vec3(0.92, 0.96, 1.0) * moonDisc * cut * night * 0.68;
+          sky += vec3(0.62, 0.74, 0.98) * moonHalo * night * 0.20;
+          sky += vec3(0.92, 0.95, 1.0) * moonMask * moonSurface * night * (0.72 - moonCloudOcclusion * 0.48);
 
-          // Fine film-like luminance variation for less synthetic flatness.
-          float grain = (hash(uv * u_resolution + u_time * 0.01) - 0.5) * 0.018;
+          // Distant hills and horizon silhouette.
+          float hillNoise = fbm(vec2(uv.x * 2.5 + 2.0, 8.0));
+          float hillLine = 0.060 + hillNoise * 0.035 + 0.018 * sin(uv.x * 9.0 + t * 0.8);
+          float distantLand = 1.0 - smoothstep(hillLine, hillLine + 0.012, uv.y);
+          sky = mix(sky, mix(vec3(0.07, 0.11, 0.16), vec3(0.012, 0.020, 0.032), night), distantLand);
+
+          // A tiny warm village glow behind the hut.
+          float villageGlow = exp(-pow((uv.x - 0.29) * 22.0, 2.0)) * exp(-pow((uv.y - 0.095) * 24.0, 2.0));
+          sky += vec3(1.0, 0.42, 0.12) * villageGlow * (0.12 + night * 0.22);
+
+          // Rustic hut silhouette with warm window.
+          float hutWall = boxMask(uv, vec2(0.29, 0.126), vec2(0.095, 0.053), 0.004);
+          float roofHalf = 0.125;
+          float roofTop = 0.175 + (1.0 - abs(uv.x - 0.29) / roofHalf) * 0.090;
+          float roofMask = step(abs(uv.x - 0.29), roofHalf) * step(0.175, uv.y) * step(uv.y, roofTop);
+          float eaveMask = boxMask(uv, vec2(0.29, 0.175), vec2(0.137, 0.010), 0.004);
+          float chimney = boxMask(uv, vec2(0.355, 0.225), vec2(0.015, 0.038), 0.003);
+
+          vec3 hutColor = mix(vec3(0.08, 0.045, 0.026), vec3(0.015, 0.018, 0.024), night * 0.92);
+          sky = mix(sky, hutColor, max(hutWall, max(roofMask, eaveMask)) * (0.72 + night * 0.25));
+          sky = mix(sky, vec3(0.035, 0.028, 0.022), chimney * 0.95);
+
+          float windowMask = boxMask(uv, vec2(0.323, 0.132), vec2(0.016, 0.014), 0.003);
+          float doorMask = boxMask(uv, vec2(0.255, 0.115), vec2(0.020, 0.043), 0.003);
+          sky = mix(sky, vec3(0.06, 0.035, 0.02), doorMask);
+          sky += vec3(1.0, 0.52, 0.15) * windowMask * (0.24 + night * 1.35);
+          sky += vec3(1.0, 0.25, 0.07) * windowMask * exp(-length(vec2((uv.x - 0.323) * aspect, uv.y - 0.132)) * 24.0) * night * 0.30;
+
+          // Chimney smoke: expands, curls, drifts and fades into the clouds.
+          float smokeY = smoothstep(0.245, 0.29, uv.y) * (1.0 - smoothstep(0.60, 0.76, uv.y));
+          float smokeCenter = 0.355
+            + 0.018 * sin(uv.y * 19.0 + t * 1.5)
+            + 0.014 * sin(uv.y * 47.0 - t * 2.1)
+            + 0.010 * sin(uv.y * 81.0 + t * 0.9);
+          float smokeWidth = 0.016 + (uv.y - 0.25) * 0.075;
+          float smokeDist = abs(uv.x - smokeCenter) / max(smokeWidth, 0.006);
+          float smokeShape = 1.0 - smoothstep(0.28, 1.10, smokeDist);
+          float smokeNoise = fbm(vec2(uv.x * 8.0 + t * 0.28, uv.y * 10.0 - t * 0.65));
+          float smokePockets = smoothstep(0.28, 0.76, smokeNoise);
+          float smoke = smokeShape * smokePockets * smokeY;
+
+          vec3 smokeColor = mix(vec3(0.72, 0.75, 0.78), vec3(0.21, 0.25, 0.31), night);
+          sky = mix(sky, smokeColor, smoke * (0.16 + 0.24 * night));
+
+          // Soft foreground haze + filmic vignette.
+          float grassHaze = smoothstep(0.0, 0.12, uv.y) * (1.0 - smoothstep(0.12, 0.20, uv.y));
+          sky = mix(sky, vec3(0.10, 0.15, 0.16), grassHaze * (0.10 + night * 0.10));
+
+          vec2 vig = uv - 0.5;
+          float vignette = 1.0 - smoothstep(0.34, 0.78, length(vec2(vig.x * 0.85, vig.y)));
+          sky *= 0.84 + vignette * 0.16;
+
+          float grain = (hash(uv * u_resolution + u_time * 0.008) - 0.5) * 0.012;
           sky += grain;
 
           gl_FragColor = vec4(clamp(sky, 0.0, 1.0), 1.0);
         }
-      `;
+      \`;
 
       const compile = (type: number, source: string) => {
         const shader = gl.createShader(type);
@@ -221,7 +291,7 @@ function NightSky() {
         gl.shaderSource(shader, source);
         gl.compileShader(shader);
         if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
-          console.error("Sky shader compile failed:", gl.getShaderInfoLog(shader));
+          console.error("Cinematic sky shader compile failed:", gl.getShaderInfoLog(shader));
           gl.deleteShader(shader);
           return null;
         }
@@ -238,7 +308,7 @@ function NightSky() {
       gl.attachShader(program, fragmentShader);
       gl.linkProgram(program);
       if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
-        console.error("Sky shader link failed:", gl.getProgramInfoLog(program));
+        console.error("Cinematic sky shader link failed:", gl.getProgramInfoLog(program));
         return;
       }
 
@@ -256,8 +326,8 @@ function NightSky() {
       const resolutionUniform = gl.getUniformLocation(program, "u_resolution");
 
       const resize = () => {
-        const widthPx = Math.max(1, Math.floor(window.innerWidth * window.devicePixelRatio));
-        const heightPx = Math.max(1, Math.floor(205 * window.devicePixelRatio));
+        const widthPx = Math.max(1, Math.floor(window.innerWidth * Math.min(window.devicePixelRatio, 2)));
+        const heightPx = Math.max(1, Math.floor(205 * Math.min(window.devicePixelRatio, 2)));
         canvas.width = widthPx;
         canvas.height = heightPx;
         canvas.style.width = "100%";
@@ -295,8 +365,8 @@ function NightSky() {
 
     cloudOne.value = withRepeat(
       withSequence(
-        withTiming(58, { duration: 19000 }),
-        withTiming(-45, { duration: 19000 })
+        withTiming(58, { duration: 22000 }),
+        withTiming(-45, { duration: 22000 })
       ),
       -1,
       false
@@ -304,8 +374,8 @@ function NightSky() {
 
     cloudTwo.value = withRepeat(
       withSequence(
-        withTiming(-58, { duration: 24000 }),
-        withTiming(72, { duration: 24000 })
+        withTiming(-58, { duration: 28000 }),
+        withTiming(72, { duration: 28000 })
       ),
       -1,
       false
@@ -313,8 +383,8 @@ function NightSky() {
 
     cloudDepth.value = withRepeat(
       withSequence(
-        withTiming(1, { duration: 5200 }),
-        withTiming(0, { duration: 5200 })
+        withTiming(1, { duration: 7000 }),
+        withTiming(0, { duration: 7000 })
       ),
       -1,
       true
