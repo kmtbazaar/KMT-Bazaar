@@ -177,7 +177,11 @@ color={COLORS.text}
     style={{ flex: 1 }}
   >
     {otpStep ? (
-      <>
+      <ScrollView
+        style={{ flex: 1 }}
+        contentContainerStyle={s.otpScreen}
+        keyboardShouldPersistTaps="handled"
+      >
         <Text style={s.otpTitle}>Verify your email</Text>
         <Text style={s.otpSub}>
           We sent a 6-digit OTP to {email.trim().toLowerCase()}
@@ -205,7 +209,7 @@ color={COLORS.text}
         <Pressable onPress={() => { setOtpStep(false); setOtp(""); setError(null); }}>
           <Text style={s.backText}>Back to registration</Text>
         </Pressable>
-      </>
+      </ScrollView>
     ) : (
       <>
       <ScrollView
@@ -447,8 +451,9 @@ color={valid ? "#16A34A" : COLORS.textMuted}
 }
 
 const s = StyleSheet.create({
-otpTitle: { fontSize: 22, fontWeight: "800", color: COLORS.text, textAlign: "center", marginTop: 24, marginBottom: 8 },
-otpSub: { fontSize: 13, color: COLORS.textSecondary, textAlign: "center", lineHeight: 20, marginHorizontal: 20, marginBottom: 18 },
+otpScreen: { flexGrow: 1, justifyContent: "center", paddingHorizontal: SPACING.lg, paddingTop: 48, paddingBottom: 32 },
+otpTitle: { fontSize: 22, fontWeight: "800", color: COLORS.text, textAlign: "center", marginTop: 0, marginBottom: 8 },
+otpSub: { fontSize: 13, color: COLORS.textSecondary, textAlign: "center", lineHeight: 20, marginHorizontal: 8, marginBottom: 18 },
 backText: { textAlign: "center", marginTop: 16, color: COLORS.brand, fontWeight: "700" },
 root: {
 flex: 1,
