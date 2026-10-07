@@ -20,7 +20,6 @@ import { api, uploadImageAsset } from "@/src/api";
 import { COLORS, RADIUS, shadow } from "@/src/theme";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { getItemCategoryOptions } from "@/src/itemCategories";
 
 export default function VendorStoreDetail() {
   const router = useRouter();
@@ -31,7 +30,9 @@ export default function VendorStoreDetail() {
   const initialAddress = (params.address as string) || "";
 
   const [products, setProducts] = useState<any[]>([]);
+  const [store, setStore] = useState<any | null>(null);
   const [categories, setCategories] = useState<any[]>([]);
+  const [itemCategories, setItemCategories] = useState<any[]>([]);
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(false);
 
@@ -40,6 +41,7 @@ export default function VendorStoreDetail() {
     name: initialName,
     address: initialAddress,
     image: initialImage,
+    category_id: "",
   });
 
   const [showAddModal, setShowAddModal] = useState(false);
@@ -54,6 +56,7 @@ export default function VendorStoreDetail() {
     description: "",
     trending: false,
     item_category: "",
+    item_category_id: "",
   });
 
   const [showEditProductModal, setShowEditProductModal] = useState(false);
@@ -69,13 +72,31 @@ export default function VendorStoreDetail() {
     description: "",
     trending: false,
     item_category: "",
+    item_category_id: "",
   });
 
   const load = useCallback(async () => {
     try {
-      const all = await vendorApi.products();
-      setProducts(all.filter((p: any) => p.store_id === id));
-      setCategories(await api.categories());
+      const [all, vendorStats, categoryList] = await Promise.all([
+        vendorApi.products(),
+        vendorApi.stats(),
+        api.categories(),
+      ]);
+      const currentStore = (vendorStats?.stores || []).find(
+        (item: any) => String(item.id) === String(id)
+      );
+      const storeItemCategories = currentStore?.category_id
+        ? await api.itemCategories(currentStore.category_id)
+        : [];
+
+      setProducts((all || []).filter((p: any) => p.store_id === id));
+      setStore(currentStore || null);
+      setCategories(categoryList || []);
+      setItemCategories(storeItemCategories || []);
+      if (currentStore?.category_id) {
+        setForm((prev) => ({ ...prev, category_id: currentStore.category_id }));
+        setEditForm((prev) => ({ ...prev, category_id: currentStore.category_id }));
+      }
     } catch (e) {
       console.log(e);
     }
@@ -158,7 +179,10 @@ export default function VendorStoreDetail() {
     setLoading(true);
     try {
       await vendorApi.updateStore(id, editForm);
-      Alert.alert("Success", "Shop details updated!");
+      Alert.alert(
+        "Success",
+        "Shop details updated! If the shop category changed, product item categories need to be selected again."
+      );
       setShowSettings(false);
     } catch (e) {
       Alert.alert("Error", "Update failed.");
@@ -215,18 +239,21 @@ export default function VendorStoreDetail() {
       image: "",
       description: "",
       trending: false,
+      item_category: "",
+      item_category_id: "",
     });
   };
 
   const handleAddProduct = async () => {
-    if (!form.name || !form.price || !form.category_id) {
-      Alert.alert("Error", "Name, Price, and Category are required.");
+    if (!form.name || !form.price || !store?.category_id) {
+      Alert.alert("Error", "Name, Price, and shop category are required.");
       return;
     }
     setLoading(true);
     try {
       await vendorApi.createProduct({
         ...form,
+        category_id: store.category_id,
         store_id: id,
         price: parseFloat(form.price),
         mrp: form.mrp ? parseFloat(form.mrp) : parseFloat(form.price),
@@ -256,6 +283,14 @@ export default function VendorStoreDetail() {
       description: prod.description || "",
       trending: !!prod.trending,
       item_category: prod.item_category || "",
+      item_category_id:
+        prod.item_category_id ||
+        itemCategories.find(
+          (item: any) =>
+            String(item.name).toLowerCase() ===
+            String(prod.item_category || "").toLowerCase()
+        )?.id ||
+        "",
     });
     setShowEditProductModal(true);
   };
@@ -269,6 +304,7 @@ export default function VendorStoreDetail() {
     try {
       await vendorApi.updateProduct(selectedProductId, {
         ...editProductForm,
+        category_id: store?.category_id || editProductForm.category_id,
         store_id: id,
         price: parseFloat(editProductForm.price),
         mrp: editProductForm.mrp
@@ -348,7 +384,13 @@ export default function VendorStoreDetail() {
             {/* Header Title with Right Top Add Button */}
             <View style={s.listHeaderRow}>
               <Text style={s.listTitle}>Products ({products.length})</Text>
-              <Pressable onPress={() => setShowAddModal(true)} style={s.headerAddBtn}>
+              <Pressable
+                onPress={() => {
+                  resetAddForm();
+                  setShowAddModal(true);
+                }}
+                style={s.headerAddBtn}
+              >
                 <MaterialCommunityIcons name="plus" size={18} color="#fff" />
               </Pressable>
             </View>
@@ -401,6 +443,23 @@ export default function VendorStoreDetail() {
               style={s.inputCompact}
               placeholder="Address"
             />
+            <Text style={s.fieldLabel}>Shop Category</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.itemCategoryRow}>
+              {categories.map((category: any) => {
+                const active = editForm.category_id === category.id;
+                return (
+                  <Pressable
+                    key={category.id}
+                    onPress={() => setEditForm({ ...editForm, category_id: category.id })}
+                    style={[s.itemCategoryChip, active && s.itemCategoryChipActive]}
+                  >
+                    <Text style={[s.itemCategoryChipText, active && s.itemCategoryChipTextActive]}>
+                      {category.name}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
             <View style={s.modalActions}>
               <Pressable onPress={() => setShowSettings(false)} style={{ padding: 6 }}>
                 <Text style={{ color: "#374151", fontWeight: "600", fontSize: 13 }}>Cancel</Text>
@@ -439,22 +498,40 @@ export default function VendorStoreDetail() {
                 style={[s.inputCompact, s.inputHighlighted]}
               />
 
-              {form.category_id ? (
+              {store?.category_id ? (
                 <View style={s.itemCategorySection}>
+                  <Text style={s.fieldLabel}>
+                    Shop Category: {categories.find((item: any) => item.id === store.category_id)?.name || store.category_id}
+                  </Text>
                   <Text style={s.fieldLabel}>Item Category</Text>
-                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.itemCategoryRow}>
-                    {getItemCategoryOptions(form.category_id, categories).map((category) => (
-                      <Pressable
-                        key={category}
-                        onPress={() => setForm((prev) => ({ ...prev, item_category: category }))}
-                        style={[s.itemCategoryChip, form.item_category === category && s.itemCategoryChipActive]}
-                      >
-                        <Text style={[s.itemCategoryChipText, form.item_category === category && s.itemCategoryChipTextActive]}>
-                          {category}
-                        </Text>
-                      </Pressable>
-                    ))}
-                  </ScrollView>
+                  {itemCategories.length ? (
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.itemCategoryRow}>
+                      {itemCategories.map((item: any) => {
+                        const active = form.item_category_id === item.id;
+                        return (
+                          <Pressable
+                            key={item.id}
+                            onPress={() =>
+                              setForm((prev) => ({
+                                ...prev,
+                                item_category: item.name,
+                                item_category_id: item.id,
+                              }))
+                            }
+                            style={[s.itemCategoryChip, active && s.itemCategoryChipActive]}
+                          >
+                            <Text style={[s.itemCategoryChipText, active && s.itemCategoryChipTextActive]}>
+                              {item.name}
+                            </Text>
+                          </Pressable>
+                        );
+                      })}
+                    </ScrollView>
+                  ) : (
+                    <Text style={{ color: COLORS.textMuted, fontSize: 11, marginTop: 2 }}>
+                      No item categories configured by admin for this shop category.
+                    </Text>
+                  )}
                 </View>
               ) : null}
 
@@ -531,21 +608,11 @@ export default function VendorStoreDetail() {
                 multiline
               />
 
-              {/* Category Chips */}
-              <Text style={s.sectionLabel}>Category</Text>
-              <View style={s.catContainer}>
-                {categories.map((c) => {
-                  const active = form.category_id === c.id;
-                  return (
-                    <Pressable
-                      key={c.id}
-                      style={[s.catChip, active && s.catChipActive]}
-                      onPress={() => setForm({ ...form, category_id: c.id })}
-                    >
-                      <Text style={[s.catChipText, active && s.catChipTextActive]}>{c.name}</Text>
-                    </Pressable>
-                  );
-                })}
+              <View style={{ marginTop: 3, marginBottom: 5 }}>
+                <Text style={s.sectionLabel}>Store Category</Text>
+                <Text style={{ color: COLORS.text, fontSize: 12, fontWeight: "800" }}>
+                  {categories.find((c: any) => c.id === store?.category_id)?.name || store?.category_id || "Not set"}
+                </Text>
               </View>
 
               {/* Mark as Trending Checkbox */}
@@ -607,22 +674,40 @@ export default function VendorStoreDetail() {
                 style={[s.inputCompact, s.inputHighlighted]}
               />
 
-              {editProductForm.category_id ? (
+              {store?.category_id ? (
                 <View style={s.itemCategorySection}>
+                  <Text style={s.fieldLabel}>
+                    Shop Category: {categories.find((item: any) => item.id === store.category_id)?.name || store.category_id}
+                  </Text>
                   <Text style={s.fieldLabel}>Item Category</Text>
-                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.itemCategoryRow}>
-                    {getItemCategoryOptions(editProductForm.category_id, categories).map((category) => (
-                      <Pressable
-                        key={category}
-                        onPress={() => setEditProductForm((prev) => ({ ...prev, item_category: category }))}
-                        style={[s.itemCategoryChip, editProductForm.item_category === category && s.itemCategoryChipActive]}
-                      >
-                        <Text style={[s.itemCategoryChipText, editProductForm.item_category === category && s.itemCategoryChipTextActive]}>
-                          {category}
-                        </Text>
-                      </Pressable>
-                    ))}
-                  </ScrollView>
+                  {itemCategories.length ? (
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.itemCategoryRow}>
+                      {itemCategories.map((item: any) => {
+                        const active = editProductForm.item_category_id === item.id;
+                        return (
+                          <Pressable
+                            key={item.id}
+                            onPress={() =>
+                              setEditProductForm((prev) => ({
+                                ...prev,
+                                item_category: item.name,
+                                item_category_id: item.id,
+                              }))
+                            }
+                            style={[s.itemCategoryChip, active && s.itemCategoryChipActive]}
+                          >
+                            <Text style={[s.itemCategoryChipText, active && s.itemCategoryChipTextActive]}>
+                              {item.name}
+                            </Text>
+                          </Pressable>
+                        );
+                      })}
+                    </ScrollView>
+                  ) : (
+                    <Text style={{ color: COLORS.textMuted, fontSize: 11, marginTop: 2 }}>
+                      No item categories configured by admin for this shop category.
+                    </Text>
+                  )}
                 </View>
               ) : null}
 
@@ -703,21 +788,11 @@ export default function VendorStoreDetail() {
                 multiline
               />
 
-              {/* Category Chips */}
-              <Text style={s.sectionLabel}>Category</Text>
-              <View style={s.catContainer}>
-                {categories.map((c) => {
-                  const active = editProductForm.category_id === c.id;
-                  return (
-                    <Pressable
-                      key={c.id}
-                      style={[s.catChip, active && s.catChipActive]}
-                      onPress={() => setEditProductForm({ ...editProductForm, category_id: c.id })}
-                    >
-                      <Text style={[s.catChipText, active && s.catChipTextActive]}>{c.name}</Text>
-                    </Pressable>
-                  );
-                })}
+              <View style={{ marginTop: 3, marginBottom: 5 }}>
+                <Text style={s.sectionLabel}>Store Category</Text>
+                <Text style={{ color: COLORS.text, fontSize: 12, fontWeight: "800" }}>
+                  {categories.find((c: any) => c.id === store?.category_id)?.name || store?.category_id || "Not set"}
+                </Text>
               </View>
 
               {/* Mark as Trending Checkbox */}
