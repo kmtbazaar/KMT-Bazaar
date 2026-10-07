@@ -153,7 +153,9 @@ export default function StoreProducts() {
 
   const renderItem = useCallback(
     ({ item }: { item: any }) => (
-      <ProductCard p={item} compact={true} />
+      <View style={s.gridCell}>
+        <ProductCard p={item} compact={true} storeGrid />
+      </View>
     ),
     []
   );
@@ -426,8 +428,14 @@ const s = StyleSheet.create({
   },
 
   column: {
-    gap: 2,
+    gap: 0,
     alignItems: "stretch",
+  },
+
+  gridCell: {
+    width: "50%",
+    paddingHorizontal: 3,
+    alignSelf: "flex-start",
   },
 
   empty: {
