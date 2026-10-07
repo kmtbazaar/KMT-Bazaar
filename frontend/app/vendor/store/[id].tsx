@@ -20,6 +20,7 @@ import { api, uploadImageAsset } from "@/src/api";
 import { COLORS, RADIUS, shadow } from "@/src/theme";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { getItemCategoryOptions } from "@/src/itemCategories";
 
 export default function VendorStoreDetail() {
   const router = useRouter();
@@ -52,6 +53,7 @@ export default function VendorStoreDetail() {
     image: "",
     description: "",
     trending: false,
+    item_category: "",
   });
 
   const [showEditProductModal, setShowEditProductModal] = useState(false);
@@ -66,6 +68,7 @@ export default function VendorStoreDetail() {
     image: "",
     description: "",
     trending: false,
+    item_category: "",
   });
 
   const load = useCallback(async () => {
@@ -435,6 +438,25 @@ export default function VendorStoreDetail() {
                 style={[s.inputCompact, s.inputHighlighted]}
               />
 
+              {form.category_id ? (
+                <View style={s.itemCategorySection}>
+                  <Text style={s.fieldLabel}>Item Category</Text>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.itemCategoryRow}>
+                    {getItemCategoryOptions(form.category_id, categories).map((category) => (
+                      <Pressable
+                        key={category}
+                        onPress={() => setForm((prev) => ({ ...prev, item_category: category }))}
+                        style={[s.itemCategoryChip, form.item_category === category && s.itemCategoryChipActive]}
+                      >
+                        <Text style={[s.itemCategoryChipText, form.item_category === category && s.itemCategoryChipTextActive]}>
+                          {category}
+                        </Text>
+                      </Pressable>
+                    ))}
+                  </ScrollView>
+                </View>
+              ) : null}
+
               {/* Price & MRP Row */}
               <View style={s.rowCompact}>
                 <TextInput
@@ -583,6 +605,25 @@ export default function VendorStoreDetail() {
                 onChangeText={(t) => setEditProductForm({ ...editProductForm, name: t })}
                 style={[s.inputCompact, s.inputHighlighted]}
               />
+
+              {editProductForm.category_id ? (
+                <View style={s.itemCategorySection}>
+                  <Text style={s.fieldLabel}>Item Category</Text>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.itemCategoryRow}>
+                    {getItemCategoryOptions(editProductForm.category_id, categories).map((category) => (
+                      <Pressable
+                        key={category}
+                        onPress={() => setEditProductForm((prev) => ({ ...prev, item_category: category }))}
+                        style={[s.itemCategoryChip, editProductForm.item_category === category && s.itemCategoryChipActive]}
+                      >
+                        <Text style={[s.itemCategoryChipText, editProductForm.item_category === category && s.itemCategoryChipTextActive]}>
+                          {category}
+                        </Text>
+                      </Pressable>
+                    ))}
+                  </ScrollView>
+                </View>
+              ) : null}
 
               {/* Price & MRP Row */}
               <View style={s.rowCompact}>
