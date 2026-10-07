@@ -124,6 +124,26 @@ products: () =>
       method: "DELETE",
     }),
 
+  itemCategories: () =>
+    apiFetch<any[]>("/admin/item-categories"),
+
+  createItemCategory: (data: any) =>
+    apiFetch("/admin/item-categories", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  updateItemCategory: (id: string, data: any) =>
+    apiFetch(`/admin/item-categories/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    }),
+
+  deleteItemCategory: (id: string) =>
+    apiFetch(`/admin/item-categories/${id}`, {
+      method: "DELETE",
+    }),
+
   createBanner: (data: any) =>
     apiFetch("/admin/banners", {
       method: "POST",
