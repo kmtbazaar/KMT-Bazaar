@@ -13,7 +13,6 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { api } from "@/src/api";
 import ProductCard from "@/src/components/ProductCard";
 import CheckoutBar from "@/src/components/CheckoutBar";
-import { getItemCategoryOptions } from "@/src/itemCategories";
 import { COLORS, SPACING } from "@/src/theme";
 
 function itemCategoryIcon(name: string): any {
@@ -52,6 +51,7 @@ export default function StoreProducts() {
   const [products, setProducts] = useState<any[]>([]);
   const [store, setStore] = useState<any | null>(null);
   const [categories, setCategories] = useState<any[]>([]);
+  const [adminItemCategories, setAdminItemCategories] = useState<any[]>([]);
   const [selectedItemCategory, setSelectedItemCategory] = useState("All");
   const [loading, setLoading] = useState(true);
 
@@ -87,10 +87,15 @@ export default function StoreProducts() {
             )
           : [];
 
+        const configuredItemCategories = selectedStore?.category_id
+          ? await api.itemCategories(selectedStore.category_id)
+          : [];
+
         if (!mounted) return;
 
         setStore(selectedStore || null);
         setCategories(categoryList || []);
+        setAdminItemCategories(configuredItemCategories || []);
         setProducts(storeProducts);
         setSelectedItemCategory("All");
       } catch (error) {
@@ -98,6 +103,7 @@ export default function StoreProducts() {
         if (mounted) {
           setStore(null);
           setCategories([]);
+          setAdminItemCategories([]);
           setProducts([]);
           setSelectedItemCategory("All");
         }
@@ -113,11 +119,11 @@ export default function StoreProducts() {
   }, [id]);
 
   const itemCategories = useMemo(() => {
-    const configured = Array.isArray(store?.item_categories)
-      ? store.item_categories.filter((value: any) => String(value).trim())
-      : [];
+    if (adminItemCategories.length) {
+      return adminItemCategories;
+    }
 
-    const fromProducts = Array.from(
+    const legacyNames = Array.from(
       new Set(
         products
           .map((product: any) => String(product.item_category || "").trim())
@@ -125,21 +131,25 @@ export default function StoreProducts() {
       )
     );
 
-    if (fromProducts.length) return fromProducts;
-    if (configured.length) return configured;
-
-    return getItemCategoryOptions(store?.category_id || "", categories);
-  }, [store?.item_categories, store?.category_id, categories]);
+    return legacyNames.map((name: string) => ({
+      id: `legacy-${name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`,
+      name,
+    }));
+  }, [adminItemCategories, products]);
 
   const filteredProducts = useMemo(() => {
     if (selectedItemCategory === "All") return products;
 
-    return products.filter(
-      (product: any) =>
-        String(product.item_category || "").toLowerCase() ===
-        selectedItemCategory.toLowerCase()
+    const selected = itemCategories.find(
+      (category: any) => String(category.id) === String(selectedItemCategory)
     );
-  }, [products, selectedItemCategory]);
+    if (!selected) return products;
+
+    return products.filter((product: any) =>
+      String(product.item_category_id || "") === String(selected.id) ||
+      String(product.item_category || "").toLowerCase() === String(selected.name || "").toLowerCase()
+    );
+  }, [products, selectedItemCategory, itemCategories]);
 
   const renderItem = useCallback(
     ({ item }: { item: any }) => (
@@ -204,17 +214,17 @@ export default function StoreProducts() {
               </Text>
             </Pressable>
 
-            {itemCategories.map((category: string) => {
-              const active = selectedItemCategory === category;
+            {itemCategories.map((category: any) => {
+              const active = String(selectedItemCategory) === String(category.id);
               return (
                 <Pressable
-                  key={category}
-                  onPress={() => setSelectedItemCategory(category)}
+                  key={category.id}
+                  onPress={() => setSelectedItemCategory(category.id)}
                   style={[s.categoryItem, active && s.categoryItemActive]}
                 >
                   <View style={[s.categoryIcon, active && s.categoryIconActive]}>
                     <MaterialCommunityIcons
-                      name={itemCategoryIcon(category)}
+                      name={itemCategoryIcon(category.name)}
                       size={21}
                       color={active ? "#fff" : COLORS.textMuted}
                     />
@@ -223,7 +233,7 @@ export default function StoreProducts() {
                     style={[s.categoryLabel, active && s.categoryLabelActive]}
                     numberOfLines={2}
                   >
-                    {category}
+                    {category.name}
                   </Text>
                 </Pressable>
               );
@@ -248,7 +258,9 @@ export default function StoreProducts() {
               <Text style={s.productsTitle}>
                 {selectedItemCategory === "All"
                   ? "All Products"
-                  : selectedItemCategory}
+                  : itemCategories.find(
+                      (category: any) => String(category.id) === String(selectedItemCategory)
+                    )?.name || selectedItemCategory}
               </Text>
               <Text style={s.productsCount}>
                 {filteredProducts.length} item{filteredProducts.length === 1 ? "" : "s"}
