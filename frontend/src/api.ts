@@ -144,12 +144,15 @@ export async function apiFetch<T = any>(
   return json as T;
 }
 
-export async function uploadImageAsset(asset: {
-  uri: string;
-  fileName?: string | null;
-  mimeType?: string | null;
-  file?: any;
-}): Promise<string> {
+export async function uploadImageAsset(
+  asset: {
+    uri: string;
+    fileName?: string | null;
+    mimeType?: string | null;
+    file?: any;
+  },
+  purpose?: "product" | "general"
+): Promise<string> {
   const token = await getToken();
   const formData = new FormData();
 
@@ -173,9 +176,17 @@ export async function uploadImageAsset(asset: {
     } as any);
   }
 
+  const uploadHeaders: Record<string, string> = token
+    ? { Authorization: `Bearer ${token}` }
+    : {};
+
+  if (purpose === "product") {
+    uploadHeaders["X-KMT-Image-Purpose"] = "product";
+  }
+
   const response = await fetch(`${API}/uploads/image`, {
     method: "POST",
-    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    headers: uploadHeaders,
     body: formData,
   });
 
