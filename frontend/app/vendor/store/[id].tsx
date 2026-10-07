@@ -944,6 +944,47 @@ const s = StyleSheet.create({
   },
 
   // List Header Title Row
+  productTools: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginHorizontal: 16,
+    marginBottom: 10,
+  },
+  productSearch: {
+    flex: 1,
+    height: 42,
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    backgroundColor: "#fff",
+    color: "#111827",
+  },
+  stockFilter: {
+    height: 42,
+    paddingHorizontal: 11,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#FED7AA",
+    backgroundColor: "#FFF7ED",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+  },
+  stockFilterActive: {
+    backgroundColor: "#D97706",
+    borderColor: "#D97706",
+  },
+  stockFilterText: {
+    color: "#D97706",
+    fontSize: 12,
+    fontWeight: "800",
+  },
+  stockFilterTextActive: {
+    color: "#fff",
+  },
+
   listHeaderRow: {
     flexDirection: "row",
     alignItems: "center",
