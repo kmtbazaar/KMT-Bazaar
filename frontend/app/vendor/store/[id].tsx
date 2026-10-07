@@ -255,6 +255,7 @@ export default function VendorStoreDetail() {
       image: prod.image || "",
       description: prod.description || "",
       trending: !!prod.trending,
+      item_category: prod.item_category || "",
     });
     setShowEditProductModal(true);
   };
