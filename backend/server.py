@@ -1149,9 +1149,14 @@ async def list_categories():
 
 
 @api.get("/item-categories")
-async def list_item_categories(category_id: Optional[str] = None):
+async def list_item_categories(
+    category_id: Optional[str] = None,
+    store_id: Optional[str] = None,
+):
     query = {"active": {"$ne": False}}
-    if category_id:
+    if store_id:
+        query["store_id"] = store_id
+    elif category_id:
         query["category_id"] = category_id
     return await db.item_categories.find(
         query,
@@ -2295,6 +2300,22 @@ class ItemCategoryIn(BaseModel):
 
 
 class ItemCategoryUpdateIn(BaseModel):
+    name: str
+    icon: str = "tag-outline"
+    color: str = "#F97316"
+    order: int = 99
+    active: bool = True
+
+
+class StoreItemCategoryIn(BaseModel):
+    name: str
+    icon: str = "tag-outline"
+    color: str = "#F97316"
+    order: int = 99
+    active: bool = True
+
+
+class StoreItemCategoryUpdateIn(BaseModel):
     name: str
     icon: str = "tag-outline"
     color: str = "#F97316"
@@ -3842,6 +3863,7 @@ async def _vendor_store_ids(vendor_id: str):
 
 
 async def _resolve_vendor_item_category(
+    store_id: str,
     store_category_id: str,
     item_category_id: Optional[str],
     item_category_name: Optional[str],
@@ -3850,13 +3872,24 @@ async def _resolve_vendor_item_category(
         item = await db.item_categories.find_one(
             {
                 "id": item_category_id,
-                "category_id": store_category_id,
+                "store_id": store_id,
                 "active": {"$ne": False},
             },
             {"_id": 0, "id": 1, "name": 1}
         )
+        # Backward compatibility for products created with the old
+        # admin-defined global item categories.
         if not item:
-            raise HTTPException(400, "Invalid item category for this shop category")
+            item = await db.item_categories.find_one(
+                {
+                    "id": item_category_id,
+                    "category_id": store_category_id,
+                    "active": {"$ne": False},
+                },
+                {"_id": 0, "id": 1, "name": 1}
+            )
+        if not item:
+            raise HTTPException(400, "Invalid item category for this store")
         return {
             "item_category_id": item["id"],
             "item_category": item["name"],
@@ -3871,20 +3904,29 @@ async def _resolve_vendor_item_category(
 
     item = await db.item_categories.find_one(
         {
-            "category_id": store_category_id,
+            "store_id": store_id,
             "name": {"$regex": f"^{re.escape(name)}$", "$options": "i"},
             "active": {"$ne": False},
         },
         {"_id": 0, "id": 1, "name": 1}
     )
+    # Backward compatibility for old global categories.
     if not item:
-        raise HTTPException(400, "Invalid item category for this shop category")
+        item = await db.item_categories.find_one(
+            {
+                "category_id": store_category_id,
+                "name": {"$regex": f"^{re.escape(name)}$", "$options": "i"},
+                "active": {"$ne": False},
+            },
+            {"_id": 0, "id": 1, "name": 1}
+        )
+    if not item:
+        raise HTTPException(400, "Invalid item category for this store")
 
     return {
         "item_category_id": item["id"],
         "item_category": item["name"],
     }
-
 
 class OnlineIn(BaseModel):
     online: bool
@@ -4090,6 +4132,156 @@ async def vendor_stats(current=Depends(require_roles("vendor"))):
     }
 
 
+@api.get("/vendor/stores/{store_id}/item-categories")
+async def vendor_list_store_item_categories(
+    store_id: str,
+    current=Depends(require_roles("vendor"))
+):
+    store = await db.stores.find_one(
+        {"id": store_id, "vendor_id": current["id"]},
+        {"_id": 0, "id": 1}
+    )
+    if not store:
+        raise HTTPException(404, "Store not found or not owned by vendor")
+
+    return await db.item_categories.find(
+        {"store_id": store_id},
+        {"_id": 0}
+    ).sort([("order", 1), ("name", 1)]).to_list(200)
+
+
+@api.post("/vendor/stores/{store_id}/item-categories")
+async def vendor_create_store_item_category(
+    store_id: str,
+    data: StoreItemCategoryIn,
+    current=Depends(require_roles("vendor"))
+):
+    store = await db.stores.find_one(
+        {"id": store_id, "vendor_id": current["id"]},
+        {"_id": 0, "id": 1}
+    )
+    if not store:
+        raise HTTPException(404, "Store not found or not owned by vendor")
+
+    name = str(data.name or "").strip()
+    if not name:
+        raise HTTPException(400, "Item category name is required")
+
+    duplicate = await db.item_categories.find_one({
+        "store_id": store_id,
+        "name": {"$regex": f"^{re.escape(name)}$", "$options": "i"},
+    })
+    if duplicate:
+        raise HTTPException(409, "This item category already exists in this store")
+
+    slug = re.sub(r"[^a-z0-9]+", "-", name.lower()).strip("-")
+    if not slug:
+        raise HTTPException(400, "Enter a valid item category name")
+
+    base_id = f"item-{store_id}-{slug}"
+    item_id = base_id
+    suffix = 2
+    while await db.item_categories.find_one({"id": item_id}, {"_id": 1}):
+        item_id = f"{base_id}-{suffix}"
+        suffix += 1
+
+    doc = {
+        "id": item_id,
+        "name": name,
+        "store_id": store_id,
+        "vendor_id": current["id"],
+        "icon": data.icon,
+        "color": data.color,
+        "order": data.order,
+        "active": data.active,
+        "created_at": now_iso(),
+        "updated_at": now_iso(),
+    }
+    await db.item_categories.insert_one(dict(doc))
+    return {k: v for k, v in doc.items() if k != "_id"}
+
+
+@api.put("/vendor/stores/{store_id}/item-categories/{item_id}")
+async def vendor_update_store_item_category(
+    store_id: str,
+    item_id: str,
+    data: StoreItemCategoryUpdateIn,
+    current=Depends(require_roles("vendor"))
+):
+    store = await db.stores.find_one(
+        {"id": store_id, "vendor_id": current["id"]},
+        {"_id": 0, "id": 1}
+    )
+    if not store:
+        raise HTTPException(404, "Store not found or not owned by vendor")
+
+    name = str(data.name or "").strip()
+    if not name:
+        raise HTTPException(400, "Item category name is required")
+
+    current_item = await db.item_categories.find_one(
+        {"id": item_id, "store_id": store_id, "vendor_id": current["id"]},
+        {"_id": 0}
+    )
+    if not current_item:
+        raise HTTPException(404, "Item category not found")
+
+    duplicate = await db.item_categories.find_one({
+        "id": {"$ne": item_id},
+        "store_id": store_id,
+        "name": {"$regex": f"^{re.escape(name)}$", "$options": "i"},
+    })
+    if duplicate:
+        raise HTTPException(409, "This item category already exists in this store")
+
+    await db.item_categories.update_one(
+        {"id": item_id, "store_id": store_id, "vendor_id": current["id"]},
+        {"$set": {
+            "name": name,
+            "icon": data.icon,
+            "color": data.color,
+            "order": data.order,
+            "active": data.active,
+            "updated_at": now_iso(),
+        }}
+    )
+
+    # Keep stored product category names in sync with the renamed category.
+    await db.products.update_many(
+        {"store_id": store_id, "item_category_id": item_id},
+        {"$set": {"item_category": name}}
+    )
+
+    return await db.item_categories.find_one({"id": item_id}, {"_id": 0})
+
+
+@api.delete("/vendor/stores/{store_id}/item-categories/{item_id}")
+async def vendor_delete_store_item_category(
+    store_id: str,
+    item_id: str,
+    current=Depends(require_roles("vendor"))
+):
+    store = await db.stores.find_one(
+        {"id": store_id, "vendor_id": current["id"]},
+        {"_id": 0, "id": 1}
+    )
+    if not store:
+        raise HTTPException(404, "Store not found or not owned by vendor")
+
+    result = await db.item_categories.update_one(
+        {"id": item_id, "store_id": store_id, "vendor_id": current["id"]},
+        {"$set": {"active": False, "updated_at": now_iso()}}
+    )
+    if result.matched_count == 0:
+        raise HTTPException(404, "Item category not found")
+
+    await db.products.update_many(
+        {"store_id": store_id, "item_category_id": item_id},
+        {"$unset": {"item_category_id": "", "item_category": ""}}
+    )
+    return {"ok": True}
+
+
 @api.get("/vendor/products")
 async def vendor_products(current=Depends(require_roles("vendor"))):
     store_ids, _ = await _vendor_store_ids(current["id"])
@@ -4118,6 +4310,7 @@ async def vendor_create_product(data: ProductIn, current=Depends(require_roles("
     doc["category_id"] = store_category_id
     doc.update(
         await _resolve_vendor_item_category(
+            sid,
             store_category_id,
             data.item_category_id,
             data.item_category,
@@ -4150,6 +4343,7 @@ async def vendor_update_product(pid: str, data: ProductIn, current=Depends(requi
     upd["category_id"] = store_category_id
     upd.update(
         await _resolve_vendor_item_category(
+            p.get("store_id"),
             store_category_id,
             data.item_category_id,
             data.item_category,
