@@ -995,6 +995,41 @@ const s = StyleSheet.create({
   catChipText: { fontSize: 12, color: "#374151", fontWeight: "600" },
   catChipTextActive: { color: "#fff", fontWeight: "700" },
 
+  itemCategorySection: {
+    marginBottom: 8,
+  },
+  fieldLabel: {
+    fontSize: 12,
+    fontWeight: "800",
+    color: "#374151",
+    marginBottom: 6,
+  },
+  itemCategoryRow: {
+    gap: 6,
+    paddingBottom: 2,
+  },
+  itemCategoryChip: {
+    paddingHorizontal: 11,
+    paddingVertical: 7,
+    borderRadius: 16,
+    backgroundColor: "#F8FAFC",
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+  },
+  itemCategoryChipActive: {
+    backgroundColor: "#EA580C",
+    borderColor: "#EA580C",
+  },
+  itemCategoryChipText: {
+    fontSize: 11,
+    color: "#475569",
+    fontWeight: "700",
+  },
+  itemCategoryChipTextActive: {
+    color: "#fff",
+    fontWeight: "800",
+  },
+
   // Checkbox
   checkboxRow: { flexDirection: "row", alignItems: "center", gap: 6, marginVertical: 4 },
   checkboxLabel: { fontSize: 13, fontWeight: "700", color: "#000" },
