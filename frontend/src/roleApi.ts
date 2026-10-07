@@ -239,6 +239,26 @@ export const vendorApi = {
   products: () =>
     apiFetch<any[]>("/vendor/products"),
 
+  storeItemCategories: (storeId: string) =>
+    apiFetch<any[]>(`/vendor/stores/${encodeURIComponent(storeId)}/item-categories`),
+
+  createStoreItemCategory: (storeId: string, data: any) =>
+    apiFetch<any>(`/vendor/stores/${encodeURIComponent(storeId)}/item-categories`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  updateStoreItemCategory: (storeId: string, itemId: string, data: any) =>
+    apiFetch<any>(`/vendor/stores/${encodeURIComponent(storeId)}/item-categories/${encodeURIComponent(itemId)}`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    }),
+
+  deleteStoreItemCategory: (storeId: string, itemId: string) =>
+    apiFetch<any>(`/vendor/stores/${encodeURIComponent(storeId)}/item-categories/${encodeURIComponent(itemId)}`, {
+      method: "DELETE",
+    }),
+
   createProduct: (data: any) =>
     apiFetch("/vendor/products", {
       method: "POST",
