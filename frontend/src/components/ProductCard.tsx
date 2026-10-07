@@ -27,9 +27,11 @@ const CARD_MARGIN = 6;
 export default function ProductCard({
   p,
   compact = false,
+  storeGrid = false,
 }: {
   p: any;
   compact?: boolean;
+  storeGrid?: boolean;
 }) {
   const router = useRouter();
   const { add, update, cart } = useCart();
@@ -111,6 +113,7 @@ export default function ProductCard({
       style={[
         animStyle,
         compact ? s.cardCompact : s.card,
+        compact && storeGrid && s.cardStoreGrid,
       ]}
     >
       <View style={{ flex: 1 }}>
@@ -285,6 +288,11 @@ const s = StyleSheet.create({
     overflow: "hidden",
     borderWidth: 1,
     borderColor: COLORS.border,
+  },
+
+  cardStoreGrid: {
+    margin: 0,
+    alignSelf: "stretch",
   },
 
   imgWrap: {
