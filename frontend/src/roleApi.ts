@@ -251,6 +251,17 @@ export const vendorApi = {
       body: JSON.stringify(data),
     }),
 
+  toggleProductAvailability: (id: string, online: boolean) =>
+    apiFetch(`/vendor/products/${encodeURIComponent(id)}/availability`, {
+      method: "POST",
+      body: JSON.stringify({ online }),
+    }),
+
+  duplicateProduct: (id: string) =>
+    apiFetch(`/vendor/products/${encodeURIComponent(id)}/duplicate`, {
+      method: "POST",
+    }),
+
   deleteProduct: (id: string) =>
     apiFetch("/vendor/products/" + id, {
       method: "DELETE",
