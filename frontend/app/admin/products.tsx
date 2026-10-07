@@ -18,7 +18,7 @@ export default function AdminProducts() {
 
   const load = useCallback(async () => {
     try {
-      const [p, c] = await Promise.all([api.products({}), api.categories()]);
+      const [p, c] = await Promise.all([adminApi.products(), api.categories()]);
       setProducts(p); setCats(c);
     } catch {}
   }, []);
@@ -67,21 +67,60 @@ export default function AdminProducts() {
 }
 
 function ProductModal({ visible, onClose, onSaved, edit, categories }: any) {
-  const [f, setF] = useState({ name: "", price: "", mrp: "", stock: "", unit: "", image: "", description: "", category_id: "", trending: false });
+  const [f, setF] = useState({
+    name: "",
+    price: "",
+    mrp: "",
+    stock: "",
+    unit: "",
+    image: "",
+    description: "",
+    category_id: "",
+    item_category: "",
+    item_category_id: "",
+    is_available: true,
+    trending: false,
+  });
   React.useEffect(() => {
     if (edit) setF({
       name: edit.name || "", price: String(edit.price || ""), mrp: String(edit.mrp || ""),
       stock: String(edit.stock || ""), unit: edit.unit || "", image: edit.image || "",
-      description: edit.description || "", category_id: edit.category_id || "", trending: !!edit.trending,
+      description: edit.description || "",
+      category_id: edit.category_id || "",
+      item_category: edit.item_category || "",
+      item_category_id: edit.item_category_id || "",
+      is_available: edit.is_available !== false,
+      trending: !!edit.trending,
     });
-    else setF({ name: "", price: "", mrp: "", stock: "", unit: "", image: "", description: "", category_id: categories[0]?.id || "", trending: false });
+    else setF({
+      name: "",
+      price: "",
+      mrp: "",
+      stock: "",
+      unit: "",
+      image: "",
+      description: "",
+      category_id: categories[0]?.id || "",
+      item_category: "",
+      item_category_id: "",
+      is_available: true,
+      trending: false,
+    });
   }, [edit, visible]);
 
   const save = async () => {
     const payload = {
       name: f.name, price: parseFloat(f.price) || 0, mrp: parseFloat(f.mrp) || parseFloat(f.price) || 0,
-      stock: parseInt(f.stock) || 0, unit: f.unit, image: f.image, description: f.description,
-      category_id: f.category_id, trending: f.trending, store_id: edit?.store_id || null,
+      stock: parseInt(f.stock) || 0,
+      unit: f.unit,
+      image: f.image,
+      description: f.description,
+      category_id: f.category_id,
+      item_category: f.item_category,
+      item_category_id: f.item_category_id || null,
+      is_available: f.is_available,
+      trending: f.trending,
+      store_id: edit?.store_id || null,
     };
     if (edit) await adminApi.updateProduct(edit.id, payload);
     else await adminApi.createProduct(payload);
@@ -106,6 +145,19 @@ function ProductModal({ visible, onClose, onSaved, edit, categories }: any) {
             </View>
             <ImageUploader value={f.image} onChange={(uri) => setF({ ...f, image: uri })} label="Product Image" aspect={[1, 1]} testID="pf-image" />
             <Field ph="Description" v={f.description} oc={(v: string) => setF({ ...f, description: v })} multiline testID="pf-desc" />
+            {!!edit?.store_id && (
+              <Text style={ms.storeInfo}>
+                Store: {edit.store_name || edit.store_id}
+              </Text>
+            )}
+            <Text style={ms.label}>Item Category</Text>
+            <Field
+              ph="Item Category"
+              v={f.item_category}
+              oc={(v: string) => setF({ ...f, item_category: v })}
+              testID="pf-item-category"
+            />
+            <Text style={ms.hint}>Existing vendor item category is preserved. Change only when needed.</Text>
             <Text style={ms.label}>Category</Text>
             <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6, marginBottom: 8 }}>
               {categories.map((c: any) => (
@@ -119,6 +171,10 @@ function ProductModal({ visible, onClose, onSaved, edit, categories }: any) {
                 </Pressable>
               ))}
             </View>
+            <Pressable testID="pf-availability" onPress={() => setF({ ...f, is_available: !f.is_available })} style={ms.checkRow}>
+              <MaterialCommunityIcons name={f.is_available ? "checkbox-marked" : "checkbox-blank-outline"} size={20} color={f.is_available ? "#16A34A" : COLORS.textMuted} />
+              <Text style={ms.checkText}>{f.is_available ? "Product available to customers" : "Product hidden from customers"}</Text>
+            </Pressable>
             <Pressable testID="pf-trending" onPress={() => setF({ ...f, trending: !f.trending })} style={ms.checkRow}>
               <MaterialCommunityIcons name={f.trending ? "checkbox-marked" : "checkbox-blank-outline"} size={20} color={COLORS.brand} />
               <Text style={ms.checkText}>Mark as trending</Text>
@@ -144,6 +200,8 @@ const ms = StyleSheet.create({
   handle: { width: 40, height: 4, backgroundColor: COLORS.border, alignSelf: "center", borderRadius: 2, marginBottom: 12 },
   title: { fontSize: 18, fontWeight: "800", color: COLORS.text, marginBottom: 12 },
   label: { fontWeight: "700", color: COLORS.text, marginTop: 8, marginBottom: 6 },
+  storeInfo: { color: COLORS.textSecondary, fontSize: 11, fontWeight: "700", marginBottom: 5 },
+  hint: { color: COLORS.textMuted, fontSize: 10, marginBottom: 6, lineHeight: 14 },
   input: { backgroundColor: COLORS.surfaceSecondary, borderRadius: RADIUS.md, padding: 12, marginBottom: 8, borderWidth: 1, borderColor: COLORS.border, fontSize: 14 },
   catChip: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: RADIUS.pill, borderWidth: 1, borderColor: COLORS.border },
   catText: { color: COLORS.textSecondary, fontWeight: "600", fontSize: 12 },
