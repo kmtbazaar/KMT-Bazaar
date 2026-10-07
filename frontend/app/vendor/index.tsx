@@ -89,7 +89,7 @@ function StoreVendorDashboard() {
   };
   
   const [showCreateStore, setShowCreateStore] = useState(false);
-  const [storeForm, setStoreForm] = useState({ name: "", address: "", image: "", category_id: "cat-grocery" }); 
+  const [storeForm, setStoreForm] = useState({ name: "", address: "", image: "", category_id: "" }); 
   const [categories, setCategories] = useState<any[]>([]);
 
   // Profile picture state
@@ -259,15 +259,15 @@ function StoreVendorDashboard() {
   };
 
   const handleCreateStore = async () => {
-    if (!storeForm.name || !storeForm.address) {
-      Alert.alert("Error", "Please fill store name and address.");
+    if (!storeForm.name || !storeForm.address || !storeForm.category_id) {
+      Alert.alert("Error", "Please fill store name, address and shop category.");
       return;
     }
     try {
       await vendorApi.createStore(storeForm); 
       Alert.alert("Success", "Store Created Successfully!");
       setShowCreateStore(false);
-      setStoreForm({ name: "", address: "", image: "", category_id: "cat-grocery" }); 
+      setStoreForm({ name: "", address: "", image: "", category_id: "" }); 
       load(); 
     } catch (error) {
       Alert.alert("Error", "Could not create store.");
@@ -657,6 +657,31 @@ function StoreVendorDashboard() {
               style={s.input}
               multiline
             />
+
+            <Text style={s.label}>Shop Category</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 7, paddingBottom: 10 }}>
+              {categories.map((cat: any) => {
+                const active = storeForm.category_id === cat.id;
+                return (
+                  <Pressable
+                    key={cat.id}
+                    onPress={() => setStoreForm({ ...storeForm, category_id: cat.id })}
+                    style={{
+                      paddingHorizontal: 10,
+                      paddingVertical: 8,
+                      borderRadius: 14,
+                      borderWidth: 1,
+                      borderColor: active ? COLORS.brand : COLORS.border,
+                      backgroundColor: active ? "#FFF7ED" : "#fff",
+                    }}
+                  >
+                    <Text style={{ color: active ? COLORS.brand : COLORS.textMuted, fontSize: 11, fontWeight: "700" }}>
+                      {cat.name}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
 
             <View style={s.modalActions}>
               <Pressable onPress={() => setShowCreateStore(false)} style={s.cancelBtn}>
