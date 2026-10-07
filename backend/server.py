@@ -5,7 +5,7 @@ import secrets
 import re
 import os
 from dotenv import load_dotenv
-from fastapi import FastAPI, APIRouter, HTTPException, Depends, status, File, UploadFile
+from fastapi import FastAPI, APIRouter, HTTPException, Depends, status, File, UploadFile, Header
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from google import genai
@@ -47,6 +47,8 @@ UPLOAD_DIR = Path(os.getenv("UPLOAD_DIR", "/var/www/kmt-bazaar/uploads"))
 PUBLIC_BASE_URL = os.getenv("PUBLIC_BASE_URL", "https://kmtbazaar.com").rstrip("/")
 MAX_UPLOAD_BYTES = 8 * 1024 * 1024
 MAX_IMAGE_SIZE = (1600, 1600)
+PRODUCT_IMAGE_MAX_BYTES = 200 * 1024
+PRODUCT_IMAGE_SIZES = (1000, 800, 640, 512, 448, 384, 320)
 DEFAULT_HOLIDAY_BANNER_URL = "https://images.unsplash.com/photo-1516483638261-f4dbaf036963?w=1800&q=85"
 
 mongo_url = os.environ['MONGO_URL']
@@ -1238,7 +1240,8 @@ async def list_products(
     # Base query:
     # Customer ko sirf approved stores ke products milenge
     query = {
-        "store_id": {"$in": approved_store_ids}
+        "store_id": {"$in": approved_store_ids},
+        "is_available": {"$ne": False},
     }
 
     # IMPORTANT:
@@ -1338,8 +1341,8 @@ async def expand_cart(cart):
             {"_id": 0, "id": 1}
         )
 
-        # Store pending/rejected hai toh product cart me nahi dikhega
-        if not store:
+        # Store pending/rejected ya product unavailable ho toh cart me nahi dikhega
+        if not store or p.get("is_available", True) is False:
             continue
 
         line_total = p["price"] * item["quantity"]
@@ -1404,6 +1407,12 @@ async def add_to_cart(
     )
 
     if not store:
+        raise HTTPException(
+            status_code=400,
+            detail="This product is not available right now"
+        )
+
+    if product.get("is_available", True) is False:
         raise HTTPException(
             status_code=400,
             detail="This product is not available right now"
@@ -2150,9 +2159,49 @@ async def clear_travel_cart(current=Depends(get_current_user)):
     return {"items": [], "total": 0}
 
 
+def _encode_product_webp(image):
+    qualities = (80, 72, 64, 56, 48, 40, 34)
+
+    for max_side in PRODUCT_IMAGE_SIZES:
+        candidate = image.copy()
+        candidate.thumbnail((max_side, max_side), Image.Resampling.LANCZOS)
+
+        if candidate.mode not in ("RGB", "RGBA"):
+            candidate = candidate.convert("RGBA" if "A" in candidate.getbands() else "RGB")
+
+        for quality in qualities:
+            buffer = io.BytesIO()
+            candidate.save(
+                buffer,
+                format="WEBP",
+                quality=quality,
+                method=6,
+            )
+            data = buffer.getvalue()
+            if len(data) <= PRODUCT_IMAGE_MAX_BYTES:
+                return data
+
+    # Safety fallback: keep reducing dimensions until the hard limit is met.
+    candidate = image.copy()
+    max_side = 256
+    while max_side >= 128:
+        candidate.thumbnail((max_side, max_side), Image.Resampling.LANCZOS)
+        if candidate.mode not in ("RGB", "RGBA"):
+            candidate = candidate.convert("RGBA" if "A" in candidate.getbands() else "RGB")
+        buffer = io.BytesIO()
+        candidate.save(buffer, format="WEBP", quality=28, method=6)
+        data = buffer.getvalue()
+        if len(data) <= PRODUCT_IMAGE_MAX_BYTES:
+            return data
+        max_side -= 32
+
+    raise HTTPException(400, "Could not compress product image below 200 KB")
+
+
 @api.post("/uploads/image")
 async def upload_image(
     file: UploadFile = File(...),
+    purpose: Optional[str] = Header(default=None, alias="X-KMT-Image-Purpose"),
     current=Depends(require_roles("admin", "vendor"))
 ):
     if not file.content_type or file.content_type.lower() not in {
@@ -2184,12 +2233,16 @@ async def upload_image(
         filename = f"{uuid.uuid4().hex}.webp"
         output_path = UPLOAD_DIR / filename
 
-        image.save(
-            output_path,
-            format="WEBP",
-            quality=82,
-            method=6
-        )
+        if str(purpose or "").strip().lower() == "product":
+            encoded = _encode_product_webp(image)
+            output_path.write_bytes(encoded)
+        else:
+            image.save(
+                output_path,
+                format="WEBP",
+                quality=82,
+                method=6
+            )
 
         return {
             "url": f"{PUBLIC_BASE_URL}/uploads/{filename}",
@@ -2221,6 +2274,7 @@ class ProductIn(BaseModel):
     stock: int = 0
     image: str = ""
     description: str = ""
+    is_available: bool = True
     trending: bool = False
 
 
@@ -4105,6 +4159,52 @@ async def vendor_update_product(pid: str, data: ProductIn, current=Depends(requi
         upd["mrp"] = upd["price"]
     await db.products.update_one({"id": pid}, {"$set": upd})
     return await db.products.find_one({"id": pid}, {"_id": 0})
+
+
+@api.post("/vendor/products/{pid}/availability")
+async def vendor_product_availability(
+    pid: str,
+    data: OnlineIn,
+    current=Depends(require_roles("vendor"))
+):
+    store_ids, _ = await _vendor_store_ids(current["id"])
+    product = await db.products.find_one(
+        {"id": pid, "store_id": {"$in": store_ids}},
+        {"_id": 0}
+    )
+    if not product:
+        raise HTTPException(404, "Not your product")
+
+    await db.products.update_one(
+        {"id": pid, "store_id": {"$in": store_ids}},
+        {"$set": {"is_available": data.online}}
+    )
+    return {"ok": True, "is_available": data.online}
+
+
+@api.post("/vendor/products/{pid}/duplicate")
+async def vendor_duplicate_product(
+    pid: str,
+    current=Depends(require_roles("vendor"))
+):
+    store_ids, _ = await _vendor_store_ids(current["id"])
+    source = await db.products.find_one(
+        {"id": pid, "store_id": {"$in": store_ids}},
+        {"_id": 0}
+    )
+    if not source:
+        raise HTTPException(404, "Not your product")
+
+    new_product = dict(source)
+    new_product.pop("_id", None)
+    new_product["id"] = "p-" + uuid.uuid4().hex[:8]
+    new_product["vendor_id"] = current["id"]
+    new_product["name"] = f'{str(source.get("name") or "Product").strip()} Copy'
+    new_product["is_available"] = True
+    new_product["created_at"] = now_iso()
+
+    await db.products.insert_one(dict(new_product))
+    return {k: v for k, v in new_product.items() if k != "_id"}
 
 
 @api.delete("/vendor/products/{pid}")
