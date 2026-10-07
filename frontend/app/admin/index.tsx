@@ -1084,7 +1084,7 @@ const s = StyleSheet.create({
 
   kpiCard: {
     width: "100%",
-    minHeight: 142,
+    minHeight: 124,
     backgroundColor: THEME.white,
     borderRadius: 18,
     padding: 13,
