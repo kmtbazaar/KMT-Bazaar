@@ -340,6 +340,13 @@ export const api = {
   categories: () =>
     apiFetch<any[]>("/categories"),
 
+  itemCategories: (categoryId?: string) =>
+    apiFetch<any[]>(
+      categoryId
+        ? `/item-categories?category_id=${encodeURIComponent(categoryId)}`
+        : "/item-categories"
+    ),
+
   banners: () =>
     apiFetch<any[]>("/banners"),
 
@@ -374,6 +381,7 @@ export const api = {
     trending?: boolean;
     store_id?: string;
     item_category?: string;
+    item_category_id?: string;
   } = {}
 ) => {
   const qs = new URLSearchParams();
@@ -396,6 +404,10 @@ export const api = {
 
   if (params.item_category) {
     qs.set("item_category", params.item_category);
+  }
+
+  if (params.item_category_id) {
+    qs.set("item_category_id", params.item_category_id);
   }
 
   const query = qs.toString();
