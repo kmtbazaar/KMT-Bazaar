@@ -43,9 +43,18 @@ export default function AdminCategories() {
       <View style={s.header}>
         <Pressable onPress={() => router.back()} hitSlop={10}><MaterialCommunityIcons name="arrow-left" size={22} color={COLORS.text} /></Pressable>
         <Text style={s.title}>Categories ({cats.length})</Text>
-        <Pressable testID="add-cat-btn" onPress={() => setModal(true)} hitSlop={10}>
-          <MaterialCommunityIcons name="plus-circle" size={26} color={COLORS.brand} />
-        </Pressable>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+          <Pressable
+            onPress={() => router.push("/admin/item-categories")}
+            style={{ flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 9, paddingVertical: 7, borderRadius: 14, borderWidth: 1, borderColor: COLORS.border, backgroundColor: "#fff" }}
+          >
+            <MaterialCommunityIcons name="format-list-bulleted" size={15} color={COLORS.brand} />
+            <Text style={{ color: COLORS.brand, fontSize: 11, fontWeight: "800" }}>Item Categories</Text>
+          </Pressable>
+          <Pressable testID="add-cat-btn" onPress={() => setModal(true)} hitSlop={10}>
+            <MaterialCommunityIcons name="plus-circle" size={26} color={COLORS.brand} />
+          </Pressable>
+        </View>
       </View>
       <FlatList
         data={cats}
