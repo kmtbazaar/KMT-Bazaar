@@ -351,11 +351,13 @@ export const api = {
   categories: () =>
     apiFetch<any[]>("/categories"),
 
-  itemCategories: (categoryId?: string) =>
+  itemCategories: (categoryId?: string, storeId?: string) =>
     apiFetch<any[]>(
-      categoryId
-        ? `/item-categories?category_id=${encodeURIComponent(categoryId)}`
-        : "/item-categories"
+      storeId
+        ? `/item-categories?store_id=${encodeURIComponent(storeId)}`
+        : categoryId
+          ? `/item-categories?category_id=${encodeURIComponent(categoryId)}`
+          : "/item-categories"
     ),
 
   banners: () =>
