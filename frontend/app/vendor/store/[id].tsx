@@ -33,6 +33,8 @@ export default function VendorStoreDetail() {
   const [store, setStore] = useState<any | null>(null);
   const [categories, setCategories] = useState<any[]>([]);
   const [itemCategories, setItemCategories] = useState<any[]>([]);
+  const [itemCategoryName, setItemCategoryName] = useState("");
+  const [editingItemCategoryId, setEditingItemCategoryId] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(false);
   const [productSearch, setProductSearch] = useState("");
@@ -87,8 +89,8 @@ export default function VendorStoreDetail() {
       const currentStore = (vendorStats?.stores || []).find(
         (item: any) => String(item.id) === String(id)
       );
-      const storeItemCategories = currentStore?.category_id
-        ? await api.itemCategories(currentStore.category_id)
+      const storeItemCategories = currentStore
+        ? await vendorApi.storeItemCategories(id)
         : [];
 
       setProducts((all || []).filter((p: any) => p.store_id === id));
@@ -114,6 +116,48 @@ export default function VendorStoreDetail() {
     setRefreshing(true);
     await load();
     setRefreshing(false);
+  };
+
+  const saveStoreItemCategory = async () => {
+    const name = itemCategoryName.trim();
+    if (!name) {
+      Alert.alert("Required", "Enter an item category name.");
+      return;
+    }
+    try {
+      if (editingItemCategoryId) {
+        await vendorApi.updateStoreItemCategory(id, editingItemCategoryId, { name });
+      } else {
+        await vendorApi.createStoreItemCategory(id, { name });
+      }
+      setItemCategoryName("");
+      setEditingItemCategoryId(null);
+      await load();
+    } catch (e: any) {
+      Alert.alert("Error", e?.message || "Could not save item category.");
+    }
+  };
+
+  const editStoreItemCategory = (item: any) => {
+    setEditingItemCategoryId(item.id);
+    setItemCategoryName(item.name || "");
+  };
+
+  const removeStoreItemCategory = async (item: any) => {
+    const confirmed = Platform.OS === "web"
+      ? window.confirm(`Remove item category "${item.name}"?`)
+      : true;
+    if (!confirmed) return;
+    try {
+      await vendorApi.deleteStoreItemCategory(id, item.id);
+      if (editingItemCategoryId === item.id) {
+        setEditingItemCategoryId(null);
+        setItemCategoryName("");
+      }
+      await load();
+    } catch (e: any) {
+      Alert.alert("Error", e?.message || "Could not remove item category.");
+    }
   };
 
   const visibleProducts = useMemo(() => {
@@ -410,6 +454,51 @@ export default function VendorStoreDetail() {
               ) : null}
             </View>
 
+            <View style={s.itemCategoryManager}>
+              <View style={s.itemCategoryManagerHeader}>
+                <View style={{ flex: 1 }}>
+                  <Text style={s.listTitle}>Store Item Categories</Text>
+                  <Text style={s.itemCategoryHint}>Write categories like Jeans, T-Shirts, Shirts. They appear on the customer's left side.</Text>
+                </View>
+              </View>
+              <View style={s.itemCategoryInputRow}>
+                <TextInput
+                  value={itemCategoryName}
+                  onChangeText={setItemCategoryName}
+                  placeholder="e.g. Jeans"
+                  placeholderTextColor="#9CA3AF"
+                  style={[s.inputCompact, s.itemCategoryInput]}
+                  onSubmitEditing={saveStoreItemCategory}
+                />
+                <Pressable onPress={saveStoreItemCategory} style={s.itemCategorySaveBtn}>
+                  <MaterialCommunityIcons name={editingItemCategoryId ? "check" : "plus"} size={18} color="#fff" />
+                </Pressable>
+                {editingItemCategoryId ? (
+                  <Pressable
+                    onPress={() => { setEditingItemCategoryId(null); setItemCategoryName(""); }}
+                    style={s.itemCategoryCancelBtn}
+                  >
+                    <MaterialCommunityIcons name="close" size={18} color="#6B7280" />
+                  </Pressable>
+                ) : null}
+              </View>
+              <View style={s.vendorItemCategoryList}>
+                {itemCategories.length ? itemCategories.map((item: any) => (
+                  <View key={item.id} style={s.vendorItemCategoryChip}>
+                    <Text style={s.vendorItemCategoryText}>{item.name}</Text>
+                    <Pressable onPress={() => editStoreItemCategory(item)} hitSlop={6}>
+                      <MaterialCommunityIcons name="pencil-outline" size={15} color="#2563EB" />
+                    </Pressable>
+                    <Pressable onPress={() => removeStoreItemCategory(item)} hitSlop={6}>
+                      <MaterialCommunityIcons name="close-circle-outline" size={16} color="#DC2626" />
+                    </Pressable>
+                  </View>
+                )) : (
+                  <Text style={s.itemCategoryEmpty}>No item categories yet. Add your first one above.</Text>
+                )}
+              </View>
+            </View>
+
             {/* Header Title with Right Top Add Button */}
             <View style={s.listHeaderRow}>
               <Text style={s.listTitle}>Products ({products.length})</Text>
@@ -563,25 +652,17 @@ export default function VendorStoreDetail() {
                         return (
                           <Pressable
                             key={item.id}
-                            onPress={() =>
-                              setForm((prev) => ({
-                                ...prev,
-                                item_category: item.name,
-                                item_category_id: item.id,
-                              }))
-                            }
+                            onPress={() => setForm((prev) => ({ ...prev, item_category: item.name, item_category_id: item.id }))}
                             style={[s.itemCategoryChip, active && s.itemCategoryChipActive]}
                           >
-                            <Text style={[s.itemCategoryChipText, active && s.itemCategoryChipTextActive]}>
-                              {item.name}
-                            </Text>
+                            <Text style={[s.itemCategoryChipText, active && s.itemCategoryChipTextActive]}>{item.name}</Text>
                           </Pressable>
                         );
                       })}
                     </ScrollView>
                   ) : (
                     <Text style={{ color: COLORS.textMuted, fontSize: 11, marginTop: 2 }}>
-                      No item categories configured by admin for this shop category.
+                      Add an item category above first.
                     </Text>
                   )}
                 </View>
@@ -944,6 +1025,25 @@ const s = StyleSheet.create({
   },
 
   // List Header Title Row
+  itemCategoryManager: {
+    marginHorizontal: 10,
+    marginBottom: 10,
+    padding: 12,
+    backgroundColor: "#fff",
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+  },
+  itemCategoryManagerHeader: { flexDirection: "row", alignItems: "center" },
+  itemCategoryHint: { color: "#6B7280", fontSize: 10, lineHeight: 14, marginTop: 3 },
+  itemCategoryInputRow: { flexDirection: "row", alignItems: "center", gap: 7, marginTop: 8 },
+  itemCategoryInput: { flex: 1, marginBottom: 0 },
+  itemCategorySaveBtn: { width: 40, height: 40, borderRadius: 12, backgroundColor: "#EA580C", alignItems: "center", justifyContent: "center" },
+  itemCategoryCancelBtn: { width: 40, height: 40, borderRadius: 12, backgroundColor: "#F3F4F6", alignItems: "center", justifyContent: "center" },
+  vendorItemCategoryList: { flexDirection: "row", flexWrap: "wrap", gap: 7, marginTop: 9 },
+  vendorItemCategoryChip: { flexDirection: "row", alignItems: "center", gap: 7, paddingHorizontal: 10, paddingVertical: 7, borderRadius: 14, backgroundColor: "#FFF7ED", borderWidth: 1, borderColor: "#FED7AA" },
+  vendorItemCategoryText: { color: "#374151", fontSize: 11, fontWeight: "800" },
+  itemCategoryEmpty: { color: "#9CA3AF", fontSize: 11, paddingVertical: 4 },
   productTools: {
     flexDirection: "row",
     alignItems: "center",
