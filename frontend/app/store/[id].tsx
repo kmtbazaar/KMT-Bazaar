@@ -87,8 +87,8 @@ export default function StoreProducts() {
             )
           : [];
 
-        const configuredItemCategories = selectedStore?.category_id
-          ? await api.itemCategories(selectedStore.category_id)
+        const configuredItemCategories = selectedStore
+          ? await api.itemCategories(undefined, id)
           : [];
 
         if (!mounted) return;
