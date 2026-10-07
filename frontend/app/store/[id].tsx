@@ -117,6 +117,15 @@ export default function StoreProducts() {
       ? store.item_categories.filter((value: any) => String(value).trim())
       : [];
 
+    const fromProducts = Array.from(
+      new Set(
+        products
+          .map((product: any) => String(product.item_category || "").trim())
+          .filter(Boolean)
+      )
+    );
+
+    if (fromProducts.length) return fromProducts;
     if (configured.length) return configured;
 
     return getItemCategoryOptions(store?.category_id || "", categories);
