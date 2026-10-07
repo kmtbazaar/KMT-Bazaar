@@ -373,6 +373,7 @@ export const api = {
     q?: string;
     trending?: boolean;
     store_id?: string;
+    item_category?: string;
   } = {}
 ) => {
   const qs = new URLSearchParams();
@@ -391,6 +392,10 @@ export const api = {
 
   if (params.store_id) {
     qs.set("store_id", params.store_id);
+  }
+
+  if (params.item_category) {
+    qs.set("item_category", params.item_category);
   }
 
   const query = qs.toString();
