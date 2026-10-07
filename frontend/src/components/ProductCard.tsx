@@ -22,20 +22,7 @@ import ImagePlaceholder from "@/src/components/ImagePlaceholder";
 
 const SCREEN_W = Dimensions.get("window").width;
 
-/*
- * 3-column compact product grid
- *
- * List horizontal padding = 4 on each side
- * Card margin = 6 on each side
- *
- * Total width used by 3 cards:
- * 3 cards + 6 horizontal margins per card + list padding
- */
-const GRID_HORIZONTAL_PADDING = 8;
 const CARD_MARGIN = 6;
-const COMPACT_CARD_W = Math.floor(
-  (SCREEN_W - GRID_HORIZONTAL_PADDING - CARD_MARGIN * 6) / 3
-);
 
 export default function ProductCard({
   p,
@@ -290,7 +277,8 @@ const s = StyleSheet.create({
    * Exactly sized for 3 cards per row.
    */
   cardCompact: {
-    width: COMPACT_CARD_W,
+    flex: 1,
+    minWidth: 0,
     backgroundColor: COLORS.surface,
     borderRadius: RADIUS.md,
     margin: CARD_MARGIN,
