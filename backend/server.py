@@ -1208,6 +1208,7 @@ async def list_products(
     q: Optional[str] = None,
     trending: Optional[bool] = None,
     store_id: Optional[str] = None,
+    item_category: Optional[str] = None,
     limit: int = 50
 ):
     # Sirf approved stores ke IDs nikalo
@@ -1240,6 +1241,10 @@ async def list_products(
     # Category filter
     if category:
         query["category_id"] = category
+
+    # Store-specific item category filter
+    if store_id and item_category:
+        query["item_category"] = item_category
 
     # Trending filter
     if trending:
@@ -2192,6 +2197,7 @@ async def upload_image(
 class ProductIn(BaseModel):
     name: str
     category_id: str
+    item_category: Optional[str] = None
     store_id: Optional[str] = None
     price: float
     mrp: Optional[float] = None
@@ -3645,6 +3651,7 @@ class StoreIn(BaseModel):
     name: str
     address: str
     category_id: str
+    item_categories: list[str] = []
     delivery_min: int = 30
     image: str = "https://images.unsplash.com/photo-1542838132-92c53300491e?w=400&q=80" # Default image
 
@@ -3670,6 +3677,7 @@ class StoreUpdateIn(BaseModel):
     name: Optional[str] = None
     address: Optional[str] = None
     category_id: Optional[str] = None
+    item_categories: Optional[list[str]] = None
     delivery_min: Optional[int] = None
     image: Optional[str] = None
 
