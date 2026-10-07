@@ -35,6 +35,8 @@ export default function VendorStoreDetail() {
   const [itemCategories, setItemCategories] = useState<any[]>([]);
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [productSearch, setProductSearch] = useState("");
+  const [stockOnly, setStockOnly] = useState(false);
 
   const [showSettings, setShowSettings] = useState(false);
   const [editForm, setEditForm] = useState({
@@ -114,6 +116,33 @@ export default function VendorStoreDetail() {
     setRefreshing(false);
   };
 
+  const visibleProducts = useMemo(() => {
+    const q = productSearch.trim().toLowerCase();
+    return products.filter((product: any) => {
+      const matchesSearch = !q || String(product.name || "").toLowerCase().includes(q);
+      const matchesStock = !stockOnly || Number(product.stock || 0) <= 5;
+      return matchesSearch && matchesStock;
+    });
+  }, [products, productSearch, stockOnly]);
+
+  const toggleProduct = async (product: any) => {
+    try {
+      await vendorApi.toggleProductAvailability(product.id, product.is_available === false);
+      await load();
+    } catch (e) {
+      Alert.alert("Error", "Could not change product availability.");
+    }
+  };
+
+  const duplicateProduct = async (product: any) => {
+    try {
+      await vendorApi.duplicateProduct(product.id);
+      await load();
+    } catch (e) {
+      Alert.alert("Error", "Could not duplicate product.");
+    }
+  };
+
   const pickBannerImage = async () => {
     let result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
@@ -160,7 +189,7 @@ export default function VendorStoreDetail() {
     if (!result.canceled && result.assets[0]) {
       try {
         setLoading(true);
-        const imageUrl = await uploadImageAsset(result.assets[0]);
+        const imageUrl = await uploadImageAsset(result.assets[0], "product");
         if (isEditMode) {
           setEditProductForm((prev) => ({ ...prev, image: imageUrl }));
         } else {
@@ -352,7 +381,7 @@ export default function VendorStoreDetail() {
   return (
     <SafeAreaView style={s.root} edges={["top", "bottom"]}>
       <FlatList
-        data={products}
+        data={visibleProducts}
         keyExtractor={(p) => p.id}
         refreshing={refreshing}
         onRefresh={onRefresh}
@@ -394,6 +423,23 @@ export default function VendorStoreDetail() {
                 <MaterialCommunityIcons name="plus" size={18} color="#fff" />
               </Pressable>
             </View>
+
+            <View style={s.productTools}>
+              <TextInput
+                value={productSearch}
+                onChangeText={setProductSearch}
+                placeholder="Search products"
+                placeholderTextColor="#9CA3AF"
+                style={s.productSearch}
+              />
+              <Pressable
+                onPress={() => setStockOnly((v) => !v)}
+                style={[s.stockFilter, stockOnly && s.stockFilterActive]}
+              >
+                <MaterialCommunityIcons name="alert-circle-outline" size={16} color={stockOnly ? "#fff" : "#D97706"} />
+                <Text style={[s.stockFilterText, stockOnly && s.stockFilterTextActive]}>Low stock</Text>
+              </Pressable>
+            </View>
           </>
         }
         renderItem={({ item }) => (
@@ -408,6 +454,12 @@ export default function VendorStoreDetail() {
               </Text>
             </View>
             <View style={s.cardActions}>
+              <Pressable onPress={() => toggleProduct(item)} hitSlop={8} style={s.editBtn}>
+                <MaterialCommunityIcons name={item.is_available === false ? "eye-off-outline" : "eye-outline"} size={19} color={item.is_available === false ? "#9CA3AF" : "#16A34A"} />
+              </Pressable>
+              <Pressable onPress={() => duplicateProduct(item)} hitSlop={8} style={s.editBtn}>
+                <MaterialCommunityIcons name="content-copy" size={18} color="#2563EB" />
+              </Pressable>
               <Pressable onPress={() => openEditProduct(item)} hitSlop={8} style={s.editBtn}>
                 <MaterialCommunityIcons name="pencil-outline" size={20} color="#D97706" />
               </Pressable>
