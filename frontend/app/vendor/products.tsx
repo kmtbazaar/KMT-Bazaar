@@ -86,7 +86,7 @@ export default function VendorProducts() {
     if (!result.canceled && result.assets[0]) {
       try {
         setLoading(true);
-        const imageUrl = await uploadImageAsset(result.assets[0]);
+        const imageUrl = await uploadImageAsset(result.assets[0], "product");
         setForm({ ...form, image: imageUrl });
       } catch (e: any) {
         Alert.alert("Upload failed", e?.message || "Could not upload image.");
