@@ -242,12 +242,13 @@ export default function StoreProducts() {
         </View>
 
         <FlatList
+          style={s.productList}
           data={filteredProducts}
           keyExtractor={(item, index) =>
             String(item.id ?? item._id ?? index)
           }
           renderItem={renderItem}
-          numColumns={3}
+          numColumns={2}
           contentContainerStyle={s.listContent}
           columnWrapperStyle={s.column}
           initialNumToRender={6}
@@ -414,13 +415,19 @@ const s = StyleSheet.create({
     fontWeight: "700",
   },
 
+  productList: {
+    flex: 1,
+    minWidth: 0,
+  },
+
   listContent: {
-    paddingHorizontal: 4,
+    paddingHorizontal: 2,
     paddingBottom: 100,
   },
 
   column: {
     gap: 2,
+    alignItems: "stretch",
   },
 
   empty: {
