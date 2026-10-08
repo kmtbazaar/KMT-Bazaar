@@ -395,26 +395,68 @@ export default function AdminUsers() {
             </View>
 
             {/* =========================================
-                SWITCH + DELETE
+                VENDOR SUSPEND / ACTIVE + DELETE
                 ========================================= */}
             <View style={s.actions}>
-              <Switch
-                testID={`toggle-${item.id}`}
-                value={item.active !== false}
-                onValueChange={() =>
-                  toggle(
-                    item.id,
-                    item.active !== false,
-                    item.role,
-                    item.name
-                  )
-                }
-                trackColor={{
-                  true: COLORS.success,
-                  false:
-                    COLORS.borderStrong,
-                }}
-              />
+              {item.role === "vendor" ? (
+                <Pressable
+                  testID={`toggle-${item.id}`}
+                  accessibilityRole="button"
+                  accessibilityLabel={
+                    item.active !== false
+                      ? "Suspend vendor"
+                      : "Activate vendor"
+                  }
+                  onPress={() =>
+                    toggle(
+                      item.id,
+                      item.active !== false,
+                      item.role,
+                      item.name
+                    )
+                  }
+                  style={({ pressed }) => [
+                    s.vendorStatusButton,
+                    item.active !== false
+                      ? s.vendorSuspendButton
+                      : s.vendorActiveButton,
+                    pressed && s.vendorStatusPressed,
+                  ]}
+                >
+                  <MaterialCommunityIcons
+                    name={
+                      item.active !== false
+                        ? "pause-circle-outline"
+                        : "check-circle-outline"
+                    }
+                    size={18}
+                    color="#fff"
+                  />
+                  <Text style={s.vendorStatusText}>
+                    {item.active !== false
+                      ? "Suspend"
+                      : "Active"}
+                  </Text>
+                </Pressable>
+              ) : (
+                <Switch
+                  testID={`toggle-${item.id}`}
+                  value={item.active !== false}
+                  onValueChange={() =>
+                    toggle(
+                      item.id,
+                      item.active !== false,
+                      item.role,
+                      item.name
+                    )
+                  }
+                  trackColor={{
+                    true: COLORS.success,
+                    false:
+                      COLORS.borderStrong,
+                  }}
+                />
+              )}
 
               {item.role !== "admin" && (
                 <Pressable
@@ -566,6 +608,36 @@ const s = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     marginLeft: 8,
+  },
+
+  vendorStatusButton: {
+    minWidth: 92,
+    height: 40,
+    borderRadius: 20,
+    paddingHorizontal: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+  },
+
+  vendorSuspendButton: {
+    backgroundColor: "#DC2626",
+  },
+
+  vendorActiveButton: {
+    backgroundColor: "#16A34A",
+  },
+
+  vendorStatusText: {
+    color: "#fff",
+    fontSize: 12,
+    fontWeight: "800",
+  },
+
+  vendorStatusPressed: {
+    opacity: 0.72,
+    transform: [{ scale: 0.96 }],
   },
 
   deleteButton: {
