@@ -6,6 +6,40 @@ export const adminApi = {
       `/admin/stores${status ? `?status=${status}` : ""}`
     ),
 
+  vendorStores: (vendorId: string) =>
+    apiFetch<any[]>(`/admin/vendors/${encodeURIComponent(vendorId)}/stores`),
+
+  updateStore: (id: string, data: any) =>
+    apiFetch(`/admin/stores/${encodeURIComponent(id)}`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    }),
+
+  toggleStore: (id: string) =>
+    apiFetch(`/admin/stores/${encodeURIComponent(id)}/toggle`, {
+      method: "POST",
+    }),
+
+  storeItemCategories: (storeId: string) =>
+    apiFetch<any[]>(`/admin/stores/${encodeURIComponent(storeId)}/item-categories`),
+
+  createStoreItemCategory: (storeId: string, data: any) =>
+    apiFetch<any>(`/admin/stores/${encodeURIComponent(storeId)}/item-categories`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  updateStoreItemCategory: (storeId: string, itemId: string, data: any) =>
+    apiFetch<any>(`/admin/stores/${encodeURIComponent(storeId)}/item-categories/${encodeURIComponent(itemId)}`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    }),
+
+  deleteStoreItemCategory: (storeId: string, itemId: string) =>
+    apiFetch<any>(`/admin/stores/${encodeURIComponent(storeId)}/item-categories/${encodeURIComponent(itemId)}`, {
+      method: "DELETE",
+    }),
+
   approveStore: (id: string) =>
     apiFetch(`/admin/stores/${id}/approve`, {
       method: "POST",
