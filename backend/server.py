@@ -2586,6 +2586,18 @@ async def admin_toggle_user(
         {"$set": {"active": new_state}}
     )
 
+    if user.get("role") == Role.VENDOR.value:
+        if new_state is False:
+            await db.stores.update_many(
+                {"vendor_id": user_id},
+                {"$set": {"is_online": False, "vendor_suspended": True}}
+            )
+        else:
+            await db.stores.update_many(
+                {"vendor_id": user_id},
+                {"$set": {"vendor_suspended": False}}
+            )
+
     return {
         "ok": True,
         "active": new_state
