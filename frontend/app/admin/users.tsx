@@ -398,23 +398,65 @@ export default function AdminUsers() {
                 SWITCH + DELETE
                 ========================================= */}
             <View style={s.actions}>
-              <Switch
-                testID={`toggle-${item.id}`}
-                value={item.active !== false}
-                onValueChange={() =>
-                  toggle(
-                    item.id,
-                    item.active !== false,
-                    item.role,
-                    item.name
-                  )
-                }
-                trackColor={{
-                  true: COLORS.success,
-                  false:
-                    COLORS.borderStrong,
-                }}
-              />
+              {item.role === "vendor" ? (
+                <>
+                  <Pressable
+                    testID={`suspend-${item.id}`}
+                    onPress={() =>
+                      toggle(
+                        item.id,
+                        item.active !== false,
+                        item.role,
+                        item.name
+                      )
+                    }
+                    style={({ pressed }) => [
+                      s.suspendButton,
+                      item.active === false && s.activateButton,
+                      pressed && s.suspendButtonPressed,
+                    ]}
+                  >
+                    <MaterialCommunityIcons
+                      name={item.active === false ? "account-check-outline" : "account-cancel-outline"}
+                      size={17}
+                      color={item.active === false ? "#15803D" : "#B91C1C"}
+                    />
+                    <Text style={[s.suspendText, { color: item.active === false ? "#15803D" : "#B91C1C" }]}>
+                      {item.active === false ? "Active" : "Suspend"}
+                    </Text>
+                  </Pressable>
+                  <Pressable
+                    testID={`manage-${item.id}`}
+                    onPress={() =>
+                      router.push({
+                        pathname: "/admin/vendor/[id]",
+                        params: { id: item.id },
+                      })
+                    }
+                    style={s.manageButton}
+                  >
+                    <MaterialCommunityIcons name="store-cog-outline" size={18} color="#2563EB" />
+                    <Text style={s.manageText}>Manage</Text>
+                  </Pressable>
+                </>
+              ) : (
+                <Switch
+                  testID={`toggle-${item.id}`}
+                  value={item.active !== false}
+                  onValueChange={() =>
+                    toggle(
+                      item.id,
+                      item.active !== false,
+                      item.role,
+                      item.name
+                    )
+                  }
+                  trackColor={{
+                    true: COLORS.success,
+                    false: COLORS.borderStrong,
+                  }}
+                />
+              )}
 
               {item.role !== "admin" && (
                 <Pressable
@@ -562,6 +604,27 @@ const s = StyleSheet.create({
     letterSpacing: 0.5,
   },
 
+  manageButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    borderRadius: 10,
+    backgroundColor: "#EFF6FF",
+    borderWidth: 1,
+    borderColor: "#BFDBFE",
+    marginRight: 4,
+  },
+  manageText: { color: "#2563EB", fontSize: 12, fontWeight: "800" },
+  suspendButton: {
+    minWidth: 88, height: 36, paddingHorizontal: 10, borderRadius: 18,
+    backgroundColor: "#FEF2F2", borderWidth: 1, borderColor: "#FCA5A5",
+    flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 5,
+  },
+  activateButton: { backgroundColor: "#F0FDF4", borderColor: "#86EFAC" },
+  suspendText: { fontSize: 11, fontWeight: "900" },
+  suspendButtonPressed: { opacity: 0.65, transform: [{ scale: 0.97 }] },
   actions: {
     flexDirection: "row",
     alignItems: "center",
