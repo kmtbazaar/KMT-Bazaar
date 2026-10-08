@@ -425,19 +425,21 @@ export default function AdminUsers() {
                       {item.active === false ? "Active" : "Suspend"}
                     </Text>
                   </Pressable>
-                  <Pressable
-                    testID={`manage-${item.id}`}
-                    onPress={() =>
-                      router.push({
-                        pathname: "/admin/vendor/[id]",
-                        params: { id: item.id },
-                      })
-                    }
-                    style={s.manageButton}
-                  >
-                    <MaterialCommunityIcons name="store-cog-outline" size={18} color="#2563EB" />
-                    <Text style={s.manageText}>Manage</Text>
-                  </Pressable>
+                  {item.vendor_type !== "service" ? (
+                    <Pressable
+                      testID={`manage-${item.id}`}
+                      onPress={() =>
+                        router.push({
+                          pathname: "/admin/vendor/[id]",
+                          params: { id: item.id },
+                        })
+                      }
+                      style={s.manageButton}
+                    >
+                      <MaterialCommunityIcons name="store-cog-outline" size={18} color="#2563EB" />
+                      <Text style={s.manageText}>Manage</Text>
+                    </Pressable>
+                  ) : null}
                 </>
               ) : (
                 <Switch
