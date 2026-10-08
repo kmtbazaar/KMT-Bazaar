@@ -3177,6 +3177,104 @@ async def admin_set_commission(data: CommissionIn, _=Depends(require_roles("admi
 
 # --- ADMIN STORE APPROVALS ---
 
+@api.get("/admin/vendors/{vendor_id}/stores")
+async def admin_vendor_stores(vendor_id: str, _=Depends(require_roles("admin"))):
+    vendor = await db.users.find_one({"id": vendor_id, "role": Role.VENDOR.value}, {"_id": 0, "id": 1, "name": 1, "email": 1, "phone": 1, "active": 1, "vendor_type": 1, "service_type": 1})
+    if not vendor:
+        raise HTTPException(404, "Vendor not found")
+    stores = await db.stores.find({"vendor_id": vendor_id}, {"_id": 0}).sort("name", 1).to_list(100)
+    return {"vendor": vendor, "stores": stores}
+
+@api.put("/admin/stores/{store_id}")
+async def admin_update_store(store_id: str, data: StoreUpdateIn, _=Depends(require_roles("admin"))):
+    update_data = data.dict(exclude_unset=True)
+    store = await db.stores.find_one({"id": store_id}, {"_id": 0})
+    if not store:
+        raise HTTPException(404, "Store not found")
+    if "category_id" in update_data:
+        parent = await db.categories.find_one({"id": update_data["category_id"]}, {"_id": 0, "id": 1})
+        if not parent:
+            raise HTTPException(400, "Please select a valid shop category")
+    if "name" in update_data and not str(update_data["name"]).strip():
+        raise HTTPException(400, "Store name cannot be empty")
+    if "address" in update_data and not str(update_data["address"]).strip():
+        raise HTTPException(400, "Store address cannot be empty")
+    if not update_data:
+        raise HTTPException(400, "No store changes provided")
+    category_changed = "category_id" in update_data and update_data["category_id"] != store.get("category_id")
+    if category_changed:
+        update_data["item_categories"] = []
+        await db.products.update_many(
+            {"store_id": store_id},
+            {"$set": {"category_id": update_data["category_id"]}, "$unset": {"item_category_id": "", "item_category": ""}}
+        )
+    await db.stores.update_one({"id": store_id}, {"$set": update_data})
+    return await db.stores.find_one({"id": store_id}, {"_id": 0})
+
+@api.post("/admin/stores/{store_id}/toggle")
+async def admin_toggle_store(store_id: str, _=Depends(require_roles("admin"))):
+    store = await db.stores.find_one({"id": store_id}, {"_id": 0, "id": 1, "admin_suspended": 1})
+    if not store:
+        raise HTTPException(404, "Store not found")
+    suspended = store.get("admin_suspended") is True
+    await db.stores.update_one(
+        {"id": store_id},
+        {"$set": {"admin_suspended": not suspended, "is_online": suspended}}
+    )
+    return {"ok": True, "admin_suspended": not suspended, "is_online": suspended}
+
+@api.get("/admin/stores/{store_id}/item-categories")
+async def admin_store_item_categories(store_id: str, _=Depends(require_roles("admin"))):
+    store = await db.stores.find_one({"id": store_id}, {"_id": 0, "id": 1})
+    if not store:
+        raise HTTPException(404, "Store not found")
+    return await db.item_categories.find({"store_id": store_id}, {"_id": 0}).sort([("order", 1), ("name", 1)]).to_list(200)
+
+@api.post("/admin/stores/{store_id}/item-categories")
+async def admin_create_store_item_category(store_id: str, data: StoreItemCategoryIn, _=Depends(require_roles("admin"))):
+    store = await db.stores.find_one({"id": store_id}, {"_id": 0, "id": 1, "vendor_id": 1})
+    if not store:
+        raise HTTPException(404, "Store not found")
+    name = str(data.name or "").strip()
+    if not name:
+        raise HTTPException(400, "Item category name is required")
+    duplicate = await db.item_categories.find_one({"store_id": store_id, "name": {"$regex": f"^{re.escape(name)}$", "$options": "i"}})
+    if duplicate:
+        raise HTTPException(409, "This item category already exists in this store")
+    slug = re.sub(r"[^a-z0-9]+", "-", name.lower()).strip("-")
+    if not slug:
+        raise HTTPException(400, "Enter a valid item category name")
+    base_id = f"item-{store_id}-{slug}"
+    item_id, suffix = base_id, 2
+    while await db.item_categories.find_one({"id": item_id}, {"_id": 1}):
+        item_id = f"{base_id}-{suffix}"; suffix += 1
+    doc = {"id": item_id, "name": name, "store_id": store_id, "vendor_id": store.get("vendor_id"), "icon": data.icon, "color": data.color, "order": data.order, "active": data.active, "created_at": now_iso(), "updated_at": now_iso()}
+    await db.item_categories.insert_one(dict(doc))
+    return doc
+
+@api.put("/admin/stores/{store_id}/item-categories/{item_id}")
+async def admin_update_store_item_category(store_id: str, item_id: str, data: StoreItemCategoryUpdateIn, _=Depends(require_roles("admin"))):
+    item = await db.item_categories.find_one({"id": item_id, "store_id": store_id}, {"_id": 0})
+    if not item:
+        raise HTTPException(404, "Item category not found")
+    name = str(data.name or "").strip()
+    if not name:
+        raise HTTPException(400, "Item category name is required")
+    duplicate = await db.item_categories.find_one({"id": {"$ne": item_id}, "store_id": store_id, "name": {"$regex": f"^{re.escape(name)}$", "$options": "i"}})
+    if duplicate:
+        raise HTTPException(409, "This item category already exists in this store")
+    await db.item_categories.update_one({"id": item_id, "store_id": store_id}, {"$set": {"name": name, "icon": data.icon, "color": data.color, "order": data.order, "active": data.active, "updated_at": now_iso()}})
+    await db.products.update_many({"store_id": store_id, "item_category_id": item_id}, {"$set": {"item_category": name}})
+    return await db.item_categories.find_one({"id": item_id}, {"_id": 0})
+
+@api.delete("/admin/stores/{store_id}/item-categories/{item_id}")
+async def admin_delete_store_item_category(store_id: str, item_id: str, _=Depends(require_roles("admin"))):
+    result = await db.item_categories.update_one({"id": item_id, "store_id": store_id}, {"$set": {"active": False, "updated_at": now_iso()}})
+    if result.matched_count == 0:
+        raise HTTPException(404, "Item category not found")
+    await db.products.update_many({"store_id": store_id, "item_category_id": item_id}, {"$unset": {"item_category_id": "", "item_category": ""}})
+    return {"ok": True}
+
 @api.get("/admin/stores")
 async def admin_get_stores(status: Optional[str] = None, _=Depends(require_roles("admin"))):
     query = {}
