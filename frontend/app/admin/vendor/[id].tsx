@@ -8,6 +8,7 @@ import { api, uploadImageAsset } from "@/src/api";
 import { COLORS, RADIUS } from "@/src/theme";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
+import AdminVendorProducts from "@/src/components/AdminVendorProducts";
 
 export default function AdminVendorManage() {
   const { id } = useLocalSearchParams<{id:string}>();
@@ -15,6 +16,7 @@ export default function AdminVendorManage() {
   const [vendor,setVendor]=useState<any>(null);
   const [stores,setStores]=useState<any[]>([]);
   const [products,setProducts]=useState<any[]>([]);
+  const [selectedStoreId,setSelectedStoreId]=useState("");
   const [categories,setCategories]=useState<any[]>([]);
   const [itemCategories,setItemCategories]=useState<any[]>([]);
   const [store,setStore]=useState<any>(null);
@@ -41,6 +43,7 @@ export default function AdminVendorManage() {
       setProducts((all||[]).filter((p:any)=>ids.has(String(p.store_id))));
       if(list.length){
         const active=store && list.find((x:any)=>String(x.id)===String(store.id)) || list[0];
+        setSelectedStoreId(String(active.id));
         setStore(active);
         setStoreForm({name:active.name||"",address:active.address||"",category_id:active.category_id||"",image:active.image||"",delivery_min:active.delivery_min||30});
         const ic=await adminApi.storeItemCategories(active.id);
@@ -113,6 +116,7 @@ export default function AdminVendorManage() {
 
   return <SafeAreaView style={s.root} edges={["top","bottom"]}>
     <View style={s.header}><Pressable onPress={()=>router.back()}><MaterialCommunityIcons name="arrow-left" size={24} color={COLORS.text}/></Pressable><View style={{flex:1,marginLeft:12}}><Text style={s.title}>{vendor?.name||"Vendor Manage"}</Text><Text style={s.muted}>{vendor?.email||vendor?.phone||""}</Text></View><View style={[s.status,vendor?.active===false?s.off:s.on]}><Text style={s.statusText}>{vendor?.active===false?"SUSPENDED":"ACTIVE"}</Text></View></View>
+    {store ? <AdminVendorProducts vendorId={String(id)} selectedStoreId={selectedStoreId} showStoreSelector={false} /> : null}
     <FlatList data={storeProducts} keyExtractor={p=>String(p.id)} contentContainerStyle={{padding:16,paddingBottom:40}} ItemSeparatorComponent={()=> <View style={{height:8}}/>}
       ListHeaderComponent={<>
         <View style={s.storeTabs}>{stores.map(x=><Pressable key={x.id} onPress={()=>selectStore(x)} style={[s.storeTab,String(x.id)===String(store?.id)&&s.storeTabActive]}><Text style={s.storeTabText}>{x.name}</Text></Pressable>)}</View>
