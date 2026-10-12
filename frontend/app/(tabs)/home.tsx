@@ -47,6 +47,12 @@ const SEARCH_PLACEHOLDERS = [
   "Search 'daily essentials'..."
 ];
 
+const SKY_STARS = Array.from({ length: 26 }, (_, index) => ({
+  left: `${(index * 37 + 11) % 96}%`,
+  top: 7 + ((index * 19 + 13) % 68),
+  size: index % 5 === 0 ? 2 : 1.4,
+}));
+
 
 function NightSky() {
   const canvasRef = useRef<any>(null);
@@ -56,6 +62,8 @@ function NightSky() {
   const cloudOne = useSharedValue(-45);
   const cloudTwo = useSharedValue(0);
   const cloudDepth = useSharedValue(0);
+  const smokeRise = useSharedValue(0);
+  const smokeSway = useSharedValue(0);
 
   useEffect(() => {
     const clock = setInterval(() => {
@@ -111,14 +119,14 @@ function NightSky() {
         }
 
         float fbm(vec2 p) {
-          float value = 0.0;
-          float amp = 0.5;
-          for (int i = 0; i < 6; i++) {
-            value += noise(p) * amp;
-            p = p * 2.03 + vec2(17.0, 9.0);
-            amp *= 0.5;
+          float v = 0.0;
+          float a = 0.5;
+          for (int i = 0; i < 5; i++) {
+            v += noise(p) * a;
+            p = p * 2.02 + vec2(17.1, 9.2);
+            a *= 0.5;
           }
-          return value;
+          return v;
         }
 
         float boxMask(vec2 p, vec2 center, vec2 halfSize, float softness) {
@@ -126,179 +134,163 @@ function NightSky() {
           return 1.0 - smoothstep(0.0, softness, d);
         }
 
-        float phaseSun(float x) {
-          // Gradual daylight ramp keeps sunrise and sunset from feeling like a switch.
-          return smoothstep(5.0, 7.7, x) * (1.0 - smoothstep(17.0, 19.7, x));
-        }
-
         void main() {
           vec2 uv = v_uv;
           float aspect = u_resolution.x / max(u_resolution.y, 1.0);
-          float t = u_time * 0.00002;
+          float clock = mod(u_hour + 24.0, 24.0);
+          float t = u_time * 0.00016;
 
-          float day = phaseSun(u_hour);
-          float dawn = smoothstep(4.35, 5.65, u_hour) * (1.0 - smoothstep(6.35, 7.75, u_hour));
-          float sunset = smoothstep(16.0, 18.8, u_hour) * (1.0 - smoothstep(18.8, 20.5, u_hour));
-          float night = 1.0 - day;
+          // Smooth, local-time lighting transitions: sunrise, clear daytime, sunset and deep night.
+          float day = smoothstep(5.1, 7.8, clock) * (1.0 - smoothstep(16.7, 19.6, clock));
+          float dawn = smoothstep(4.2, 5.8, clock) * (1.0 - smoothstep(7.1, 8.5, clock));
+          float dusk = smoothstep(16.0, 18.25, clock) * (1.0 - smoothstep(19.3, 21.0, clock));
+          float night = clamp(1.0 - max(day, max(dawn * 0.84, dusk)), 0.0, 1.0);
+          float twilight = clamp(max(dawn, dusk), 0.0, 1.0);
+          float vertical = smoothstep(0.015, 0.99, uv.y);
+          float horizonGlow = exp(-pow((uv.y - 0.12) * 5.0, 2.0));
 
-          float horizon = pow(1.0 - uv.y, 1.45);
-          float upper = smoothstep(0.0, 0.92, uv.y);
+          vec3 dayTop = vec3(0.035, 0.23, 0.49);
+          vec3 dayMid = vec3(0.13, 0.48, 0.76);
+          vec3 dayHorizon = vec3(0.76, 0.88, 0.95);
+          vec3 dawnTop = vec3(0.11, 0.12, 0.30);
+          vec3 dawnMid = vec3(0.37, 0.31, 0.53);
+          vec3 dawnHorizon = vec3(1.00, 0.53, 0.32);
+          vec3 duskTop = vec3(0.055, 0.045, 0.21);
+          vec3 duskMid = vec3(0.37, 0.12, 0.32);
+          vec3 duskHorizon = vec3(1.00, 0.34, 0.13);
+          vec3 nightTop = vec3(0.003, 0.009, 0.035);
+          vec3 nightMid = vec3(0.015, 0.045, 0.115);
+          vec3 nightHorizon = vec3(0.055, 0.105, 0.17);
 
-          vec3 daylightTop = vec3(0.055, 0.34, 0.68);
-          vec3 daylightMid = vec3(0.14, 0.58, 0.88);
-          vec3 daylightHorizon = vec3(0.88, 0.95, 1.0);
-
-          vec3 sunsetTop = vec3(0.035, 0.025, 0.11);
-          vec3 sunsetMid = vec3(0.30, 0.075, 0.33);
-          vec3 sunsetHorizon = vec3(1.0, 0.42, 0.18);
-
-          vec3 nightTop = vec3(0.002, 0.006, 0.022);
-          vec3 nightMid = vec3(0.012, 0.045, 0.14);
-          vec3 nightHorizon = vec3(0.06, 0.11, 0.22);
-
-          vec3 dawnTop = vec3(0.10, 0.14, 0.32);
-          vec3 dawnMid = vec3(0.38, 0.47, 0.68);
-          vec3 dawnHorizon = vec3(1.0, 0.57, 0.36);
-
-          vec3 daySky = mix(daylightHorizon, daylightTop, upper);
-          daySky = mix(daySky, daylightMid, 0.32 + horizon * 0.20);
-
-          vec3 sunsetSky = mix(sunsetHorizon, sunsetTop, upper);
-          sunsetSky = mix(sunsetSky, sunsetMid, 0.42 + horizon * 0.18);
-
-          vec3 nightSky = mix(nightHorizon, nightTop, upper);
-          nightSky = mix(nightSky, nightMid, 0.36 + horizon * 0.20);
-
-          vec3 dawnSky = mix(dawnHorizon, dawnTop, upper);
-          dawnSky = mix(dawnSky, dawnMid, 0.35 + horizon * 0.22);
+          vec3 daySky = mix(dayHorizon, dayTop, vertical);
+          daySky = mix(daySky, dayMid, 0.33 + horizonGlow * 0.12);
+          vec3 dawnSky = mix(dawnHorizon, dawnTop, vertical);
+          dawnSky = mix(dawnSky, dawnMid, 0.40 + horizonGlow * 0.14);
+          vec3 duskSky = mix(duskHorizon, duskTop, vertical);
+          duskSky = mix(duskSky, duskMid, 0.42 + horizonGlow * 0.16);
+          vec3 nightSky = mix(nightHorizon, nightTop, vertical);
+          nightSky = mix(nightSky, nightMid, 0.36 + horizonGlow * 0.12);
 
           vec3 sky = mix(nightSky, daySky, day);
-          sky = mix(sky, dawnSky, dawn * 0.78);
-          sky = mix(sky, sunsetSky, sunset);
+          sky = mix(sky, dawnSky, dawn * 0.96);
+          sky = mix(sky, duskSky, dusk);
+          sky += vec3(0.22, 0.31, 0.43) * horizonGlow * night * 0.15;
 
-          float haze = pow(max(1.0 - uv.y, 0.0), 3.1);
-          vec3 hazeColor = mix(vec3(0.64, 0.79, 0.92), vec3(1.0, 0.54, 0.30), sunset);
-          hazeColor = mix(hazeColor, vec3(0.12, 0.20, 0.34), night * 0.68);
-          sky = mix(sky, hazeColor, haze * (0.20 + sunset * 0.42 + night * 0.08));
-
-          // Layered volumetric-style cloud banks with independent motion.
-          float highA = fbm(vec2(uv.x * 2.0 + t * 0.34, uv.y * 4.2 + 1.7));
-          float highB = fbm(vec2(uv.x * 4.5 - t * 0.22, uv.y * 7.5 + 7.0));
-          float highCloud = smoothstep(0.54, 0.74, highA * 0.72 + highB * 0.28);
-          highCloud *= smoothstep(0.40, 0.58, uv.y) * (1.0 - smoothstep(0.82, 0.98, uv.y));
-
-          float lowA = fbm(vec2(uv.x * 3.6 - t * 0.55, uv.y * 7.0 + 15.0));
-          float lowB = fbm(vec2(uv.x * 7.5 + t * 0.30, uv.y * 13.0 + 4.0));
-          float lowCloud = smoothstep(0.50, 0.71, lowA * 0.67 + lowB * 0.33);
-          lowCloud *= smoothstep(0.10, 0.24, uv.y) * (1.0 - smoothstep(0.42, 0.62, uv.y));
-
-          // Clouds borrow the sun's warm light at dawn/dusk and cool blue light at night.
-          vec3 cloudTop = mix(vec3(0.98, 0.99, 1.0), vec3(0.52, 0.62, 0.74), night);
-          cloudTop = mix(cloudTop, vec3(1.0, 0.66, 0.48), sunset * 0.82 + dawn * 0.42);
-          vec3 cloudMid = mix(vec3(0.76, 0.84, 0.92), vec3(0.17, 0.24, 0.36), night);
-          cloudMid = mix(cloudMid, vec3(0.63, 0.34, 0.36), sunset * 0.55 + dawn * 0.25);
-          vec3 cloudHighColor = mix(cloudMid, cloudTop, 0.58 + 0.42 * highA);
-          vec3 cloudLowDay = mix(vec3(0.58, 0.68, 0.78), vec3(1.0, 0.50, 0.30), sunset * 0.80 + dawn * 0.36);
-          vec3 cloudLowColor = mix(cloudLowDay, vec3(0.09, 0.14, 0.23), night);
-
-          sky = mix(sky, cloudHighColor, highCloud * (0.16 + 0.24 * (day + sunset * 0.7 + dawn * 0.55 + night * 0.16)));
-          sky = mix(sky, cloudLowColor, lowCloud * (0.18 + 0.22 * night));
-
-          // Sun bloom and atmospheric disk.
-          float sunPhase = clamp((u_hour - 5.4) / 13.2, 0.0, 1.0);
-          float sunX = mix(0.10, 0.90, sunPhase);
-          float sunY = 0.145 + 0.60 * sin(sunPhase * 3.1415926);
+          // A slow sun arc, atmospheric scattering and a soft warm rim at the horizon.
+          float sunPhase = clamp((clock - 5.1) / 14.2, 0.0, 1.0);
+          float sunX = mix(0.08, 0.92, sunPhase);
+          float sunY = 0.115 + 0.62 * sin(sunPhase * 3.1415926);
           vec2 sunDelta = vec2((uv.x - sunX) * aspect, uv.y - sunY);
           float sunDist = length(sunDelta);
-          float sunHalo = exp(-sunDist * 5.2);
-          float sunDisc = 1.0 - smoothstep(0.018, 0.032, sunDist);
-          sky += vec3(1.0, 0.70, 0.32) * sunHalo * (day * 0.16 + sunset * 0.30);
-          sky += vec3(1.0, 0.90, 0.62) * sunDisc * (day * 0.52 + sunset * 0.34);
+          float sunVisible = clamp(day + max(dawn, dusk) * 0.93, 0.0, 1.0);
+          float sunHalo = exp(-sunDist * 7.5);
+          float sunBloom = exp(-sunDist * 24.0);
+          float sunDisk = 1.0 - smoothstep(0.018, 0.026, sunDist);
+          sky += vec3(1.0, 0.53, 0.25) * sunHalo * sunVisible * (0.13 + twilight * 0.28);
+          sky += vec3(1.0, 0.42, 0.18) * sunBloom * dusk * 0.20;
+          sky += vec3(1.0, 0.88, 0.65) * sunDisk * sunVisible * 0.72;
 
-          // Dense stars with gentle twinkle at night.
-          vec2 starGrid = floor(vec2(uv.x * 250.0, uv.y * 140.0));
-          float starRnd = hash(starGrid);
-          float starLayer = step(0.993, starRnd) * smoothstep(0.18, 0.72, uv.y);
-          float starTwinkle = 0.82 + 0.18 * sin(u_time * 0.0009 + starRnd * 37.0);
-          float visibleStars = night * (1.0 - dawn * 0.88) * (1.0 - sunset * 0.35);
-          sky += vec3(0.72, 0.84, 1.0) * starLayer * starTwinkle * visibleStars * 0.72;
+          // Stars emerge gradually at twilight and softly twinkle at night.
+          float starNight = max(1.0 - smoothstep(5.0, 6.7, clock), smoothstep(18.2, 20.1, clock));
+          vec2 starGrid = floor(vec2(uv.x * 230.0, uv.y * 132.0));
+          float starSeed = hash(starGrid);
+          float stars = step(0.9915, starSeed) * smoothstep(0.19, 0.55, uv.y);
+          float twinkle = 0.76 + 0.24 * sin(u_time * 0.001 + starSeed * 41.0);
+          sky += vec3(0.63, 0.78, 1.0) * stars * twinkle * starNight * 0.83;
 
-          vec2 brightGrid = floor(vec2(uv.x * 92.0 + 3.0, uv.y * 58.0 + 11.0));
-          float brightRnd = hash(brightGrid);
-          float brightStar = step(0.986, brightRnd) * smoothstep(0.24, 0.76, uv.y);
-          sky += vec3(0.90, 0.95, 1.0) * brightStar * visibleStars * 0.55;
+          vec2 brightGrid = floor(vec2(uv.x * 88.0 + 7.0, uv.y * 51.0 + 3.0));
+          float brightSeed = hash(brightGrid);
+          float brightStar = step(0.987, brightSeed) * smoothstep(0.26, 0.72, uv.y);
+          sky += vec3(0.86, 0.92, 1.0) * brightStar * starNight * 0.48;
 
-          // The moon travels slowly across the night sky instead of staying pinned in one spot.
-          float moonProgress = clamp(mod(u_hour - 19.0 + 24.0, 24.0) / 10.0, 0.0, 1.0);
-          vec2 moonPos = vec2(mix(0.88, 0.12, moonProgress), 0.15 + 0.57 * sin(moonProgress * 3.1415926));
-          // Moon with surface variation and cloud occlusion.
+          // Moonlight, subtle crater detail and a soft halo.
+          float moonProgress = clamp(mod(clock - 19.0 + 24.0, 24.0) / 10.0, 0.0, 1.0);
+          vec2 moonPos = vec2(mix(0.89, 0.11, moonProgress), 0.23 + 0.49 * sin(moonProgress * 3.1415926));
           vec2 moonDelta = vec2((uv.x - moonPos.x) * aspect, uv.y - moonPos.y);
           float moonDist = length(moonDelta);
-          float moonMask = 1.0 - smoothstep(0.045, 0.053, moonDist);
-          float moonHalo = exp(-moonDist * 9.0);
-          float moonCrater1 = exp(-length(moonDelta - vec2(-0.011, 0.009)) * 42.0);
-          float moonCrater2 = exp(-length(moonDelta - vec2(0.015, -0.011)) * 50.0);
-          float moonCrater3 = exp(-length(moonDelta - vec2(0.005, 0.018)) * 65.0);
-          float moonSurface = 0.92 - moonCrater1 * 0.12 - moonCrater2 * 0.09 - moonCrater3 * 0.06;
-          float moonCloudOcclusion = highCloud * 0.75;
+          float moonVisible = max(1.0 - smoothstep(4.8, 6.5, clock), smoothstep(18.0, 20.0, clock));
+          float moonMask = 1.0 - smoothstep(0.035, 0.041, moonDist);
+          float moonHalo = exp(-moonDist * 8.0);
+          float craterA = exp(-length(moonDelta - vec2(-0.010, 0.008)) * 52.0);
+          float craterB = exp(-length(moonDelta - vec2(0.012, -0.012)) * 62.0);
+          float craterC = exp(-length(moonDelta - vec2(0.004, 0.016)) * 74.0);
+          float moonSurface = 0.95 - craterA * 0.12 - craterB * 0.08 - craterC * 0.045;
+          sky += vec3(0.43, 0.58, 0.90) * moonHalo * moonVisible * 0.22;
+          sky += vec3(0.89, 0.93, 1.0) * moonMask * moonSurface * moonVisible * (0.80 - night * 0.04);
 
-          sky += vec3(0.62, 0.74, 0.98) * moonHalo * night * 0.20;
-          sky += vec3(0.92, 0.95, 1.0) * moonMask * moonSurface * night * (0.72 - moonCloudOcclusion * 0.48);
+          // Large, layered cloud banks with drifting turbulence and silver lining.
+          float warp = fbm(vec2(uv.x * 1.75 + t * 0.42, uv.y * 3.0 + 4.8));
+          float lowA = fbm(vec2(uv.x * 3.0 + t * 0.72, uv.y * 8.0 + warp * 1.15));
+          float lowB = fbm(vec2(uv.x * 7.2 - t * 0.46, uv.y * 13.5 + warp * 0.85 + 8.0));
+          float cloudField = lowA * 0.65 + lowB * 0.35;
+          float lowCloud = smoothstep(0.46, 0.70, cloudField + (0.40 - uv.y) * 0.12);
+          lowCloud *= smoothstep(0.08, 0.21, uv.y) * (1.0 - smoothstep(0.42, 0.64, uv.y));
 
-          // Distant hills and horizon silhouette.
-          float hillNoise = fbm(vec2(uv.x * 2.5 + 2.0, 8.0));
-          float hillLine = 0.060 + hillNoise * 0.035 + 0.018 * sin(uv.x * 9.0 + t * 0.8);
-          float distantLand = 1.0 - smoothstep(hillLine, hillLine + 0.012, uv.y);
-          sky = mix(sky, mix(vec3(0.07, 0.11, 0.16), vec3(0.012, 0.020, 0.032), night), distantLand);
+          float highField = fbm(vec2(uv.x * 2.6 - t * 0.25, uv.y * 5.6 + 15.0));
+          float highCloud = smoothstep(0.59, 0.76, highField);
+          highCloud *= smoothstep(0.38, 0.57, uv.y) * (1.0 - smoothstep(0.82, 0.97, uv.y)) * 0.34;
 
-          // A tiny warm village glow behind the hut.
-          float villageGlow = exp(-pow((uv.x - 0.29) * 22.0, 2.0)) * exp(-pow((uv.y - 0.095) * 24.0, 2.0));
-          sky += vec3(1.0, 0.42, 0.12) * villageGlow * (0.12 + night * 0.22);
+          vec3 dayCloudShadow = vec3(0.30, 0.43, 0.55);
+          vec3 dayCloudLight = vec3(0.97, 0.985, 1.0);
+          vec3 duskCloudShadow = vec3(0.22, 0.16, 0.32);
+          vec3 duskCloudLight = vec3(1.0, 0.60, 0.40);
+          vec3 nightCloudShadow = vec3(0.035, 0.07, 0.13);
+          vec3 nightCloudLight = vec3(0.22, 0.30, 0.43);
+          float cloudLight = smoothstep(0.40, 0.75, cloudField + uv.y * 0.32);
+          vec3 dayCloud = mix(dayCloudShadow, dayCloudLight, cloudLight);
+          vec3 duskCloud = mix(duskCloudShadow, duskCloudLight, cloudLight);
+          vec3 nightCloud = mix(nightCloudShadow, nightCloudLight, cloudLight);
+          vec3 cloudColor = mix(nightCloud, dayCloud, day);
+          cloudColor = mix(cloudColor, duskCloud, max(dawn, dusk * 0.96));
+          sky = mix(sky, cloudColor, lowCloud * (0.36 + day * 0.32 + twilight * 0.30 + night * 0.18));
 
-          // Rustic hut silhouette with warm window.
-          float hutWall = boxMask(uv, vec2(0.29, 0.126), vec2(0.095, 0.053), 0.004);
-          float roofHalf = 0.125;
-          float roofTop = 0.175 + (1.0 - abs(uv.x - 0.29) / roofHalf) * 0.090;
-          float roofMask = step(abs(uv.x - 0.29), roofHalf) * step(0.175, uv.y) * step(uv.y, roofTop);
-          float eaveMask = boxMask(uv, vec2(0.29, 0.175), vec2(0.137, 0.010), 0.004);
-          float chimney = boxMask(uv, vec2(0.355, 0.225), vec2(0.015, 0.038), 0.003);
+          vec3 wisps = mix(vec3(0.18, 0.30, 0.44), vec3(0.91, 0.94, 0.98), day);
+          wisps = mix(wisps, vec3(0.66, 0.36, 0.44), twilight * 0.78);
+          sky = mix(sky, wisps, highCloud * (0.22 + day * 0.15));
 
-          vec3 hutColor = mix(vec3(0.08, 0.045, 0.026), vec3(0.015, 0.018, 0.024), night * 0.92);
-          sky = mix(sky, hutColor, max(hutWall, max(roofMask, eaveMask)) * (0.72 + night * 0.25));
-          sky = mix(sky, vec3(0.035, 0.028, 0.022), chimney * 0.95);
+          // Atmospheric mist gives the horizon depth without covering the search bar.
+          float mistBand = exp(-pow((uv.y - 0.10) * 15.0, 2.0));
+          vec3 mistColor = mix(vec3(0.43, 0.54, 0.68), vec3(0.95, 0.67, 0.50), twilight * 0.75);
+          mistColor = mix(mistColor, vec3(0.10, 0.16, 0.25), night * 0.60);
+          sky = mix(sky, mistColor, mistBand * (0.15 + twilight * 0.16));
 
-          float windowMask = boxMask(uv, vec2(0.323, 0.132), vec2(0.016, 0.014), 0.003);
-          float doorMask = boxMask(uv, vec2(0.255, 0.115), vec2(0.020, 0.043), 0.003);
-          sky = mix(sky, vec3(0.06, 0.035, 0.02), doorMask);
-          sky += vec3(1.0, 0.52, 0.15) * windowMask * (0.24 + night * 1.35);
-          sky += vec3(1.0, 0.25, 0.07) * windowMask * exp(-length(vec2((uv.x - 0.323) * aspect, uv.y - 0.132)) * 24.0) * night * 0.30;
+          // Wind-torn smoke plume: billows widen, curl, drift, and fade into the upper cloud layer.
+          float smokeY = smoothstep(0.075, 0.145, uv.y) * (1.0 - smoothstep(0.47, 0.66, uv.y));
+          float smokeCenter = 0.335
+            + 0.034 * sin(uv.y * 14.0 - t * 2.2)
+            + 0.016 * sin(uv.y * 38.0 + t * 1.55)
+            + 0.008 * sin(uv.y * 72.0 - t * 1.9);
+          float smokeWidth = 0.008 + uv.y * 0.060;
+          float smokeDistance = abs(uv.x - smokeCenter) / max(smokeWidth, 0.006);
+          float smokeNoise = fbm(vec2(uv.x * 13.0 + t * 0.28, uv.y * 10.0 - t * 1.18));
+          float smokeRimNoise = fbm(vec2(uv.x * 18.0 - t * 0.22, uv.y * 15.0 + t * 0.76));
+          float smokeCore = (1.0 - smoothstep(0.20, 1.17, smokeDistance)) * smoothstep(0.27, 0.70, smokeNoise) * smokeY;
+          float smokeRim = (1.0 - smoothstep(0.55, 1.62, smokeDistance)) * smoothstep(0.35, 0.74, smokeRimNoise) * smokeY;
+          vec3 smokeColor = mix(vec3(0.48, 0.54, 0.60), vec3(0.79, 0.81, 0.83), day);
+          smokeColor = mix(smokeColor, vec3(0.83, 0.52, 0.43), twilight * 0.72);
+          smokeColor = mix(smokeColor, vec3(0.16, 0.21, 0.30), night * 0.72);
+          sky = mix(sky, smokeColor, smokeRim * 0.25);
+          sky = mix(sky, smokeColor * 0.80, smokeCore * (0.22 + night * 0.10));
 
-          // Chimney smoke: expands, curls, drifts and fades into the clouds.
-          float smokeY = smoothstep(0.245, 0.29, uv.y) * (1.0 - smoothstep(0.60, 0.76, uv.y));
-          float smokeCenter = 0.355
-            + 0.018 * sin(uv.y * 19.0 + t * 1.5)
-            + 0.014 * sin(uv.y * 47.0 - t * 2.1)
-            + 0.010 * sin(uv.y * 81.0 + t * 0.9);
-          float smokeWidth = 0.016 + (uv.y - 0.25) * 0.075;
-          float smokeDist = abs(uv.x - smokeCenter) / max(smokeWidth, 0.006);
-          float smokeShape = 1.0 - smoothstep(0.28, 1.10, smokeDist);
-          float smokeNoise = fbm(vec2(uv.x * 8.0 + t * 0.28, uv.y * 10.0 - t * 0.65));
-          float smokePockets = smoothstep(0.28, 0.76, smokeNoise);
-          float smoke = smokeShape * smokePockets * smokeY;
+          // Rolling landscape and a small distant exhaust stack anchor the plume in the scene.
+          float hillA = fbm(vec2(uv.x * 2.1 + 3.0, 6.0));
+          float hillB = fbm(vec2(uv.x * 4.2 - 1.0, 9.0));
+          float hillLine = 0.047 + hillA * 0.033 + 0.008 * sin(uv.x * 11.0 + t * 0.12);
+          float farHill = 1.0 - smoothstep(hillLine, hillLine + 0.012, uv.y);
+          float nearLine = 0.024 + hillB * 0.022;
+          float nearHill = 1.0 - smoothstep(nearLine, nearLine + 0.009, uv.y);
+          vec3 farLand = mix(vec3(0.12, 0.22, 0.28), vec3(0.018, 0.034, 0.058), night * 0.92);
+          vec3 nearLand = mix(vec3(0.065, 0.15, 0.16), vec3(0.008, 0.017, 0.030), night);
+          sky = mix(sky, farLand, farHill * 0.92);
+          sky = mix(sky, nearLand, nearHill * 0.96);
+          float stackBody = boxMask(uv, vec2(0.335, 0.079), vec2(0.009, 0.042), 0.003);
+          float stackCap = boxMask(uv, vec2(0.335, 0.119), vec2(0.014, 0.004), 0.002);
+          sky = mix(sky, vec3(0.028, 0.037, 0.047), max(stackBody, stackCap));
 
-          vec3 smokeColor = mix(vec3(0.72, 0.75, 0.78), vec3(0.21, 0.25, 0.31), night);
-          sky = mix(sky, smokeColor, smoke * (0.16 + 0.24 * night));
-
-          // Soft foreground haze + filmic vignette.
-          float grassHaze = smoothstep(0.0, 0.12, uv.y) * (1.0 - smoothstep(0.12, 0.20, uv.y));
-          sky = mix(sky, vec3(0.10, 0.15, 0.16), grassHaze * (0.10 + night * 0.10));
-
-          vec2 vig = uv - 0.5;
-          float vignette = 1.0 - smoothstep(0.34, 0.78, length(vec2(vig.x * 0.85, vig.y)));
-          sky *= 0.84 + vignette * 0.16;
-
-          float grain = (hash(uv * u_resolution + u_time * 0.008) - 0.5) * 0.012;
-          sky += grain;
+          // Gentle cinematic vignette; keep the whole scene readable behind the search controls.
+          vec2 centered = uv - 0.5;
+          float vignette = 1.0 - smoothstep(0.32, 0.82, length(vec2(centered.x * 0.9, centered.y)));
+          sky *= 0.91 + vignette * 0.09;
 
           gl_FragColor = vec4(clamp(sky, 0.0, 1.0), 1.0);
         }
@@ -408,6 +400,16 @@ function NightSky() {
       -1,
       true
     );
+
+    smokeRise.value = withRepeat(withTiming(1, { duration: 6000 }), -1, false);
+    smokeSway.value = withRepeat(
+      withSequence(
+        withTiming(10, { duration: 3700 }),
+        withTiming(-8, { duration: 4300 })
+      ),
+      -1,
+      true
+    );
   }, []);
 
   const isNight = hour >= 19 || hour < 6;
@@ -437,33 +439,128 @@ function NightSky() {
     ],
   }));
 
+  const smokeAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [
+      { translateX: smokeSway.value },
+      { translateY: -smokeRise.value * 22 },
+      { scale: 0.82 + smokeRise.value * 0.32 },
+    ],
+    opacity: 0.56 - smokeRise.value * 0.22,
+  }));
+
+  const sunProgress = Math.max(0, Math.min(1, (hour - 5.1) / 14.2));
+  const sunLeft = 8 + sunProgress * 84;
+  const moonProgress = Math.max(0, Math.min(1, ((hour - 19 + 24) % 24) / 10));
+  const moonLeft = 89 - moonProgress * 78;
+  const moonTop = 18 + Math.sin(moonProgress * Math.PI) * 30;
+  const isDawn = hour >= 4.4 && hour < 7.4;
+
   return (
     <View pointerEvents="none" style={s.nightSky}>
       <LinearGradient
         colors={
           isNight
-            ? ["#020617", "#0B1120", "#172554", "#312E81"]
+            ? ["#020713", "#07162D", "#152B4A", "#283B50"]
             : isSunset
-              ? ["#1E1B4B", "#4C1D95", "#8B5CF6", "#F5D0FE"]
-              : ["#7DD3FC", "#38BDF8", "#0EA5E9", "#E0F2FE"]
+              ? ["#171436", "#4D2450", "#B34F44", "#FFB06C"]
+              : isDawn
+                ? ["#1C2A4D", "#596786", "#D88C78", "#FFE0B3"]
+                : ["#13558D", "#398CC2", "#8FC9E6", "#E4F0F4"]
         }
-        locations={[0, 0.28, 0.68, 1]}
+        locations={[0, 0.30, 0.68, 1]}
         style={s.nightGradient}
       />
+
+      {!isNight ? (
+        <Animated.View
+          style={[
+            s.sunGlow,
+            {
+              left: `${sunLeft}%`,
+              right: undefined,
+              top: isSunset || isDawn ? 106 : 14,
+              transform: [{ translateX: -37 }],
+            },
+          ]}
+        >
+          <View style={s.sunHaloOuter} />
+          <View style={s.sunHalo} />
+          <View style={s.sunCore} />
+        </Animated.View>
+      ) : (
+        <View
+          style={[
+            s.moon,
+            {
+              left: `${moonLeft}%`,
+              right: undefined,
+              top: moonTop,
+              transform: [{ translateX: -29 }],
+            },
+          ]}
+        >
+          <View style={s.moonHalo} />
+          <View style={s.moonBody}>
+            <View style={s.moonCut} />
+          </View>
+        </View>
+      )}
+
+      <View style={s.starLayer}>
+        {SKY_STARS.map((star, index) => (
+          <View
+            key={index}
+            style={{
+              position: "absolute",
+              top: star.top,
+              left: star.left,
+              width: star.size,
+              height: star.size,
+              borderRadius: star.size,
+              backgroundColor: "#FFFFFF",
+              opacity: isNight ? (index % 4 === 0 ? 0.95 : 0.62) : isDawn || isSunset ? 0.12 : 0,
+            }}
+          />
+        ))}
+      </View>
+
+      <View style={s.horizonGlow} />
+
       <Animated.View style={[s.cloud, s.cloudOne, cloudOneStyle]}>
-        <View style={[s.cloudPuff, { width: 58, height: 32, left: 14, top: 10, backgroundColor: "rgba(255,255,255,0.82)" }]} />
-        <View style={[s.cloudPuff, { width: 82, height: 44, left: 42, top: -1, backgroundColor: "rgba(255,255,255,0.88)" }]} />
-        <View style={[s.cloudPuff, { width: 54, height: 30, left: 102, top: 12, backgroundColor: "rgba(255,255,255,0.76)" }]} />
+        <View style={[s.cloudBase, { backgroundColor: isNight ? "rgba(74,94,126,0.28)" : isSunset ? "rgba(182,107,103,0.22)" : "rgba(100,116,139,0.14)" }]} />
+        <View style={[s.cloudPuff, { width: 58, height: 32, left: 14, top: 10, backgroundColor: isNight ? "rgba(160,180,209,0.20)" : isSunset ? "rgba(255,210,190,0.82)" : "rgba(255,255,255,0.84)" }]} />
+        <View style={[s.cloudPuff, { width: 82, height: 44, left: 42, top: -1, backgroundColor: isNight ? "rgba(180,197,222,0.23)" : isSunset ? "rgba(255,225,207,0.88)" : "rgba(255,255,255,0.92)" }]} />
+        <View style={[s.cloudPuff, { width: 54, height: 30, left: 102, top: 12, backgroundColor: isNight ? "rgba(116,139,174,0.20)" : isSunset ? "rgba(244,172,160,0.76)" : "rgba(255,255,255,0.78)" }]} />
+        <View style={s.cloudHighlightOne} />
       </Animated.View>
+
       <Animated.View style={[s.cloud, s.cloudTwo, cloudTwoStyle]}>
-        <View style={[s.cloudPuff, { width: 46, height: 26, left: 14, top: 11, backgroundColor: "rgba(255,255,255,0.74)" }]} />
-        <View style={[s.cloudPuff, { width: 72, height: 38, left: 40, top: 0, backgroundColor: "rgba(255,255,255,0.82)" }]} />
-        <View style={[s.cloudPuff, { width: 54, height: 29, left: 86, top: 10, backgroundColor: "rgba(255,255,255,0.68)" }]} />
+        <View style={[s.cloudBase, { backgroundColor: isNight ? "rgba(74,94,126,0.26)" : isSunset ? "rgba(182,107,103,0.20)" : "rgba(100,116,139,0.12)" }]} />
+        <View style={[s.cloudPuff, { width: 46, height: 26, left: 14, top: 11, backgroundColor: isNight ? "rgba(160,180,209,0.17)" : isSunset ? "rgba(255,210,190,0.70)" : "rgba(255,255,255,0.76)" }]} />
+        <View style={[s.cloudPuff, { width: 72, height: 38, left: 40, top: 0, backgroundColor: isNight ? "rgba(180,197,222,0.21)" : isSunset ? "rgba(255,225,207,0.78)" : "rgba(255,255,255,0.84)" }]} />
+        <View style={[s.cloudPuff, { width: 54, height: 29, left: 86, top: 10, backgroundColor: isNight ? "rgba(116,139,174,0.16)" : isSunset ? "rgba(244,172,160,0.63)" : "rgba(255,255,255,0.68)" }]} />
+        <View style={s.cloudHighlightTwo} />
       </Animated.View>
+
+      <View style={s.horizonSilhouette} />
+      <Animated.View
+        style={[
+          s.smokeColumn,
+          smokeAnimatedStyle,
+          {
+            opacity: isNight ? 0.58 : isSunset ? 0.80 : 0.64,
+          },
+        ]}
+      >
+        <View style={[s.smokePuff, { width: 27, height: 25, left: 39, top: 91, opacity: 0.68 }]} />
+        <View style={[s.smokePuff, { width: 37, height: 32, left: 30, top: 68, opacity: 0.56 }]} />
+        <View style={[s.smokePuff, { width: 47, height: 42, left: 23, top: 43, opacity: 0.43 }]} />
+        <View style={[s.smokePuff, { width: 56, height: 49, left: 19, top: 19, opacity: 0.28 }]} />
+      </Animated.View>
+      <View style={s.smokeStack} />
     </View>
   );
 }
-
 
 
 export default function Home() {
@@ -1175,6 +1272,11 @@ const s = StyleSheet.create({
   nightSky: { position: "absolute", top: 0, left: 0, right: 0, height: 205, overflow: "hidden", zIndex: 0, pointerEvents: "none" },
   nightGradientLayer: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0 },
   nightGradient: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0 },
+  horizonGlow: { position: "absolute", left: "12%", right: "12%", bottom: 4, height: 68, borderTopLeftRadius: 170, borderTopRightRadius: 170, backgroundColor: "rgba(255,190,130,0.10)" },
+  horizonSilhouette: { position: "absolute", left: 0, right: 0, bottom: 0, height: 18, backgroundColor: "rgba(13,28,38,0.58)" },
+  smokeColumn: { position: "absolute", left: "30%", bottom: 20, width: 94, height: 118 },
+  smokePuff: { position: "absolute", borderRadius: 50, backgroundColor: "rgba(206,218,226,0.35)", shadowColor: "#CBD5E1", shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.28, shadowRadius: 12, elevation: 1 },
+  smokeStack: { position: "absolute", bottom: 16, left: "34.5%", width: 8, height: 18, backgroundColor: "#263442", borderTopWidth: 2, borderTopColor: "#526170" },
   starLayer: { position: "absolute", top: 0, left: 0, right: 0, height: 92 },
   star: { position: "absolute", backgroundColor: "#FFFFFF", shadowColor: "#FFFFFF", shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.95, shadowRadius: 5, elevation: 3 },
   sunGlow: { position: "absolute", top: 18, right: "12%", width: 74, height: 74, alignItems: "center", justifyContent: "center" },
