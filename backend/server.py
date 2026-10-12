@@ -2267,6 +2267,15 @@ async def upload_image(
 
 # ------------------ ADMIN ------------------
 
+class StoreUpdateIn(BaseModel):
+    name: Optional[str] = None
+    address: Optional[str] = None
+    category_id: Optional[str] = None
+    item_categories: Optional[list[str]] = None
+    delivery_min: Optional[int] = None
+    image: Optional[str] = None
+
+
 class ProductIn(BaseModel):
     name: str
     category_id: str
@@ -4073,15 +4082,6 @@ async def vendor_create_store(data: StoreIn, current=Depends(require_roles("vend
     await db.stores.insert_one(dict(doc))
     doc.pop("_id", None)
     return doc
-
-
-class StoreUpdateIn(BaseModel):
-    name: Optional[str] = None
-    address: Optional[str] = None
-    category_id: Optional[str] = None
-    item_categories: Optional[list[str]] = None
-    delivery_min: Optional[int] = None
-    image: Optional[str] = None
 
 
 @api.put("/vendor/stores/{store_id}")
