@@ -640,6 +640,7 @@ export default function Home() {
   const [refreshing, setRefreshing] = useState(false);
   const [bannerIndex, setBannerIndex] = useState(0);
   const [voiceListening, setVoiceListening] = useState(false);
+  const [heroCollapsed, setHeroCollapsed] = useState(false);
   const bannerListRef = useRef<FlatList<any>>(null);
   const voiceRecognitionRef = useRef<any>(null);
 
@@ -652,6 +653,14 @@ export default function Home() {
     const diff = currentOffsetY - lastHomeOffsetY.current;
 
     if (Math.abs(diff) > 10) {
+      // Swiping up through the home feed frees screen space by collapsing the hero.
+      if (diff > 0 && currentOffsetY > 35 && !heroCollapsed) {
+        setHeroCollapsed(true);
+      } else if (diff < 0 && heroCollapsed) {
+        // Swiping back down reveals the animated sky and delivery header again.
+        setHeroCollapsed(false);
+      }
+
       if (diff > 0 && currentOffsetY > 50 && !homeTabHidden.current) {
         homeTabHidden.current = true;
         RNAnimated.timing(tabBarTranslateY, {
@@ -695,12 +704,13 @@ export default function Home() {
 
       lastHomeOffsetY.current = currentOffsetY;
     }
-  }, [navigation, tabBarTranslateY]);
+  }, [navigation, tabBarTranslateY, heroCollapsed]);
 
   useFocusEffect(
     useCallback(() => {
       lastHomeOffsetY.current = 0;
       homeTabHidden.current = false;
+      setHeroCollapsed(false);
       tabBarTranslateY.setValue(0);
       navigation.setOptions({
         tabBarStyle: {
@@ -715,6 +725,7 @@ export default function Home() {
 
       return () => {
         homeTabHidden.current = false;
+        setHeroCollapsed(false);
         tabBarTranslateY.setValue(0);
       };
     }, [navigation, tabBarTranslateY])
@@ -954,9 +965,10 @@ export default function Home() {
   return (
     <View style={[s.root, Platform.OS === 'web' ? ({ height: '100vh', overflow: 'hidden' } as any) : {}]} testID="home-screen">
       {/* Dynamic time-of-day hero: day, sunset and night */}
-      <NightSky />
-      <View style={s.headerBg} />
-      
+      {!heroCollapsed && <NightSky />}
+      {!heroCollapsed && <View style={s.headerBg} />}
+
+      {!heroCollapsed && (
       <SafeAreaView edges={["top"]} style={s.headerWrap}>
         <View style={s.headerRow}>
           {/* 1. Address Selector (Route: /addresses) */}
@@ -994,10 +1006,15 @@ export default function Home() {
         </View>
 
       </SafeAreaView>
+      )}
 
-      {/* Keep the animated sky clear; place search just below the sky scene. */}
-      <View style={s.skyClearSpace} />
-      <View style={s.searchBarOuter}>
+      {/* Collapse hero spacing on upward feed scroll so search moves to the top. */}
+      <View style={[s.skyClearSpace, heroCollapsed && s.skyClearSpaceCollapsed]} />
+      <SafeAreaView
+        edges={heroCollapsed ? ["top"] : []}
+        style={heroCollapsed ? s.searchBarSafeAreaCollapsed : undefined}
+      >
+        <View style={[s.searchBarOuter, heroCollapsed && s.searchBarOuterCollapsed]}>
         {/* Search Bar */}
         <Pressable
           testID="home-search-trigger"
@@ -1028,7 +1045,8 @@ export default function Home() {
             />
           </Pressable>
         </Pressable>
-      </View>
+        </View>
+      </SafeAreaView>
 
 
       {!locationReady ? (
@@ -1378,7 +1396,10 @@ const s = StyleSheet.create({
   cloudBase: { position: "absolute", left: 2, right: 2, bottom: 4, height: 24, borderRadius: 18, backgroundColor: "rgba(100,116,139,0.12)" },
   headerBg: { position: "absolute", top: 0, left: 0, right: 0, height: 138, borderBottomLeftRadius: 30, borderBottomRightRadius: 30, backgroundColor: "transparent", shadowColor: "#FFFFFF", shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.14, shadowRadius: 18, elevation: 7 },
   skyClearSpace: { height: Platform.OS === "web" ? 78 : 52 },
+  skyClearSpaceCollapsed: { height: 0 },
+  searchBarSafeAreaCollapsed: { backgroundColor: THEME.whiteBg, zIndex: 20, elevation: 8, borderBottomWidth: 1, borderBottomColor: "rgba(226,232,240,0.9)" },
   searchBarOuter: { paddingHorizontal: SPACING.lg, marginTop: SPACING.sm },
+  searchBarOuterCollapsed: { marginTop: 0, paddingBottom: 8 },
   headerWrap: { paddingHorizontal: SPACING.lg, paddingBottom: SPACING.xs },
   headerRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingTop: 4 },
   locWrap: { flexDirection: "row", gap: 8, alignItems: "center", flex: 1, marginRight: 12, zIndex: 99, elevation: 5 },
