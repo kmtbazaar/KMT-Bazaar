@@ -34,9 +34,10 @@ const emptyProductForm = () => ({
   item_category_id: "",
 });
 
-export default function AdminVendorProducts({ vendorId }: { vendorId: string }) {
+export default function AdminVendorProducts({ vendorId, selectedStoreId: externalStoreId, showStoreSelector = true }: { vendorId: string; selectedStoreId?: string; showStoreSelector?: boolean }) {
   const [stores, setStores] = useState<any[]>([]);
-  const [selectedStoreId, setSelectedStoreId] = useState("");
+  const [internalSelectedStoreId, setInternalSelectedStoreId] = useState("");
+  const selectedStoreId = externalStoreId !== undefined ? externalStoreId : internalSelectedStoreId;
   const [products, setProducts] = useState<any[]>([]);
   const [itemCategories, setItemCategories] = useState<any[]>([]);
   const [shopCategories, setShopCategories] = useState<any[]>([]);
@@ -68,11 +69,13 @@ export default function AdminVendorProducts({ vendorId }: { vendorId: string }) 
             : [];
         setStores(storeList);
         setShopCategories(categoryList || []);
-        setSelectedStoreId((current) =>
-          storeList.some((store: any) => String(store.id || store._id) === current)
-            ? current
-            : String(storeList[0]?.id || storeList[0]?._id || "")
-        );
+        if (externalStoreId === undefined) {
+          setInternalSelectedStoreId((current) =>
+            storeList.some((store: any) => String(store.id || store._id) === current)
+              ? current
+              : String(storeList[0]?.id || storeList[0]?._id || "")
+          );
+        }
         if (!storeList.length) setNotice("No store is linked to this vendor yet.");
       } catch (error: any) {
         if (active) setNotice(error?.message || "Could not load this vendor's stores.");
@@ -363,6 +366,7 @@ export default function AdminVendorProducts({ vendorId }: { vendorId: string }) 
         </View>
       ) : (
         <>
+          {showStoreSelector ? (
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.storeChips}>
             {stores.map((store: any) => {
               const storeId = String(store.id || store._id);
@@ -370,7 +374,7 @@ export default function AdminVendorProducts({ vendorId }: { vendorId: string }) 
               return (
                 <Pressable
                   key={storeId}
-                  onPress={() => { setSelectedStoreId(storeId); setNotice(""); setEditingItemCategoryId(""); setItemCategoryName(""); }}
+                  onPress={() => { if (externalStoreId === undefined) setInternalSelectedStoreId(storeId); setNotice(""); setEditingItemCategoryId(""); setItemCategoryName(""); }}
                   style={[styles.storeChip, selected && styles.storeChipActive]}
                 >
                   <MaterialCommunityIcons name="store-outline" size={16} color={selected ? "#fff" : "#C2410C"} />
@@ -381,6 +385,7 @@ export default function AdminVendorProducts({ vendorId }: { vendorId: string }) 
               );
             })}
           </ScrollView>
+          ) : null}
 
           <View style={styles.storeMeta}>
             <Text style={styles.storeMetaLabel}>Shop category</Text>
