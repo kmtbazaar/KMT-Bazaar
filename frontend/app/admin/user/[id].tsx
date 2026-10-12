@@ -732,20 +732,37 @@ vendorProductIds.forEach((pId) =>
                   </Text>
                 </View>
 
-                {role === "vendor" ? (
-                  <Switch
-                    testID={`toggle-vendor-${id}`}
-                    accessibilityLabel="Suspend or activate vendor"
-                    value={user.active !== false}
-                    onValueChange={toggleVendorStatus}
-                    trackColor={{
-                      true: COLORS.success,
-                      false: COLORS.borderStrong,
-                    }}
-                  />
-                ) : null}
               </View>
             </View>
+
+            {String(role || "").toLowerCase() === "vendor" ? (
+              <View style={s.vendorToggleCard} testID="vendor-access-toggle-card">
+                <View style={s.vendorToggleContent}>
+                  <Text style={s.vendorToggleTitle}>Vendor Account Control</Text>
+                  <Text
+                    style={[
+                      s.vendorToggleStatus,
+                      { color: user.active === false ? "#B91C1C" : "#15803D" },
+                    ]}
+                  >
+                    {user.active === false ? "SUSPENDED" : "ACTIVE"}
+                  </Text>
+                  <Text style={s.vendorToggleHint}>
+                    Switch off to suspend this vendor; switch on to reactivate.
+                  </Text>
+                </View>
+                <Switch
+                  testID={`toggle-vendor-${id}`}
+                  accessibilityLabel="Suspend or activate vendor"
+                  value={user.active !== false}
+                  onValueChange={toggleVendorStatus}
+                  trackColor={{
+                    true: COLORS.success,
+                    false: COLORS.borderStrong,
+                  }}
+                />
+              </View>
+            ) : null}
 
             {/* ORDERS HEADER */}
             <View style={s.ordersHeader}>
@@ -1010,6 +1027,38 @@ const s = StyleSheet.create({
     fontWeight: "800",
     color: COLORS.text,
     marginBottom: 8,
+  },
+
+  vendorToggleCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    backgroundColor: "#FFF7ED",
+    borderRadius: RADIUS.md,
+    borderWidth: 1,
+    borderColor: "#FDBA74",
+    padding: 16,
+    marginBottom: 18,
+  },
+  vendorToggleContent: {
+    flex: 1,
+    minWidth: 0,
+  },
+  vendorToggleTitle: {
+    fontSize: 14,
+    fontWeight: "900",
+    color: COLORS.text,
+  },
+  vendorToggleStatus: {
+    fontSize: 13,
+    fontWeight: "900",
+    marginTop: 4,
+  },
+  vendorToggleHint: {
+    fontSize: 11,
+    lineHeight: 16,
+    color: COLORS.textMuted,
+    marginTop: 3,
   },
 
   infoRow: {
