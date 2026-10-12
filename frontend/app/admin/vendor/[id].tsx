@@ -54,6 +54,7 @@ export default function AdminVendorManage() {
   useFocusEffect(useCallback(()=>{load()},[load]));
 
   const selectStore=async(s:any)=>{
+    setSelectedStoreId(String(s.id || s._id));
     setStore(s); setStoreForm({name:s.name||"",address:s.address||"",category_id:s.category_id||"",image:s.image||"",delivery_min:s.delivery_min||30});
     try{setItemCategories(await adminApi.storeItemCategories(s.id)||[])}catch{}
   };
@@ -115,21 +116,44 @@ export default function AdminVendorManage() {
   };
 
   return <SafeAreaView style={s.root} edges={["top","bottom"]}>
-    <View style={s.header}><Pressable onPress={()=>router.back()}><MaterialCommunityIcons name="arrow-left" size={24} color={COLORS.text}/></Pressable><View style={{flex:1,marginLeft:12}}><Text style={s.title}>{vendor?.name||"Vendor Manage"}</Text><Text style={s.muted}>{vendor?.email||vendor?.phone||""}</Text></View><View style={[s.status,vendor?.active===false?s.off:s.on]}><Text style={s.statusText}>{vendor?.active===false?"SUSPENDED":"ACTIVE"}</Text></View></View>
-    {store ? <AdminVendorProducts vendorId={String(id)} selectedStoreId={selectedStoreId} showStoreSelector={false} /> : null}
-    <FlatList data={storeProducts} keyExtractor={p=>String(p.id)} contentContainerStyle={{padding:16,paddingBottom:40}} ItemSeparatorComponent={()=> <View style={{height:8}}/>}
-      ListHeaderComponent={<>
-        <View style={s.storeTabs}>{stores.map(x=><Pressable key={x.id} onPress={()=>selectStore(x)} style={[s.storeTab,String(x.id)===String(store?.id)&&s.storeTabActive]}><Text style={s.storeTabText}>{x.name}</Text></Pressable>)}</View>
-        {store&&<><View style={s.hero}><Image source={{uri:storeForm.image}} style={s.heroImg} contentFit="cover"/><View style={s.heroShade}/><View style={s.heroText}><Text style={s.heroTitle}>{store.name}</Text><Text style={s.heroAddr}>{store.address}</Text></View><Pressable onPress={()=>setShowStore(true)} style={s.editCircle}><MaterialCommunityIcons name="pencil" size={19} color="#fff"/></Pressable></View>
-        <View style={s.card}><View style={s.rowBetween}><View><Text style={s.section}>Store Item Categories</Text><Text style={s.muted}>Same category controls as vendor store panel</Text></View></View><View style={s.itemRow}><TextInput value={itemName} onChangeText={setItemName} placeholder="e.g. Jeans" style={[s.input,{flex:1}]}/><Pressable onPress={saveItem} style={s.addBtn}><MaterialCommunityIcons name={editingItem?"check":"plus"} size={20} color="#fff"/></Pressable></View><View style={s.chips}>{itemCategories.filter((x:any)=>x.active!==false).map((x:any)=><View key={x.id} style={s.chip}><Text style={s.chipText}>{x.name}</Text><Pressable onPress={()=>{setEditingItem(x.id);setItemName(x.name)}}><MaterialCommunityIcons name="pencil" size={15} color="#2563EB"/></Pressable><Pressable onPress={()=>deleteItem(x)}><MaterialCommunityIcons name="close-circle" size={16} color="#DC2626"/></Pressable></View>)}</View></View>
-        <View style={s.rowBetween}><Text style={s.section}>Products ({storeProducts.length})</Text><Pressable onPress={()=>openProduct()} style={s.primary}><MaterialCommunityIcons name="plus" size={17} color="#fff"/><Text style={s.white}>Add Product</Text></Pressable></View>
-        <View style={s.tools}><TextInput value={search} onChangeText={setSearch} placeholder="Search products" style={[s.input,{flex:1}]}/><Pressable onPress={()=>setLowStock(x=>!x)} style={[s.filter,lowStock&&s.filterOn]}><Text style={s.filterText}>Low stock</Text></Pressable></View></>}
-      </>}
-      renderItem={({item})=><View style={s.product}><Image source={{uri:item.image}} style={s.thumb} contentFit="cover"/><View style={{flex:1}}><Text style={s.productName} numberOfLines={1}>{item.name}</Text><Text style={s.muted}>₹{Number(item.price||0).toFixed(0)} · {item.unit||"1 pc"} · Stock {item.stock||0}</Text></View><View style={s.productActions}><Pressable onPress={()=>toggleProduct(item)}><MaterialCommunityIcons name={item.is_available===false?"eye-off-outline":"eye-outline"} size={21} color={item.is_available===false?"#16A34A":"#2563EB"}/></Pressable><Pressable onPress={()=>duplicate(item)}><MaterialCommunityIcons name="content-copy" size={19} color="#2563EB"/></Pressable><Pressable onPress={()=>openProduct(item)}><MaterialCommunityIcons name="pencil-outline" size={20} color="#D97706"/></Pressable><Pressable onPress={()=>remove(item)}><MaterialCommunityIcons name="trash-can-outline" size={19} color="#DC2626"/></Pressable></View></View>}
-      ListEmptyComponent={store?<Text style={s.empty}>No products in this store.</Text>:null}
-    />
+    <View style={s.header}>
+      <Pressable onPress={() => router.back()}><MaterialCommunityIcons name="arrow-left" size={24} color={COLORS.text}/></Pressable>
+      <View style={{ flex: 1, marginLeft: 12 }}>
+        <Text style={s.title}>{vendor?.name || "Vendor Manage"}</Text>
+        <Text style={s.muted}>{vendor?.email || vendor?.phone || ""}</Text>
+      </View>
+      <View style={[s.status, vendor?.active === false ? s.off : s.on]}>
+        <Text style={s.statusText}>{vendor?.active === false ? "SUSPENDED" : "ACTIVE"}</Text>
+      </View>
+    </View>
+    <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 40 }} keyboardShouldPersistTaps="handled">
+      {stores.length > 1 ? (
+        <View style={s.storeTabs}>
+          {stores.map((x: any) => (
+            <Pressable key={String(x.id)} onPress={() => selectStore(x)} style={[s.storeTab, String(x.id) === String(store?.id) && s.storeTabActive]}>
+              <Text numberOfLines={1} style={s.storeTabText}>{x.name}</Text>
+            </Pressable>
+          ))}
+        </View>
+      ) : null}
+      {store ? (
+        <View style={s.hero}>
+          <Image source={{ uri: storeForm.image || store.image }} style={s.heroImg} contentFit="cover"/>
+          <View style={s.heroShade}/>
+          <View style={s.heroText}>
+            <Text style={s.heroTitle}>{store.name}</Text>
+            <Text style={s.heroAddr}>{store.address}</Text>
+          </View>
+          <Pressable onPress={() => setShowStore(true)} style={s.editCircle}>
+            <MaterialCommunityIcons name="pencil" size={19} color="#fff"/>
+          </Pressable>
+        </View>
+      ) : (
+        <Text style={s.empty}>{loading ? "Loading vendor store…" : "No store is linked to this vendor."}</Text>
+      )}
+      {store ? <AdminVendorProducts vendorId={String(id)} selectedStoreId={selectedStoreId} showStoreSelector={false} /> : null}
+    </ScrollView>
     <Modal visible={showStore} transparent animationType="slide" onRequestClose={()=>setShowStore(false)}><View style={s.overlay}><View style={s.modal}><Text style={s.modalTitle}>Edit Store</Text><Pressable onPress={pickStoreImage} style={s.imageBox}>{storeForm.image?<Image source={{uri:storeForm.image}} style={s.preview} contentFit="cover"/>:<Text style={s.muted}>Add store image</Text>}</Pressable><TextInput value={storeForm.name} onChangeText={(v)=>setStoreForm((x:any)=>({...x,name:v}))} placeholder="Store name" style={s.input}/><TextInput value={storeForm.address} onChangeText={(v)=>setStoreForm((x:any)=>({...x,address:v}))} placeholder="Address" style={s.input}/><View style={s.rowBetween}><TextInput value={String(storeForm.delivery_min)} onChangeText={(v)=>setStoreForm((x:any)=>({...x,delivery_min:v}))} placeholder="Delivery minutes" keyboardType="number-pad" style={[s.input,{flex:1}]}/><Pressable onPress={()=>setShowStore(false)} style={s.secondary}><Text>Cancel</Text></Pressable><Pressable onPress={saveStore} style={s.primary}>{loading?<ActivityIndicator color="#fff"/>:<Text style={s.white}>Save</Text>}</Pressable></View></View></View></Modal>
-    <Modal visible={showProduct} transparent animationType="slide" onRequestClose={()=>setShowProduct(false)}><View style={s.overlay}><View style={s.modal}><ScrollView><Text style={s.modalTitle}>{editProduct?"Edit Product":"Add Product"}</Text><Pressable onPress={pickProductImage} style={s.imageBox}>{productForm.image?<Image source={{uri:productForm.image}} style={s.preview} contentFit="cover"/>:<Text style={s.muted}>Add product image</Text>}</Pressable><TextInput value={productForm.name} onChangeText={(v)=>setProductForm((x:any)=>({...x,name:v}))} placeholder="Product name" style={s.input}/><View style={s.two}><TextInput value={productForm.price} onChangeText={(v)=>setProductForm((x:any)=>({...x,price:v}))} placeholder="Price" keyboardType="decimal-pad" style={[s.input,{flex:1}]}/><TextInput value={productForm.mrp} onChangeText={(v)=>setProductForm((x:any)=>({...x,mrp:v}))} placeholder="MRP" keyboardType="decimal-pad" style={[s.input,{flex:1}]}/></View><View style={s.two}><TextInput value={productForm.unit} onChangeText={(v)=>setProductForm((x:any)=>({...x,unit:v}))} placeholder="Unit" style={[s.input,{flex:1}]}/><TextInput value={productForm.stock} onChangeText={(v)=>setProductForm((x:any)=>({...x,stock:v}))} placeholder="Stock" keyboardType="number-pad" style={[s.input,{flex:1}]}/></View><TextInput value={productForm.item_category} onChangeText={(v)=>setProductForm((x:any)=>({...x,item_category:v,item_category_id:""}))} placeholder="Item category" style={s.input}/><TextInput value={productForm.description} onChangeText={(v)=>setProductForm((x:any)=>({...x,description:v}))} placeholder="Description" multiline style={[s.input,{height:90}]}/><Pressable onPress={()=>setProductForm((x:any)=>({...x,trending:!x.trending}))} style={s.check}><MaterialCommunityIcons name={productForm.trending?"checkbox-marked":"checkbox-blank-outline"} size={21} color="#2563EB"/><Text>Trending product</Text></Pressable><View style={s.modalActions}><Pressable onPress={()=>setShowProduct(false)} style={s.secondary}><Text>Cancel</Text></Pressable><Pressable onPress={saveProduct} style={s.primary}>{loading?<ActivityIndicator color="#fff"/>:<Text style={s.white}>Save Product</Text>}</Pressable></View></ScrollView></View></View></Modal>
   </SafeAreaView>;
 }
 const s=StyleSheet.create({
