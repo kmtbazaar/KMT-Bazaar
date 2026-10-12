@@ -468,7 +468,7 @@ export default function AdminUsers() {
                   >
                     <MaterialCommunityIcons
                       name="delete-outline"
-                      size={28}
+                      size={24}
                       color="#DC2626"
                     />
                   </View>
@@ -591,7 +591,8 @@ const s = StyleSheet.create({
     backgroundColor: "#EFF6FF",
     borderWidth: 1,
     borderColor: "#BFDBFE",
-    marginRight: 4,
+    marginLeft: 8,
+    marginRight: 0,
   },
   manageText: { color: "#2563EB", fontSize: 12, fontWeight: "800" },
   suspendButton: {
@@ -609,10 +610,10 @@ const s = StyleSheet.create({
   },
 
   deleteButton: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    marginLeft: 10,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    marginLeft: 8,
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: "#FEE2E2",
@@ -622,8 +623,8 @@ const s = StyleSheet.create({
   },
 
   deleteInner: {
-    width: 56,
-    height: 56,
+    width: 48,
+    height: 48,
     alignItems: "center",
     justifyContent: "center",
   },
