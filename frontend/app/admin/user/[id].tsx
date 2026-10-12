@@ -15,7 +15,6 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { adminApi } from "@/src/roleApi";
-import AdminVendorProducts from "@/src/components/AdminVendorProducts";
 import { COLORS, RADIUS, SPACING } from "@/src/theme";
 
 const ROLE_LABEL: Record<string, string> = {
@@ -691,10 +690,6 @@ vendorProductIds.forEach((pId) =>
                 </View>
               </View>
             </View>
-
-            {role === "vendor" && user?.vendor_type !== "service" && !user?.service_type ? (
-              <AdminVendorProducts vendorId={String(id)} />
-            ) : null}
 
             {/* ORDERS HEADER */}
             <View style={s.ordersHeader}>
