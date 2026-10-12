@@ -23,6 +23,7 @@ import CheckoutBar from "@/src/components/CheckoutBar";
 
 const { width } = Dimensions.get("window");
 const BANNER_W = width - 32;
+const HERO_COLLAPSE_SCROLL_THRESHOLD = 165; // 145px banner + top spacing
 
 // Custom Theme Palette: Clean Pure White, Sky Blue Header & Vibrant Orange
 const THEME = {
@@ -647,18 +648,29 @@ export default function Home() {
   const tabBarTranslateY = useRef(new RNAnimated.Value(0)).current;
   const lastHomeOffsetY = useRef(0);
   const homeTabHidden = useRef(false);
+  const heroCollapseProgress = useRef(new RNAnimated.Value(0)).current;
 
   const handleHomeTabBarScroll = useCallback((event: any) => {
     const currentOffsetY = event.nativeEvent.contentOffset.y;
     const diff = currentOffsetY - lastHomeOffsetY.current;
 
     if (Math.abs(diff) > 10) {
-      // Swiping up through the home feed frees screen space by collapsing the hero.
-      if (diff > 0 && currentOffsetY > 35 && !heroCollapsed) {
+      // Let the banner scroll away first; then smoothly slide the hero up to free screen space.
+      if (diff > 0 && currentOffsetY > HERO_COLLAPSE_SCROLL_THRESHOLD && !heroCollapsed) {
         setHeroCollapsed(true);
+        RNAnimated.timing(heroCollapseProgress, {
+          toValue: 1,
+          duration: 320,
+          useNativeDriver: false,
+        }).start();
       } else if (diff < 0 && heroCollapsed) {
-        // Swiping back down reveals the animated sky and delivery header again.
+        // On a downward swipe, smoothly restore the hero and search spacing.
         setHeroCollapsed(false);
+        RNAnimated.timing(heroCollapseProgress, {
+          toValue: 0,
+          duration: 360,
+          useNativeDriver: false,
+        }).start();
       }
 
       if (diff > 0 && currentOffsetY > 50 && !homeTabHidden.current) {
@@ -704,13 +716,14 @@ export default function Home() {
 
       lastHomeOffsetY.current = currentOffsetY;
     }
-  }, [navigation, tabBarTranslateY, heroCollapsed]);
+  }, [navigation, tabBarTranslateY, heroCollapsed, heroCollapseProgress]);
 
   useFocusEffect(
     useCallback(() => {
       lastHomeOffsetY.current = 0;
       homeTabHidden.current = false;
       setHeroCollapsed(false);
+      heroCollapseProgress.setValue(0);
       tabBarTranslateY.setValue(0);
       navigation.setOptions({
         tabBarStyle: {
@@ -726,9 +739,10 @@ export default function Home() {
       return () => {
         homeTabHidden.current = false;
         setHeroCollapsed(false);
+        heroCollapseProgress.setValue(0);
         tabBarTranslateY.setValue(0);
       };
-    }, [navigation, tabBarTranslateY])
+    }, [navigation, tabBarTranslateY, heroCollapseProgress])
   );
 
   // Customer delivery location state
@@ -901,6 +915,20 @@ export default function Home() {
     opacity: flashOpacity.value
   }));
 
+  const heroExpandedHeight = Platform.OS === "web" ? 138 : 144;
+  const heroAnimatedHeight = heroCollapseProgress.interpolate({
+    inputRange: [0, 1],
+    outputRange: [heroExpandedHeight, 0],
+  });
+  const heroAnimatedTranslateY = heroCollapseProgress.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, -22],
+  });
+  const heroAnimatedOpacity = heroCollapseProgress.interpolate({
+    inputRange: [0, 0.86, 1],
+    outputRange: [1, 1, 0],
+  });
+
   const startVoiceSearch = useCallback(() => {
     if (voiceListening) {
       try { voiceRecognitionRef.current?.stop?.(); } catch {}
@@ -965,10 +993,20 @@ export default function Home() {
   return (
     <View style={[s.root, Platform.OS === 'web' ? ({ height: '100vh', overflow: 'hidden' } as any) : {}]} testID="home-screen">
       {/* Dynamic time-of-day hero: day, sunset and night */}
-      {!heroCollapsed && <NightSky />}
-      {!heroCollapsed && <View style={s.headerBg} />}
+      <RNAnimated.View
+        pointerEvents={heroCollapsed ? "none" : "auto"}
+        style={[
+          s.heroHeaderShell,
+          {
+            height: heroAnimatedHeight,
+            opacity: heroAnimatedOpacity,
+            transform: [{ translateY: heroAnimatedTranslateY }],
+          },
+        ]}
+      >
+      <NightSky />
+      <View style={s.headerBg} />
 
-      {!heroCollapsed && (
       <SafeAreaView edges={["top"]} style={s.headerWrap}>
         <View style={s.headerRow}>
           {/* 1. Address Selector (Route: /addresses) */}
@@ -1006,10 +1044,10 @@ export default function Home() {
         </View>
 
       </SafeAreaView>
-      )}
+      <View style={s.skyClearSpace} />
+      </RNAnimated.View>
 
-      {/* Collapse hero spacing on upward feed scroll so search moves to the top. */}
-      <View style={[s.skyClearSpace, heroCollapsed && s.skyClearSpaceCollapsed]} />
+      {/* The search bar stays usable while the hero shell slides away after the banner scrolls off. */}
       <SafeAreaView
         edges={heroCollapsed ? ["top"] : []}
         style={heroCollapsed ? s.searchBarSafeAreaCollapsed : undefined}
@@ -1356,6 +1394,7 @@ const s = StyleSheet.create({
   locationGatePrivacy: { marginTop: 12, color: THEME.blackMuted, fontSize: 10, lineHeight: 15, textAlign: "center" },
   root: { flex: 1, backgroundColor: THEME.whiteBg },
   /* Realistic 3D-style sky layers stay behind the existing header/search only */
+  heroHeaderShell: { position: "relative", width: "100%", overflow: "hidden" },
   nightSky: { position: "absolute", top: 0, left: 0, right: 0, height: 138, overflow: "hidden", zIndex: 0, pointerEvents: "none" },
   nightGradientLayer: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0 },
   nightGradient: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0 },
@@ -1395,7 +1434,7 @@ const s = StyleSheet.create({
   cloudHighlightTwo: { position: "absolute", left: 38, top: 7, width: 32, height: 9, borderRadius: 10, backgroundColor: "rgba(255,255,255,0.2)" },
   cloudBase: { position: "absolute", left: 2, right: 2, bottom: 4, height: 24, borderRadius: 18, backgroundColor: "rgba(100,116,139,0.12)" },
   headerBg: { position: "absolute", top: 0, left: 0, right: 0, height: 138, borderBottomLeftRadius: 30, borderBottomRightRadius: 30, backgroundColor: "transparent", shadowColor: "#FFFFFF", shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.14, shadowRadius: 18, elevation: 7 },
-  skyClearSpace: { height: Platform.OS === "web" ? 78 : 52 },
+  skyClearSpace: { height: Platform.OS === "web" ? 90 : 56 },
   skyClearSpaceCollapsed: { height: 0 },
   searchBarSafeAreaCollapsed: { backgroundColor: THEME.whiteBg, zIndex: 20, elevation: 8, borderBottomWidth: 1, borderBottomColor: "rgba(226,232,240,0.9)" },
   searchBarOuter: { paddingHorizontal: SPACING.lg, marginTop: SPACING.sm },
