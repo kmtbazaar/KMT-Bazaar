@@ -675,17 +675,15 @@ export default function Home() {
     return () => clearInterval(interval);
   }, []);
 
-  // Continuous Dynamic Gradient Border Flash Animation Effect ONLY
+  // Gentle, slow zoom on the active promotional banner.
+  // This replaces the continuously flashing card outlines with calmer motion.
+  const bannerZoom = useSharedValue(1);
+
   useEffect(() => {
-    flashOpacity.value = withRepeat(
-      withSequence(
-        withTiming(1, { duration: 1000 }),
-        withTiming(0.3, { duration: 1000 })
-      ),
-      -1,
-      true
-    );
-  }, []);
+    if (banners.length === 0) return;
+    bannerZoom.value = 1;
+    bannerZoom.value = withTiming(1.055, { duration: 6500 });
+  }, [bannerIndex, banners.length]);
 
   // Notification Bell Pulse Animation Effect
   useEffect(() => {
@@ -707,8 +705,8 @@ export default function Home() {
     transform: [{ scale: bellScale.value }]
   }));
 
-  const animatedFlashStyle = useAnimatedStyle(() => ({
-    opacity: flashOpacity.value
+  const animatedBannerZoomStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: bannerZoom.value }]
   }));
 
   const startVoiceSearch = useCallback(() => {
@@ -901,25 +899,28 @@ export default function Home() {
             data={banners}
             showsHorizontalScrollIndicator={false}
             snapToInterval={BANNER_W + 12}
-            decelerationRate={0.98}
+            decelerationRate="fast"
             contentContainerStyle={{ paddingHorizontal: SPACING.lg, paddingTop: SPACING.md, paddingBottom: SPACING.xs, gap: 12 }}
             keyExtractor={(it) => String(it.id)}
-            ref={(ref) => {
-              if (banners.length > 1 && ref && typeof (ref as any).scrollToIndex === "function") {
-                try { (ref as any).scrollToIndex({ index: bannerIndex, animated: true, viewPosition: 0 }); } catch {}
-              }
-            }}
+            ref={bannerListRef}
             renderItem={({ item }) => (
               <View style={s.bannerItemWrap}>
                 <View testID={`banner-${item.id}`} style={s.banner}>
-                  <Image
-                  source={{ uri: brokenImages[`banner:${String(item.id)}`] ? IMAGE_FALLBACK_URL : (item.image || IMAGE_FALLBACK_URL) }}
-                  style={s.bannerImg}
-                  contentFit="cover"
-                  onError={() => setBrokenImages(prev => ({ ...prev, [`banner:${String(item.id)}`]: true }))}
-                />
+                  <Animated.View style={[s.bannerImageMotion, animatedBannerZoomStyle]}>
+                    <Image
+                      source={{ uri: brokenImages[`banner:${String(item.id)}`] ? IMAGE_FALLBACK_URL : (item.image || IMAGE_FALLBACK_URL) }}
+                      style={s.bannerImg}
+                      contentFit="cover"
+                      onError={() => setBrokenImages(prev => ({ ...prev, [`banner:${String(item.id)}`]: true }))}
+                    />
+                  </Animated.View>
 
-                <Animated.View style={[s.bannerFlashBorder, animatedFlashStyle]} />
+                  <LinearGradient
+                    pointerEvents="none"
+                    colors={["rgba(15,23,42,0.00)", "rgba(15,23,42,0.10)", "rgba(15,23,42,0.76)"]}
+                    locations={[0, 0.48, 1]}
+                    style={s.bannerShade}
+                  />
 
                 <View style={s.bannerText}>
                   {item.subtitle ? <Text style={s.bannerSubtitle}>{item.subtitle}</Text> : null}
@@ -964,7 +965,6 @@ export default function Home() {
                 style={s.catItem}
               >
                 <View style={s.catCircleWrap}>
-                  <Animated.View style={[s.catFlashBorder, animatedFlashStyle]} />
                   <View style={s.catCircle}>
                     <Image
                       source={{ uri: brokenImages[`cat:${String(c.id)}`] ? IMAGE_FALLBACK_URL : (c.image || IMAGE_FALLBACK_URL) }}
@@ -1000,9 +1000,6 @@ export default function Home() {
                 disabled={!isAvailable}
                 onPress={() => router.push({ pathname: `/store/${item.id}`, params: { name: item.name } } as any)}
               >
-                {/* Animated Flashing Gradient Border */}
-                <Animated.View style={[s.storeFlashBorder, animatedFlashStyle]} />
-                
                 <View style={{ position: "relative" }}>
                   <Image
                     source={{ uri: brokenImages[`store:${String(item.id)}`] ? IMAGE_FALLBACK_URL : (item.image || IMAGE_FALLBACK_URL) }}
@@ -1075,7 +1072,6 @@ export default function Home() {
         <View style={s.trendingGrid}>
           {trending.map((item) => (
             <View key={item.id} style={s.productTileCard}>
-              <Animated.View style={[s.productFlashBorder, animatedFlashStyle]} />
               <ProductCard p={item} />
             </View>
           ))}
@@ -1198,8 +1194,9 @@ const s = StyleSheet.create({
 
   /* Clean Banner Styling */
   banner: { width: BANNER_W, height: 145, borderRadius: 20, overflow: "hidden", backgroundColor: THEME.white, position: "relative", borderWidth: 1, borderColor: "rgba(255,107,0,0.22)", shadowColor: THEME.orange, shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.12, shadowRadius: 14, elevation: 6 },
+  bannerImageMotion: { position: "absolute", top: -7, left: -7, right: -7, bottom: -7 },
   bannerImg: { width: "100%", height: "100%" },
-  bannerFlashBorder: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, borderRadius: RADIUS.lg, borderWidth: 2.5, borderColor: THEME.orangeBright, pointerEvents: "none" },
+  bannerShade: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0 },
   bannerCarouselShell: { position: "relative" },
   bannerItemWrap: { width: BANNER_W, position: "relative" },
   bannerRopeConnector: { position: "absolute", right: -1, top: "50%", width: 10, height: 52, transform: [{ translateY: -26 }], alignItems: "center", justifyContent: "center", zIndex: 5 },
@@ -1224,14 +1221,12 @@ const s = StyleSheet.create({
   catItemWrap: { width: "20%", alignItems: "center", marginBottom: SPACING.md },
   catItem: { alignItems: "center" },
   catCircleWrap: { position: "relative", width: 60, height: 60 },
-  catFlashBorder: { position: "absolute", top: -2, left: -2, right: -2, bottom: -2, borderRadius: 32, borderWidth: 2, borderColor: THEME.orange, zIndex: 1, pointerEvents: "none" },
   catCircle: { width: 60, height: 60, borderRadius: 30, overflow: "hidden", alignItems: "center", justifyContent: "center", backgroundColor: THEME.white, ...shadow.soft, borderWidth: 1, borderColor: THEME.borderSoft },
   catImg: { width: "100%", height: "100%" },
   catName: { fontSize: 11, fontWeight: "700", color: THEME.black, marginTop: 6, textAlign: "center" },
   
   /* Compact Store Tile Styling */
   storeCardSmall: { width: 145, height: 112, backgroundColor: "rgba(255,255,255,0.98)", borderRadius: 16, overflow: "hidden", position: "relative", shadowColor: THEME.orange, shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.09, shadowRadius: 14, elevation: 5, borderWidth: 1, borderColor: "rgba(255,107,0,0.15)" },
-  storeFlashBorder: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, borderRadius: RADIUS.md, borderWidth: 1.5, borderColor: THEME.orangeGlow, pointerEvents: "none", zIndex: 2 },
   storeImgSmall: { width: "100%", height: 64 },
   storeNameSmall: { fontWeight: "800", color: THEME.black, fontSize: 12 },
   ratePillSmall: { flexDirection: "row", alignItems: "center", backgroundColor: THEME.orange, paddingHorizontal: 5, paddingVertical: 2, borderRadius: 4, gap: 2 },
@@ -1243,7 +1238,6 @@ const s = StyleSheet.create({
 
   trendingGrid: { flexDirection: "row", flexWrap: "wrap", paddingHorizontal: SPACING.lg, justifyContent: "space-between" },
   productTileCard: { width: width > 768 ? "23%" : "48%", marginBottom: 12, position: "relative" },
-  productFlashBorder: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, borderRadius: RADIUS.md, borderWidth: 1.5, borderColor: THEME.orange, pointerEvents: "none", zIndex: 2 },
 
   brandStrip: { marginHorizontal: SPACING.lg, marginTop: SPACING.lg, borderRadius: RADIUS.md, overflow: "hidden", ...shadow.card },
   brandStripGradient: { flexDirection: "row", gap: SPACING.md, alignItems: "center", padding: SPACING.md },
