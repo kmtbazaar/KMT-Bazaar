@@ -400,31 +400,6 @@ export default function AdminUsers() {
             <View style={s.actions}>
               {item.role === "vendor" ? (
                 <>
-                  <Pressable
-                    testID={`suspend-${item.id}`}
-                    onPress={() =>
-                      toggle(
-                        item.id,
-                        item.active !== false,
-                        item.role,
-                        item.name
-                      )
-                    }
-                    style={({ pressed }) => [
-                      s.suspendButton,
-                      item.active === false && s.activateButton,
-                      pressed && s.suspendButtonPressed,
-                    ]}
-                  >
-                    <MaterialCommunityIcons
-                      name={item.active === false ? "account-check-outline" : "account-cancel-outline"}
-                      size={17}
-                      color={item.active === false ? "#15803D" : "#B91C1C"}
-                    />
-                    <Text style={[s.suspendText, { color: item.active === false ? "#15803D" : "#B91C1C" }]}>
-                      {item.active === false ? "Active" : "Suspend"}
-                    </Text>
-                  </Pressable>
                   {item.vendor_type !== "service" ? (
                     <Pressable
                       testID={`manage-${item.id}`}
