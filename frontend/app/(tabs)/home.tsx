@@ -51,6 +51,8 @@ const SEARCH_PLACEHOLDERS = [
 function NightSky() {
   const canvasRef = useRef<any>(null);
   const [hour, setHour] = useState(new Date().getHours() + new Date().getMinutes() / 60);
+  const hourRef = useRef(hour);
+  hourRef.current = hour;
   const cloudOne = useSharedValue(-45);
   const cloudTwo = useSharedValue(0);
   const cloudDepth = useSharedValue(0);
@@ -125,7 +127,8 @@ function NightSky() {
         }
 
         float phaseSun(float x) {
-          return smoothstep(5.0, 8.0, x) * (1.0 - smoothstep(16.5, 20.0, x));
+          // Gradual daylight ramp keeps sunrise and sunset from feeling like a switch.
+          return smoothstep(5.0, 7.7, x) * (1.0 - smoothstep(17.0, 19.7, x));
         }
 
         void main() {
@@ -134,6 +137,7 @@ function NightSky() {
           float t = u_time * 0.00002;
 
           float day = phaseSun(u_hour);
+          float dawn = smoothstep(4.35, 5.65, u_hour) * (1.0 - smoothstep(6.35, 7.75, u_hour));
           float sunset = smoothstep(16.0, 18.8, u_hour) * (1.0 - smoothstep(18.8, 20.5, u_hour));
           float night = 1.0 - day;
 
@@ -152,6 +156,10 @@ function NightSky() {
           vec3 nightMid = vec3(0.012, 0.045, 0.14);
           vec3 nightHorizon = vec3(0.06, 0.11, 0.22);
 
+          vec3 dawnTop = vec3(0.10, 0.14, 0.32);
+          vec3 dawnMid = vec3(0.38, 0.47, 0.68);
+          vec3 dawnHorizon = vec3(1.0, 0.57, 0.36);
+
           vec3 daySky = mix(daylightHorizon, daylightTop, upper);
           daySky = mix(daySky, daylightMid, 0.32 + horizon * 0.20);
 
@@ -161,7 +169,11 @@ function NightSky() {
           vec3 nightSky = mix(nightHorizon, nightTop, upper);
           nightSky = mix(nightSky, nightMid, 0.36 + horizon * 0.20);
 
+          vec3 dawnSky = mix(dawnHorizon, dawnTop, upper);
+          dawnSky = mix(dawnSky, dawnMid, 0.35 + horizon * 0.22);
+
           vec3 sky = mix(nightSky, daySky, day);
+          sky = mix(sky, dawnSky, dawn * 0.78);
           sky = mix(sky, sunsetSky, sunset);
 
           float haze = pow(max(1.0 - uv.y, 0.0), 3.1);
@@ -180,18 +192,22 @@ function NightSky() {
           float lowCloud = smoothstep(0.50, 0.71, lowA * 0.67 + lowB * 0.33);
           lowCloud *= smoothstep(0.10, 0.24, uv.y) * (1.0 - smoothstep(0.42, 0.62, uv.y));
 
+          // Clouds borrow the sun's warm light at dawn/dusk and cool blue light at night.
           vec3 cloudTop = mix(vec3(0.98, 0.99, 1.0), vec3(0.52, 0.62, 0.74), night);
+          cloudTop = mix(cloudTop, vec3(1.0, 0.66, 0.48), sunset * 0.82 + dawn * 0.42);
           vec3 cloudMid = mix(vec3(0.76, 0.84, 0.92), vec3(0.17, 0.24, 0.36), night);
+          cloudMid = mix(cloudMid, vec3(0.63, 0.34, 0.36), sunset * 0.55 + dawn * 0.25);
           vec3 cloudHighColor = mix(cloudMid, cloudTop, 0.58 + 0.42 * highA);
-          vec3 cloudLowColor = mix(vec3(0.58, 0.68, 0.78), vec3(0.09, 0.14, 0.23), night);
+          vec3 cloudLowDay = mix(vec3(0.58, 0.68, 0.78), vec3(1.0, 0.50, 0.30), sunset * 0.80 + dawn * 0.36);
+          vec3 cloudLowColor = mix(cloudLowDay, vec3(0.09, 0.14, 0.23), night);
 
-          sky = mix(sky, cloudHighColor, highCloud * (0.16 + 0.24 * (day + sunset * 0.7 + night * 0.16)));
+          sky = mix(sky, cloudHighColor, highCloud * (0.16 + 0.24 * (day + sunset * 0.7 + dawn * 0.55 + night * 0.16)));
           sky = mix(sky, cloudLowColor, lowCloud * (0.18 + 0.22 * night));
 
           // Sun bloom and atmospheric disk.
-          float sunPhase = clamp((u_hour - 5.8) / 13.0, 0.0, 1.0);
-          float sunX = mix(0.14, 0.86, sunPhase);
-          float sunY = 0.16 + 0.58 * sin(sunPhase * 3.1415926);
+          float sunPhase = clamp((u_hour - 5.4) / 13.2, 0.0, 1.0);
+          float sunX = mix(0.10, 0.90, sunPhase);
+          float sunY = 0.145 + 0.60 * sin(sunPhase * 3.1415926);
           vec2 sunDelta = vec2((uv.x - sunX) * aspect, uv.y - sunY);
           float sunDist = length(sunDelta);
           float sunHalo = exp(-sunDist * 5.2);
@@ -203,16 +219,19 @@ function NightSky() {
           vec2 starGrid = floor(vec2(uv.x * 250.0, uv.y * 140.0));
           float starRnd = hash(starGrid);
           float starLayer = step(0.993, starRnd) * smoothstep(0.18, 0.72, uv.y);
-          float starTwinkle = 0.62 + 0.38 * sin(u_time * 0.0013 + starRnd * 37.0);
-          sky += vec3(0.72, 0.84, 1.0) * starLayer * starTwinkle * night * 0.72;
+          float starTwinkle = 0.82 + 0.18 * sin(u_time * 0.0009 + starRnd * 37.0);
+          float visibleStars = night * (1.0 - dawn * 0.88) * (1.0 - sunset * 0.35);
+          sky += vec3(0.72, 0.84, 1.0) * starLayer * starTwinkle * visibleStars * 0.72;
 
           vec2 brightGrid = floor(vec2(uv.x * 92.0 + 3.0, uv.y * 58.0 + 11.0));
           float brightRnd = hash(brightGrid);
           float brightStar = step(0.986, brightRnd) * smoothstep(0.24, 0.76, uv.y);
-          sky += vec3(0.90, 0.95, 1.0) * brightStar * night * 0.55;
+          sky += vec3(0.90, 0.95, 1.0) * brightStar * visibleStars * 0.55;
 
+          // The moon travels slowly across the night sky instead of staying pinned in one spot.
+          float moonProgress = clamp(mod(u_hour - 19.0 + 24.0, 24.0) / 10.0, 0.0, 1.0);
+          vec2 moonPos = vec2(mix(0.88, 0.12, moonProgress), 0.15 + 0.57 * sin(moonProgress * 3.1415926));
           // Moon with surface variation and cloud occlusion.
-          vec2 moonPos = vec2(0.79, 0.71);
           vec2 moonDelta = vec2((uv.x - moonPos.x) * aspect, uv.y - moonPos.y);
           float moonDist = length(moonDelta);
           float moonMask = 1.0 - smoothstep(0.045, 0.053, moonDist);
@@ -345,7 +364,7 @@ function NightSky() {
         gl.enableVertexAttribArray(position);
         gl.vertexAttribPointer(position, 2, gl.FLOAT, false, 0, 0);
         gl.uniform1f(timeUniform, time);
-        gl.uniform1f(hourUniform, hour);
+        gl.uniform1f(hourUniform, hourRef.current);
         gl.uniform2f(resolutionUniform, canvas.width, canvas.height);
         gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
         frame = window.requestAnimationFrame(render);
@@ -389,7 +408,7 @@ function NightSky() {
       -1,
       true
     );
-  }, [hour]);
+  }, []);
 
   const isNight = hour >= 19 || hour < 6;
   const isSunset = hour >= 17 && hour < 19;
