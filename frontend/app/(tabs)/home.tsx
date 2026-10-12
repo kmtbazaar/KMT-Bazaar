@@ -134,6 +134,14 @@ function NightSky() {
           return 1.0 - smoothstep(0.0, softness, d);
         }
 
+        float roofMask(vec2 p, float centerX, float baseY, float peakY, float halfWidth) {
+          float rise = clamp((p.y - baseY) / max(peakY - baseY, 0.001), 0.0, 1.0);
+          float allowedHalfWidth = halfWidth * (1.0 - rise);
+          float roofX = 1.0 - smoothstep(max(allowedHalfWidth - 0.002, 0.0), allowedHalfWidth + 0.002, abs(p.x - centerX));
+          float roofY = step(baseY, p.y) * (1.0 - step(peakY + 0.001, p.y));
+          return roofX * roofY;
+        }
+
         void main() {
           vec2 uv = v_uv;
           float aspect = u_resolution.x / max(u_resolution.y, 1.0);
@@ -283,8 +291,37 @@ function NightSky() {
           vec3 nearLand = mix(vec3(0.065, 0.15, 0.16), vec3(0.008, 0.017, 0.030), night);
           sky = mix(sky, farLand, farHill * 0.92);
           sky = mix(sky, nearLand, nearHill * 0.96);
-          float stackBody = boxMask(uv, vec2(0.335, 0.079), vec2(0.009, 0.042), 0.003);
-          float stackCap = boxMask(uv, vec2(0.335, 0.119), vec2(0.014, 0.004), 0.002);
+
+          // Tiny village houses sit along the horizon; the center roof anchors the moving chimney smoke.
+          float houseLeftBody = boxMask(uv, vec2(0.12, 0.050), vec2(0.040, 0.028), 0.002);
+          float houseMainBody = boxMask(uv, vec2(0.335, 0.052), vec2(0.062, 0.031), 0.002);
+          float houseRightBody = boxMask(uv, vec2(0.66, 0.045), vec2(0.045, 0.027), 0.002);
+          float houseFarRightBody = boxMask(uv, vec2(0.855, 0.035), vec2(0.034, 0.019), 0.002);
+          float houseBodies = max(max(houseLeftBody, houseMainBody), max(houseRightBody, houseFarRightBody));
+          vec3 houseColor = mix(vec3(0.15, 0.23, 0.28), vec3(0.012, 0.022, 0.039), night * 0.94);
+          sky = mix(sky, houseColor, houseBodies * 0.98);
+
+          float roofLeft = roofMask(uv, 0.12, 0.076, 0.122, 0.052);
+          float roofMain = roofMask(uv, 0.335, 0.081, 0.139, 0.071);
+          float roofRight = roofMask(uv, 0.66, 0.070, 0.119, 0.057);
+          float roofFarRight = roofMask(uv, 0.855, 0.052, 0.090, 0.041);
+          float houseRoofs = max(max(roofLeft, roofMain), max(roofRight, roofFarRight));
+          vec3 roofColor = mix(vec3(0.085, 0.14, 0.18), vec3(0.006, 0.012, 0.025), night * 0.92);
+          roofColor = mix(roofColor, vec3(0.18, 0.075, 0.075), dusk * 0.40);
+          sky = mix(sky, roofColor, houseRoofs * 0.98);
+
+          float houseWindows = max(
+            max(boxMask(uv, vec2(0.106, 0.046), vec2(0.007, 0.009), 0.001),
+                boxMask(uv, vec2(0.306, 0.048), vec2(0.007, 0.009), 0.001)),
+            max(max(boxMask(uv, vec2(0.365, 0.048), vec2(0.007, 0.009), 0.001),
+                    boxMask(uv, vec2(0.645, 0.041), vec2(0.007, 0.008), 0.001)),
+                boxMask(uv, vec2(0.672, 0.041), vec2(0.007, 0.008), 0.001))
+          );
+          vec3 windowColor = mix(vec3(0.84, 0.74, 0.53), vec3(1.0, 0.52, 0.16), night);
+          sky = mix(sky, windowColor, houseWindows * (0.10 + night * 0.76));
+
+          float stackBody = boxMask(uv, vec2(0.335, 0.152), vec2(0.008, 0.021), 0.002);
+          float stackCap = boxMask(uv, vec2(0.335, 0.174), vec2(0.012, 0.003), 0.001);
           sky = mix(sky, vec3(0.028, 0.037, 0.047), max(stackBody, stackCap));
 
           // Gentle cinematic vignette; keep the whole scene readable behind the search controls.
@@ -338,11 +375,11 @@ function NightSky() {
 
       const resize = () => {
         const widthPx = Math.max(1, Math.floor(window.innerWidth * Math.min(window.devicePixelRatio, 2)));
-        const heightPx = Math.max(1, Math.floor(205 * Math.min(window.devicePixelRatio, 2)));
+        const heightPx = Math.max(1, Math.floor(138 * Math.min(window.devicePixelRatio, 2)));
         canvas.width = widthPx;
         canvas.height = heightPx;
         canvas.style.width = "100%";
-        canvas.style.height = "205px";
+        canvas.style.height = "138px";
         gl.viewport(0, 0, widthPx, heightPx);
       };
 
@@ -418,7 +455,7 @@ function NightSky() {
   if (Platform.OS === "web") {
     return (
       <View pointerEvents="none" style={s.nightSky}>
-        {React.createElement("canvas" as any, { ref: canvasRef, style: { width: "100%", height: "205px", display: "block" } })}
+        {React.createElement("canvas" as any, { ref: canvasRef, style: { width: "100%", height: "138px", display: "block" } })}
       </View>
     );
   }
@@ -454,6 +491,9 @@ function NightSky() {
   const moonLeft = 89 - moonProgress * 78;
   const moonTop = 18 + Math.sin(moonProgress * Math.PI) * 30;
   const isDawn = hour >= 4.4 && hour < 7.4;
+  const houseBodyColor = isNight ? "#0B1727" : isSunset ? "#26313F" : "#284653";
+  const houseRoofColor = isNight ? "#070F1D" : isSunset ? "#342737" : "#203743";
+  const houseWindowColor = isNight ? "#FFC66D" : "rgba(255,226,158,0.50)";
 
   return (
     <View pointerEvents="none" style={s.nightSky}>
@@ -543,6 +583,29 @@ function NightSky() {
       </Animated.View>
 
       <View style={s.horizonSilhouette} />
+
+      <View style={[s.house, s.houseLeft]}>
+        <View style={[s.houseRoof, { borderBottomColor: houseRoofColor }]} />
+        <View style={[s.houseBody, { backgroundColor: houseBodyColor }]} />
+        <View style={[s.houseWindow, { left: 9, backgroundColor: houseWindowColor }]} />
+      </View>
+      <View style={[s.house, s.houseCenter]}>
+        <View style={[s.houseRoof, { borderBottomColor: houseRoofColor }]} />
+        <View style={[s.houseBody, { backgroundColor: houseBodyColor }]} />
+        <View style={[s.houseWindow, { left: 11, backgroundColor: houseWindowColor }]} />
+        <View style={[s.houseWindow, { right: 11, backgroundColor: houseWindowColor }]} />
+      </View>
+      <View style={[s.house, s.houseRight]}>
+        <View style={[s.houseRoof, { borderBottomColor: houseRoofColor }]} />
+        <View style={[s.houseBody, { backgroundColor: houseBodyColor }]} />
+        <View style={[s.houseWindow, { left: 9, backgroundColor: houseWindowColor }]} />
+        <View style={[s.houseWindow, { right: 9, backgroundColor: houseWindowColor }]} />
+      </View>
+      <View style={[s.house, s.houseFarRight]}>
+        <View style={[s.houseRoof, { borderBottomColor: houseRoofColor }]} />
+        <View style={[s.houseBody, { backgroundColor: houseBodyColor }]} />
+      </View>
+
       <Animated.View
         style={[
           s.smokeColumn,
@@ -1280,9 +1343,17 @@ const s = StyleSheet.create({
   nightGradient: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0 },
   horizonGlow: { position: "absolute", left: "12%", right: "12%", bottom: 4, height: 68, borderTopLeftRadius: 170, borderTopRightRadius: 170, backgroundColor: "rgba(255,190,130,0.10)" },
   horizonSilhouette: { position: "absolute", left: 0, right: 0, bottom: 0, height: 18, backgroundColor: "rgba(13,28,38,0.58)" },
-  smokeColumn: { position: "absolute", left: "30%", bottom: 20, width: 94, height: 118 },
+  house: { position: "absolute", bottom: 1, height: 22, zIndex: 3 },
+  houseLeft: { left: "8%", width: 34, height: 20 },
+  houseCenter: { left: "28%", width: 44, height: 22 },
+  houseRight: { right: "28%", width: 40, height: 19 },
+  houseFarRight: { right: "5%", width: 30, height: 17 },
+  houseRoof: { position: "absolute", left: 0, bottom: 10, width: 0, height: 0, borderLeftWidth: 17, borderRightWidth: 17, borderBottomWidth: 10, borderLeftColor: "transparent", borderRightColor: "transparent" },
+  houseBody: { position: "absolute", left: 4, right: 4, bottom: 0, height: 12, borderTopLeftRadius: 1, borderTopRightRadius: 1 },
+  houseWindow: { position: "absolute", bottom: 3, width: 4, height: 5, borderRadius: 1 },
+  smokeColumn: { position: "absolute", left: "21%", bottom: 20, width: 94, height: 118 },
   smokePuff: { position: "absolute", borderRadius: 50, backgroundColor: "rgba(206,218,226,0.35)", shadowColor: "#CBD5E1", shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.28, shadowRadius: 12, elevation: 1 },
-  smokeStack: { position: "absolute", bottom: 16, left: "34.5%", width: 8, height: 18, backgroundColor: "#263442", borderTopWidth: 2, borderTopColor: "#526170" },
+  smokeStack: { position: "absolute", bottom: 12, left: "32.5%", width: 7, height: 12, backgroundColor: "#263442", borderTopWidth: 2, borderTopColor: "#526170" },
   starLayer: { position: "absolute", top: 0, left: 0, right: 0, height: 92 },
   star: { position: "absolute", backgroundColor: "#FFFFFF", shadowColor: "#FFFFFF", shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.95, shadowRadius: 5, elevation: 3 },
   sunGlow: { position: "absolute", top: 18, right: "12%", width: 74, height: 74, alignItems: "center", justifyContent: "center" },
@@ -1307,7 +1378,7 @@ const s = StyleSheet.create({
   cloudBase: { position: "absolute", left: 2, right: 2, bottom: 4, height: 24, borderRadius: 18, backgroundColor: "rgba(100,116,139,0.12)" },
   headerBg: { position: "absolute", top: 0, left: 0, right: 0, height: 138, borderBottomLeftRadius: 30, borderBottomRightRadius: 30, backgroundColor: "transparent", shadowColor: "#FFFFFF", shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.14, shadowRadius: 18, elevation: 7 },
   skyClearSpace: { height: Platform.OS === "web" ? 78 : 52 },
-  searchBarOuter: { paddingHorizontal: SPACING.lg },
+  searchBarOuter: { paddingHorizontal: SPACING.lg, marginTop: SPACING.sm },
   headerWrap: { paddingHorizontal: SPACING.lg, paddingBottom: SPACING.xs },
   headerRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingTop: 4 },
   locWrap: { flexDirection: "row", gap: 8, alignItems: "center", flex: 1, marginRight: 12, zIndex: 99, elevation: 5 },
