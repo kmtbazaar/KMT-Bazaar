@@ -6,6 +6,9 @@ import {
   FlatList,
   Pressable,
   ActivityIndicator,
+  Switch,
+  Alert,
+  Platform,
 } from "react-native";
 import {
   useFocusEffect,
@@ -280,6 +283,46 @@ vendorProductIds.forEach((pId) =>
       loadDetails();
     }, [loadDetails])
   );
+
+  const toggleVendorStatus = () => {
+    if (role !== "vendor" || !user) return;
+
+    const currentlyActive = user.active !== false;
+    const action = currentlyActive ? "SUSPEND" : "UNSUSPEND";
+    const message = currentlyActive
+      ? `Are you sure you want to SUSPEND '${user.name}'? All their stores will go offline immediately.`
+      : `Are you sure you want to UNSUSPEND '${user.name}' and make them active again?`;
+
+    const executeToggle = async () => {
+      try {
+        await adminApi.toggleUser(String(id));
+        await loadDetails();
+      } catch (e: any) {
+        const errorMessage = e?.message || "Unable to update this vendor.";
+        if (Platform.OS === "web") {
+          window.alert(`Update Failed:\\n\\n${errorMessage}`);
+        } else {
+          Alert.alert("Update Failed", errorMessage);
+        }
+      }
+    };
+
+    if (Platform.OS === "web") {
+      if (window.confirm(`${action} VENDOR?\\n\\n${message}`)) {
+        void executeToggle();
+      }
+      return;
+    }
+
+    Alert.alert(`${action} VENDOR?`, message, [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: currentlyActive ? "Suspend" : "Unsuspend",
+        style: currentlyActive ? "destructive" : "default",
+        onPress: () => { void executeToggle(); },
+      },
+    ]);
+  };
 
   const roleName =
     ROLE_LABEL[role as string] ||
@@ -688,6 +731,19 @@ vendorProductIds.forEach((pId) =>
                       : "Active"}
                   </Text>
                 </View>
+
+                {role === "vendor" ? (
+                  <Switch
+                    testID={`toggle-vendor-${id}`}
+                    accessibilityLabel="Suspend or activate vendor"
+                    value={user.active !== false}
+                    onValueChange={toggleVendorStatus}
+                    trackColor={{
+                      true: COLORS.success,
+                      false: COLORS.borderStrong,
+                    }}
+                  />
+                ) : null}
               </View>
             </View>
 
