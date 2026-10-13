@@ -116,7 +116,7 @@ export default function ProductCard({
         compact && storeGrid && s.cardStoreGrid,
       ]}
     >
-      <View style={{ flex: 1 }}>
+      <View>
         <Pressable
           testID={`product-image-${p.id}`}
           onPress={() => router.push(`/product/${p.id}` as any)}
@@ -272,7 +272,8 @@ const s = StyleSheet.create({
     overflow: "hidden",
     borderWidth: 1,
     borderColor: COLORS.border,
-    paddingBottom: 8,
+    paddingBottom: 2,
+    alignSelf: "flex-start",
   },
 
   /*
@@ -288,11 +289,12 @@ const s = StyleSheet.create({
     overflow: "hidden",
     borderWidth: 1,
     borderColor: COLORS.border,
+    alignSelf: "flex-start",
   },
 
   cardStoreGrid: {
     margin: 0,
-    alignSelf: "stretch",
+    alignSelf: "flex-start",
   },
 
   imgWrap: {
@@ -339,9 +341,9 @@ const s = StyleSheet.create({
   },
 
   body: {
-    padding: 5,
+    paddingHorizontal: 5,
     paddingTop: 5,
-    flex: 1,
+    paddingBottom: 2,
   },
 
   name: {
