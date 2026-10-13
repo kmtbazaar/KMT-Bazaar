@@ -1,8 +1,7 @@
+import { LocalizedText as Text, LocalizedTextInput as TextInput } from "@/src/LocalizedText";
 import React, { useState } from "react";
 import {
 View,
-Text,
-TextInput,
 Pressable,
 StyleSheet,
 ScrollView,
