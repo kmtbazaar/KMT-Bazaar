@@ -25,7 +25,7 @@ const ITEMS = [
   { icon: "package-variant", label: "My Orders", path: "/orders" },
   { icon: "map-marker-multiple-outline", label: "Saved Addresses", path: "/addresses" },
   { icon: "bell-outline", label: "Notifications", path: "/notifications" },
-  { icon: "heart-outline", label: "Wishlist", path: null },
+  { icon: "heart-outline", label: "Wishlist", path: "/(tabs)/wishlist" },
   { icon: "tag-outline", label: "Offers & Coupons", path: null },
   { icon: "headset", label: "Help & Support", path: null },
   { icon: "shield-check-outline", label: "Privacy Policy", path: null },
