@@ -107,8 +107,13 @@ export default function Product() {
 
   const onToggleWishlist = () => {
     try {
-      if ((globalThis as any).navigator?.vibrate) (globalThis as any).navigator.vibrate(15);
-      else void Haptics.selectionAsync().catch(() => {});
+      if (Platform.OS === "web") {
+        const nav = (globalThis as any).navigator;
+        if (typeof nav?.vibrate === "function") nav.vibrate([25, 25, 25]);
+        else void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+      } else {
+        void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+      }
     } catch {}
     if (p) toggleWishlist(p);
   };
@@ -129,7 +134,7 @@ export default function Product() {
         </Pressable>
         <View style={s.headerActions}>
           <Pressable style={s.hbtn} hitSlop={8} onPress={onToggleWishlist} disabled={!wishlistReady || !p} accessibilityRole="button" accessibilityLabel={wished ? "Remove from wishlist" : "Add to wishlist"} testID="product-detail-wishlist">
-            <MaterialCommunityIcons name={wished ? "heart" : "heart-outline"} size={20} color={wished ? "#E11D48" : COLORS.text} />
+            <MaterialCommunityIcons name="heart" size={20} color={wished ? "#E11D48" : "#FFFFFF"} style={s.wishIcon} />
           </Pressable>
           <Pressable style={s.hbtn} hitSlop={8} onPress={() => { void shareProduct(); }} accessibilityRole="button" accessibilityLabel="Share product" testID="share-product">
             <MaterialCommunityIcons name="share-variant" size={20} color={COLORS.text} />
@@ -219,7 +224,8 @@ const s = StyleSheet.create({
   center: { flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: COLORS.surface },
   header: { flexDirection: "row", justifyContent: "space-between", paddingHorizontal: SPACING.lg, position: "absolute", top: 0, left: 0, right: 0, zIndex: 10 },
   headerActions: { flexDirection: "row", alignItems: "center", gap: 8 },
-  hbtn: { width: 38, height: 38, borderRadius: 19, backgroundColor: "transparent", alignItems: "center", justifyContent: "center" },
+  hbtn: { width: 38, height: 38, backgroundColor: "transparent", alignItems: "center", justifyContent: "center" },
+  wishIcon: { textShadowColor: "rgba(0,0,0,0.65)", textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 2 },
   img: { width: "100%", aspectRatio: 1, backgroundColor: COLORS.surfaceSecondary },
   galleryRow: { paddingHorizontal: SPACING.md, paddingVertical: SPACING.sm, gap: 8 },
   galleryThumb: { width: 62, height: 62, borderRadius: RADIUS.sm, overflow: "hidden", borderWidth: 1.5, borderColor: COLORS.border },
