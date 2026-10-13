@@ -1,5 +1,6 @@
+import { LocalizedText as Text, LocalizedTextInput as TextInput } from "@/src/LocalizedText";
 import React, { useCallback, useState } from "react";
-import { View, Text, StyleSheet, Pressable, TextInput, ActivityIndicator } from "react-native";
+import { View, StyleSheet, Pressable, ActivityIndicator } from "react-native";
 import { useFocusEffect, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
