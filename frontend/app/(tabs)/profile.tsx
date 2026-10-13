@@ -114,7 +114,7 @@ export default function Profile() {
   };
 
   const openInfoModal = (
-    type: "help" | "privacy" | "about"
+    type: "help" | "privacy" | "about" | "language"
   ) => {
     setModalType(type);
     setModalVisible(true);
