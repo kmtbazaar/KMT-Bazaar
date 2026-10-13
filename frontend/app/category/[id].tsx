@@ -1,6 +1,7 @@
+import { LocalizedText as Text, LocalizedTextInput as TextInput } from "@/src/LocalizedText";
 import { SafeAreaView } from "react-native-safe-area-context";
 import React, { useEffect, useState, useCallback } from "react";
-import { View, Text, StyleSheet, FlatList, ActivityIndicator } from "react-native";
+import { View, StyleSheet, FlatList, ActivityIndicator } from "react-native";
 import { useLocalSearchParams } from "expo-router";
 import { api } from "@/src/api";
 import ProductCard from "@/src/components/ProductCard";
