@@ -16,6 +16,7 @@ const HI: Record<string, string> = {
   "Hindi": "हिन्दी",
   "English": "अंग्रेज़ी",
   "Continue": "जारी रखें",
+  "Continue in English": "अंग्रेज़ी में आगे बढ़ें",
   "Home": "होम",
   "Categories": "श्रेणियाँ",
   "Cart": "कार्ट",
