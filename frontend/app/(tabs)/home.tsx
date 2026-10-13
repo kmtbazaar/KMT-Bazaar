@@ -23,7 +23,7 @@ import CheckoutBar from "@/src/components/CheckoutBar";
 
 const { width } = Dimensions.get("window");
 const BANNER_W = width - 32;
-const HERO_COLLAPSE_SCROLL_THRESHOLD = 165; // 145px banner + top spacing
+const HERO_COLLAPSE_SCROLL_THRESHOLD = 120; // Collapse when banner CTA reaches the top; keep categories clear
 
 // Custom Theme Palette: Clean Pure White, Sky Blue Header & Vibrant Orange
 const THEME = {
