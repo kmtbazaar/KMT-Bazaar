@@ -142,6 +142,12 @@ export default function TabsLayout() {
         }}
       />
 
+      {/* Wishlist route is opened from Profile, not shown in bottom navigation */}
+      <Tabs.Screen
+        name="wishlist"
+        options={{ href: null }}
+      />
+
       {/* Profile */}
       <Tabs.Screen
         name="profile"
