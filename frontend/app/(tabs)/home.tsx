@@ -1131,7 +1131,7 @@ export default function Home() {
           nestedScrollEnabled={true}
           onScroll={handleHomeTabBarScroll}
           scrollEventThrottle={16}
-          style={Platform.OS === 'web' ? ({ height: '100%', overflowY: 'auto', touchAction: 'pan-y' } as any) : {}}
+          style={Platform.OS === 'web' ? ({ flex: 1, minHeight: 0, overflowY: 'auto', touchAction: 'pan-y' } as any) : { flex: 1 }}
         >
 
         {/* Smooth banner carousel; dots are overlaid inside the banner bottom edge */}
