@@ -1,9 +1,8 @@
+import { LocalizedText as Text, LocalizedTextInput as TextInput } from "@/src/LocalizedText";
 import AIAssistant from "../../components/AIAssistant";
 import React, { useEffect, useState } from "react";
 import {
   View,
-  Text,
-  TextInput,
   Pressable,
   StyleSheet,
   Keyboard,
