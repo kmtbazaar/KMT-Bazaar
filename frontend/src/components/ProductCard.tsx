@@ -345,11 +345,11 @@ const s = StyleSheet.create({
   },
 
   name: {
-    fontSize: 11,
+    fontSize: 16.5,
     fontWeight: "600",
     color: COLORS.text,
-    height: 30,
-    lineHeight: 14,
+    height: 42,
+    lineHeight: 20,
   },
 
   unit: {
