@@ -7,6 +7,7 @@ import { StatusBar } from "expo-status-bar";
 import { AuthProvider, useAuth } from "@/src/AuthContext";
 import { CartProvider } from "@/src/CartContext";
 import { LanguageProvider } from "@/src/LanguageContext";
+import { WishlistProvider } from "@/src/WishlistContext";
 
 function vendorHomeRoute(user: any) {
   if (user?.role !== "vendor") return `/${user?.role || "auth/login"}`;
@@ -97,11 +98,13 @@ export default function RootLayout() {
         <StatusBar style="light" translucent={false} backgroundColor="#0284C7" />
         <LanguageProvider>
           <AuthProvider>
-          <CartProvider>
-            <RoleRouteGuard>
-              <Stack screenOptions={{ headerShown: false }} />
-            </RoleRouteGuard>
-          </CartProvider>
+          <WishlistProvider>
+            <CartProvider>
+              <RoleRouteGuard>
+                <Stack screenOptions={{ headerShown: false }} />
+              </RoleRouteGuard>
+            </CartProvider>
+          </WishlistProvider>
         </AuthProvider>
         </LanguageProvider>
       </SafeAreaProvider>
