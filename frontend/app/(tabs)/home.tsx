@@ -663,7 +663,7 @@ export default function Home() {
           duration: 320,
           useNativeDriver: false,
         }).start();
-      } else if (diff < 0 && heroCollapsed) {
+      } else if (diff < 0 && heroCollapsed && currentOffsetY <= HERO_COLLAPSE_SCROLL_THRESHOLD) {
         // On a downward swipe, smoothly restore the hero and search spacing.
         setHeroCollapsed(false);
         RNAnimated.timing(heroCollapseProgress, {
