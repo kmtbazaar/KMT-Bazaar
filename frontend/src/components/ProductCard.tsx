@@ -5,6 +5,7 @@ import {
   Pressable,
   StyleSheet,
   Dimensions,
+  Platform,
 } from "react-native";
 import { Image } from "expo-image";
 import * as Haptics from "expo-haptics";
@@ -116,8 +117,13 @@ export default function ProductCard({
   const onToggleWishlist = (e: any) => {
     e?.stopPropagation?.();
     try {
-      if ((globalThis as any).navigator?.vibrate) (globalThis as any).navigator.vibrate(15);
-      else void Haptics.selectionAsync().catch(() => {});
+      if (Platform.OS === "web") {
+        const nav = (globalThis as any).navigator;
+        if (typeof nav?.vibrate === "function") nav.vibrate([25, 25, 25]);
+        else void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+      } else {
+        void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+      }
     } catch {}
     toggleWishlist(p);
   };
@@ -126,7 +132,7 @@ export default function ProductCard({
     <Animated.View
       style={[
         animStyle,
-        compact ? s.cardCompact : s.card,
+        wishlistGrid ? s.cardWishlist : compact ? s.cardCompact : s.card,
         compact && storeGrid && s.cardStoreGrid,
       ]}
     >
@@ -168,9 +174,9 @@ export default function ProductCard({
           disabled={!wishlistReady}
           onPress={onToggleWishlist}
           hitSlop={6}
-          style={s.wishBtn}
+          style={({ pressed }: any) => [s.wishBtn, pressed && s.wishBtnPressed]}
         >
-          <MaterialCommunityIcons name={wished ? "heart" : "heart-outline"} size={17} color={wished ? "#E11D48" : "#334155"} />
+          <MaterialCommunityIcons name="heart" size={17} color={wished ? "#E11D48" : "#FFFFFF"} style={s.wishIcon} />
         </Pressable>
         </View>
 
@@ -190,8 +196,8 @@ export default function ProductCard({
             {p.unit || " "}
           </Text>
 
-          <View style={s.priceRow}>
-            <View style={s.priceCol}>
+          <View style={[s.priceRow, wishlistGrid && s.wishlistPriceRow]}>
+            <View style={[s.priceCol, wishlistGrid && s.wishlistPriceCol]}>
               <Text style={[s.price, wishlistGrid && s.wishlistPrice]}>
                 ₹{p.price}
               </Text>
@@ -199,6 +205,7 @@ export default function ProductCard({
               <Text
                 style={[
                   s.mrp,
+                  wishlistGrid && s.wishlistMrp,
                   !(discount > 0) && { opacity: 0 },
                 ]}
               >
@@ -208,14 +215,14 @@ export default function ProductCard({
 
             {qty > 0 ? (
               <View
-                style={s.stepper}
+                style={[s.stepper, wishlistGrid && s.wishlistStepper]}
                 testID={`qty-stepper-${p.id}`}
               >
                 <Pressable
                   testID={`qty-dec-${p.id}`}
                   onPress={onDec}
                   hitSlop={8}
-                  style={s.stepBtn}
+                  style={[s.stepBtn, wishlistGrid && s.wishlistStepBtn]}
                 >
                   <MaterialCommunityIcons
                     name="minus"
@@ -224,7 +231,7 @@ export default function ProductCard({
                   />
                 </Pressable>
 
-                <Text style={s.qtyText}>
+                <Text style={[s.qtyText, wishlistGrid && s.wishlistQtyText]}>
                   {qty}
                 </Text>
 
@@ -234,6 +241,7 @@ export default function ProductCard({
                   hitSlop={8}
                   style={[
                     s.stepBtn,
+                    wishlistGrid && s.wishlistStepBtn,
                     qty >= (p.stock ?? 99) && {
                       opacity: 0.4,
                     },
@@ -255,6 +263,7 @@ export default function ProductCard({
                 onPress={onAdd}
                 style={[
                   s.addBtn,
+                  wishlistGrid && s.wishlistAddBtn,
                   outOfStock && s.addBtnDisabled,
                 ]}
                 hitSlop={8}
@@ -273,6 +282,7 @@ export default function ProductCard({
                 <Text
                   style={[
                     s.addText,
+                    wishlistGrid && s.wishlistAddText,
                     outOfStock && {
                       color: COLORS.textMuted,
                     },
@@ -324,6 +334,20 @@ const s = StyleSheet.create({
     alignSelf: "flex-start",
   },
 
+  cardWishlist: {
+    width: "100%",
+    flex: 0,
+    minWidth: 0,
+    height: 164,
+    margin: 0,
+    backgroundColor: COLORS.surface,
+    borderRadius: RADIUS.sm,
+    overflow: "hidden",
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    alignSelf: "stretch",
+  },
+
   imageArea: {
     width: "100%",
     position: "relative",
@@ -331,15 +355,20 @@ const s = StyleSheet.create({
 
   wishBtn: {
     position: "absolute",
-    top: 6,
-    right: 6,
+    top: 5,
+    right: 5,
     width: 29,
     height: 29,
-    borderRadius: 15,
     backgroundColor: "transparent",
     alignItems: "center",
     justifyContent: "center",
     zIndex: 5,
+  },
+  wishBtnPressed: { transform: [{ scale: 0.88 }] },
+  wishIcon: {
+    textShadowColor: "rgba(0,0,0,0.65)",
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
   },
 
   imgWrap: {
@@ -350,14 +379,18 @@ const s = StyleSheet.create({
     position: "relative",
   },
 
-  wishlistImgWrap: { height: 78 },
-
-  wishlistName: { fontSize: 11, height: 30, lineHeight: 14 },
-  wishlistUnit: { fontSize: 8, height: 10 },
-  wishlistPrice: { fontSize: 12 },
-  wishlistMrp: { fontSize: 9, minHeight: 11 },
-  wishlistAddBtn: { height: 26, paddingHorizontal: 3, paddingVertical: 2, gap: 0 },
-  wishlistAddText: { fontSize: 9 },
+  wishlistImgWrap: { height: 75 },
+  wishlistName: { fontSize: 11, height: 28, lineHeight: 13 },
+  wishlistUnit: { fontSize: 8, height: 9, marginTop: 1 },
+  wishlistPrice: { fontSize: 11.5 },
+  wishlistMrp: { fontSize: 8, minHeight: 10 },
+  wishlistPriceRow: { marginTop: 3, alignItems: "center" },
+  wishlistPriceCol: { flexShrink: 1, minWidth: 0 },
+  wishlistAddBtn: { height: 24, paddingHorizontal: 2, paddingVertical: 1, gap: 0 },
+  wishlistAddText: { fontSize: 8.5 },
+  wishlistStepper: { height: 24, paddingHorizontal: 0, flexShrink: 0 },
+  wishlistStepBtn: { width: 15, height: 22 },
+  wishlistQtyText: { fontSize: 10, minWidth: 12 },
 
   badge: {
     position: "absolute",
