@@ -11,11 +11,14 @@ import { api } from "@/src/api";
 import { useCart } from "@/src/CartContext";
 import { COLORS, RADIUS, SPACING, shadow } from "@/src/theme";
 import { CheckoutSackVisual } from "@/src/components/CheckoutBar";
+import { useWishlist } from "@/src/WishlistContext";
 
 export default function Product() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const { add, update, cart, itemCount } = useCart();
+  const { isWishlisted, toggle: toggleWishlist, ready: wishlistReady } = useWishlist();
+  const wished = isWishlisted(p?.id ?? id);
   const [p, setP] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [adding, setAdding] = useState(false);
@@ -116,9 +119,14 @@ export default function Product() {
         <Pressable onPress={() => router.back()} style={s.hbtn} hitSlop={8}>
           <MaterialCommunityIcons name="arrow-left" size={22} color={COLORS.text} />
         </Pressable>
-        <Pressable style={s.hbtn} hitSlop={8} onPress={() => { void shareProduct(); }} accessibilityRole="button" accessibilityLabel="Share product" testID="share-product">
-          <MaterialCommunityIcons name="share-variant" size={20} color={COLORS.text} />
-        </Pressable>
+        <View style={s.headerActions}>
+          <Pressable style={s.hbtn} hitSlop={8} onPress={() => toggleWishlist(p)} disabled={!wishlistReady || !p} accessibilityRole="button" accessibilityLabel={wished ? "Remove from wishlist" : "Add to wishlist"} testID="product-detail-wishlist">
+            <MaterialCommunityIcons name={wished ? "heart" : "heart-outline"} size={20} color={wished ? "#E11D48" : COLORS.text} />
+          </Pressable>
+          <Pressable style={s.hbtn} hitSlop={8} onPress={() => { void shareProduct(); }} accessibilityRole="button" accessibilityLabel="Share product" testID="share-product">
+            <MaterialCommunityIcons name="share-variant" size={20} color={COLORS.text} />
+          </Pressable>
+        </View>
       </SafeAreaView>
       
       <ScrollView contentContainerStyle={{ paddingBottom: 140 }} showsVerticalScrollIndicator={false}>
@@ -202,6 +210,7 @@ const s = StyleSheet.create({
   root: { flex: 1, backgroundColor: COLORS.surface },
   center: { flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: COLORS.surface },
   header: { flexDirection: "row", justifyContent: "space-between", paddingHorizontal: SPACING.lg, position: "absolute", top: 0, left: 0, right: 0, zIndex: 10 },
+  headerActions: { flexDirection: "row", alignItems: "center", gap: 8 },
   hbtn: { width: 38, height: 38, borderRadius: 19, backgroundColor: "#fff", alignItems: "center", justifyContent: "center", ...shadow.soft },
   img: { width: "100%", aspectRatio: 1, backgroundColor: COLORS.surfaceSecondary },
   galleryRow: { paddingHorizontal: SPACING.md, paddingVertical: SPACING.sm, gap: 8 },
