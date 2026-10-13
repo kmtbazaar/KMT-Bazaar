@@ -2287,6 +2287,7 @@ class ProductIn(BaseModel):
     unit: str = ""
     stock: int = 0
     image: str = ""
+    images: Optional[List[str]] = None
     description: str = ""
     is_available: bool = True
     trending: bool = False
@@ -2889,6 +2890,8 @@ async def admin_list_products(_=Depends(require_roles("admin"))):
 async def admin_create_product(data: ProductIn, _=Depends(require_roles("admin"))):
     pid = "p-" + uuid.uuid4().hex[:8]
     doc = {"id": pid, **data.dict(), "vendor_id": None}
+    if doc.get("images") is None:
+        doc["images"] = [doc["image"]] if doc.get("image") else []
     if doc.get("mrp") is None: doc["mrp"] = doc["price"]
     await db.products.insert_one(dict(doc))
     doc.pop("_id", None)
@@ -2898,6 +2901,8 @@ async def admin_create_product(data: ProductIn, _=Depends(require_roles("admin")
 @api.put("/admin/products/{pid}")
 async def admin_update_product(pid: str, data: ProductIn, _=Depends(require_roles("admin"))):
     upd = data.dict()
+    if data.images is None:
+        upd.pop("images", None)
     if upd.get("mrp") is None: upd["mrp"] = upd["price"]
     res = await db.products.update_one({"id": pid}, {"$set": upd})
     if res.matched_count == 0: raise HTTPException(404, "Not found")
@@ -4416,6 +4421,8 @@ async def vendor_create_product(data: ProductIn, current=Depends(require_roles("
 
     pid = "p-" + uuid.uuid4().hex[:8]
     doc = data.dict()
+    if doc.get("images") is None:
+        doc["images"] = [doc["image"]] if doc.get("image") else []
     doc["store_id"] = sid
     doc["category_id"] = store_category_id
     doc.update(
@@ -4449,6 +4456,8 @@ async def vendor_update_product(pid: str, data: ProductIn, current=Depends(requi
         raise HTTPException(400, "Shop category is not configured")
 
     upd = data.dict()
+    if data.images is None:
+        upd.pop("images", None)
     upd["store_id"] = p.get("store_id")
     upd["category_id"] = store_category_id
     upd.update(
