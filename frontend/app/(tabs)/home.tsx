@@ -194,7 +194,7 @@ function NightSky() {
           float sunVisible = clamp(day + max(dawn, dusk) * 0.93, 0.0, 1.0);
           float sunHalo = exp(-sunDist * 7.5);
           float sunBloom = exp(-sunDist * 24.0);
-          float sunDisk = 1.0 - smoothstep(0.029, 0.039, sunDist);
+          float sunDisk = 1.0 - smoothstep(0.018, 0.026, sunDist);
           sky += vec3(1.0, 0.53, 0.25) * sunHalo * sunVisible * (0.13 + twilight * 0.28);
           sky += vec3(1.0, 0.42, 0.18) * sunBloom * dusk * 0.20;
           sky += vec3(1.0, 0.88, 0.65) * sunDisk * sunVisible * 0.72;
@@ -218,7 +218,7 @@ function NightSky() {
           vec2 moonDelta = vec2((uv.x - moonPos.x) * aspect, uv.y - moonPos.y);
           float moonDist = length(moonDelta);
           float moonVisible = max(1.0 - smoothstep(4.8, 6.5, clock), smoothstep(18.0, 20.0, clock));
-          float moonMask = 1.0 - smoothstep(0.050, 0.059, moonDist);
+          float moonMask = 1.0 - smoothstep(0.035, 0.041, moonDist);
           float moonHalo = exp(-moonDist * 8.0);
           float craterA = exp(-length(moonDelta - vec2(-0.010, 0.008)) * 52.0);
           float craterB = exp(-length(moonDelta - vec2(0.012, -0.012)) * 62.0);
@@ -278,8 +278,8 @@ function NightSky() {
           vec3 smokeColor = mix(vec3(0.48, 0.54, 0.60), vec3(0.79, 0.81, 0.83), day);
           smokeColor = mix(smokeColor, vec3(0.83, 0.52, 0.43), twilight * 0.72);
           smokeColor = mix(smokeColor, vec3(0.16, 0.21, 0.30), night * 0.72);
-          sky = mix(sky, smokeColor, smokeRim * 0.38);
-          sky = mix(sky, smokeColor * 0.80, smokeCore * (0.34 + night * 0.12));
+          sky = mix(sky, smokeColor, smokeRim * 0.25);
+          sky = mix(sky, smokeColor * 0.80, smokeCore * (0.22 + night * 0.10));
 
           // Rolling landscape and a small distant exhaust stack anchor the plume in the scene.
           float hillA = fbm(vec2(uv.x * 2.1 + 3.0, 6.0));
@@ -295,16 +295,16 @@ function NightSky() {
 
           // Tiny village houses sit along the horizon; the center roof anchors the moving chimney smoke.
           float houseLeftBody = boxMask(uv, vec2(0.12, 0.050), vec2(0.040, 0.028), 0.002);
-          float houseMainBody = boxMask(uv, vec2(0.335, 0.058), vec2(0.075, 0.039), 0.002);
-          float houseRightBody = boxMask(uv, vec2(0.66, 0.050), vec2(0.052, 0.032), 0.002);
+          float houseMainBody = boxMask(uv, vec2(0.335, 0.052), vec2(0.062, 0.031), 0.002);
+          float houseRightBody = boxMask(uv, vec2(0.66, 0.045), vec2(0.045, 0.027), 0.002);
           float houseFarRightBody = boxMask(uv, vec2(0.855, 0.035), vec2(0.034, 0.019), 0.002);
           float houseBodies = max(max(houseLeftBody, houseMainBody), max(houseRightBody, houseFarRightBody));
           vec3 houseColor = mix(vec3(0.15, 0.23, 0.28), vec3(0.012, 0.022, 0.039), night * 0.94);
           sky = mix(sky, houseColor, houseBodies * 0.98);
 
           float roofLeft = roofMask(uv, 0.12, 0.076, 0.122, 0.052);
-          float roofMain = roofMask(uv, 0.335, 0.090, 0.170, 0.086);
-          float roofRight = roofMask(uv, 0.66, 0.078, 0.136, 0.066);
+          float roofMain = roofMask(uv, 0.335, 0.081, 0.139, 0.071);
+          float roofRight = roofMask(uv, 0.66, 0.070, 0.119, 0.057);
           float roofFarRight = roofMask(uv, 0.855, 0.052, 0.090, 0.041);
           float houseRoofs = max(max(roofLeft, roofMain), max(roofRight, roofFarRight));
           vec3 roofColor = mix(vec3(0.085, 0.14, 0.18), vec3(0.006, 0.012, 0.025), night * 0.92);
@@ -324,20 +324,6 @@ function NightSky() {
           float stackBody = boxMask(uv, vec2(0.335, 0.152), vec2(0.008, 0.021), 0.002);
           float stackCap = boxMask(uv, vec2(0.335, 0.174), vec2(0.012, 0.003), 0.001);
           sky = mix(sky, vec3(0.028, 0.037, 0.047), max(stackBody, stackCap));
-
-          // Tall mobile tower above the village skyline.
-          float towerMast = boxMask(uv, vec2(0.765, 0.135), vec2(0.0032, 0.105), 0.001);
-          float towerLeftLeg = 1.0 - smoothstep(0.002, 0.004, abs(uv.x - (0.765 - (0.15 - uv.y) * 0.18)));
-          towerLeftLeg *= step(0.035, uv.y) * (1.0 - step(0.235, uv.y));
-          float towerRightLeg = 1.0 - smoothstep(0.002, 0.004, abs(uv.x - (0.765 + (0.15 - uv.y) * 0.18)));
-          towerRightLeg *= step(0.035, uv.y) * (1.0 - step(0.235, uv.y));
-          float towerBarOne = 1.0 - smoothstep(0.002, 0.004, abs(uv.y - (0.075 + abs(uv.x - 0.765) * 0.55)));
-          towerBarOne *= step(0.725, uv.x) * (1.0 - step(0.805, uv.x));
-          float towerBarTwo = 1.0 - smoothstep(0.002, 0.004, abs(uv.y - (0.145 - abs(uv.x - 0.765) * 0.45)));
-          towerBarTwo *= step(0.735, uv.x) * (1.0 - step(0.795, uv.x));
-          float towerTop = boxMask(uv, vec2(0.765, 0.252), vec2(0.008, 0.006), 0.001);
-          float mobileTower = max(max(towerMast, towerLeftLeg), max(max(towerRightLeg, towerBarOne), max(towerBarTwo, towerTop)));
-          sky = mix(sky, mix(vec3(0.18, 0.25, 0.30), vec3(0.48, 0.61, 0.69), day), mobileTower * 0.96);
 
           // Gentle cinematic vignette; keep the whole scene readable behind the search controls.
           vec2 centered = uv - 0.5;
@@ -471,17 +457,6 @@ function NightSky() {
     return (
       <View pointerEvents="none" style={s.nightSky}>
         {React.createElement("canvas" as any, { ref: canvasRef, style: { width: "100%", height: "100px", display: "block" } })}
-        <View style={s.brandCloud}>
-          <View style={s.brandCloudPuffLeft} /><View style={s.brandCloudPuffTop} />
-          <View style={s.brandCloudPuffRight} /><View style={s.brandCloudBase} />
-          <Text style={s.brandCloudText}>KMT Bazaar</Text>
-        </View>
-        <View style={s.tower}>
-          <View style={s.towerMast} /><View style={s.towerTopBar} />
-          <View style={s.towerCrossBarOne} /><View style={s.towerCrossBarTwo} />
-          <View style={s.towerLegLeft} /><View style={s.towerLegRight} />
-          <View style={s.towerSignalOne} /><View style={s.towerSignalTwo} />
-        </View>
       </View>
     );
   }
@@ -545,7 +520,7 @@ function NightSky() {
               left: `${sunLeft}%`,
               right: undefined,
               top: isSunset || isDawn ? 106 : 14,
-              transform: [{ translateX: -45 }],
+              transform: [{ translateX: -37 }],
             },
           ]}
         >
@@ -561,7 +536,7 @@ function NightSky() {
               left: `${moonLeft}%`,
               right: undefined,
               top: moonTop,
-              transform: [{ translateX: -39 }],
+              transform: [{ translateX: -29 }],
             },
           ]}
         >
@@ -609,17 +584,6 @@ function NightSky() {
       </Animated.View>
 
       <View style={s.horizonSilhouette} />
-      <View style={s.brandCloud}>
-        <View style={s.brandCloudPuffLeft} /><View style={s.brandCloudPuffTop} />
-        <View style={s.brandCloudPuffRight} /><View style={s.brandCloudBase} />
-        <Text style={s.brandCloudText}>KMT Bazaar</Text>
-      </View>
-      <View style={s.tower}>
-        <View style={s.towerMast} /><View style={s.towerTopBar} />
-        <View style={s.towerCrossBarOne} /><View style={s.towerCrossBarTwo} />
-        <View style={s.towerLegLeft} /><View style={s.towerLegRight} />
-        <View style={s.towerSignalOne} /><View style={s.towerSignalTwo} />
-      </View>
 
       <View style={[s.house, s.houseLeft]}>
         <View style={[s.houseRoof, { borderBottomColor: houseRoofColor }]} />
@@ -1440,25 +1404,10 @@ const s = StyleSheet.create({
   horizonSilhouette: { position: "absolute", left: 0, right: 0, bottom: 0, height: 18, backgroundColor: "rgba(13,28,38,0.58)" },
   house: { position: "absolute", bottom: 1, height: 22, zIndex: 3 },
   houseLeft: { left: "8%", width: 34, height: 20 },
-  houseCenter: { left: "28%", width: 58, height: 30 },
+  houseCenter: { left: "28%", width: 44, height: 22 },
   houseRight: { right: "28%", width: 40, height: 19 },
   houseFarRight: { right: "5%", width: 30, height: 17 },
   houseRoof: { position: "absolute", left: 0, bottom: 10, width: 0, height: 0, borderLeftWidth: 17, borderRightWidth: 17, borderBottomWidth: 10, borderLeftColor: "transparent", borderRightColor: "transparent" },
-  brandCloud: { position: "absolute", left: "38%", top: 12, width: 138, height: 40, zIndex: 5, alignItems: "center", justifyContent: "center" },
-  brandCloudPuffLeft: { position: "absolute", left: 8, top: 15, width: 49, height: 22, borderRadius: 20, backgroundColor: "rgba(255,255,255,0.92)" },
-  brandCloudPuffTop: { position: "absolute", left: 36, top: 4, width: 52, height: 31, borderRadius: 22, backgroundColor: "rgba(255,255,255,0.96)" },
-  brandCloudPuffRight: { position: "absolute", right: 7, top: 15, width: 48, height: 22, borderRadius: 20, backgroundColor: "rgba(255,255,255,0.90)" },
-  brandCloudBase: { position: "absolute", left: 9, right: 8, bottom: 3, height: 19, borderRadius: 14, backgroundColor: "rgba(255,255,255,0.95)" },
-  brandCloudText: { position: "absolute", top: 16, color: "#075985", fontSize: 10, fontWeight: "900", letterSpacing: 0.2, textShadowColor: "rgba(255,255,255,0.8)", textShadowRadius: 2 },
-  tower: { position: "absolute", right: "19%", bottom: 1, width: 30, height: 48, zIndex: 3 },
-  towerMast: { position: "absolute", left: 14, top: 0, width: 2, height: 47, backgroundColor: "#526A79" },
-  towerTopBar: { position: "absolute", left: 8, top: 5, width: 14, height: 2, backgroundColor: "#526A79" },
-  towerCrossBarOne: { position: "absolute", left: 5, top: 17, width: 20, height: 2, backgroundColor: "#526A79" },
-  towerCrossBarTwo: { position: "absolute", left: 2, top: 31, width: 26, height: 2, backgroundColor: "#526A79" },
-  towerLegLeft: { position: "absolute", left: 5, top: 9, width: 2, height: 38, backgroundColor: "#526A79", transform: [{ rotate: "18deg" }] },
-  towerLegRight: { position: "absolute", right: 5, top: 9, width: 2, height: 38, backgroundColor: "#526A79", transform: [{ rotate: "-18deg" }] },
-  towerSignalOne: { position: "absolute", left: 4, top: 1, width: 22, height: 22, borderWidth: 1, borderColor: "rgba(255,255,255,0.35)", borderRadius: 11 },
-  towerSignalTwo: { position: "absolute", left: 0, top: -3, width: 30, height: 30, borderWidth: 1, borderColor: "rgba(255,255,255,0.22)", borderRadius: 15 },
   houseBody: { position: "absolute", left: 4, right: 4, bottom: 0, height: 12, borderTopLeftRadius: 1, borderTopRightRadius: 1 },
   houseWindow: { position: "absolute", bottom: 3, width: 4, height: 5, borderRadius: 1 },
   smokeColumn: { position: "absolute", left: "21%", bottom: 20, width: 94, height: 118 },
@@ -1466,16 +1415,16 @@ const s = StyleSheet.create({
   smokeStack: { position: "absolute", bottom: 12, left: "32.5%", width: 7, height: 12, backgroundColor: "#263442", borderTopWidth: 2, borderTopColor: "#526170" },
   starLayer: { position: "absolute", top: 0, left: 0, right: 0, height: 92 },
   star: { position: "absolute", backgroundColor: "#FFFFFF", shadowColor: "#FFFFFF", shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.95, shadowRadius: 5, elevation: 3 },
-  sunGlow: { position: "absolute", top: 10, right: "12%", width: 90, height: 90, alignItems: "center", justifyContent: "center" },
-  sunHaloOuter: { position: "absolute", width: 90, height: 90, borderRadius: 45, backgroundColor: "rgba(255,255,255,0.14)" },
-  sunHalo: { position: "absolute", width: 72, height: 72, borderRadius: 36, backgroundColor: "rgba(255,248,220,0.25)" },
-  sunCore: { width: 50, height: 50, borderRadius: 25, backgroundColor: "#FFF7CC", shadowColor: "#FFFFFF", shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.8, shadowRadius: 20, elevation: 6 },
+  sunGlow: { position: "absolute", top: 18, right: "12%", width: 74, height: 74, alignItems: "center", justifyContent: "center" },
+  sunHaloOuter: { position: "absolute", width: 74, height: 74, borderRadius: 37, backgroundColor: "rgba(255,255,255,0.12)" },
+  sunHalo: { position: "absolute", width: 58, height: 58, borderRadius: 29, backgroundColor: "rgba(255,248,220,0.22)" },
+  sunCore: { width: 38, height: 38, borderRadius: 19, backgroundColor: "#FFF7CC", shadowColor: "#FFFFFF", shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.75, shadowRadius: 16, elevation: 5 },
   sunsetGlow: { position: "absolute", left: "28%", right: "28%", bottom: 0, height: 78, alignItems: "center", justifyContent: "flex-end" },
   sunsetHalo: { width: "100%", height: 78, borderTopLeftRadius: 140, borderTopRightRadius: 140, backgroundColor: "rgba(255,190,120,0.16)" },
-  moon: { position: "absolute", top: 12, right: "15%", width: 78, height: 78, alignItems: "center", justifyContent: "center" },
-  moonHalo: { position: "absolute", width: 78, height: 78, borderRadius: 39, backgroundColor: "rgba(226,232,240,0.10)" },
-  moonBody: { width: 46, height: 46, borderRadius: 23, backgroundColor: "#F8FAFC", shadowColor: "#FFFFFF", shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.75, shadowRadius: 18, elevation: 5, overflow: "hidden" },
-  moonCut: { position: "absolute", top: -3, left: 13, width: 40, height: 40, borderRadius: 20, backgroundColor: "#0B1120" },
+  moon: { position: "absolute", top: 20, right: "15%", width: 58, height: 58, alignItems: "center", justifyContent: "center" },
+  moonHalo: { position: "absolute", width: 58, height: 58, borderRadius: 29, backgroundColor: "rgba(226,232,240,0.07)" },
+  moonBody: { width: 34, height: 34, borderRadius: 17, backgroundColor: "#F8FAFC", shadowColor: "#FFFFFF", shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.7, shadowRadius: 14, elevation: 4, overflow: "hidden" },
+  moonCut: { position: "absolute", top: -2, left: 10, width: 30, height: 30, borderRadius: 15, backgroundColor: "#0B1120" },
   airplane: { position: "absolute", top: 0, left: -20, width: 46, height: 24, alignItems: "center", justifyContent: "center" },
   airplaneTrail: { position: "absolute", width: 26, height: 2, left: -23, top: 13, borderRadius: 2, backgroundColor: "rgba(255,255,255,0.3)" },
   cloud: { position: "absolute", width: 164, height: 70, opacity: 0.58 },
