@@ -1,5 +1,6 @@
+import { LocalizedText as Text, LocalizedTextInput as TextInput } from "@/src/LocalizedText";
 import React, { useEffect, useState } from "react";
-import { View, Text, ScrollView, StyleSheet, Pressable, ActivityIndicator, Alert, Platform } from "react-native";
+import { View, ScrollView, StyleSheet, Pressable, ActivityIndicator, Alert, Platform } from "react-native";
 import { Image } from "expo-image";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
