@@ -1,3 +1,4 @@
+import { LocalizedText as Text, LocalizedTextInput as TextInput } from "@/src/LocalizedText";
 import { router } from "expo-router";
 import React, { useRef, useState } from "react";
 import {
@@ -8,9 +9,7 @@ import {
   Platform,
   Image,
   TouchableOpacity,
-  Text,
-  TextInput,
-} from "react-native";
+  } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 
