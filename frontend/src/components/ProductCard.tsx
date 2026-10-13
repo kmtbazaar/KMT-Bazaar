@@ -19,6 +19,7 @@ import { COLORS, IMAGE_FALLBACK_URL, RADIUS } from "@/src/theme";
 import { useCart } from "@/src/CartContext";
 import { useRouter } from "expo-router";
 import ImagePlaceholder from "@/src/components/ImagePlaceholder";
+import { useWishlist } from "@/src/WishlistContext";
 
 const SCREEN_W = Dimensions.get("window").width;
 
@@ -35,6 +36,8 @@ export default function ProductCard({
 }) {
   const router = useRouter();
   const { add, update, cart } = useCart();
+  const { isWishlisted, toggle: toggleWishlist, ready: wishlistReady } = useWishlist();
+  const wished = isWishlisted(p.id);
   const [imageFailed, setImageFailed] = useState(false);
   const scale = useSharedValue(1);
 
@@ -117,6 +120,7 @@ export default function ProductCard({
       ]}
     >
       <View>
+        <View style={s.imageArea}>
         <Pressable
           testID={`product-image-${p.id}`}
           onPress={() => router.push(`/product/${p.id}` as any)}
@@ -146,6 +150,18 @@ export default function ProductCard({
             </View>
           )}
         </Pressable>
+        <Pressable
+          testID={`wishlist-toggle-${p.id}`}
+          accessibilityRole="button"
+          accessibilityLabel={wished ? "Remove from wishlist" : "Add to wishlist"}
+          disabled={!wishlistReady}
+          onPress={(e: any) => { e?.stopPropagation?.(); toggleWishlist(p); }}
+          hitSlop={6}
+          style={s.wishBtn}
+        >
+          <MaterialCommunityIcons name={wished ? "heart" : "heart-outline"} size={17} color={wished ? "#E11D48" : "#334155"} />
+        </Pressable>
+        </View>
 
         <View style={s.body}>
           <Text
@@ -295,6 +311,25 @@ const s = StyleSheet.create({
   cardStoreGrid: {
     margin: 0,
     alignSelf: "flex-start",
+  },
+
+  imageArea: {
+    width: "100%",
+    position: "relative",
+  },
+
+  wishBtn: {
+    position: "absolute",
+    top: 6,
+    right: 6,
+    width: 29,
+    height: 29,
+    borderRadius: 15,
+    backgroundColor: "rgba(255,255,255,0.96)",
+    alignItems: "center",
+    justifyContent: "center",
+    zIndex: 5,
+    elevation: 3,
   },
 
   imgWrap: {
