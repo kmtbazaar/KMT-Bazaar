@@ -1,5 +1,6 @@
+import { LocalizedText as Text, LocalizedTextInput as TextInput } from "@/src/LocalizedText";
 import React, { useCallback, useEffect, useState, useRef } from "react";
-import { View, Text, StyleSheet, Pressable, ScrollView, RefreshControl, TextInput, Modal, Alert, Switch, Animated, BackHandler, ActivityIndicator, Platform } from "react-native";
+import { View, StyleSheet, Pressable, ScrollView, RefreshControl, Modal, Alert, Switch, Animated, BackHandler, ActivityIndicator, Platform } from "react-native";
 import { Image } from "expo-image";
 import * as ImagePicker from "expo-image-picker"; 
 import { useFocusEffect, useRouter } from "expo-router";
