@@ -111,6 +111,15 @@ export default function ProductCard({
 
   const outOfStock = (p.stock ?? 0) <= 0;
 
+  const onToggleWishlist = (e: any) => {
+    e?.stopPropagation?.();
+    try {
+      if ((globalThis as any).navigator?.vibrate) (globalThis as any).navigator.vibrate(15);
+      else void Haptics.selectionAsync().catch(() => {});
+    } catch {}
+    toggleWishlist(p);
+  };
+
   return (
     <Animated.View
       style={[
@@ -155,7 +164,7 @@ export default function ProductCard({
           accessibilityRole="button"
           accessibilityLabel={wished ? "Remove from wishlist" : "Add to wishlist"}
           disabled={!wishlistReady}
-          onPress={(e: any) => { e?.stopPropagation?.(); toggleWishlist(p); }}
+          onPress={onToggleWishlist}
           hitSlop={6}
           style={s.wishBtn}
         >
@@ -325,11 +334,10 @@ const s = StyleSheet.create({
     width: 29,
     height: 29,
     borderRadius: 15,
-    backgroundColor: "rgba(255,255,255,0.96)",
+    backgroundColor: "transparent",
     alignItems: "center",
     justifyContent: "center",
     zIndex: 5,
-    elevation: 3,
   },
 
   imgWrap: {
