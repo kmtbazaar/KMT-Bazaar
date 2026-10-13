@@ -7,10 +7,13 @@ function translateChild(child: React.ReactNode, language: "en" | "hi"): React.Re
   if (typeof child === "string") return translateUiText(child, language);
   if (typeof child === "number" || child == null || typeof child === "boolean") return child;
   if (Array.isArray(child)) return child.map((part, index) => <React.Fragment key={index}>{translateChild(part, language)}</React.Fragment>);
-  if (React.isValidElement(child) && child.props && "children" in child.props) {
-    return React.cloneElement(child as React.ReactElement<any>, {
-      children: translateChild((child.props as any).children, language),
-    });
+  if (React.isValidElement(child)) {
+    const element = child as React.ReactElement<any>;
+    if (element.props && "children" in element.props) {
+      return React.cloneElement(element, {
+        children: translateChild(element.props.children, language),
+      });
+    }
   }
   return child;
 }
