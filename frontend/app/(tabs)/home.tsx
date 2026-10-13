@@ -1050,7 +1050,7 @@ export default function Home() {
       {/* The search bar stays usable while the hero shell slides away after the banner scrolls off. */}
       <SafeAreaView
         edges={heroCollapsed ? ["top"] : []}
-        style={heroCollapsed ? s.searchBarSafeAreaCollapsed : undefined}
+        style={[s.searchBarSafeArea, heroCollapsed && s.searchBarSafeAreaCollapsed]}
       >
         <View style={[s.searchBarOuter, heroCollapsed && s.searchBarOuterCollapsed]}>
         {/* Search Bar */}
@@ -1436,7 +1436,8 @@ const s = StyleSheet.create({
   headerBg: { position: "absolute", top: 0, left: 0, right: 0, height: 100, borderBottomLeftRadius: 30, borderBottomRightRadius: 30, backgroundColor: "transparent", shadowColor: "#FFFFFF", shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.14, shadowRadius: 18, elevation: 7 },
   skyClearSpace: { height: Platform.OS === "web" ? 90 : 56 },
   skyClearSpaceCollapsed: { height: 0 },
-  searchBarSafeAreaCollapsed: { backgroundColor: THEME.whiteBg, zIndex: 20, elevation: 8, borderBottomWidth: 1, borderBottomColor: "rgba(226,232,240,0.9)" },
+  searchBarSafeArea: { backgroundColor: THEME.whiteBg, zIndex: 20, elevation: 8 },
+  searchBarSafeAreaCollapsed: { borderBottomWidth: 1, borderBottomColor: "rgba(226,232,240,0.9)" },
   searchBarOuter: { paddingHorizontal: SPACING.lg, marginTop: SPACING.sm },
   searchBarOuterCollapsed: { marginTop: 0, paddingBottom: 8 },
   headerWrap: { paddingHorizontal: SPACING.lg, paddingBottom: SPACING.xs },
