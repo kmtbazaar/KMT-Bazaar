@@ -1,4 +1,5 @@
 import { LocalizedText as Text } from "@/src/LocalizedText";
+import { useLanguage } from "@/src/LanguageContext";
 import React, { useState } from "react";
 import {
   View,
@@ -29,10 +30,12 @@ const ITEMS = [
   { icon: "headset", label: "Help & Support", path: null },
   { icon: "shield-check-outline", label: "Privacy Policy", path: null },
   { icon: "information-outline", label: "About KMT Bazaar", path: null },
+  { icon: "translate", label: "Change language", path: null },
 ];
 
 export default function Profile() {
   const { user, logout, refresh } = useAuth();
+  const { language, selectLanguage } = useLanguage();
   const router = useRouter();
   const [uploading, setUploading] = useState(false);
 
@@ -41,7 +44,7 @@ export default function Profile() {
   // Popup state
   const [modalVisible, setModalVisible] = useState(false);
   const [modalType, setModalType] = useState<
-    "help" | "privacy" | "about" | null
+    "help" | "privacy" | "about" | "language" | null
   >(null);
 
   const handlePickImage = async () => {
@@ -131,6 +134,7 @@ export default function Profile() {
     if (modalType === "help") return "Help & Support";
     if (modalType === "privacy") return "Privacy Policy";
     if (modalType === "about") return "About KMT Bazaar";
+    if (modalType === "language") return "Change language";
     return "";
   };
 
@@ -138,6 +142,7 @@ export default function Profile() {
     if (modalType === "help") return "headset";
     if (modalType === "privacy") return "shield-check-outline";
     if (modalType === "about") return "information-outline";
+    if (modalType === "language") return "translate";
     return "information-outline";
   };
 
@@ -213,6 +218,11 @@ export default function Profile() {
               onPress={() => {
                 if (it.path) {
                   router.push(it.path as any);
+                  return;
+                }
+
+                if (it.label === "Change language") {
+                  openInfoModal("language");
                   return;
                 }
 
@@ -328,6 +338,25 @@ export default function Profile() {
               style={s.modalScroll}
               showsVerticalScrollIndicator={false}
             >
+              {modalType === "language" && (
+                <View>
+                  <Text style={s.modalHeading}>Choose your language / अपनी भाषा चुनें</Text>
+                  <Text style={s.modalText}>Your choice is saved for future visits.</Text>
+                  <TouchableOpacity
+                    style={s.doneButton}
+                    onPress={() => { void selectLanguage("hi"); closeInfoModal(); }}
+                  >
+                    <Text style={s.doneButtonText}>{language === "hi" ? "✓ हिन्दी" : "हिन्दी"}</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[s.doneButton, { marginTop: 10 }]}
+                    onPress={() => { void selectLanguage("en"); closeInfoModal(); }}
+                  >
+                    <Text style={s.doneButtonText}>{language === "en" ? "✓ English" : "English"}</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+
               {modalType === "help" && (
                 <View>
                   <Text style={s.modalHeading}>
