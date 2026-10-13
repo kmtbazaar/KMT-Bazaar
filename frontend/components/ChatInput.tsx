@@ -1,11 +1,10 @@
+import { LocalizedText as Text, LocalizedTextInput as TextInput } from "@/src/LocalizedText";
 import React from "react";
 import {
   View,
-  TextInput,
   Pressable,
   StyleSheet,
-  Text,
-} from "react-native";
+  } from "react-native";
 
 type Props = {
   value: string;
