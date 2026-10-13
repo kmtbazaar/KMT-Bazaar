@@ -1,5 +1,6 @@
+import { LocalizedText as Text, LocalizedTextInput as TextInput } from "@/src/LocalizedText";
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { Animated, View, Text, StyleSheet, Pressable, Switch, RefreshControl, ScrollView, Platform, Linking } from "react-native";
+import { Animated, View, StyleSheet, Pressable, Switch, RefreshControl, ScrollView, Platform, Linking } from "react-native";
 import { Image } from "expo-image";
 import { useFocusEffect, useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
