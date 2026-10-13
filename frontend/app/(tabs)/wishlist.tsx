@@ -45,7 +45,7 @@ export default function WishlistScreen() {
         <ScrollView contentContainerStyle={s.grid} showsVerticalScrollIndicator={false}>
           {items.map((product) => (
             <View key={String(product.id)} style={s.product}>
-              <ProductCard p={product} compact />
+              <ProductCard p={product} compact wishlistGrid />
             </View>
           ))}
         </ScrollView>
@@ -62,7 +62,7 @@ const s = StyleSheet.create({
   title: { fontSize: 20, fontWeight: "800", color: COLORS.text },
   subtitle: { fontSize: 12, color: COLORS.textMuted, marginTop: 2 },
   grid: { padding: SPACING.sm, paddingBottom: 100, flexDirection: "row", flexWrap: "wrap", alignItems: "flex-start" },
-  product: { width: "50%", padding: 2 },
+  product: { width: "33.3333%", padding: 1, minWidth: 0 },
   empty: { flex: 1, alignItems: "center", justifyContent: "center", padding: 28 },
   emptyIcon: { width: 82, height: 82, borderRadius: 41, backgroundColor: "#FFF1F2", alignItems: "center", justifyContent: "center", marginBottom: 16 },
   emptyTitle: { fontSize: 18, fontWeight: "800", color: COLORS.text, textAlign: "center", marginTop: 8 },
