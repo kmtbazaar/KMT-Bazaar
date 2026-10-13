@@ -6,6 +6,7 @@ import { StatusBar } from "expo-status-bar";
 
 import { AuthProvider, useAuth } from "@/src/AuthContext";
 import { CartProvider } from "@/src/CartContext";
+import { LanguageProvider } from "@/src/LanguageContext";
 
 function vendorHomeRoute(user: any) {
   if (user?.role !== "vendor") return `/${user?.role || "auth/login"}`;
@@ -94,13 +95,15 @@ export default function RootLayout() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
         <StatusBar style="light" translucent={false} backgroundColor="#0284C7" />
-        <AuthProvider>
+        <LanguageProvider>
+          <AuthProvider>
           <CartProvider>
             <RoleRouteGuard>
               <Stack screenOptions={{ headerShown: false }} />
             </RoleRouteGuard>
           </CartProvider>
         </AuthProvider>
+        </LanguageProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );
