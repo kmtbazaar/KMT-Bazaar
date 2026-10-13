@@ -376,7 +376,7 @@ function NightSky() {
 
       const resize = () => {
         const widthPx = Math.max(1, Math.floor(window.innerWidth * Math.min(window.devicePixelRatio, 2)));
-        const heightPx = Math.max(1, Math.floor(138 * Math.min(window.devicePixelRatio, 2)));
+        const heightPx = Math.max(1, Math.floor(119 * Math.min(window.devicePixelRatio, 2)));
         canvas.width = widthPx;
         canvas.height = heightPx;
         canvas.style.width = "100%";
@@ -456,7 +456,7 @@ function NightSky() {
   if (Platform.OS === "web") {
     return (
       <View pointerEvents="none" style={s.nightSky}>
-        {React.createElement("canvas" as any, { ref: canvasRef, style: { width: "100%", height: "138px", display: "block" } })}
+        {React.createElement("canvas" as any, { ref: canvasRef, style: { width: "100%", height: "119px", display: "block" } })}
       </View>
     );
   }
@@ -915,7 +915,7 @@ export default function Home() {
     opacity: flashOpacity.value
   }));
 
-  const heroExpandedHeight = Platform.OS === "web" ? 138 : 144;
+  const heroExpandedHeight = Platform.OS === "web" ? 119 : 125;
   const heroAnimatedHeight = heroCollapseProgress.interpolate({
     inputRange: [0, 1],
     outputRange: [heroExpandedHeight, 0],
@@ -1395,7 +1395,7 @@ const s = StyleSheet.create({
   root: { flex: 1, backgroundColor: THEME.whiteBg },
   /* Realistic 3D-style sky layers stay behind the existing header/search only */
   heroHeaderShell: { position: "relative", width: "100%", overflow: "hidden" },
-  nightSky: { position: "absolute", top: 0, left: 0, right: 0, height: 138, overflow: "hidden", zIndex: 0, pointerEvents: "none" },
+  nightSky: { position: "absolute", top: 0, left: 0, right: 0, height: 119, overflow: "hidden", zIndex: 0, pointerEvents: "none" },
   nightGradientLayer: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0 },
   nightGradient: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0 },
   horizonGlow: { position: "absolute", left: "12%", right: "12%", bottom: 4, height: 68, borderTopLeftRadius: 170, borderTopRightRadius: 170, backgroundColor: "rgba(255,190,130,0.10)" },
@@ -1433,7 +1433,7 @@ const s = StyleSheet.create({
   cloudHighlightOne: { position: "absolute", left: 42, top: 8, width: 38, height: 10, borderRadius: 10, backgroundColor: "rgba(255,255,255,0.22)" },
   cloudHighlightTwo: { position: "absolute", left: 38, top: 7, width: 32, height: 9, borderRadius: 10, backgroundColor: "rgba(255,255,255,0.2)" },
   cloudBase: { position: "absolute", left: 2, right: 2, bottom: 4, height: 24, borderRadius: 18, backgroundColor: "rgba(100,116,139,0.12)" },
-  headerBg: { position: "absolute", top: 0, left: 0, right: 0, height: 138, borderBottomLeftRadius: 30, borderBottomRightRadius: 30, backgroundColor: "transparent", shadowColor: "#FFFFFF", shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.14, shadowRadius: 18, elevation: 7 },
+  headerBg: { position: "absolute", top: 0, left: 0, right: 0, height: 119, borderBottomLeftRadius: 30, borderBottomRightRadius: 30, backgroundColor: "transparent", shadowColor: "#FFFFFF", shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.14, shadowRadius: 18, elevation: 7 },
   skyClearSpace: { height: Platform.OS === "web" ? 90 : 56 },
   skyClearSpaceCollapsed: { height: 0 },
   searchBarSafeAreaCollapsed: { backgroundColor: THEME.whiteBg, zIndex: 20, elevation: 8, borderBottomWidth: 1, borderBottomColor: "rgba(226,232,240,0.9)" },
