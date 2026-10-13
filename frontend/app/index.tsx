@@ -11,6 +11,7 @@ import {
   Dimensions,
 } from "react-native";
 import { router } from "expo-router";
+import { useLanguage } from "../src/LanguageContext";
 
 // --- GIF IMPORTS ---
 import AssistantGif from "../assets/images/assistant.gif";
@@ -20,11 +21,13 @@ const { width } = Dimensions.get("window");
 
 export default function Index() {
   const [showAssistant, setShowAssistant] = useState(false);
+  const { hasSelectedLanguage, selectLanguage, isLanguageReady } = useLanguage();
 
   // Smooth Fade-In Animation for Screen Load
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
+    if (!isLanguageReady) return;
     // 2.5 second Splash Timer
     const timer = setTimeout(() => {
       setShowAssistant(true);
@@ -36,7 +39,38 @@ export default function Index() {
     }, 2500);
 
     return () => clearTimeout(timer);
-  }, []);
+  }, [isLanguageReady]);
+
+  // First-time visitors choose their language before entering the site.
+  if (showAssistant && !hasSelectedLanguage) {
+    return (
+      <View style={styles.blackBackground}>
+        <StatusBar barStyle="light-content" />
+        <SafeAreaView style={styles.safeArea}>
+          <View style={[styles.mainContent, { justifyContent: "center", gap: 22 }]}>
+            <View style={styles.blueGradientTile}>
+              <Text style={styles.tileTitle}>KMT Bazaar Assistant</Text>
+              <Text style={styles.tileSubtitle}>Choose your language / अपनी भाषा चुनें</Text>
+            </View>
+            <Image source={AssistantGif} style={{ width: width * 0.72, height: 250 }} resizeMode="contain" />
+            <View style={{ width: "100%", gap: 14 }}>
+              <TouchableOpacity activeOpacity={0.85} style={styles.primaryBtnWrapper} onPress={() => { void selectLanguage("hi"); }}>
+                <View style={[styles.primaryGradientBtn, { backgroundColor: "#0D9488" }]}>
+                  <Text style={styles.primaryBtnText}>हिन्दी में आगे बढ़ें</Text>
+                </View>
+              </TouchableOpacity>
+              <TouchableOpacity activeOpacity={0.85} style={styles.primaryBtnWrapper} onPress={() => { void selectLanguage("en"); }}>
+                <View style={styles.primaryGradientBtn}>
+                  <Text style={styles.primaryBtnText}>Continue in English</Text>
+                </View>
+              </TouchableOpacity>
+            </View>
+            <Text style={styles.tileSubtitle}>You can change language later in Profile / प्रोफ़ाइल में बाद में भाषा बदल सकते हैं</Text>
+          </View>
+        </SafeAreaView>
+      </View>
+    );
+  }
 
   // --- VIEW 2: INTERACTIVE ASSISTANT SCREEN ---
   if (showAssistant) {
