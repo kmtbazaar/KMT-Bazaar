@@ -1,13 +1,12 @@
+import { LocalizedText as Text, LocalizedTextInput as TextInput } from "@/src/LocalizedText";
 import React, { useCallback, useState } from "react";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import {
   View,
-  Text,
   StyleSheet,
   FlatList,
   Pressable,
-  TextInput,
-} from "react-native";
+  } from "react-native";
 import { Image } from "expo-image";
 import {
   useFocusEffect,
