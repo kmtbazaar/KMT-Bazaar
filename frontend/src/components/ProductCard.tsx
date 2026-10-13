@@ -192,7 +192,7 @@ export default function ProductCard({
                 >
                   <MaterialCommunityIcons
                     name="minus"
-                    size={14}
+                    size={16}
                     color="#fff"
                   />
                 </Pressable>
@@ -217,7 +217,7 @@ export default function ProductCard({
                 >
                   <MaterialCommunityIcons
                     name="plus"
-                    size={14}
+                    size={16}
                     color="#fff"
                   />
                 </Pressable>
@@ -235,7 +235,7 @@ export default function ProductCard({
               >
                 <MaterialCommunityIcons
                   name="plus"
-                  size={14}
+                  size={16}
                   color={
                     outOfStock
                       ? COLORS.textMuted
@@ -375,16 +375,16 @@ const s = StyleSheet.create({
   },
 
   price: {
-    fontSize: 13,
+    fontSize: 15.5,
     fontWeight: "800",
     color: COLORS.text,
   },
 
   mrp: {
-    fontSize: 9,
+    fontSize: 10.5,
     color: COLORS.textMuted,
     textDecorationLine: "line-through",
-    minHeight: 12,
+    minHeight: 14,
   },
 
   addBtn: {
@@ -393,12 +393,12 @@ const s = StyleSheet.create({
     justifyContent: "center",
     borderWidth: 1.5,
     borderColor: COLORS.accent,
-    paddingHorizontal: 6,
-    paddingVertical: 4,
+    paddingHorizontal: 7,
+    paddingVertical: 5,
     borderRadius: RADIUS.sm,
     backgroundColor: COLORS.accentLight,
-    gap: 1,
-    height: 28,
+    gap: 3,
+    height: 32,
   },
 
   addBtnDisabled: {
@@ -409,7 +409,7 @@ const s = StyleSheet.create({
   addText: {
     color: COLORS.accent,
     fontWeight: "800",
-    fontSize: 9,
+    fontSize: 11.5,
   },
 
   stepper: {
@@ -417,13 +417,13 @@ const s = StyleSheet.create({
     alignItems: "center",
     backgroundColor: COLORS.accent,
     borderRadius: RADIUS.sm,
-    paddingHorizontal: 2,
-    height: 28,
+    paddingHorizontal: 3,
+    height: 32,
   },
 
   stepBtn: {
-    width: 20,
-    height: 26,
+    width: 22,
+    height: 30,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -431,8 +431,8 @@ const s = StyleSheet.create({
   qtyText: {
     color: "#fff",
     fontWeight: "800",
-    fontSize: 11,
-    minWidth: 14,
+    fontSize: 13,
+    minWidth: 16,
     textAlign: "center",
   },
 });
