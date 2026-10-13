@@ -16,6 +16,7 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { adminApi } from "@/src/roleApi";
 import { api, uploadImageAsset } from "@/src/api";
 import { COLORS, RADIUS, SPACING } from "@/src/theme";
+import ProductImagesUploader from "@/src/components/ProductImagesUploader";
 
 const FALLBACK_PRODUCT_IMAGE =
   "https://images.unsplash.com/photo-1542838132-92c53300491e?w=400&q=80";
@@ -27,6 +28,7 @@ const emptyProductForm = () => ({
   unit: "1 pc",
   stock: "10",
   image: "",
+  images: [] as string[],
   description: "",
   trending: false,
   item_category: "",
@@ -150,7 +152,8 @@ export default function AdminVendorProducts({ vendorId, selectedStoreId: externa
       mrp: String(product.mrp ?? product.price ?? ""),
       unit: String(product.unit || "1 pc"),
       stock: String(product.stock ?? 0),
-      image: String(product.image || ""),
+      image: String(product.image || product.images?.[0] || ""),
+      images: Array.isArray(product.images) && product.images.length ? product.images : (product.image ? [product.image] : []),
       description: String(product.description || ""),
       trending: Boolean(product.trending),
       item_category: String(product.item_category || ""),
@@ -182,7 +185,7 @@ export default function AdminVendorProducts({ vendorId, selectedStoreId: externa
     setUploadingImage(true);
     try {
       const imageUrl = await uploadImageAsset(result.assets[0], "product");
-      setForm((current) => ({ ...current, image: imageUrl }));
+      setForm((current) => ({ ...current, image: imageUrl, images: [...(current.images || []).filter((url: string) => url && url !== current.image), imageUrl] }));
       setNotice("Product image uploaded.");
     } catch (error: any) {
       setNotice(error?.message || "Product image upload failed.");
@@ -201,7 +204,8 @@ export default function AdminVendorProducts({ vendorId, selectedStoreId: externa
     mrp: Number(item.mrp !== "" && item.mrp !== undefined && item.mrp !== null ? item.mrp : item.price || 0),
     unit: String(item.unit || "1 pc").trim() || "1 pc",
     stock: Math.max(0, parseInt(String(item.stock ?? 0), 10) || 0),
-    image: String(item.image || FALLBACK_PRODUCT_IMAGE),
+    image: String(item.image || item.images?.[0] || FALLBACK_PRODUCT_IMAGE),
+    images: Array.isArray(item.images) ? item.images : (item.image ? [item.image] : []),
     description: String(item.description || ""),
     is_available: available,
     trending: Boolean(item.trending),
@@ -218,6 +222,10 @@ export default function AdminVendorProducts({ vendorId, selectedStoreId: externa
     }
     if (form.mrp && (!Number.isFinite(Number(form.mrp)) || Number(form.mrp) < 0)) {
       setNotice("Enter a valid MRP.");
+      return;
+    }
+    if (!Array.isArray(form.images) || form.images.filter((url: string) => !!url).length < 3) {
+      setNotice("Please add at least 3 product photos before saving.");
       return;
     }
     setSaving(true);
@@ -562,23 +570,7 @@ export default function AdminVendorProducts({ vendorId, selectedStoreId: externa
                   style={[styles.input, styles.flexInput]}
                 />
               </View>
-              <Text style={styles.formLabel}>Product Image</Text>
-              <View style={styles.imageRow}>
-                <View style={styles.imagePreviewBox}>
-                  {form.image ? <Image source={{ uri: form.image }} style={styles.imagePreview} contentFit="cover" /> : <MaterialCommunityIcons name="image-outline" size={28} color="#9CA3AF" />}
-                </View>
-                <View style={{ flex: 1, gap: 8 }}>
-                  <Pressable disabled={uploadingImage} onPress={() => { void pickImage(false); }} style={styles.imageButton}>
-                    <MaterialCommunityIcons name="image-multiple-outline" size={17} color="#C2410C" />
-                    <Text style={styles.imageButtonText}>Gallery</Text>
-                  </Pressable>
-                  <Pressable disabled={uploadingImage} onPress={() => { void pickImage(true); }} style={styles.imageButton}>
-                    <MaterialCommunityIcons name="camera-outline" size={17} color="#C2410C" />
-                    <Text style={styles.imageButtonText}>Camera</Text>
-                  </Pressable>
-                </View>
-                {uploadingImage ? <ActivityIndicator color="#EA580C" /> : null}
-              </View>
+              <ProductImagesUploader value={form.images} onChange={(images) => setForm((current) => ({ ...current, images, image: images[0] || "" }))} label="Product Photos (minimum 3)" testID="admin-vendor-product-images" />
               <TextInput
                 value={form.description}
                 onChangeText={(value) => setForm((current) => ({ ...current, description: value }))}
