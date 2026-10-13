@@ -29,10 +29,12 @@ export default function ProductCard({
   p,
   compact = false,
   storeGrid = false,
+  wishlistGrid = false,
 }: {
   p: any;
   compact?: boolean;
   storeGrid?: boolean;
+  wishlistGrid?: boolean;
 }) {
   const router = useRouter();
   const { add, update, cart } = useCart();
@@ -133,7 +135,7 @@ export default function ProductCard({
         <Pressable
           testID={`product-image-${p.id}`}
           onPress={() => router.push(`/product/${p.id}` as any)}
-          style={s.imgWrap}
+          style={[s.imgWrap, wishlistGrid && s.wishlistImgWrap]}
         >
           <Image
             source={{ uri: imageFailed ? IMAGE_FALLBACK_URL : (p.image || IMAGE_FALLBACK_URL) }}
@@ -174,7 +176,7 @@ export default function ProductCard({
 
         <View style={s.body}>
           <Text
-            style={s.name}
+            style={[s.name, wishlistGrid && s.wishlistName]}
             numberOfLines={2}
             ellipsizeMode="tail"
           >
@@ -182,7 +184,7 @@ export default function ProductCard({
           </Text>
 
           <Text
-            style={s.unit}
+            style={[s.unit, wishlistGrid && s.wishlistUnit]}
             numberOfLines={1}
           >
             {p.unit || " "}
@@ -190,7 +192,7 @@ export default function ProductCard({
 
           <View style={s.priceRow}>
             <View style={s.priceCol}>
-              <Text style={s.price}>
+              <Text style={[s.price, wishlistGrid && s.wishlistPrice]}>
                 ₹{p.price}
               </Text>
 
@@ -347,6 +349,15 @@ const s = StyleSheet.create({
     overflow: "hidden",
     position: "relative",
   },
+
+  wishlistImgWrap: { height: 78 },
+
+  wishlistName: { fontSize: 11, height: 30, lineHeight: 14 },
+  wishlistUnit: { fontSize: 8, height: 10 },
+  wishlistPrice: { fontSize: 12 },
+  wishlistMrp: { fontSize: 9, minHeight: 11 },
+  wishlistAddBtn: { height: 26, paddingHorizontal: 3, paddingVertical: 2, gap: 0 },
+  wishlistAddText: { fontSize: 9 },
 
   badge: {
     position: "absolute",
