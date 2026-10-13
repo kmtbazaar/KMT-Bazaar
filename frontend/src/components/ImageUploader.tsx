@@ -1,5 +1,6 @@
+import { LocalizedText as Text, LocalizedTextInput as TextInput } from "@/src/LocalizedText";
 import React, { useState } from "react";
-import { View, Text, StyleSheet, Pressable, ActivityIndicator } from "react-native";
+import { View, StyleSheet, Pressable, ActivityIndicator } from "react-native";
 import { Image } from "expo-image";
 import * as ImagePicker from "expo-image-picker";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
