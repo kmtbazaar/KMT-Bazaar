@@ -11,12 +11,12 @@ import {
   ScrollView,
 } from "react-native";
 import { Image } from "expo-image";
-import * as ImagePicker from "expo-image-picker";
 import { useFocusEffect, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { vendorApi } from "@/src/roleApi";
-import { api, uploadImageAsset } from "@/src/api";
+import { api } from "@/src/api";
+import ProductImagesUploader from "@/src/components/ProductImagesUploader";
 import { COLORS, RADIUS, SPACING, shadow } from "@/src/theme";
 
 export default function VendorProducts() {
@@ -36,6 +36,7 @@ export default function VendorProducts() {
     unit: "1 pc",
     stock: "10",
     image: "",
+    images: [] as string[],
     description: "",
     trending: false,
   });
@@ -61,42 +62,12 @@ export default function VendorProducts() {
     setRefreshing(false);
   };
 
-  // Image Picker Logic (Gallery & Camera)
-  const pickImage = async (useCamera = false) => {
-    let result;
-    const options: ImagePicker.ImagePickerOptions = {
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      aspect: [1, 1],
-      quality: 0.6,
-    };
-
-    if (useCamera) {
-      const permission = await ImagePicker.requestCameraPermissionsAsync();
-      if (!permission.granted) {
-        Alert.alert("Permission Required", "Camera access is needed to take a photo.");
-        return;
-      }
-      result = await ImagePicker.launchCameraAsync(options);
-    } else {
-      result = await ImagePicker.launchImageLibraryAsync(options);
-    }
-
-    if (!result.canceled && result.assets[0]) {
-      try {
-        setLoading(true);
-        const imageUrl = await uploadImageAsset(result.assets[0], "product");
-        setForm({ ...form, image: imageUrl });
-      } catch (e: any) {
-        Alert.alert("Upload failed", e?.message || "Could not upload image.");
-      } finally {
-        setLoading(false);
-      }
-    }
-  };
-
   // Add Product Logic
   const handleAddProduct = async () => {
+    if (!Array.isArray(form.images) || form.images.filter((url: string) => !!url).length < 3) {
+      Alert.alert("Add product photos", "Please add at least 3 product photos before saving.");
+      return;
+    }
     if (!form.name || !form.price || !form.category_id) {
       Alert.alert("Error", "Name, Price, and Category are required.");
       return;
@@ -108,7 +79,8 @@ export default function VendorProducts() {
         price: parseFloat(form.price),
         mrp: form.mrp ? parseFloat(form.mrp) : parseFloat(form.price),
         stock: parseInt(form.stock) || 0,
-        image: form.image || "https://images.unsplash.com/photo-1542838132-92c53300491e?w=400&q=80",
+        image: form.image || form.images[0] || "",
+        images: form.images,
       };
       await vendorApi.createProduct(payload);
       Alert.alert("Success", "Product added to your store!");
@@ -131,6 +103,7 @@ export default function VendorProducts() {
       unit: "1 pc",
       stock: "10",
       image: "",
+      images: [],
       description: "",
       trending: false,
     });
@@ -247,29 +220,7 @@ export default function VendorProducts() {
                 />
               </View>
 
-              {/* Product Image Section */}
-              <Text style={s.sectionLabel}>Product Image</Text>
-              <View style={s.imageSectionRow}>
-                <View style={s.imageBox}>
-                  {form.image ? (
-                    <Image source={{ uri: form.image }} style={s.previewImg} contentFit="cover" />
-                  ) : (
-                    <MaterialCommunityIcons name="image-outline" size={36} color="#9CA3AF" />
-                  )}
-                </View>
-
-                <View style={s.imagePickerCol}>
-                  <Pressable style={s.pickBtn} onPress={() => pickImage(false)}>
-                    <MaterialCommunityIcons name="image-multiple-outline" size={20} color="#EA580C" />
-                    <Text style={s.pickBtnText}>Gallery</Text>
-                  </Pressable>
-
-                  <Pressable style={s.pickBtn} onPress={() => pickImage(true)}>
-                    <MaterialCommunityIcons name="camera-outline" size={20} color="#EA580C" />
-                    <Text style={s.pickBtnText}>Camera</Text>
-                  </Pressable>
-                </View>
-              </View>
+              <ProductImagesUploader value={form.images} onChange={(images) => setForm((current) => ({ ...current, images, image: images[0] || "" }))} label="Product Photos (minimum 3)" testID="vendor-product-images" />
 
               {/* Description Input */}
               <TextInput
