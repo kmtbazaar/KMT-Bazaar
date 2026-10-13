@@ -1,10 +1,10 @@
+import { LocalizedText as Text } from "@/src/LocalizedText";
 import { useEffect, useState, useRef } from "react";
 import {
   View,
   Image,
   Animated,
   TouchableOpacity,
-  Text,
   StyleSheet,
   SafeAreaView,
   StatusBar,
