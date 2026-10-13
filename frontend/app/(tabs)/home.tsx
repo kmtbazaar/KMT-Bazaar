@@ -194,7 +194,7 @@ function NightSky() {
           float sunVisible = clamp(day + max(dawn, dusk) * 0.93, 0.0, 1.0);
           float sunHalo = exp(-sunDist * 7.5);
           float sunBloom = exp(-sunDist * 24.0);
-          float sunDisk = 1.0 - smoothstep(0.018, 0.026, sunDist);
+          float sunDisk = 1.0 - smoothstep(0.029, 0.039, sunDist);
           sky += vec3(1.0, 0.53, 0.25) * sunHalo * sunVisible * (0.13 + twilight * 0.28);
           sky += vec3(1.0, 0.42, 0.18) * sunBloom * dusk * 0.20;
           sky += vec3(1.0, 0.88, 0.65) * sunDisk * sunVisible * 0.72;
@@ -218,7 +218,7 @@ function NightSky() {
           vec2 moonDelta = vec2((uv.x - moonPos.x) * aspect, uv.y - moonPos.y);
           float moonDist = length(moonDelta);
           float moonVisible = max(1.0 - smoothstep(4.8, 6.5, clock), smoothstep(18.0, 20.0, clock));
-          float moonMask = 1.0 - smoothstep(0.035, 0.041, moonDist);
+          float moonMask = 1.0 - smoothstep(0.050, 0.059, moonDist);
           float moonHalo = exp(-moonDist * 8.0);
           float craterA = exp(-length(moonDelta - vec2(-0.010, 0.008)) * 52.0);
           float craterB = exp(-length(moonDelta - vec2(0.012, -0.012)) * 62.0);
@@ -520,7 +520,7 @@ function NightSky() {
               left: `${sunLeft}%`,
               right: undefined,
               top: isSunset || isDawn ? 106 : 14,
-              transform: [{ translateX: -37 }],
+              transform: [{ translateX: -45 }],
             },
           ]}
         >
@@ -536,7 +536,7 @@ function NightSky() {
               left: `${moonLeft}%`,
               right: undefined,
               top: moonTop,
-              transform: [{ translateX: -29 }],
+              transform: [{ translateX: -39 }],
             },
           ]}
         >
@@ -1415,16 +1415,16 @@ const s = StyleSheet.create({
   smokeStack: { position: "absolute", bottom: 12, left: "32.5%", width: 7, height: 12, backgroundColor: "#263442", borderTopWidth: 2, borderTopColor: "#526170" },
   starLayer: { position: "absolute", top: 0, left: 0, right: 0, height: 92 },
   star: { position: "absolute", backgroundColor: "#FFFFFF", shadowColor: "#FFFFFF", shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.95, shadowRadius: 5, elevation: 3 },
-  sunGlow: { position: "absolute", top: 18, right: "12%", width: 74, height: 74, alignItems: "center", justifyContent: "center" },
-  sunHaloOuter: { position: "absolute", width: 74, height: 74, borderRadius: 37, backgroundColor: "rgba(255,255,255,0.12)" },
-  sunHalo: { position: "absolute", width: 58, height: 58, borderRadius: 29, backgroundColor: "rgba(255,248,220,0.22)" },
-  sunCore: { width: 38, height: 38, borderRadius: 19, backgroundColor: "#FFF7CC", shadowColor: "#FFFFFF", shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.75, shadowRadius: 16, elevation: 5 },
+  sunGlow: { position: "absolute", top: 10, right: "12%", width: 90, height: 90, alignItems: "center", justifyContent: "center" },
+  sunHaloOuter: { position: "absolute", width: 90, height: 90, borderRadius: 45, backgroundColor: "rgba(255,255,255,0.14)" },
+  sunHalo: { position: "absolute", width: 72, height: 72, borderRadius: 36, backgroundColor: "rgba(255,248,220,0.25)" },
+  sunCore: { width: 50, height: 50, borderRadius: 25, backgroundColor: "#FFF7CC", shadowColor: "#FFFFFF", shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.8, shadowRadius: 20, elevation: 6 },
   sunsetGlow: { position: "absolute", left: "28%", right: "28%", bottom: 0, height: 78, alignItems: "center", justifyContent: "flex-end" },
   sunsetHalo: { width: "100%", height: 78, borderTopLeftRadius: 140, borderTopRightRadius: 140, backgroundColor: "rgba(255,190,120,0.16)" },
-  moon: { position: "absolute", top: 20, right: "15%", width: 58, height: 58, alignItems: "center", justifyContent: "center" },
-  moonHalo: { position: "absolute", width: 58, height: 58, borderRadius: 29, backgroundColor: "rgba(226,232,240,0.07)" },
-  moonBody: { width: 34, height: 34, borderRadius: 17, backgroundColor: "#F8FAFC", shadowColor: "#FFFFFF", shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.7, shadowRadius: 14, elevation: 4, overflow: "hidden" },
-  moonCut: { position: "absolute", top: -2, left: 10, width: 30, height: 30, borderRadius: 15, backgroundColor: "#0B1120" },
+  moon: { position: "absolute", top: 12, right: "15%", width: 78, height: 78, alignItems: "center", justifyContent: "center" },
+  moonHalo: { position: "absolute", width: 78, height: 78, borderRadius: 39, backgroundColor: "rgba(226,232,240,0.10)" },
+  moonBody: { width: 46, height: 46, borderRadius: 23, backgroundColor: "#F8FAFC", shadowColor: "#FFFFFF", shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.75, shadowRadius: 18, elevation: 5, overflow: "hidden" },
+  moonCut: { position: "absolute", top: -3, left: 13, width: 40, height: 40, borderRadius: 20, backgroundColor: "#0B1120" },
   airplane: { position: "absolute", top: 0, left: -20, width: 46, height: 24, alignItems: "center", justifyContent: "center" },
   airplaneTrail: { position: "absolute", width: 26, height: 2, left: -23, top: 13, borderRadius: 2, backgroundColor: "rgba(255,255,255,0.3)" },
   cloud: { position: "absolute", width: 164, height: 70, opacity: 0.58 },
