@@ -1,5 +1,6 @@
+import { LocalizedText as Text, LocalizedTextInput as TextInput } from "@/src/LocalizedText";
 import React,{useEffect,useMemo,useState}from"react";
-import{View,Text,StyleSheet,ScrollView,Pressable,TextInput,ActivityIndicator,Platform,Alert}from"react-native";
+import{View,StyleSheet,ScrollView,Pressable,ActivityIndicator,Platform,Alert}from"react-native";
 import{Image}from"expo-image";
 import{LinearGradient}from"expo-linear-gradient";
 import{MaterialCommunityIcons}from"@expo/vector-icons";
