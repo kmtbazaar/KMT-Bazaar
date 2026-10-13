@@ -8,7 +8,7 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { adminApi } from "@/src/roleApi";
 import { api } from "@/src/api";
 import { COLORS, RADIUS, SPACING } from "@/src/theme";
-import ImageUploader from "@/src/components/ImageUploader";
+import ProductImagesUploader from "@/src/components/ProductImagesUploader";
 
 export default function AdminProducts() {
   const router = useRouter();
@@ -75,6 +75,7 @@ function ProductModal({ visible, onClose, onSaved, edit, categories }: any) {
     stock: "",
     unit: "",
     image: "",
+    images: [] as string[],
     description: "",
     category_id: "",
     item_category: "",
@@ -85,7 +86,8 @@ function ProductModal({ visible, onClose, onSaved, edit, categories }: any) {
   React.useEffect(() => {
     if (edit) setF({
       name: edit.name || "", price: String(edit.price || ""), mrp: String(edit.mrp || ""),
-      stock: String(edit.stock || ""), unit: edit.unit || "", image: edit.image || "",
+      stock: String(edit.stock || ""), unit: edit.unit || "", image: edit.image || edit.images?.[0] || "",
+      images: Array.isArray(edit.images) && edit.images.length ? edit.images : (edit.image ? [edit.image] : []),
       description: edit.description || "",
       category_id: edit.category_id || "",
       item_category: edit.item_category || "",
@@ -100,6 +102,7 @@ function ProductModal({ visible, onClose, onSaved, edit, categories }: any) {
       stock: "",
       unit: "",
       image: "",
+      images: [],
       description: "",
       category_id: categories[0]?.id || "",
       item_category: "",
@@ -110,11 +113,16 @@ function ProductModal({ visible, onClose, onSaved, edit, categories }: any) {
   }, [edit, visible]);
 
   const save = async () => {
+    if (!Array.isArray(f.images) || f.images.filter((url: string) => !!url).length < 3) {
+      Alert.alert("Add product photos", "Please add at least 3 product photos before saving.");
+      return;
+    }
     const payload = {
       name: f.name, price: parseFloat(f.price) || 0, mrp: parseFloat(f.mrp) || parseFloat(f.price) || 0,
       stock: parseInt(f.stock) || 0,
       unit: f.unit,
-      image: f.image,
+      image: f.image || f.images?.[0] || "",
+      images: f.images,
       description: f.description,
       category_id: f.category_id,
       item_category: f.item_category,
@@ -144,7 +152,7 @@ function ProductModal({ visible, onClose, onSaved, edit, categories }: any) {
               <View style={{ flex: 1 }}><Field ph="Stock" v={f.stock} oc={(v: string) => setF({ ...f, stock: v })} kt="numeric" testID="pf-stock" /></View>
               <View style={{ flex: 1 }}><Field ph="Unit (e.g. 1 kg)" v={f.unit} oc={(v: string) => setF({ ...f, unit: v })} testID="pf-unit" /></View>
             </View>
-            <ImageUploader value={f.image} onChange={(uri) => setF({ ...f, image: uri })} label="Product Image" aspect={[1, 1]} testID="pf-image" />
+            <ProductImagesUploader value={f.images} onChange={(images) => setF((current) => ({ ...current, images, image: images[0] || "" }))} label="Product Photos (minimum 3)" testID="pf-images" />
             <Field ph="Description" v={f.description} oc={(v: string) => setF({ ...f, description: v })} multiline testID="pf-desc" />
             {!!edit?.store_id && (
               <Text style={ms.storeInfo}>
