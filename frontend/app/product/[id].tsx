@@ -18,8 +18,8 @@ export default function Product() {
   const router = useRouter();
   const { add, update, cart, itemCount } = useCart();
   const { isWishlisted, toggle: toggleWishlist, ready: wishlistReady } = useWishlist();
-  const wished = isWishlisted(p?.id ?? id);
   const [p, setP] = useState<any>(null);
+  const wished = isWishlisted(p?.id ?? id);
   const [loading, setLoading] = useState(true);
   const [adding, setAdding] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
