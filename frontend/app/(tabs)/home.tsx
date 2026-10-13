@@ -1057,7 +1057,7 @@ export default function Home() {
         <Pressable
           testID="home-search-trigger"
           onPress={() => router.push("/search" as any)}
-          style={s.searchWrap}
+          style={[s.searchWrap, !heroCollapsed && { transform: [{ translateY: -12 }] }]}
         >
           <MaterialCommunityIcons name="magnify" size={22} color={THEME.skyHeader} />
           <Animated.View
