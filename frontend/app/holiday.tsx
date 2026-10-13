@@ -1,14 +1,13 @@
+import { LocalizedText as Text, LocalizedTextInput as TextInput } from "@/src/LocalizedText";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   View,
-  Text,
   StyleSheet,
   ScrollView,
   Pressable,
   ActivityIndicator,
   Alert,
   Platform,
-  TextInput,
   Modal,
   Dimensions,
 } from "react-native";
