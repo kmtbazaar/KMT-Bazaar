@@ -1060,16 +1060,18 @@ export default function Home() {
           style={[s.searchWrap, !heroCollapsed && { transform: [{ translateY: -12 }] }]}
         >
           <MaterialCommunityIcons name="magnify" size={22} color={THEME.skyHeader} />
-          <Animated.View
-            key={placeholderIdx}
-            entering={FadeIn.duration(400)}
-            exiting={FadeOut.duration(400)}
-            style={{ flex: 1, marginLeft: 8 }}
-          >
-            <Text style={s.searchPlaceholderText}>
-              {SEARCH_PLACEHOLDERS[placeholderIdx]}
-            </Text>
-          </Animated.View>
+          <View style={{ flex: 1, marginLeft: 8, height: 22, overflow: "hidden", justifyContent: "center" }}>
+            <Animated.View
+              key={placeholderIdx}
+              entering={FadeIn.duration(400)}
+              exiting={FadeOut.duration(400)}
+              style={{ flex: 1, justifyContent: "center" }}
+            >
+              <Text style={s.searchPlaceholderText}>
+                {SEARCH_PLACEHOLDERS[placeholderIdx]}
+              </Text>
+            </Animated.View>
+          </View>
           <Pressable
             testID="home-voice-search"
             onPress={startVoiceSearch}
