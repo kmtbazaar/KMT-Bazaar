@@ -145,7 +145,9 @@ export default function OrderDetail() {
 
               return (
                 <View key={st.key} style={s.stage}>
-                  <View
+                  <Animated.View
+                    key={`${st.key}-${done}`}
+                    entering={ZoomIn.duration(350)}
                     style={[
                       s.stageIcon,
                       done && { backgroundColor: COLORS.brand },
@@ -156,7 +158,7 @@ export default function OrderDetail() {
                       size={18}
                       color={done ? "#fff" : COLORS.textMuted}
                     />
-                  </View>
+                  </Animated.View>
 
                   <Text
                     style={[
