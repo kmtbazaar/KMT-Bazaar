@@ -1,9 +1,8 @@
+import { LocalizedText as Text, LocalizedTextInput as TextInput } from "@/src/LocalizedText";
 import { Modal } from "react-native";
 import React, { useState, useEffect, useRef } from "react";
 import {
   View,
-  Text,
-  TextInput,
   StyleSheet,
   TouchableOpacity,
   ScrollView,
