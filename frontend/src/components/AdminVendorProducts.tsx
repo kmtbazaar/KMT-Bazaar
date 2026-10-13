@@ -1,3 +1,4 @@
+import { LocalizedText as Text, LocalizedTextInput as TextInput } from "@/src/LocalizedText";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
@@ -7,8 +8,6 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
-  Text,
-  TextInput,
   View,
 } from "react-native";
 import { Image } from "expo-image";
