@@ -1,3 +1,4 @@
+import { useLanguage } from "@/src/LanguageContext";
 import React from "react";
 import { Tabs, router } from "expo-router";;
 import { MaterialCommunityIcons } from "@expo/vector-icons";
@@ -49,6 +50,7 @@ function CartIcon({ color, size }: { color: string; size: number }) {
 }
 
 export default function TabsLayout() {
+  const { t } = useLanguage();
   return (
     <Tabs
       screenOptions={{
@@ -82,7 +84,7 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="home"
         options={{
-          title: "Home",
+          title: t("Home"),
           tabBarIcon: ({ color, size }) => (
             <MaterialCommunityIcons
               name="home-variant"
@@ -97,7 +99,7 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="categories"
         options={{
-          title: "Categories",
+          title: t("Categories"),
           tabBarIcon: ({ color, size }) => (
             <MaterialCommunityIcons
               name="view-grid-outline"
@@ -118,7 +120,7 @@ export default function TabsLayout() {
     },
   }}
   options={{
-    title: "AI",
+    title: t("AI"),
     tabBarIcon: ({ color }) => (
       <MaterialCommunityIcons
         name="robot-outline"
@@ -133,7 +135,7 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="cart"
         options={{
-          title: "Cart",
+          title: t("Cart"),
           tabBarIcon: ({ color, size }) => (
             <CartIcon color={color} size={size} />
           ),
@@ -144,7 +146,7 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="profile"
         options={{
-          title: "Profile",
+          title: t("Profile"),
           tabBarIcon: ({ color, size }) => (
             <MaterialCommunityIcons
               name="account-circle-outline"
