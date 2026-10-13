@@ -102,7 +102,7 @@ function ProductModal({ visible, onClose, onSaved, edit, categories }: any) {
       stock: "",
       unit: "",
       image: "",
-      images: [],
+      images: [] as string[],
       description: "",
       category_id: categories[0]?.id || "",
       item_category: "",
