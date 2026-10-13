@@ -1,4 +1,5 @@
 import React, { useCallback, useState } from "react";
+import Animated, { FadeInDown } from "react-native-reanimated";
 import {
   View,
   Text,
@@ -202,7 +203,9 @@ export default function AdminOrders() {
                   #{item.order_no}
                 </Text>
 
-                <View
+                <Animated.View
+                  key={item.status}
+                  entering={FadeInDown.duration(320).springify()}
                   style={[
                     s.statusPill,
                     {
@@ -225,7 +228,7 @@ export default function AdminOrders() {
                   >
                     {status?.label || item.status}
                   </Text>
-                </View>
+                </Animated.View>
               </View>
 
               <Text style={s.cust}>
