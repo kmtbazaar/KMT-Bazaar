@@ -233,6 +233,8 @@ export default function Login() {
         google.accounts.id.initialize({
           client_id: GOOGLE_CLIENT_ID,
           auto_select: false,
+          ux_mode: "popup",
+          use_fedcm_for_button: true,
           callback: (response: any) => {
             finishGoogleLogin(response?.credential || "");
           },
