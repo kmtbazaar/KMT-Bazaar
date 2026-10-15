@@ -648,11 +648,24 @@ async def request_email_signup_otp(data: EmailSignupOtpRequestIn):
             service_label = SERVICE_TYPES.get(data.service_type.value, {}).get("name", data.service_type.value)
             raise HTTPException(status_code=409, detail=f"{service_label} vendor account already exists")
 
-    existing = await db.users.find_one({"$or": [{"email": email}, {"phone": phone}]})
-    if existing:
-        if existing.get("email") == email:
-            raise HTTPException(status_code=400, detail="Email already registered")
+    existing_email = await db.users.find_one({"email": email})
+    existing_phone = await db.users.find_one({"phone": phone})
+    existing_google_user_id = None
+
+    if existing_phone and existing_phone.get("email") != email:
         raise HTTPException(status_code=400, detail="Mobile number already registered")
+
+    if existing_email:
+        is_incomplete_google_customer = (
+            data.role == Role.CUSTOMER
+            and existing_email.get("role") == Role.CUSTOMER.value
+            and bool(existing_email.get("google_sub"))
+            and not existing_email.get("phone")
+        )
+        if is_incomplete_google_customer:
+            existing_google_user_id = existing_email["id"]
+        else:
+            raise HTTPException(status_code=400, detail="Email already registered")
 
     pending_payload = {
         "name": data.name.strip(),
@@ -666,6 +679,7 @@ async def request_email_signup_otp(data: EmailSignupOtpRequestIn):
             if data.role == Role.VENDOR and data.vendor_type == VendorType.SERVICE and data.service_type
             else None
         ),
+        "existing_google_user_id": existing_google_user_id,
     }
 
     return await issue_email_otp(
@@ -694,11 +708,35 @@ async def verify_email_signup_otp(data: EmailOtpVerifyIn):
     if not registration or normalize_email(registration.get("email")) != email:
         raise HTTPException(status_code=400, detail="Signup verification data is invalid")
 
-    existing = await db.users.find_one({"$or": [{"email": email}, {"phone": registration.get("phone")}]})
-    if existing:
-        if existing.get("email") == email:
+    existing_google_user_id = registration.get("existing_google_user_id")
+    existing_google_user = None
+
+    if existing_google_user_id:
+        existing_google_user = await db.users.find_one({
+            "id": existing_google_user_id,
+            "email": email,
+            "role": Role.CUSTOMER.value,
+            "google_sub": {"$exists": True},
+            "$or": [{"phone": None}, {"phone": {"$exists": False}}],
+        })
+        if not existing_google_user:
+            raise HTTPException(
+                status_code=409,
+                detail="Google signup could not be completed. Please sign in with Google again.",
+            )
+        phone_owner = await db.users.find_one({
+            "phone": registration.get("phone"),
+            "id": {"$ne": existing_google_user_id},
+        })
+        if phone_owner:
+            raise HTTPException(status_code=400, detail="Mobile number already registered")
+    else:
+        existing_email = await db.users.find_one({"email": email})
+        if existing_email:
             raise HTTPException(status_code=400, detail="Email already registered")
-        raise HTTPException(status_code=400, detail="Mobile number already registered")
+        existing_phone = await db.users.find_one({"phone": registration.get("phone")})
+        if existing_phone:
+            raise HTTPException(status_code=400, detail="Mobile number already registered")
 
     if registration.get("role") == Role.VENDOR.value and registration.get("vendor_type") == VendorType.SERVICE.value:
         existing_service_vendor = await db.users.find_one({
@@ -709,6 +747,21 @@ async def verify_email_signup_otp(data: EmailOtpVerifyIn):
         }, {"_id": 1})
         if existing_service_vendor:
             raise HTTPException(status_code=409, detail="This service vendor account already exists")
+
+    if existing_google_user_id:
+        await db.users.update_one(
+            {"id": existing_google_user_id, "email": email},
+            {"$set": {
+                "name": registration.get("name", "").strip(),
+                "phone": registration.get("phone"),
+                "password": registration.get("password_hash"),
+            }},
+        )
+        user_doc = await db.users.find_one({"id": existing_google_user_id}, {"_id": 0})
+        if not user_doc:
+            raise HTTPException(status_code=409, detail="Google signup could not be completed. Please try again.")
+        token = create_token(user_doc["id"], user_doc["role"])
+        return {"token": token, "user": user_to_out(user_doc)}
 
     uid = str(uuid.uuid4())
     user_doc = {
@@ -730,7 +783,7 @@ async def verify_email_signup_otp(data: EmailOtpVerifyIn):
 
 
 
-@api.post("/auth/google", response_model=AuthOut)
+@api.post("/auth/google")
 async def google_login(data: GoogleLoginIn):
     if not GOOGLE_CLIENT_ID:
         raise HTTPException(status_code=503, detail="Google sign-in is not configured")
@@ -760,29 +813,23 @@ async def google_login(data: GoogleLoginIn):
             raise HTTPException(status_code=403, detail="Account is suspended")
         if user.get("google_sub") and user.get("google_sub") != google_sub:
             raise HTTPException(status_code=409, detail="This email is linked to another Google account")
+
+        # Google-only accounts created by the previous flow must finish signup first.
+        if user.get("google_sub") and not user.get("phone"):
+            return {"signup_required": True, "email": email, "name": name}
+
         await db.users.update_one(
             {"id": user["id"]},
             {"$set": {"google_sub": google_sub, "name": name or user.get("name", "")}},
         )
         user["google_sub"] = google_sub
         user["name"] = name or user.get("name", "")
-    else:
-        uid = str(uuid.uuid4())
-        user = {
-            "id": uid,
-            "name": name,
-            "email": email,
-            "phone": None,
-            "password": hash_password(secrets.token_urlsafe(32)),
-            "role": Role.CUSTOMER.value,
-            "avatar": info.get("picture"),
-            "google_sub": google_sub,
-            "created_at": now_iso(),
-        }
-        await db.users.insert_one(dict(user))
 
-    token = create_token(user["id"], user["role"])
-    return {"token": token, "user": user_to_out(user)}
+        token = create_token(user["id"], user["role"])
+        return {"signup_required": False, "token": token, "user": user_to_out(user)}
+
+    # Do not create an account from Google alone; complete the regular signup flow.
+    return {"signup_required": True, "email": email, "name": name}
 
 
 @api.post("/auth/forgot-password")
