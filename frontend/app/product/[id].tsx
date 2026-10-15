@@ -55,7 +55,7 @@ export default function Product() {
         }
         const unique = Array.from(new Map(
           related.filter((item: any) => item?.id && item.id !== p.id).map((item: any) => [item.id, item])
-        ).values()).slice(0, 6);
+        ).values()).slice(0, 12);
         if (!cancelled) setSuggestions(unique);
       } catch {
         if (!cancelled) setSuggestions([]);
@@ -171,7 +171,7 @@ export default function Product() {
         </View>
       </SafeAreaView>
       
-      <ScrollView contentContainerStyle={{ paddingBottom: 150 }} showsVerticalScrollIndicator={false}>
+      <ScrollView contentContainerStyle={{ paddingBottom: 190 }} showsVerticalScrollIndicator={false}>
         <Image source={{ uri: productImages[selectedImageIndex] || p.image }} style={s.img} contentFit="cover" />
         {productImages.length > 1 ? (
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.galleryRow}>
@@ -212,14 +212,14 @@ export default function Product() {
               <MaterialCommunityIcons name="lightning-bolt" size={21} color={COLORS.brand} />
             </View>
             <View style={s.suggestionsGrid}>
-              {Array.from({ length: 3 }, (_, rowIndex) => (
+              {Array.from({ length: 4 }, (_, rowIndex) => (
                 <View key={`suggestion-row-${rowIndex}`} style={s.suggestionGridRow}>
-                  {suggestions.slice(rowIndex * 2, rowIndex * 2 + 2).map((item: any) => (
+                  {suggestions.slice(rowIndex * 3, rowIndex * 3 + 3).map((item: any) => (
                     <View key={item.id} style={s.suggestionGridCell}>
                       <ProductCard p={item} compact />
                     </View>
                   ))}
-                  {suggestions.length > rowIndex * 2 && suggestions.length <= rowIndex * 2 + 1 ? (
+                  {suggestions.length > rowIndex * 3 && suggestions.length <= rowIndex * 3 + 2 ? (
                     <View style={s.suggestionGridCell} />
                   ) : null}
                 </View>
@@ -267,7 +267,7 @@ export default function Product() {
           </Pressable>
         </View>
       </View>
-      <CheckoutBar bottomOffset={24} />
+      <CheckoutBar bottomOffset={108} />
     </View>
   );
 }
