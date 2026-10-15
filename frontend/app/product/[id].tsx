@@ -43,24 +43,48 @@ export default function Product() {
   useEffect(() => {
     if (!p?.id) return;
     let cancelled = false;
-    (async () => {
+
+    // Treat related/trending requests independently so one failed filter
+    // cannot leave the entire recommendation section empty.
+    const fetchProductsSafely = async (filters: any = {}) => {
       try {
-        const params: any = {};
-        if (p.category_id) params.category = p.category_id;
-        if (p.store_id) params.store_id = p.store_id;
-        let related = await api.products(params);
-        if (!Array.isArray(related) || related.filter((item: any) => item?.id !== p.id).length < 3) {
-          const trending = await api.products({ trending: true });
-          related = [...(Array.isArray(related) ? related : []), ...(Array.isArray(trending) ? trending : [])];
-        }
-        const unique = Array.from(new Map(
-          related.filter((item: any) => item?.id && item.id !== p.id).map((item: any) => [item.id, item])
-        ).values()).slice(0, 12);
-        if (!cancelled) setSuggestions(unique);
-      } catch {
-        if (!cancelled) setSuggestions([]);
+        const result = await api.products(filters);
+        return Array.isArray(result) ? result : [];
+      } catch (error) {
+        console.warn("Product recommendation request failed", filters, error);
+        return [];
       }
-    })();
+    };
+
+    (async () => {
+      const params: any = {};
+      if (p.category_id) params.category = p.category_id;
+      if (p.store_id) params.store_id = p.store_id;
+
+      const requests = [
+        fetchProductsSafely(params),
+        fetchProductsSafely({ trending: true }),
+      ];
+
+      // Always keep a general catalogue fallback when a related filter exists.
+      if (Object.keys(params).length > 0) {
+        requests.push(fetchProductsSafely({}));
+      }
+
+      const productGroups = await Promise.all(requests);
+      const candidates = productGroups.flat();
+      const unique = Array.from(new Map(
+        candidates
+          .filter((item: any) => item?.id && String(item.id) !== String(p.id))
+          .map((item: any) => [String(item.id), item])
+      ).values()).slice(0, 12);
+
+      if (!cancelled) setSuggestions(unique);
+    })().catch((error) => {
+      console.error("Unable to load product recommendations", error);
+      if (!cancelled) setSuggestions([]);
+    });
+
     return () => { cancelled = true; };
   }, [p?.id, p?.category_id, p?.store_id]);
 
