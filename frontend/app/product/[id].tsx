@@ -7,7 +7,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
-import { api } from "@/src/api";
+import { API, api } from "@/src/api";
 import { useCart } from "@/src/CartContext";
 import { COLORS, RADIUS, SPACING, shadow } from "@/src/theme";
 import CheckoutBar from "@/src/components/CheckoutBar";
@@ -44,16 +44,39 @@ export default function Product() {
     if (!p?.id) return;
     let cancelled = false;
 
+    const normalizeProductList = (value: any): any[] => {
+      if (Array.isArray(value)) return value;
+      if (Array.isArray(value?.products)) return value.products;
+      if (Array.isArray(value?.items)) return value.items;
+      if (Array.isArray(value?.data)) return value.data;
+      return [];
+    };
+
     (async () => {
-      // The unfiltered catalogue endpoint is verified to return the customer
-      // product list. Use it as the source of truth rather than relying on
-      // category/store filters that can legitimately return an empty array.
       let catalogue: any[] = [];
+
+      // Read the public catalogue directly first. This avoids a failure in
+      // the shared authenticated API wrapper hiding the entire section.
       try {
-        const result = await api.products({});
-        catalogue = Array.isArray(result) ? result : [];
+        const response = await fetch(`${API}/products`, {
+          headers: { "Cache-Control": "no-cache" },
+        });
+        if (response.ok) {
+          catalogue = normalizeProductList(await response.json());
+        } else {
+          console.warn("Recommendation catalogue returned HTTP", response.status);
+        }
       } catch (error) {
-        console.warn("Unable to load product catalogue for recommendations", error);
+        console.warn("Direct recommendation catalogue request failed", error);
+      }
+
+      // Fallback through the shared API client if the direct request fails.
+      if (catalogue.length === 0) {
+        try {
+          catalogue = normalizeProductList(await api.products({}));
+        } catch (error) {
+          console.warn("API-client recommendation fallback failed", error);
+        }
       }
 
       if (cancelled) return;
@@ -63,8 +86,7 @@ export default function Product() {
         (item: any) => item?.id && String(item.id) !== currentId
       );
 
-      // Prefer same-store and same-category items, then trending items, then
-      // the rest of the live catalogue. De-duplicate while preserving order.
+      // Show related products first, followed by trending and other products.
       const sameStoreAndCategory = candidates.filter(
         (item: any) => p.store_id && item.store_id === p.store_id &&
           (!p.category_id || item.category_id === p.category_id)
@@ -73,17 +95,13 @@ export default function Product() {
         (item: any) => p.category_id && item.category_id === p.category_id
       );
       const trending = candidates.filter((item: any) => item.trending === true);
-      const ordered = [
-        ...sameStoreAndCategory,
-        ...sameCategory,
-        ...trending,
-        ...candidates,
-      ];
+      const ordered = [...sameStoreAndCategory, ...sameCategory, ...trending, ...candidates];
       const unique = Array.from(new Map(
         ordered.map((item: any) => [String(item.id), item])
       ).values()).slice(0, 12);
 
-      if (!cancelled) setSuggestions(unique);
+      setSuggestions(unique);
+      console.info("Product recommendations loaded:", unique.length);
     })().catch((error) => {
       console.error("Unable to load product recommendations", error);
       if (!cancelled) setSuggestions([]);
