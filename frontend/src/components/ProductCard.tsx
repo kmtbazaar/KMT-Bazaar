@@ -412,7 +412,8 @@ const s = StyleSheet.create({
   recommendationAddText: { fontSize: 8.5 },
   recommendationStepper: { height: 22, paddingHorizontal: 0, flexShrink: 0 },
   recommendationStepBtn: { width: 14, height: 20 },
-  recommendationQtyText: { fontSize: 9, minWidth: 10 }
+  recommendationQtyText: { fontSize: 9, minWidth: 10 },
+
   wishlistName: { fontSize: 11, height: 28, lineHeight: 13 },
   wishlistUnit: { fontSize: 8, height: 9, marginTop: 1 },
   wishlistPrice: { fontSize: 11.5 },
