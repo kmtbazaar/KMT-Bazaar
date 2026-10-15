@@ -35,9 +35,10 @@ const SERVICE_TYPES = [
 export default function Register() {
 const router = useRouter();
 const { register, requestEmailSignupOtp, verifyEmailSignupOtp } = useAuth();
-const params = useLocalSearchParams<{ email?: string; phone?: string }>();
+const params = useLocalSearchParams<{ email?: string; phone?: string; name?: string; source?: string }>();
+const fromGoogle = params.source === "google";
 
-const [name, setName] = useState("");
+const [name, setName] = useState(params.name || "");
 const [email, setEmail] = useState(params.email || "");
 const [phone, setPhone] = useState(params.phone || "");
 const [password, setPassword] = useState("");
@@ -249,6 +250,11 @@ color={COLORS.text}
       contentContainerStyle={s.body}
       keyboardShouldPersistTaps="handled"
     >
+      {fromGoogle && (
+        <Text style={s.sub}>
+          Your Google email is verified. Add your phone number and password to finish signup.
+        </Text>
+      )}
       <Text style={s.sub}>I want to join as</Text>
 
       <View style={s.rolesRow}>
@@ -333,6 +339,7 @@ color={COLORS.text}
         placeholder="Email"
         value={email}
         onChangeText={setEmail}
+        editable={!fromGoogle}
         keyboardType="email-address"
         autoCapitalize="none"
         testID="register-email-input"
