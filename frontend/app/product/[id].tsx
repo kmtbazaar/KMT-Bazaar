@@ -12,7 +12,6 @@ import { useCart } from "@/src/CartContext";
 import { COLORS, RADIUS, SPACING, shadow } from "@/src/theme";
 import CheckoutBar from "@/src/components/CheckoutBar";
 import { useWishlist } from "@/src/WishlistContext";
-import ProductCard from "@/src/components/ProductCard";
 
 export default function Product() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -26,6 +25,7 @@ export default function Product() {
   const [toast, setToast] = useState<string | null>(null);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [suggestions, setSuggestions] = useState<any[]>([]);
+  const [suggestionsLoading, setSuggestionsLoading] = useState(true);
 
   useEffect(() => { 
     (async () => {
@@ -43,6 +43,7 @@ export default function Product() {
   useEffect(() => {
     if (!p?.id) return;
     let cancelled = false;
+    setSuggestionsLoading(true);
 
     const normalizeProductList = (value: any): any[] => {
       if (Array.isArray(value)) return value;
@@ -58,11 +59,7 @@ export default function Product() {
       // Read the public catalogue directly first. This avoids a failure in
       // the shared authenticated API wrapper hiding the entire section.
       try {
-        const siteOrigin =
-          Platform.OS === "web"
-            ? ((globalThis as any).location?.origin || "https://kmtbazaar.com")
-            : String(API).replace(/\/api\/?$/, "");
-        const catalogueUrl = `${siteOrigin.replace(/\/$/, "")}/api/products`;
+        const catalogueUrl = Platform.OS === "web" ? "/api/products" : `${API}/products`;
         const response = await fetch(catalogueUrl, {
           headers: { "Cache-Control": "no-cache" },
         });
@@ -106,10 +103,14 @@ export default function Product() {
       ).values()).slice(0, 12);
 
       setSuggestions(unique);
+      setSuggestionsLoading(false);
       console.info("Product recommendations loaded:", unique.length);
     })().catch((error) => {
       console.error("Unable to load product recommendations", error);
-      if (!cancelled) setSuggestions([]);
+      if (!cancelled) {
+        setSuggestions([]);
+        setSuggestionsLoading(false);
+      }
     });
 
     return () => { cancelled = true; };
@@ -253,21 +254,60 @@ export default function Product() {
           </View>
         </View>
 
-        {suggestions.length > 0 && (
-          <View style={s.suggestionsSection} testID="product-suggestions">
-            <View style={s.suggestionsHeader}>
-              <View style={{ flex: 1 }}>
-                <Text style={s.suggestionsTitle}>You may also like</Text>
-                <Text style={s.suggestionsSubtitle}>More picks for your basket</Text>
-              </View>
-              <MaterialCommunityIcons name="lightning-bolt" size={21} color={COLORS.brand} />
+        <View style={s.suggestionsSection} testID="product-suggestions">
+          <View style={s.suggestionsHeader}>
+            <View style={{ flex: 1 }}>
+              <Text style={s.suggestionsTitle}>You may also like</Text>
+              <Text style={s.suggestionsSubtitle}>More picks for your basket</Text>
             </View>
+            <MaterialCommunityIcons name="lightning-bolt" size={21} color={COLORS.brand} />
+          </View>
+
+          {suggestionsLoading ? (
+            <Text style={s.suggestionsStatus}>Loading recommendations...</Text>
+          ) : suggestions.length === 0 ? (
+            <Text style={s.suggestionsStatus}>Products are temporarily unavailable. Please try again shortly.</Text>
+          ) : (
             <View style={s.suggestionsGrid}>
               {Array.from({ length: 4 }, (_, rowIndex) => (
                 <View key={`suggestion-row-${rowIndex}`} style={s.suggestionGridRow}>
                   {suggestions.slice(rowIndex * 3, rowIndex * 3 + 3).map((item: any) => (
                     <View key={item.id} style={s.suggestionGridCell}>
-                      <ProductCard p={item} recommendationGrid />
+                      <Pressable
+                        accessibilityRole="button"
+                        accessibilityLabel={`View ${item.name}`}
+                        onPress={() => router.push(`/product/${item.id}` as any)}
+                        style={s.suggestionCard}
+                      >
+                        <View style={s.suggestionImageWrap}>
+                          {item.image ? (
+                            <Image source={{ uri: item.image }} style={s.suggestionImage} contentFit="cover" />
+                          ) : (
+                            <View style={s.suggestionImageFallback}>
+                              <MaterialCommunityIcons name="image-outline" size={22} color={COLORS.textMuted} />
+                            </View>
+                          )}
+                        </View>
+                        <View style={s.suggestionCardBody}>
+                          <Text style={s.suggestionCardName} numberOfLines={2}>{item.name}</Text>
+                          <View style={s.suggestionCardMeta}>
+                            <Text style={s.suggestionCardPrice} numberOfLines={1}>₹{item.price}</Text>
+                            <Pressable
+                              accessibilityRole="button"
+                              accessibilityLabel={`Add ${item.name} to cart`}
+                              hitSlop={4}
+                              disabled={(item.stock ?? 0) <= 0}
+                              onPress={(event: any) => {
+                                event?.stopPropagation?.();
+                                void add(item.id, 1).catch((error: any) => console.warn("Unable to add recommendation to cart", error));
+                              }}
+                              style={[s.suggestionAddButton, (item.stock ?? 0) <= 0 && s.suggestionAddButtonDisabled]}
+                            >
+                              <Text style={s.suggestionAddButtonText}>{(item.stock ?? 0) <= 0 ? "OUT" : "ADD +"}</Text>
+                            </Pressable>
+                          </View>
+                        </View>
+                      </Pressable>
                     </View>
                   ))}
                   {suggestions.length > rowIndex * 3 && suggestions.length <= rowIndex * 3 + 2 ? (
@@ -276,8 +316,8 @@ export default function Product() {
                 </View>
               ))}
             </View>
-          </View>
-        )}
+          )}
+        </View>
       </ScrollView>
 
       {toast && (
@@ -358,9 +398,21 @@ const s = StyleSheet.create({
   suggestionsHeader: { flexDirection: "row", alignItems: "center", paddingHorizontal: SPACING.lg, marginBottom: SPACING.sm },
   suggestionsTitle: { fontSize: 18, fontWeight: "800", color: COLORS.text },
   suggestionsSubtitle: { fontSize: 12, color: COLORS.textMuted, marginTop: 3 },
+  suggestionsStatus: { paddingHorizontal: SPACING.lg, paddingVertical: SPACING.md, color: COLORS.textMuted, fontSize: 12 },
   suggestionsGrid: { paddingHorizontal: SPACING.md, gap: 5 },
   suggestionGridRow: { flexDirection: "row", gap: 5, alignItems: "stretch" },
   suggestionGridCell: { flex: 1, minWidth: 0 },
+  suggestionCard: { width: "100%", height: 150, backgroundColor: COLORS.surface, borderRadius: RADIUS.sm, overflow: "hidden", borderWidth: 1, borderColor: COLORS.border },
+  suggestionImageWrap: { width: "100%", height: 68, backgroundColor: COLORS.surfaceSecondary, overflow: "hidden" },
+  suggestionImage: { width: "100%", height: "100%" },
+  suggestionImageFallback: { flex: 1, alignItems: "center", justifyContent: "center" },
+  suggestionCardBody: { paddingHorizontal: 4, paddingTop: 3, paddingBottom: 2, flex: 1 },
+  suggestionCardName: { color: COLORS.text, fontSize: 11, lineHeight: 13, height: 28, fontWeight: "600" },
+  suggestionCardMeta: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 2, marginTop: 3 },
+  suggestionCardPrice: { color: COLORS.text, fontSize: 11, fontWeight: "800", flexShrink: 1 },
+  suggestionAddButton: { minWidth: 35, paddingHorizontal: 4, height: 22, borderRadius: RADIUS.sm, borderWidth: 1, borderColor: COLORS.accent, backgroundColor: COLORS.accentLight, alignItems: "center", justifyContent: "center" },
+  suggestionAddButtonDisabled: { borderColor: COLORS.border, backgroundColor: COLORS.surfaceSecondary },
+  suggestionAddButtonText: { color: COLORS.accent, fontSize: 8, fontWeight: "800" },
   qtyT: { fontWeight: "800", minWidth: 18, textAlign: "center" },
   addBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", paddingVertical: 14, borderRadius: RADIUS.pill, gap: 8 },
   addBtnText: { color: "#fff", fontWeight: "800" },
