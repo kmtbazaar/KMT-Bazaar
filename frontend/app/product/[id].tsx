@@ -10,7 +10,7 @@ import * as Haptics from "expo-haptics";
 import { api } from "@/src/api";
 import { useCart } from "@/src/CartContext";
 import { COLORS, RADIUS, SPACING, shadow } from "@/src/theme";
-import { CheckoutSackVisual } from "@/src/components/CheckoutBar";
+import CheckoutBar from "@/src/components/CheckoutBar";
 import { useWishlist } from "@/src/WishlistContext";
 import ProductCard from "@/src/components/ProductCard";
 
@@ -55,7 +55,7 @@ export default function Product() {
         }
         const unique = Array.from(new Map(
           related.filter((item: any) => item?.id && item.id !== p.id).map((item: any) => [item.id, item])
-        ).values()).slice(0, 10);
+        ).values()).slice(0, 6);
         if (!cancelled) setSuggestions(unique);
       } catch {
         if (!cancelled) setSuggestions([]);
@@ -211,13 +211,20 @@ export default function Product() {
               </View>
               <MaterialCommunityIcons name="lightning-bolt" size={21} color={COLORS.brand} />
             </View>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.suggestionsRow}>
-              {suggestions.map((item: any) => (
-                <View key={item.id} style={s.suggestionCard}>
-                  <ProductCard p={item} compact />
+            <View style={s.suggestionsGrid}>
+              {Array.from({ length: 3 }, (_, rowIndex) => (
+                <View key={`suggestion-row-${rowIndex}`} style={s.suggestionGridRow}>
+                  {suggestions.slice(rowIndex * 2, rowIndex * 2 + 2).map((item: any) => (
+                    <View key={item.id} style={s.suggestionGridCell}>
+                      <ProductCard p={item} compact />
+                    </View>
+                  ))}
+                  {suggestions.length > rowIndex * 2 && suggestions.length <= rowIndex * 2 + 1 ? (
+                    <View style={s.suggestionGridCell} />
+                  ) : null}
                 </View>
               ))}
-            </ScrollView>
+            </View>
           </View>
         )}
       </ScrollView>
@@ -229,7 +236,7 @@ export default function Product() {
         </View>
       )}
 
-      {/* Split bottom control: quantity on the left, Add to Cart / Mera Bag on the right */}
+      {/* Split bottom control; floating sack is the cart shortcut */}
       <View style={s.bottomBar}>
         <View style={s.actionRow}>
           <View style={s.qtyBox}>
@@ -252,8 +259,7 @@ export default function Product() {
               {adding ? <ActivityIndicator color="#fff" /> : (
                 <>
                   <MaterialCommunityIcons name={currentQty > 0 ? "shopping-bag" : "cart-plus"} color="#fff" size={20} />
-                  <Text style={s.checkoutBtnText}>{currentQty > 0 ? "Mera Bag" : `Add to Cart · ₹${p.price}`}</Text>
-                  {currentQty > 0 && <CheckoutSackVisual subtotal={checkoutSubtotal} itemCount={itemCount} />}
+                  <Text style={s.checkoutBtnText}>{currentQty > 0 ? "View Cart" : `Add to Cart · ₹${p.price}`}</Text>
                   <MaterialCommunityIcons name="arrow-right" color="#fff" size={18} />
                 </>
               )}
@@ -261,6 +267,7 @@ export default function Product() {
           </Pressable>
         </View>
       </View>
+      <CheckoutBar bottomOffset={24} />
     </View>
   );
 }
@@ -300,8 +307,9 @@ const s = StyleSheet.create({
   suggestionsHeader: { flexDirection: "row", alignItems: "center", paddingHorizontal: SPACING.lg, marginBottom: SPACING.sm },
   suggestionsTitle: { fontSize: 18, fontWeight: "800", color: COLORS.text },
   suggestionsSubtitle: { fontSize: 12, color: COLORS.textMuted, marginTop: 3 },
-  suggestionsRow: { paddingHorizontal: SPACING.md, paddingBottom: SPACING.sm, gap: 8 },
-  suggestionCard: { width: 174 },
+  suggestionsGrid: { paddingHorizontal: SPACING.md, gap: 10 },
+  suggestionGridRow: { flexDirection: "row", gap: 10, alignItems: "stretch" },
+  suggestionGridCell: { flex: 1, minWidth: 0 },
   qtyT: { fontWeight: "800", minWidth: 18, textAlign: "center" },
   addBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", paddingVertical: 14, borderRadius: RADIUS.pill, gap: 8 },
   addBtnText: { color: "#fff", fontWeight: "800" },
