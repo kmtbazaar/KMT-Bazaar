@@ -56,7 +56,12 @@ export default function AdminUsers() {
           const hiddenSeedEmail =
             email === "vendor@kmtbazaar.com";
 
-          return !isDemo && !hiddenSeedEmail;
+          // Store vendors belong in the regular Vendors list.
+          // Service vendors (Holiday and Car Rental) are managed separately
+          // under Admin > Service Vendor.
+          const isServiceVendor = u.vendor_type === "service";
+
+          return !isDemo && !hiddenSeedEmail && !isServiceVendor;
         });
 
         setUsers(filteredUsers);
