@@ -213,9 +213,13 @@ export async function uploadImageAsset(
 }
 
 
+export type GoogleLoginResult =
+  | { signup_required: true; email: string; name: string }
+  | { signup_required: false; token: string; user: User };
+
 export const api = {
   googleLogin: (credential: string) =>
-    apiFetch<{ token: string; user: User }>("/auth/google", {
+    apiFetch<GoogleLoginResult>("/auth/google", {
       method: "POST",
       body: JSON.stringify({ credential }),
     }),
