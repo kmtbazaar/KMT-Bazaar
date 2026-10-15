@@ -201,10 +201,21 @@ export default function Login() {
     setError(null);
 
     try {
-      const user = await googleLogin(credential);
-      if (!user?.role) throw new Error("Google login failed");
+      const result = await googleLogin(credential);
+      if (result.signup_required) {
+        router.replace({
+          pathname: "/auth/register",
+          params: {
+            email: result.email,
+            name: result.name,
+            source: "google",
+          },
+        } as any);
+        return;
+      }
+      if (!result.user?.role) throw new Error("Google login failed");
 
-      goToDashboard(user);
+      goToDashboard(result.user);
     } catch (e: any) {
       setError(e?.message || "Google sign-in failed");
     } finally {
