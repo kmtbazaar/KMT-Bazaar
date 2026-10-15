@@ -58,7 +58,12 @@ export default function Product() {
       // Read the public catalogue directly first. This avoids a failure in
       // the shared authenticated API wrapper hiding the entire section.
       try {
-        const response = await fetch(`${API}/products`, {
+        const siteOrigin =
+          Platform.OS === "web"
+            ? ((globalThis as any).location?.origin || "https://kmtbazaar.com")
+            : String(API).replace(/\/api\/?$/, "");
+        const catalogueUrl = `${siteOrigin.replace(/\/$/, "")}/api/products`;
+        const response = await fetch(catalogueUrl, {
           headers: { "Cache-Control": "no-cache" },
         });
         if (response.ok) {
