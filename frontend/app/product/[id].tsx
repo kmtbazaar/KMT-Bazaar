@@ -12,6 +12,7 @@ import { useCart } from "@/src/CartContext";
 import { COLORS, RADIUS, SPACING, shadow } from "@/src/theme";
 import { CheckoutSackVisual } from "@/src/components/CheckoutBar";
 import { useWishlist } from "@/src/WishlistContext";
+import ProductCard from "@/src/components/ProductCard";
 
 export default function Product() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -24,6 +25,7 @@ export default function Product() {
   const [adding, setAdding] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
+  const [suggestions, setSuggestions] = useState<any[]>([]);
 
   useEffect(() => { 
     (async () => {
@@ -37,6 +39,30 @@ export default function Product() {
       }
     })(); 
   }, [id]);
+
+  useEffect(() => {
+    if (!p?.id) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const params: any = {};
+        if (p.category_id) params.category = p.category_id;
+        if (p.store_id) params.store_id = p.store_id;
+        let related = await api.products(params);
+        if (!Array.isArray(related) || related.filter((item: any) => item?.id !== p.id).length < 3) {
+          const trending = await api.products({ trending: true });
+          related = [...(Array.isArray(related) ? related : []), ...(Array.isArray(trending) ? trending : [])];
+        }
+        const unique = Array.from(new Map(
+          related.filter((item: any) => item?.id && item.id !== p.id).map((item: any) => [item.id, item])
+        ).values()).slice(0, 10);
+        if (!cancelled) setSuggestions(unique);
+      } catch {
+        if (!cancelled) setSuggestions([]);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [p?.id, p?.category_id, p?.store_id]);
 
   // FIX 1: Quantity ko hardcoded 1 rakhne ke bajaye Context wale Cart state se read karenge
   const productImages = useMemo(() => Array.from(new Set([...(Array.isArray(p?.images) ? p.images : []), p?.image].filter((url: any) => typeof url === "string" && url.trim()))), [p?.images, p?.image]);
@@ -97,7 +123,10 @@ export default function Product() {
 
   const handleIncrement = async () => {
     try { await Haptics.selectionAsync(); } catch {}
-    try { await update(p.id, currentQty + 1); } catch {}
+    try {
+      if (currentQty === 0) await add(p.id, 1);
+      else await update(p.id, currentQty + 1);
+    } catch {}
   };
 
   const handleDecrement = async () => {
@@ -142,7 +171,7 @@ export default function Product() {
         </View>
       </SafeAreaView>
       
-      <ScrollView contentContainerStyle={{ paddingBottom: 140 }} showsVerticalScrollIndicator={false}>
+      <ScrollView contentContainerStyle={{ paddingBottom: 150 }} showsVerticalScrollIndicator={false}>
         <Image source={{ uri: productImages[selectedImageIndex] || p.image }} style={s.img} contentFit="cover" />
         {productImages.length > 1 ? (
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.galleryRow}>
@@ -172,6 +201,25 @@ export default function Product() {
             </View>
           </View>
         </View>
+
+        {suggestions.length > 0 && (
+          <View style={s.suggestionsSection} testID="product-suggestions">
+            <View style={s.suggestionsHeader}>
+              <View style={{ flex: 1 }}>
+                <Text style={s.suggestionsTitle}>You may also like</Text>
+                <Text style={s.suggestionsSubtitle}>More picks for your basket</Text>
+              </View>
+              <MaterialCommunityIcons name="lightning-bolt" size={21} color={COLORS.brand} />
+            </View>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.suggestionsRow}>
+              {suggestions.map((item: any) => (
+                <View key={item.id} style={s.suggestionCard}>
+                  <ProductCard p={item} compact />
+                </View>
+              ))}
+            </ScrollView>
+          </View>
+        )}
       </ScrollView>
 
       {toast && (
@@ -181,39 +229,37 @@ export default function Product() {
         </View>
       )}
 
-      {/* FIX 2: Simple, Clean aur Lag-free Bottom Control Bar */}
+      {/* Split bottom control: quantity on the left, Add to Cart / Mera Bag on the right */}
       <View style={s.bottomBar}>
-        {currentQty > 0 ? (
-          // Agar item cart mein pehle se hai toh Stepper Control aur Checkout option saath mein dikhega
-          <View style={s.actionRow}>
-            <View style={s.qtyBox}>
-              <Pressable testID="pdp-qty-dec" onPress={handleDecrement} hitSlop={8}>
-                <MaterialCommunityIcons name="minus" size={20} color={COLORS.text} />
-              </Pressable>
-              <Text style={s.qtyT}>{currentQty}</Text>
-              <Pressable testID="pdp-qty-inc" onPress={handleIncrement} hitSlop={8}>
-                <MaterialCommunityIcons name="plus" size={20} color={COLORS.text} />
-              </Pressable>
-            </View>
-            
-            <Pressable onPress={handleCheckout} style={{ flex: 1 }}>
-              <LinearGradient colors={[COLORS.success, "#2e7d32"]} style={s.checkoutBtn}>
-                <Text style={s.checkoutBtnText}>Add to Cart · ₹{p.price * currentQty}</Text>
-                <CheckoutSackVisual subtotal={checkoutSubtotal} itemCount={itemCount} />
-                <MaterialCommunityIcons name="arrow-right" color="#fff" size={18} />
-              </LinearGradient>
+        <View style={s.actionRow}>
+          <View style={s.qtyBox}>
+            <Pressable testID="pdp-qty-dec" onPress={handleDecrement} hitSlop={8} disabled={currentQty === 0}>
+              <MaterialCommunityIcons name="minus" size={20} color={currentQty === 0 ? COLORS.textMuted : COLORS.text} />
+            </Pressable>
+            <Text style={s.qtyT}>{currentQty}</Text>
+            <Pressable testID="pdp-qty-inc" onPress={handleIncrement} hitSlop={8}>
+              <MaterialCommunityIcons name="plus" size={20} color={COLORS.text} />
             </Pressable>
           </View>
-        ) : (
-          // Agar item zero hai toh default Add to Cart button dikhega
-          <Pressable testID="pdp-add-to-cart" onPress={onAddFirstTime} style={{ flex: 1 }} disabled={adding}>
-            <LinearGradient colors={[COLORS.accent, COLORS.accentDark]} style={s.addBtn}>
+
+          <Pressable
+            testID={currentQty > 0 ? "pdp-my-bag" : "pdp-add-to-cart"}
+            onPress={currentQty > 0 ? handleCheckout : onAddFirstTime}
+            style={{ flex: 1 }}
+            disabled={adding}
+          >
+            <LinearGradient colors={currentQty > 0 ? [COLORS.success, "#2e7d32"] : [COLORS.accent, COLORS.accentDark]} style={s.checkoutBtn}>
               {adding ? <ActivityIndicator color="#fff" /> : (
-                <><MaterialCommunityIcons name="cart-plus" color="#fff" size={20} /><Text style={s.addBtnText}>Add to Cart · ₹{p.price}</Text></>
+                <>
+                  <MaterialCommunityIcons name={currentQty > 0 ? "shopping-bag" : "cart-plus"} color="#fff" size={20} />
+                  <Text style={s.checkoutBtnText}>{currentQty > 0 ? "Mera Bag" : `Add to Cart · ₹${p.price}`}</Text>
+                  {currentQty > 0 && <CheckoutSackVisual subtotal={checkoutSubtotal} itemCount={itemCount} />}
+                  <MaterialCommunityIcons name="arrow-right" color="#fff" size={18} />
+                </>
               )}
             </LinearGradient>
           </Pressable>
-        )}
+        </View>
       </View>
     </View>
   );
@@ -248,8 +294,14 @@ const s = StyleSheet.create({
   toast: { position: "absolute", top: 80, left: 20, right: 20, backgroundColor: COLORS.success, padding: 12, borderRadius: RADIUS.md, flexDirection: "row", alignItems: "center", gap: 10, ...shadow.card, zIndex: 20 },
   toastText: { color: "#fff", fontWeight: "700" },
   bottomBar: { position: "absolute", left: 0, right: 0, bottom: 0, padding: SPACING.md, paddingBottom: 24, backgroundColor: "#fff", borderTopWidth: 1, borderColor: COLORS.border },
-  actionRow: { flexDirection: "row", alignItems: "center", gap: 12, width: "100%" },
-  qtyBox: { flexDirection: "row", alignItems: "center", borderWidth: 1.5, borderColor: COLORS.border, paddingHorizontal: 12, paddingVertical: 8, borderRadius: RADIUS.pill, gap: 14 },
+  actionRow: { flexDirection: "row", alignItems: "center", gap: 10, width: "100%" },
+  qtyBox: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", minWidth: 132, borderWidth: 1.5, borderColor: COLORS.border, paddingHorizontal: 12, paddingVertical: 10, borderRadius: RADIUS.pill, gap: 12 },
+  suggestionsSection: { marginTop: SPACING.sm, marginBottom: SPACING.lg },
+  suggestionsHeader: { flexDirection: "row", alignItems: "center", paddingHorizontal: SPACING.lg, marginBottom: SPACING.sm },
+  suggestionsTitle: { fontSize: 18, fontWeight: "800", color: COLORS.text },
+  suggestionsSubtitle: { fontSize: 12, color: COLORS.textMuted, marginTop: 3 },
+  suggestionsRow: { paddingHorizontal: SPACING.md, paddingBottom: SPACING.sm, gap: 8 },
+  suggestionCard: { width: 174 },
   qtyT: { fontWeight: "800", minWidth: 18, textAlign: "center" },
   addBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", paddingVertical: 14, borderRadius: RADIUS.pill, gap: 8 },
   addBtnText: { color: "#fff", fontWeight: "800" },
