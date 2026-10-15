@@ -255,74 +255,78 @@ color={COLORS.text}
           Your Google email is verified. Add your phone number and password to finish signup.
         </Text>
       )}
-      <Text style={s.sub}>I want to join as</Text>
+      {!fromGoogle && (
+        <>
+          <Text style={s.sub}>I want to join as</Text>
 
-      <View style={s.rolesRow}>
-        {ROLES.map((r) => (
-          <Pressable
-            key={r.id}
-            testID={`role-${r.id}`}
-            onPress={() => setRole(r.id)}
-            style={[
-              s.roleCard,
-              role === r.id && s.roleCardActive,
-            ]}
-          >
-            <MaterialCommunityIcons
-              name={r.icon as any}
-              size={24}
-              color={role === r.id ? "#fff" : COLORS.brand}
-            />
-
-            <Text
-              style={[
-                s.roleLabel,
-                role === r.id && { color: "#fff" },
-              ]}
-            >
-              {r.label}
-            </Text>
-          </Pressable>
-        ))}
-      </View>
-
-      {role === "vendor" && (
-        <View style={s.vendorTypeBox}>
-          <Text style={s.vendorTypeTitle}>Vendor Type</Text>
-          <Text style={s.vendorTypeSub}>Choose what you will provide on KMT Bazaar</Text>
-          <View style={s.vendorTypesRow}>
-            {VENDOR_TYPES.map((v) => (
+          <View style={s.rolesRow}>
+            {ROLES.map((r) => (
               <Pressable
-                key={v.id}
-                testID={`vendor-type-${v.id}`}
-                onPress={() => setVendorType(v.id as "store" | "service")}
-                style={[s.vendorTypeCard, vendorType === v.id && s.vendorTypeCardActive]}
+                key={r.id}
+                testID={`role-${r.id}`}
+                onPress={() => setRole(r.id)}
+                style={[
+                  s.roleCard,
+                  role === r.id && s.roleCardActive,
+                ]}
               >
-                <MaterialCommunityIcons name={v.icon as any} size={24} color={vendorType === v.id ? "#fff" : COLORS.brand} />
-                <Text style={[s.vendorTypeLabel, vendorType === v.id && { color: "#fff" }]}>{v.label}</Text>
+                <MaterialCommunityIcons
+                  name={r.icon as any}
+                  size={24}
+                  color={role === r.id ? "#fff" : COLORS.brand}
+                />
+
+                <Text
+                  style={[
+                    s.roleLabel,
+                    role === r.id && { color: "#fff" },
+                  ]}
+                >
+                  {r.label}
+                </Text>
               </Pressable>
             ))}
           </View>
-          {vendorType === "service" && (
+
+          {role === "vendor" && (
             <View style={s.vendorTypeBox}>
-              <Text style={s.vendorTypeTitle}>Service Category</Text>
-              <Text style={s.vendorTypeSub}>Choose the service you will provide</Text>
+              <Text style={s.vendorTypeTitle}>Vendor Type</Text>
+              <Text style={s.vendorTypeSub}>Choose what you will provide on KMT Bazaar</Text>
               <View style={s.vendorTypesRow}>
-                {SERVICE_TYPES.map((v) => (
+                {VENDOR_TYPES.map((v) => (
                   <Pressable
                     key={v.id}
-                    testID={`service-type-${v.id}`}
-                    onPress={() => setServiceType(v.id as any)}
-                    style={[s.vendorTypeCard, serviceType === v.id && s.vendorTypeCardActive]}
+                    testID={`vendor-type-${v.id}`}
+                    onPress={() => setVendorType(v.id as "store" | "service")}
+                    style={[s.vendorTypeCard, vendorType === v.id && s.vendorTypeCardActive]}
                   >
-                    <MaterialCommunityIcons name={v.icon as any} size={22} color={serviceType === v.id ? "#fff" : COLORS.brand} />
-                    <Text style={[s.vendorTypeLabel, serviceType === v.id && { color: "#fff" }]}>{v.label}</Text>
+                    <MaterialCommunityIcons name={v.icon as any} size={24} color={vendorType === v.id ? "#fff" : COLORS.brand} />
+                    <Text style={[s.vendorTypeLabel, vendorType === v.id && { color: "#fff" }]}>{v.label}</Text>
                   </Pressable>
                 ))}
               </View>
+              {vendorType === "service" && (
+                <View style={s.vendorTypeBox}>
+                  <Text style={s.vendorTypeTitle}>Service Category</Text>
+                  <Text style={s.vendorTypeSub}>Choose the service you will provide</Text>
+                  <View style={s.vendorTypesRow}>
+                    {SERVICE_TYPES.map((v) => (
+                      <Pressable
+                        key={v.id}
+                        testID={`service-type-${v.id}`}
+                        onPress={() => setServiceType(v.id as any)}
+                        style={[s.vendorTypeCard, serviceType === v.id && s.vendorTypeCardActive]}
+                      >
+                        <MaterialCommunityIcons name={v.icon as any} size={22} color={serviceType === v.id ? "#fff" : COLORS.brand} />
+                        <Text style={[s.vendorTypeLabel, serviceType === v.id && { color: "#fff" }]}>{v.label}</Text>
+                      </Pressable>
+                    ))}
+                  </View>
+                </View>
+              )}
             </View>
           )}
-        </View>
+        </>
       )}
 
       <Field
