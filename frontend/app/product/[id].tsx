@@ -44,39 +44,43 @@ export default function Product() {
     if (!p?.id) return;
     let cancelled = false;
 
-    // Treat related/trending requests independently so one failed filter
-    // cannot leave the entire recommendation section empty.
-    const fetchProductsSafely = async (filters: any = {}) => {
-      try {
-        const result = await api.products(filters);
-        return Array.isArray(result) ? result : [];
-      } catch (error) {
-        console.warn("Product recommendation request failed", filters, error);
-        return [];
-      }
-    };
-
     (async () => {
-      const params: any = {};
-      if (p.category_id) params.category = p.category_id;
-      if (p.store_id) params.store_id = p.store_id;
-
-      const requests = [
-        fetchProductsSafely(params),
-        fetchProductsSafely({ trending: true }),
-      ];
-
-      // Always keep a general catalogue fallback when a related filter exists.
-      if (Object.keys(params).length > 0) {
-        requests.push(fetchProductsSafely({}));
+      // The unfiltered catalogue endpoint is verified to return the customer
+      // product list. Use it as the source of truth rather than relying on
+      // category/store filters that can legitimately return an empty array.
+      let catalogue: any[] = [];
+      try {
+        const result = await api.products({});
+        catalogue = Array.isArray(result) ? result : [];
+      } catch (error) {
+        console.warn("Unable to load product catalogue for recommendations", error);
       }
 
-      const productGroups = await Promise.all(requests);
-      const candidates = productGroups.flat();
+      if (cancelled) return;
+
+      const currentId = String(p.id);
+      const candidates = catalogue.filter(
+        (item: any) => item?.id && String(item.id) !== currentId
+      );
+
+      // Prefer same-store and same-category items, then trending items, then
+      // the rest of the live catalogue. De-duplicate while preserving order.
+      const sameStoreAndCategory = candidates.filter(
+        (item: any) => p.store_id && item.store_id === p.store_id &&
+          (!p.category_id || item.category_id === p.category_id)
+      );
+      const sameCategory = candidates.filter(
+        (item: any) => p.category_id && item.category_id === p.category_id
+      );
+      const trending = candidates.filter((item: any) => item.trending === true);
+      const ordered = [
+        ...sameStoreAndCategory,
+        ...sameCategory,
+        ...trending,
+        ...candidates,
+      ];
       const unique = Array.from(new Map(
-        candidates
-          .filter((item: any) => item?.id && String(item.id) !== String(p.id))
-          .map((item: any) => [String(item.id), item])
+        ordered.map((item: any) => [String(item.id), item])
       ).values()).slice(0, 12);
 
       if (!cancelled) setSuggestions(unique);
