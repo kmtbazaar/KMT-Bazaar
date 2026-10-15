@@ -2438,7 +2438,7 @@ class AdminUserUpdateIn(BaseModel):
 async def admin_stats(_=Depends(require_roles("admin"))):
     users_count, vendors_count, delivery_count, products_count, orders_count, pending_count, delivered_count, revenue_doc, settings = await asyncio.gather(
         db.users.count_documents({"role": "customer"}),
-        db.users.count_documents({"role": "vendor"}),
+        db.users.count_documents({"role": "vendor", "vendor_type": {"$ne": "service"}}),
         db.users.count_documents({"role": "delivery"}),
         db.products.count_documents({}),
         db.orders.count_documents({}),
