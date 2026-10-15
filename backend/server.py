@@ -814,10 +814,8 @@ async def google_login(data: GoogleLoginIn):
         if user.get("google_sub") and user.get("google_sub") != google_sub:
             raise HTTPException(status_code=409, detail="This email is linked to another Google account")
 
-        # Google-only accounts created by the previous flow must finish signup first.
-        if user.get("google_sub") and not user.get("phone"):
-            return {"signup_required": True, "email": email, "name": name}
-
+        # Any email already present in KMT Bazaar is an existing account.
+        # Only emails absent from the user database are sent to signup below.
         await db.users.update_one(
             {"id": user["id"]},
             {"$set": {"google_sub": google_sub, "name": name or user.get("name", "")}},
