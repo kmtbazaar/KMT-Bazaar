@@ -216,7 +216,7 @@ export default function Product() {
                 <View key={`suggestion-row-${rowIndex}`} style={s.suggestionGridRow}>
                   {suggestions.slice(rowIndex * 3, rowIndex * 3 + 3).map((item: any) => (
                     <View key={item.id} style={s.suggestionGridCell}>
-                      <ProductCard p={item} compact />
+                      <ProductCard p={item} recommendationGrid />
                     </View>
                   ))}
                   {suggestions.length > rowIndex * 3 && suggestions.length <= rowIndex * 3 + 2 ? (
@@ -307,8 +307,8 @@ const s = StyleSheet.create({
   suggestionsHeader: { flexDirection: "row", alignItems: "center", paddingHorizontal: SPACING.lg, marginBottom: SPACING.sm },
   suggestionsTitle: { fontSize: 18, fontWeight: "800", color: COLORS.text },
   suggestionsSubtitle: { fontSize: 12, color: COLORS.textMuted, marginTop: 3 },
-  suggestionsGrid: { paddingHorizontal: SPACING.md, gap: 10 },
-  suggestionGridRow: { flexDirection: "row", gap: 10, alignItems: "stretch" },
+  suggestionsGrid: { paddingHorizontal: SPACING.md, gap: 5 },
+  suggestionGridRow: { flexDirection: "row", gap: 5, alignItems: "stretch" },
   suggestionGridCell: { flex: 1, minWidth: 0 },
   qtyT: { fontWeight: "800", minWidth: 18, textAlign: "center" },
   addBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", paddingVertical: 14, borderRadius: RADIUS.pill, gap: 8 },
