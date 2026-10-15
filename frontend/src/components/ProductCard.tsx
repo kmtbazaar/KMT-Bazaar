@@ -31,11 +31,13 @@ export default function ProductCard({
   compact = false,
   storeGrid = false,
   wishlistGrid = false,
+  recommendationGrid = false,
 }: {
   p: any;
   compact?: boolean;
   storeGrid?: boolean;
   wishlistGrid?: boolean;
+  recommendationGrid?: boolean;
 }) {
   const router = useRouter();
   const { add, update, cart } = useCart();
@@ -132,7 +134,7 @@ export default function ProductCard({
     <Animated.View
       style={[
         animStyle,
-        wishlistGrid ? s.cardWishlist : compact ? s.cardCompact : s.card,
+        recommendationGrid ? s.cardRecommendation : wishlistGrid ? s.cardWishlist : compact ? s.cardCompact : s.card,
         compact && storeGrid && s.cardStoreGrid,
       ]}
     >
@@ -141,7 +143,7 @@ export default function ProductCard({
         <Pressable
           testID={`product-image-${p.id}`}
           onPress={() => router.push(`/product/${p.id}` as any)}
-          style={[s.imgWrap, wishlistGrid && s.wishlistImgWrap]}
+          style={[s.imgWrap, wishlistGrid && s.wishlistImgWrap, recommendationGrid && s.recommendationImgWrap]}
         >
           <Image
             source={{ uri: imageFailed ? IMAGE_FALLBACK_URL : (p.image || IMAGE_FALLBACK_URL) }}
@@ -180,9 +182,9 @@ export default function ProductCard({
         </Pressable>
         </View>
 
-        <View style={s.body}>
+        <View style={[s.body, recommendationGrid && s.recommendationBody]}>
           <Text
-            style={[s.name, wishlistGrid && s.wishlistName]}
+            style={[s.name, wishlistGrid && s.wishlistName, recommendationGrid && s.recommendationName]}
             numberOfLines={2}
             ellipsizeMode="tail"
           >
@@ -190,15 +192,15 @@ export default function ProductCard({
           </Text>
 
           <Text
-            style={[s.unit, wishlistGrid && s.wishlistUnit]}
+            style={[s.unit, wishlistGrid && s.wishlistUnit, recommendationGrid && s.recommendationUnit]}
             numberOfLines={1}
           >
             {p.unit || " "}
           </Text>
 
-          <View style={[s.priceRow, wishlistGrid && s.wishlistPriceRow]}>
-            <View style={[s.priceCol, wishlistGrid && s.wishlistPriceCol]}>
-              <Text style={[s.price, wishlistGrid && s.wishlistPrice]}>
+          <View style={[s.priceRow, wishlistGrid && s.wishlistPriceRow, recommendationGrid && s.recommendationPriceRow]}>
+            <View style={[s.priceCol, wishlistGrid && s.wishlistPriceCol, recommendationGrid && s.recommendationPriceCol]}>
+              <Text style={[s.price, wishlistGrid && s.wishlistPrice, recommendationGrid && s.recommendationPrice]}>
                 ₹{p.price}
               </Text>
 
@@ -206,6 +208,7 @@ export default function ProductCard({
                 style={[
                   s.mrp,
                   wishlistGrid && s.wishlistMrp,
+                  recommendationGrid && s.recommendationMrp,
                   !(discount > 0) && { opacity: 0 },
                 ]}
               >
@@ -215,14 +218,14 @@ export default function ProductCard({
 
             {qty > 0 ? (
               <View
-                style={[s.stepper, wishlistGrid && s.wishlistStepper]}
+                style={[s.stepper, wishlistGrid && s.wishlistStepper, recommendationGrid && s.recommendationStepper]}
                 testID={`qty-stepper-${p.id}`}
               >
                 <Pressable
                   testID={`qty-dec-${p.id}`}
                   onPress={onDec}
                   hitSlop={8}
-                  style={[s.stepBtn, wishlistGrid && s.wishlistStepBtn]}
+                  style={[s.stepBtn, wishlistGrid && s.wishlistStepBtn, recommendationGrid && s.recommendationStepBtn]}
                 >
                   <MaterialCommunityIcons
                     name="minus"
@@ -231,7 +234,7 @@ export default function ProductCard({
                   />
                 </Pressable>
 
-                <Text style={[s.qtyText, wishlistGrid && s.wishlistQtyText]}>
+                <Text style={[s.qtyText, wishlistGrid && s.wishlistQtyText, recommendationGrid && s.recommendationQtyText]}>
                   {qty}
                 </Text>
 
@@ -242,6 +245,7 @@ export default function ProductCard({
                   style={[
                     s.stepBtn,
                     wishlistGrid && s.wishlistStepBtn,
+                    recommendationGrid && s.recommendationStepBtn,
                     qty >= (p.stock ?? 99) && {
                       opacity: 0.4,
                     },
@@ -264,6 +268,7 @@ export default function ProductCard({
                 style={[
                   s.addBtn,
                   wishlistGrid && s.wishlistAddBtn,
+                  recommendationGrid && s.recommendationAddBtn,
                   outOfStock && s.addBtnDisabled,
                 ]}
                 hitSlop={8}
@@ -283,6 +288,7 @@ export default function ProductCard({
                   style={[
                     s.addText,
                     wishlistGrid && s.wishlistAddText,
+                    recommendationGrid && s.recommendationAddText,
                     outOfStock && {
                       color: COLORS.textMuted,
                     },
@@ -327,6 +333,20 @@ const s = StyleSheet.create({
     borderWidth: 1,
     borderColor: COLORS.border,
     alignSelf: "flex-start",
+  },
+
+  cardRecommendation: {
+    width: "100%",
+    height: 150,
+    flex: 0,
+    minWidth: 0,
+    margin: 0,
+    backgroundColor: COLORS.surface,
+    borderRadius: RADIUS.sm,
+    overflow: "hidden",
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    alignSelf: "stretch",
   },
 
   cardStoreGrid: {
@@ -380,6 +400,19 @@ const s = StyleSheet.create({
   },
 
   wishlistImgWrap: { height: 75 },
+  recommendationImgWrap: { height: 68 },
+  recommendationBody: { paddingHorizontal: 4, paddingTop: 3, paddingBottom: 2 },
+  recommendationName: { fontSize: 11, height: 28, lineHeight: 13 },
+  recommendationUnit: { fontSize: 8, height: 9, marginTop: 1 },
+  recommendationPrice: { fontSize: 11 },
+  recommendationMrp: { fontSize: 8, minHeight: 10 },
+  recommendationPriceRow: { marginTop: 3, alignItems: "center" },
+  recommendationPriceCol: { flexShrink: 1, minWidth: 0 },
+  recommendationAddBtn: { height: 22, paddingHorizontal: 2, paddingVertical: 1, gap: 0 },
+  recommendationAddText: { fontSize: 8.5 },
+  recommendationStepper: { height: 22, paddingHorizontal: 0, flexShrink: 0 },
+  recommendationStepBtn: { width: 14, height: 20 },
+  recommendationQtyText: { fontSize: 9, minWidth: 10 }
   wishlistName: { fontSize: 11, height: 28, lineHeight: 13 },
   wishlistUnit: { fontSize: 8, height: 9, marginTop: 1 },
   wishlistPrice: { fontSize: 11.5 },
