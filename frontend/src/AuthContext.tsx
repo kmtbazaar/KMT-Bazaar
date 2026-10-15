@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from "react";
-import { api, clearAuth, getToken, getUser, setToken, setUser, User } from "./api";
+import { api, clearAuth, getToken, getUser, setToken, setUser, User, GoogleLoginResult } from "./api";
 
 interface AuthCtx {
   user: User | null;
@@ -11,7 +11,7 @@ interface AuthCtx {
   requestEmailSignupOtp: (data: any) => Promise<any>;
   verifyEmailSignupOtp: (email: string, otp: string) => Promise<User>;
   loginOtp: (phone: string, otp: string, name?: string) => Promise<User>;
-  googleLogin: (credential: string) => Promise<User>;
+  googleLogin: (credential: string) => Promise<GoogleLoginResult>;
   logout: () => Promise<void>;
   refresh: () => Promise<void>;
   updateAddress: (addressData: any) => Promise<void>; // <-- Naya add kiya hai
@@ -87,13 +87,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setLoading(false);
     return r.user;
   };
-  const googleLogin = async (credential: string) => {
+  const googleLogin = async (credential: string): Promise<GoogleLoginResult> => {
     const r = await api.googleLogin(credential);
+    if (r.signup_required) return r;
+
     await setToken(r.token);
     await setUser(r.user);
     setU(r.user);
     setLoading(false);
-    return r.user;
+    return r;
   };
   const logout = async () => { await clearAuth(); setU(null); };
 
