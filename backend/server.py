@@ -521,25 +521,39 @@ async def get_current_user(
     request: Request,
     creds: Optional[HTTPAuthorizationCredentials] = Depends(security),
 ):
-    # Preserve Bearer auth for native apps and migrate old web sessions once.
-    token = creds.credentials if creds else request.cookies.get(AUTH_COOKIE_NAME)
-    if not token:
-        raise HTTPException(status_code=401, detail="Missing token")
+    # Native clients use Bearer JWTs; browsers use opaque, revocable sessions.
+    if creds:
+        try:
+            payload = jwt.decode(creds.credentials, JWT_SECRET, algorithms=[JWT_ALGO])
+        except jwt.PyJWTError:
+            raise HTTPException(status_code=401, detail="Invalid or expired session")
+        user_id = payload.get("sub")
+        if not user_id:
+            raise HTTPException(status_code=401, detail="Invalid session")
+    else:
+        raw_session = request.cookies.get(AUTH_COOKIE_NAME)
+        if not raw_session:
+            raise HTTPException(status_code=401, detail="Missing session")
 
-    # Cookie-authenticated mutations must originate from the trusted KMT web app.
-    # Bearer clients are not subject to browser cookie CSRF rules.
-    if not creds and request.cookies.get(AUTH_COOKIE_NAME) and request.method in {"POST", "PUT", "PATCH", "DELETE"}:
-        if request.headers.get("origin") not in COOKIE_AUTH_ORIGINS:
-            raise HTTPException(status_code=403, detail="Untrusted request origin")
+        # Cookie-authenticated mutations must originate from the trusted KMT web app.
+        if request.method in {"POST", "PUT", "PATCH", "DELETE"}:
+            if request.headers.get("origin") not in COOKIE_AUTH_ORIGINS:
+                raise HTTPException(status_code=403, detail="Untrusted request origin")
 
-    try:
-        payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGO])
-    except jwt.PyJWTError:
-        raise HTTPException(status_code=401, detail="Invalid or expired session")
+        session_hash = hashlib.sha256(raw_session.encode("utf-8")).hexdigest()
+        session = await db.web_sessions.find_one(
+            {
+                "token_hash": session_hash,
+                "expires_at": {"$gt": datetime.now(timezone.utc)},
+            },
+            {"_id": 0, "user_id": 1},
+        )
+        if not session:
+            raise HTTPException(status_code=401, detail="Invalid or expired session")
+        user_id = session.get("user_id")
+        if not user_id:
+            raise HTTPException(status_code=401, detail="Invalid session")
 
-    user_id = payload.get("sub")
-    if not user_id:
-        raise HTTPException(status_code=401, detail="Invalid session")
     user = await db.users.find_one({"id": user_id}, {"_id": 0, "password": 0})
     if not user:
         raise HTTPException(status_code=401, detail="User not found")
@@ -573,10 +587,27 @@ def require_trusted_cookie_origin(request: Request) -> None:
         raise HTTPException(status_code=403, detail="Untrusted authentication origin")
 
 
-def set_web_auth_cookie(response: Response, token: str) -> None:
+async def set_web_auth_cookie(response: Response, user: dict) -> None:
+    # The browser receives only an opaque, high-entropy session handle. Store its
+    # SHA-256 digest server-side so raw cookie values are never written to MongoDB.
+    now = datetime.now(timezone.utc)
+    raw_session = secrets.token_urlsafe(32)
+    session_hash = hashlib.sha256(raw_session.encode("utf-8")).hexdigest()
+    expires_at = now + timedelta(minutes=JWT_EXPIRE_MIN)
+
+    # Opportunistically remove expired session records as users sign in.
+    await db.web_sessions.delete_many({"expires_at": {"$lte": now}})
+    await db.web_sessions.insert_one({
+        "id": str(uuid.uuid4()),
+        "token_hash": session_hash,
+        "user_id": user["id"],
+        "created_at": now,
+        "expires_at": expires_at,
+    })
+
     response.set_cookie(
         key=AUTH_COOKIE_NAME,
-        value=token,
+        value=raw_session,
         max_age=AUTH_COOKIE_MAX_AGE,
         path="/",
         secure=True,
@@ -586,11 +617,11 @@ def set_web_auth_cookie(response: Response, token: str) -> None:
     response.headers["Cache-Control"] = "no-store"
 
 
-def build_auth_response(request: Request, response: Response, token: str, user: dict) -> dict:
+async def build_auth_response(request: Request, response: Response, token: str, user: dict) -> dict:
     if is_cookie_auth_request(request):
         require_trusted_cookie_origin(request)
-        set_web_auth_cookie(response, token)
-        # Never expose the bearer credential to JavaScript in browser responses.
+        await set_web_auth_cookie(response, user)
+        # Never expose a bearer credential to JavaScript in browser responses.
         return {"token": None, "user": user_to_out(user)}
     return {"token": token, "user": user_to_out(user)}
 
@@ -605,8 +636,7 @@ async def migrate_legacy_web_session(
     if not is_cookie_auth_request(request):
         raise HTTPException(status_code=400, detail="Cookie session migration requires a browser client")
     require_trusted_cookie_origin(request)
-    fresh_token = create_token(current["id"], current["role"])
-    set_web_auth_cookie(response, fresh_token)
+    await set_web_auth_cookie(response, current)
     return user_to_out(current)
 
 
@@ -614,6 +644,10 @@ async def migrate_legacy_web_session(
 async def logout_web_session(request: Request, response: Response):
     if is_cookie_auth_request(request):
         require_trusted_cookie_origin(request)
+    raw_session = request.cookies.get(AUTH_COOKIE_NAME)
+    if raw_session:
+        session_hash = hashlib.sha256(raw_session.encode("utf-8")).hexdigest()
+        await db.web_sessions.delete_one({"token_hash": session_hash})
     response.delete_cookie(
         key=AUTH_COOKIE_NAME,
         path="/",
@@ -668,7 +702,7 @@ async def login(data: LoginIn, request: Request, response: Response):
     if user.get("active", True) is False:
         raise HTTPException(status_code=403, detail="Account is suspended")
     token = create_token(user["id"], user["role"])
-    return build_auth_response(request, response, token, user)
+    return await build_auth_response(request, response, token, user)
 
 
 @api.post("/auth/email-login/request")
@@ -705,7 +739,7 @@ async def verify_email_login_otp(data: EmailOtpVerifyIn, request: Request, respo
     if user.get("active", True) is False:
         raise HTTPException(status_code=403, detail="Account is suspended")
     token = create_token(user["id"], user["role"])
-    return build_auth_response(request, response, token, user)
+    return await build_auth_response(request, response, token, user)
 
 
 @api.post("/auth/email-signup/request")
@@ -846,7 +880,7 @@ async def verify_email_signup_otp(data: EmailOtpVerifyIn, request: Request, resp
         if not user_doc:
             raise HTTPException(status_code=409, detail="Google signup could not be completed. Please try again.")
         token = create_token(user_doc["id"], user_doc["role"])
-        return build_auth_response(request, response, token, user_doc)
+        return await build_auth_response(request, response, token, user_doc)
 
     uid = str(uuid.uuid4())
     user_doc = {
@@ -863,7 +897,7 @@ async def verify_email_signup_otp(data: EmailOtpVerifyIn, request: Request, resp
     }
     await db.users.insert_one(user_doc)
     token = create_token(uid, user_doc["role"])
-    return build_auth_response(request, response, token, user_doc)
+    return await build_auth_response(request, response, token, user_doc)
 
 
 
@@ -909,7 +943,7 @@ async def google_login(data: GoogleLoginIn, request: Request, response: Response
         user["name"] = name or user.get("name", "")
 
         token = create_token(user["id"], user["role"])
-        return {"signup_required": False, **build_auth_response(request, response, token, user)}
+        return {"signup_required": False, **(await build_auth_response(request, response, token, user))}
 
     # Do not create an account from Google alone; complete the regular signup flow.
     return {"signup_required": True, "email": email, "name": name}
@@ -1078,6 +1112,8 @@ async def reset_password(data: ResetPasswordIn):
         {"email": normalize_email(data.email)},
         {"$set": {"password": hash_password(data.new_password)}}
     )
+    # Revoke every active browser session after a password reset.
+    await db.web_sessions.delete_many({"user_id": user["id"]})
 
     await db.password_reset_otps.delete_many({
         "email": normalize_email(data.email)
@@ -1142,7 +1178,7 @@ async def verify_otp(data: OtpVerifyIn, request: Request, response: Response):
     # Existing token creation
     token = create_token(user["id"], user["role"])
 
-    return build_auth_response(request, response, token, user)
+    return await build_auth_response(request, response, token, user)
 
 
 @api.get("/auth/me", response_model=UserOut)
