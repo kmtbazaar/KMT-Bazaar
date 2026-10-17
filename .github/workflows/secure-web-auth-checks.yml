@@ -1,0 +1,38 @@
+name: Secure web auth checks
+
+on:
+  push:
+    branches:
+      - fix/secure-cookie-web-auth
+  pull_request:
+    branches:
+      - customer-live
+
+jobs:
+  backend-syntax:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Compile backend source
+        run: python -m py_compile backend/server.py
+
+  frontend-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: yarn
+          cache-dependency-path: frontend/yarn.lock
+      - name: Enable Yarn
+        run: corepack enable
+      - name: Install locked dependencies
+        working-directory: frontend
+        run: yarn install --frozen-lockfile --ignore-scripts
+      - name: Export web app
+        working-directory: frontend
+        run: yarn build:web
