@@ -5235,6 +5235,9 @@ async def ensure_db_indexes():
         db.travel_packages.create_index("id", unique=True),
         db.travel_packages.create_index([("page_id", 1), ("active", 1)]),
         db.travel_carts.create_index("user_id", unique=True),
+        db.web_sessions.create_index("token_hash", unique=True),
+        db.web_sessions.create_index("user_id"),
+        db.web_sessions.create_index("expires_at", expireAfterSeconds=0),
     )
 
 
