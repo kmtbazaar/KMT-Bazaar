@@ -23,6 +23,18 @@ function isAuthFailure(error: any): boolean {
   return status === 401 || status === 403 || /HTTP (401|403)\b/.test(String(error?.message || ""));
 }
 
+async function clearRejectedSession() {
+  if (Platform.OS === "web") {
+    try {
+      // Revoke the server-side opaque session as well as clearing browser state.
+      await api.logoutSession();
+    } catch (error) {
+      console.warn("[auth] Could not revoke the rejected server session", error);
+    }
+  }
+  await clearAuth();
+}
+
 const Ctx = createContext<AuthCtx | null>(null);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -58,7 +70,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 return;
               } catch (cookieError: any) {
                 if (isAuthFailure(cookieError)) {
-                  await clearAuth();
+                  await clearRejectedSession();
                   setU(null);
                 } else {
                   console.warn("[auth] Session check temporarily failed; cached profile retained", cookieError);
@@ -77,7 +89,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setU(fresh);
         } catch (error: any) {
           if (isAuthFailure(error)) {
-            await clearAuth();
+            await clearRejectedSession();
             setU(null);
           } else {
             // Network/5xx errors must not erase a valid server cookie.
