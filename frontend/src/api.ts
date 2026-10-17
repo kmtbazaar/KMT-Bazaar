@@ -150,11 +150,13 @@ export async function apiFetch<T = any>(
         errorMsg;
     } catch {}
 
-    throw new Error(
+    const error = new Error(
       typeof errorMsg === "string"
         ? errorMsg
         : JSON.stringify(errorMsg)
-    );
+    ) as Error & { status?: number };
+    error.status = res.status;
+    throw error;
   }
 
   if (res.status === 204) {
