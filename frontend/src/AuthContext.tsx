@@ -28,11 +28,34 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       const t = await getToken();
       const cached = await getUser();
+
+      // Render the cached account immediately while the server validates its token.
       if (t && cached) setU(cached);
+
       if (t) {
-        try { const fresh = await api.me(); setU(fresh); await setUser(fresh); } catch {}
+        try {
+          const fresh = await api.me();
+          setU(fresh);
+          await setUser(fresh);
+        } catch (error: any) {
+          const message = String(error?.message || "");
+          // Only discard a session when the backend explicitly rejects it.
+          // Network/server errors should not erase a valid locally saved session.
+          if (/HTTP (401|403)\b/.test(message)) {
+            await clearAuth();
+            setU(null);
+          } else {
+            console.warn("[auth] Session refresh temporarily failed; keeping cached session", error);
+          }
+        }
+      } else {
+        setU(null);
       }
-    } finally { setLoading(false); }
+    } catch (error) {
+      console.warn("[auth] Could not restore saved session", error);
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   useEffect(() => { bootstrap(); }, [bootstrap]);
