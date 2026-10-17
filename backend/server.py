@@ -523,6 +523,19 @@ async def get_current_user(
 ):
     # Native clients use Bearer JWTs; browsers use opaque, revocable sessions.
     if creds:
+        # A migrated browser JWT is blocked across tabs/devices from being exchanged
+        # repeatedly, without affecting native Bearer sessions.
+        if is_cookie_auth_request(request):
+            token_hash = hashlib.sha256(creds.credentials.encode("utf-8")).hexdigest()
+            revoked = await db.web_revoked_tokens.find_one(
+                {
+                    "token_hash": token_hash,
+                    "expires_at": {"$gt": datetime.now(timezone.utc)},
+                },
+                {"_id": 1},
+            )
+            if revoked:
+                raise HTTPException(status_code=401, detail="Legacy browser session has been migrated")
         try:
             payload = jwt.decode(creds.credentials, JWT_SECRET, algorithms=[JWT_ALGO])
         except jwt.PyJWTError:
@@ -636,7 +649,31 @@ async def migrate_legacy_web_session(
     if not is_cookie_auth_request(request):
         raise HTTPException(status_code=400, detail="Cookie session migration requires a browser client")
     require_trusted_cookie_origin(request)
+    authorization = request.headers.get("authorization", "")
+    if not authorization.lower().startswith("bearer "):
+        raise HTTPException(status_code=400, detail="A legacy browser token is required for migration")
+
+    legacy_token = authorization.split(" ", 1)[1].strip()
+    try:
+        legacy_payload = jwt.decode(legacy_token, JWT_SECRET, algorithms=[JWT_ALGO])
+        expiry_value = legacy_payload.get("exp")
+        if not expiry_value:
+            raise ValueError("Missing expiry")
+        legacy_expiry = datetime.fromtimestamp(float(expiry_value), tz=timezone.utc)
+    except (jwt.PyJWTError, ValueError, TypeError, OverflowError):
+        raise HTTPException(status_code=401, detail="Legacy browser session is invalid")
+
     await set_web_auth_cookie(response, current)
+    legacy_hash = hashlib.sha256(legacy_token.encode("utf-8")).hexdigest()
+    await db.web_revoked_tokens.update_one(
+        {"token_hash": legacy_hash},
+        {"$setOnInsert": {
+            "token_hash": legacy_hash,
+            "expires_at": legacy_expiry,
+            "created_at": datetime.now(timezone.utc),
+        }},
+        upsert=True,
+    )
     return user_to_out(current)
 
 
@@ -5238,6 +5275,8 @@ async def ensure_db_indexes():
         db.web_sessions.create_index("token_hash", unique=True),
         db.web_sessions.create_index("user_id"),
         db.web_sessions.create_index("expires_at", expireAfterSeconds=0),
+        db.web_revoked_tokens.create_index("token_hash", unique=True),
+        db.web_revoked_tokens.create_index("expires_at", expireAfterSeconds=0),
     )
 
 
