@@ -26,9 +26,61 @@ export interface User {
 }
 
 // Storage helpers
+// Web auth must survive tab/browser restarts. Prefer localStorage, migrate
+// existing sessionStorage values once, and fall back safely if persistence is blocked.
+function readWebAuthValue(key: string): string | null {
+  try {
+    const persistent = window.localStorage.getItem(key);
+    if (persistent !== null) return persistent;
+  } catch (e) {
+    console.warn("[auth-storage] localStorage read failed", e);
+  }
+
+  try {
+    const legacy = window.sessionStorage.getItem(key);
+    if (legacy === null) return null;
+    try {
+      window.localStorage.setItem(key, legacy);
+      window.sessionStorage.removeItem(key);
+    } catch (e) {
+      // Keep the legacy session value if persistent storage is unavailable.
+      console.warn("[auth-storage] session migration unavailable", e);
+    }
+    return legacy;
+  } catch (e) {
+    console.warn("[auth-storage] sessionStorage read failed", e);
+    return null;
+  }
+}
+
+function writeWebAuthValue(key: string, value: string): void {
+  try {
+    window.localStorage.setItem(key, value);
+    try { window.sessionStorage.removeItem(key); } catch {}
+    return;
+  } catch (e) {
+    console.warn("[auth-storage] persistent write failed; using session storage", e);
+  }
+
+  try {
+    window.sessionStorage.setItem(key, value);
+  } catch (e) {
+    console.warn("[auth-storage] session write failed", e);
+  }
+}
+
+function removeWebAuthValue(key: string): void {
+  try { window.localStorage.removeItem(key); } catch (e) {
+    console.warn("[auth-storage] localStorage cleanup failed", e);
+  }
+  try { window.sessionStorage.removeItem(key); } catch (e) {
+    console.warn("[auth-storage] sessionStorage cleanup failed", e);
+  }
+}
+
 export async function setToken(token: string) {
   if (Platform.OS === "web") {
-    sessionStorage.setItem(TOKEN_KEY, token);
+    writeWebAuthValue(TOKEN_KEY, token);
   } else {
     await AsyncStorage.setItem(TOKEN_KEY, token);
   }
@@ -36,7 +88,7 @@ export async function setToken(token: string) {
 
 export async function getToken() {
   if (Platform.OS === "web") {
-    return sessionStorage.getItem(TOKEN_KEY);
+    return readWebAuthValue(TOKEN_KEY);
   }
 
   return await AsyncStorage.getItem(TOKEN_KEY);
@@ -44,8 +96,8 @@ export async function getToken() {
 
 export async function clearAuth() {
   if (Platform.OS === "web") {
-    sessionStorage.removeItem(TOKEN_KEY);
-    sessionStorage.removeItem(USER_KEY);
+    removeWebAuthValue(TOKEN_KEY);
+    removeWebAuthValue(USER_KEY);
   } else {
     await AsyncStorage.multiRemove([TOKEN_KEY, USER_KEY]);
   }
@@ -55,7 +107,7 @@ export async function setUser(u: User) {
   const data = JSON.stringify(u);
 
   if (Platform.OS === "web") {
-    sessionStorage.setItem(USER_KEY, data);
+    writeWebAuthValue(USER_KEY, data);
   } else {
     await AsyncStorage.setItem(USER_KEY, data);
   }
@@ -63,10 +115,10 @@ export async function setUser(u: User) {
 
 export async function getUser() {
   try {
-    let v;
+    let v: string | null;
 
     if (Platform.OS === "web") {
-      v = sessionStorage.getItem(USER_KEY);
+      v = readWebAuthValue(USER_KEY);
     } else {
       v = await AsyncStorage.getItem(USER_KEY);
     }
@@ -77,6 +129,7 @@ export async function getUser() {
 
     return JSON.parse(v);
   } catch (e) {
+    console.warn("[auth-storage] user read failed", e);
     return null;
   }
 }
