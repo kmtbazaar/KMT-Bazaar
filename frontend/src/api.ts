@@ -119,7 +119,9 @@ export async function apiFetch<T = any>(
     ...(options.headers || {}),
   };
 
-  if (token) {
+  // In browsers the legacy JWT is sent only for its one-time migration.
+  // Normal web requests rely exclusively on the HttpOnly cookie.
+  if (token && (Platform.OS !== "web" || path.endsWith("/auth/session/migrate"))) {
     headers.Authorization = `Bearer ${token}`;
   }
   if (Platform.OS === "web") {
@@ -208,9 +210,10 @@ export async function uploadImageAsset(
     } as any);
   }
 
-  const uploadHeaders: Record<string, string> = token
-    ? { Authorization: `Bearer ${token}` }
-    : {};
+  const uploadHeaders: Record<string, string> =
+    token && Platform.OS !== "web"
+      ? { Authorization: `Bearer ${token}` }
+      : {};
 
   if (Platform.OS === "web") {
     uploadHeaders["X-KMT-Auth-Mode"] = "cookie";
