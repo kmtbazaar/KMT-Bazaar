@@ -523,19 +523,18 @@ async def get_current_user(
 ):
     # Native clients use Bearer JWTs; browsers use opaque, revocable sessions.
     if creds:
-        # A migrated browser JWT is blocked across tabs/devices from being exchanged
-        # repeatedly, without affecting native Bearer sessions.
-        if is_cookie_auth_request(request):
-            token_hash = hashlib.sha256(creds.credentials.encode("utf-8")).hexdigest()
-            revoked = await db.web_revoked_tokens.find_one(
-                {
-                    "token_hash": token_hash,
-                    "expires_at": {"$gt": datetime.now(timezone.utc)},
-                },
-                {"_id": 1},
-            )
-            if revoked:
-                raise HTTPException(status_code=401, detail="Legacy browser session has been migrated")
+        # A migrated legacy web JWT must be rejected even if presented from a
+        # different client without the browser-specific request header.
+        token_hash = hashlib.sha256(creds.credentials.encode("utf-8")).hexdigest()
+        revoked = await db.web_revoked_tokens.find_one(
+            {
+                "token_hash": token_hash,
+                "expires_at": {"$gt": datetime.now(timezone.utc)},
+            },
+            {"_id": 1},
+        )
+        if revoked:
+            raise HTTPException(status_code=401, detail="Legacy browser session has been migrated")
         try:
             payload = jwt.decode(creds.credentials, JWT_SECRET, algorithms=[JWT_ALGO])
         except jwt.PyJWTError:
