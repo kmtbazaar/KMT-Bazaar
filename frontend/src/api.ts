@@ -25,27 +25,58 @@ export interface User {
   service_type?: ServiceType | null;
 }
 
-// Storage helpers
-export async function setToken(token: string) {
+// Browser sessions use an HttpOnly server cookie. Browser token storage is read
+// only to migrate sessions created by older app versions; new web logins never
+// persist bearer tokens in localStorage or sessionStorage.
+function readWebStoredValue(key: string): string | null {
+  try {
+    const persistent = window.localStorage.getItem(key);
+    if (persistent !== null) return persistent;
+  } catch {}
+  try {
+    return window.sessionStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+function removeWebStoredValue(key: string): void {
+  try { window.localStorage.removeItem(key); } catch {}
+  try { window.sessionStorage.removeItem(key); } catch {}
+}
+
+export async function clearLegacyToken() {
   if (Platform.OS === "web") {
-    sessionStorage.setItem(TOKEN_KEY, token);
-  } else {
+    removeWebStoredValue(TOKEN_KEY);
+    return;
+  }
+  await AsyncStorage.removeItem(TOKEN_KEY);
+}
+
+export async function setToken(token: string | null | undefined) {
+  if (Platform.OS === "web") {
+    // Web auth is supplied by the HttpOnly cookie, never by a JS-readable token.
+    removeWebStoredValue(TOKEN_KEY);
+    return;
+  }
+  if (token) {
     await AsyncStorage.setItem(TOKEN_KEY, token);
+  } else {
+    await AsyncStorage.removeItem(TOKEN_KEY);
   }
 }
 
 export async function getToken() {
   if (Platform.OS === "web") {
-    return sessionStorage.getItem(TOKEN_KEY);
+    return readWebStoredValue(TOKEN_KEY);
   }
-
   return await AsyncStorage.getItem(TOKEN_KEY);
 }
 
 export async function clearAuth() {
   if (Platform.OS === "web") {
-    sessionStorage.removeItem(TOKEN_KEY);
-    sessionStorage.removeItem(USER_KEY);
+    removeWebStoredValue(TOKEN_KEY);
+    removeWebStoredValue(USER_KEY);
   } else {
     await AsyncStorage.multiRemove([TOKEN_KEY, USER_KEY]);
   }
@@ -53,9 +84,11 @@ export async function clearAuth() {
 
 export async function setUser(u: User) {
   const data = JSON.stringify(u);
-
   if (Platform.OS === "web") {
-    sessionStorage.setItem(USER_KEY, data);
+    try {
+      // This is only a display cache, not proof that the user is authenticated.
+      window.sessionStorage.setItem(USER_KEY, data);
+    } catch {}
   } else {
     await AsyncStorage.setItem(USER_KEY, data);
   }
@@ -63,20 +96,13 @@ export async function setUser(u: User) {
 
 export async function getUser() {
   try {
-    let v;
+    const v = Platform.OS === "web"
+      ? readWebStoredValue(USER_KEY)
+      : await AsyncStorage.getItem(USER_KEY);
 
-    if (Platform.OS === "web") {
-      v = sessionStorage.getItem(USER_KEY);
-    } else {
-      v = await AsyncStorage.getItem(USER_KEY);
-    }
-
-    if (!v || v === "undefined" || v === "null") {
-      return null;
-    }
-
+    if (!v || v === "undefined" || v === "null") return null;
     return JSON.parse(v);
-  } catch (e) {
+  } catch {
     return null;
   }
 }
@@ -93,8 +119,13 @@ export async function apiFetch<T = any>(
     ...(options.headers || {}),
   };
 
-  if (token) {
+  // In browsers the legacy JWT is sent only for its one-time migration.
+  // Normal web requests rely exclusively on the HttpOnly cookie.
+  if (token && (Platform.OS !== "web" || path.endsWith("/auth/session/migrate"))) {
     headers.Authorization = `Bearer ${token}`;
+  }
+  if (Platform.OS === "web") {
+    headers["X-KMT-Auth-Mode"] = "cookie";
   }
 
   const cleanPath = path.startsWith("/") ? path : `/${path}`;
@@ -106,6 +137,7 @@ export async function apiFetch<T = any>(
   const res = await fetch(url, {
     ...options,
     headers,
+    credentials: Platform.OS === "web" ? "include" : "same-origin",
   });
 
   if (!res.ok) {
@@ -120,11 +152,13 @@ export async function apiFetch<T = any>(
         errorMsg;
     } catch {}
 
-    throw new Error(
+    const error = new Error(
       typeof errorMsg === "string"
         ? errorMsg
         : JSON.stringify(errorMsg)
-    );
+    ) as Error & { status?: number };
+    error.status = res.status;
+    throw error;
   }
 
   if (res.status === 204) {
@@ -176,10 +210,14 @@ export async function uploadImageAsset(
     } as any);
   }
 
-  const uploadHeaders: Record<string, string> = token
-    ? { Authorization: `Bearer ${token}` }
-    : {};
+  const uploadHeaders: Record<string, string> =
+    token && Platform.OS !== "web"
+      ? { Authorization: `Bearer ${token}` }
+      : {};
 
+  if (Platform.OS === "web") {
+    uploadHeaders["X-KMT-Auth-Mode"] = "cookie";
+  }
   if (purpose === "product") {
     uploadHeaders["X-KMT-Image-Purpose"] = "product";
   }
@@ -188,6 +226,7 @@ export async function uploadImageAsset(
     method: "POST",
     headers: uploadHeaders,
     body: formData,
+    credentials: Platform.OS === "web" ? "include" : "same-origin",
   });
 
   const text = await response.text();
@@ -215,7 +254,7 @@ export async function uploadImageAsset(
 
 export type GoogleLoginResult =
   | { signup_required: true; email: string; name: string }
-  | { signup_required: false; token: string; user: User };
+  | { signup_required: false; token: string | null; user: User };
 
 export const api = {
   googleLogin: (credential: string) =>
@@ -231,7 +270,7 @@ export const api = {
     }),
 
   login: (identifier: string, password: string) =>
-    apiFetch<{ token: string; user: User }>("/auth/login", {
+    apiFetch<{ token: string | null; user: User }>("/auth/login", {
       method: "POST",
       body: JSON.stringify({
         identifier,
@@ -246,7 +285,7 @@ export const api = {
     }),
 
   verifyEmailLoginOtp: (email: string, otp: string) =>
-    apiFetch<{ token: string; user: User }>("/auth/email-login/verify", {
+    apiFetch<{ token: string | null; user: User }>("/auth/email-login/verify", {
       method: "POST",
       body: JSON.stringify({ email, otp }),
     }),
@@ -266,7 +305,7 @@ export const api = {
     }),
 
   verifyEmailSignupOtp: (email: string, otp: string) =>
-    apiFetch<{ token: string; user: User }>("/auth/email-signup/verify", {
+    apiFetch<{ token: string | null; user: User }>("/auth/email-signup/verify", {
       method: "POST",
       body: JSON.stringify({ email, otp }),
     }),
@@ -282,7 +321,7 @@ export const api = {
       service_type?: ServiceType;
     }
   ) =>
-    apiFetch<{ token: string; user: User }>("/auth/register", {
+    apiFetch<{ token: string | null; user: User }>("/auth/register", {
       method: "POST",
       body: JSON.stringify(data),
     }),
@@ -298,7 +337,7 @@ export const api = {
     otp: string,
     name?: string
   ) =>
-    apiFetch<{ token: string; user: User }>("/auth/otp/verify", {
+    apiFetch<{ token: string | null; user: User }>("/auth/otp/verify", {
       method: "POST",
       body: JSON.stringify({
         phone,
@@ -351,6 +390,15 @@ export const api = {
     }),
 
   me: () => apiFetch<User>("/auth/me"),
+
+  // Convert a pre-cookie browser JWT into a fresh HttpOnly cookie once.
+  migrateSession: () => apiFetch<User>("/auth/session/migrate", {
+    method: "POST",
+  }),
+
+  logoutSession: () => apiFetch<{ ok: boolean }>("/auth/logout", {
+    method: "POST",
+  }),
 
   categories: () =>
     apiFetch<any[]>("/categories"),

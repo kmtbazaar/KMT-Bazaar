@@ -16,9 +16,8 @@ import { LinearGradient } from "expo-linear-gradient";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useAuth } from "@/src/AuthContext";
-import { API } from "@/src/api";
+import { apiFetch } from "@/src/api";
 import { COLORS, LOGO_URL, RADIUS, SPACING, shadow } from "@/src/theme";
 
 const ITEMS = [
@@ -77,20 +76,12 @@ export default function Profile() {
     setUploading(true);
 
     try {
-      const token = await AsyncStorage.getItem("kmt_token");
-
-      const response = await fetch(`${API}/auth/update-avatar`, {
+      const resData = await apiFetch<{ avatar?: string; detail?: string }>("/auth/update-avatar", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
         body: JSON.stringify({ avatar: base64String }),
       });
 
-      const resData = await response.json();
-
-      if (response.ok && resData.avatar) {
+      if (resData.avatar) {
         setLocalAvatar(resData.avatar);
         await refresh();
 

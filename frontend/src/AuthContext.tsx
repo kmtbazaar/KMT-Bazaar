@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from "react";
-import { api, clearAuth, getToken, getUser, setToken, setUser, User, GoogleLoginResult } from "./api";
+import { Platform } from "react-native";
+import { api, clearAuth, clearLegacyToken, getToken, getUser, setToken, setUser, User, GoogleLoginResult } from "./api";
 
 interface AuthCtx {
   user: User | null;
@@ -17,6 +18,23 @@ interface AuthCtx {
   updateAddress: (addressData: any) => Promise<void>; // <-- Naya add kiya hai
 }
 
+function isAuthFailure(error: any): boolean {
+  const status = Number(error?.status);
+  return status === 401 || status === 403 || /HTTP (401|403)\b/.test(String(error?.message || ""));
+}
+
+async function clearRejectedSession() {
+  if (Platform.OS === "web") {
+    try {
+      // Revoke the server-side opaque session as well as clearing browser state.
+      await api.logoutSession();
+    } catch (error) {
+      console.warn("[auth] Could not revoke the rejected server session", error);
+    }
+  }
+  await clearAuth();
+}
+
 const Ctx = createContext<AuthCtx | null>(null);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -26,13 +44,84 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const bootstrap = useCallback(async () => {
     setLoading(true);
     try {
-      const t = await getToken();
       const cached = await getUser();
-      if (t && cached) setU(cached);
-      if (t) {
-        try { const fresh = await api.me(); setU(fresh); await setUser(fresh); } catch {}
+      if (cached) setU(cached);
+
+      if (Platform.OS === "web") {
+        // The server cookie, not cached profile data, is the source of truth.
+        // Older deployments stored JWTs in web storage; exchange one for a
+        // fresh HttpOnly cookie, then remove the JS-readable legacy token.
+        const legacyToken = await getToken();
+        if (legacyToken) {
+          try {
+            const fresh = await api.migrateSession();
+            await clearLegacyToken();
+            await setUser(fresh);
+            setU(fresh);
+            return;
+          } catch (error: any) {
+            if (isAuthFailure(error)) {
+              // An expired legacy bearer must not mask a still-valid cookie.
+              await clearLegacyToken();
+              try {
+                const fresh = await api.me();
+                await setUser(fresh);
+                setU(fresh);
+                return;
+              } catch (cookieError: any) {
+                if (isAuthFailure(cookieError)) {
+                  await clearRejectedSession();
+                  setU(null);
+                } else {
+                  console.warn("[auth] Session check temporarily failed; cached profile retained", cookieError);
+                }
+                return;
+              }
+            }
+            console.warn("[auth] Legacy-session migration temporarily failed; retrying on next load", error);
+            return;
+          }
+        }
+
+        try {
+          const fresh = await api.me();
+          await setUser(fresh);
+          setU(fresh);
+        } catch (error: any) {
+          if (isAuthFailure(error)) {
+            await clearRejectedSession();
+            setU(null);
+          } else {
+            // Network/5xx errors must not erase a valid server cookie.
+            console.warn("[auth] Session check temporarily failed; cached profile retained", error);
+          }
+        }
+        return;
       }
-    } finally { setLoading(false); }
+
+      // Native clients continue using the existing AsyncStorage + Bearer flow.
+      const token = await getToken();
+      if (!token) {
+        setU(null);
+        return;
+      }
+      try {
+        const fresh = await api.me();
+        await setUser(fresh);
+        setU(fresh);
+      } catch (error: any) {
+        if (isAuthFailure(error)) {
+          await clearAuth();
+          setU(null);
+        } else {
+          console.warn("[auth] Session check temporarily failed; cached profile retained", error);
+        }
+      }
+    } catch (error) {
+      console.warn("[auth] Could not restore saved session", error);
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   useEffect(() => { bootstrap(); }, [bootstrap]);
@@ -97,7 +186,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setLoading(false);
     return r;
   };
-  const logout = async () => { await clearAuth(); setU(null); };
+  const logout = async () => {
+    if (Platform.OS === "web") {
+      try {
+        await api.logoutSession();
+      } catch (error) {
+        // Still clear local UI state; the server cookie expires naturally if offline.
+        console.warn("[auth] Server logout could not be confirmed", error);
+      }
+    }
+    await clearAuth();
+    setU(null);
+  };
 
   // <-- Naya function add kiya hai
   const updateAddress = async (addressData: any) => {

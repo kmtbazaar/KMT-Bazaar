@@ -5,7 +5,7 @@ import secrets
 import re
 import os
 from dotenv import load_dotenv
-from fastapi import FastAPI, APIRouter, HTTPException, Depends, status, File, UploadFile, Header
+from fastapi import FastAPI, APIRouter, HTTPException, Depends, status, File, UploadFile, Header, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from google import genai
@@ -58,6 +58,14 @@ db = client[os.environ['DB_NAME']]
 JWT_SECRET = os.environ.get("JWT_SECRET", "kmt-bazaar-super-secret-key-change-me")
 JWT_ALGO = "HS256"
 JWT_EXPIRE_MIN = 60 * 24 * 30  # 30 days
+# Web sessions live in an HttpOnly cookie; mobile clients keep Bearer tokens.
+AUTH_COOKIE_NAME = "__Host-kmt_session"
+AUTH_COOKIE_MAX_AGE = JWT_EXPIRE_MIN * 60
+COOKIE_AUTH_MODE_HEADER = "x-kmt-auth-mode"
+COOKIE_AUTH_ORIGINS = frozenset({
+    "https://kmtbazaar.com",
+    "https://www.kmtbazaar.com",
+})
 
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
@@ -211,7 +219,8 @@ class UserOut(BaseModel):
 
 
 class AuthOut(BaseModel):
-    token: str
+    # Native clients receive a Bearer token; web clients receive an HttpOnly cookie.
+    token: Optional[str] = None
     user: UserOut
 
 
@@ -508,20 +517,61 @@ def create_token(user_id: str, role: str) -> str:
     return jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGO)
 
 
-async def get_current_user(creds: Optional[HTTPAuthorizationCredentials] = Depends(security)):
-    if not creds:
-        raise HTTPException(status_code=401, detail="Missing token")
-    try:
-        payload = jwt.decode(creds.credentials, JWT_SECRET, algorithms=[JWT_ALGO])
-    except jwt.PyJWTError:
-        raise HTTPException(status_code=401, detail="Invalid token")
-    user = await db.users.find_one({"id": payload["sub"]}, {"_id": 0, "password": 0})
+async def get_current_user(
+    request: Request,
+    creds: Optional[HTTPAuthorizationCredentials] = Depends(security),
+):
+    # Native clients use Bearer JWTs; browsers use opaque, revocable sessions.
+    if creds:
+        # A migrated legacy web JWT must be rejected even if presented from a
+        # different client without the browser-specific request header.
+        token_hash = hashlib.sha256(creds.credentials.encode("utf-8")).hexdigest()
+        revoked = await db.web_revoked_tokens.find_one(
+            {
+                "token_hash": token_hash,
+                "expires_at": {"$gt": datetime.now(timezone.utc)},
+            },
+            {"_id": 1},
+        )
+        if revoked:
+            raise HTTPException(status_code=401, detail="Legacy browser session has been migrated")
+        try:
+            payload = jwt.decode(creds.credentials, JWT_SECRET, algorithms=[JWT_ALGO])
+        except jwt.PyJWTError:
+            raise HTTPException(status_code=401, detail="Invalid or expired session")
+        user_id = payload.get("sub")
+        if not user_id:
+            raise HTTPException(status_code=401, detail="Invalid session")
+    else:
+        raw_session = request.cookies.get(AUTH_COOKIE_NAME)
+        if not raw_session:
+            raise HTTPException(status_code=401, detail="Missing session")
+
+        # Cookie-authenticated mutations must originate from the trusted KMT web app.
+        if request.method in {"POST", "PUT", "PATCH", "DELETE"}:
+            if request.headers.get("origin") not in COOKIE_AUTH_ORIGINS:
+                raise HTTPException(status_code=403, detail="Untrusted request origin")
+
+        session_hash = hashlib.sha256(raw_session.encode("utf-8")).hexdigest()
+        session = await db.web_sessions.find_one(
+            {
+                "token_hash": session_hash,
+                "expires_at": {"$gt": datetime.now(timezone.utc)},
+            },
+            {"_id": 0, "user_id": 1},
+        )
+        if not session:
+            raise HTTPException(status_code=401, detail="Invalid or expired session")
+        user_id = session.get("user_id")
+        if not user_id:
+            raise HTTPException(status_code=401, detail="Invalid session")
+
+    user = await db.users.find_one({"id": user_id}, {"_id": 0, "password": 0})
     if not user:
         raise HTTPException(status_code=401, detail="User not found")
     if user.get("active", True) is False:
         raise HTTPException(status_code=403, detail="Account is suspended")
     return user
-
 
 def user_to_out(u: dict) -> dict:
     return {
@@ -538,6 +588,111 @@ def user_to_out(u: dict) -> dict:
             else None
         ),
     }
+
+
+def is_cookie_auth_request(request: Request) -> bool:
+    return request.headers.get(COOKIE_AUTH_MODE_HEADER, "").strip().lower() == "cookie"
+
+
+def require_trusted_cookie_origin(request: Request) -> None:
+    if request.headers.get("origin") not in COOKIE_AUTH_ORIGINS:
+        raise HTTPException(status_code=403, detail="Untrusted authentication origin")
+
+
+async def set_web_auth_cookie(response: Response, user: dict) -> None:
+    # The browser receives only an opaque, high-entropy session handle. Store its
+    # SHA-256 digest server-side so raw cookie values are never written to MongoDB.
+    now = datetime.now(timezone.utc)
+    raw_session = secrets.token_urlsafe(32)
+    session_hash = hashlib.sha256(raw_session.encode("utf-8")).hexdigest()
+    expires_at = now + timedelta(minutes=JWT_EXPIRE_MIN)
+
+    # Opportunistically remove expired session records as users sign in.
+    await db.web_sessions.delete_many({"expires_at": {"$lte": now}})
+    await db.web_sessions.insert_one({
+        "id": str(uuid.uuid4()),
+        "token_hash": session_hash,
+        "user_id": user["id"],
+        "created_at": now,
+        "expires_at": expires_at,
+    })
+
+    response.set_cookie(
+        key=AUTH_COOKIE_NAME,
+        value=raw_session,
+        max_age=AUTH_COOKIE_MAX_AGE,
+        path="/",
+        secure=True,
+        httponly=True,
+        samesite="lax",
+    )
+    response.headers["Cache-Control"] = "no-store"
+
+
+async def build_auth_response(request: Request, response: Response, token: str, user: dict) -> dict:
+    if is_cookie_auth_request(request):
+        require_trusted_cookie_origin(request)
+        await set_web_auth_cookie(response, user)
+        # Never expose a bearer credential to JavaScript in browser responses.
+        return {"token": None, "user": user_to_out(user)}
+    return {"token": token, "user": user_to_out(user)}
+
+
+@api.post("/auth/session/migrate")
+async def migrate_legacy_web_session(
+    request: Request,
+    response: Response,
+    current=Depends(get_current_user),
+):
+    # Only a first-party browser request may exchange a legacy Bearer token.
+    if not is_cookie_auth_request(request):
+        raise HTTPException(status_code=400, detail="Cookie session migration requires a browser client")
+    require_trusted_cookie_origin(request)
+    authorization = request.headers.get("authorization", "")
+    if not authorization.lower().startswith("bearer "):
+        raise HTTPException(status_code=400, detail="A legacy browser token is required for migration")
+
+    legacy_token = authorization.split(" ", 1)[1].strip()
+    try:
+        legacy_payload = jwt.decode(legacy_token, JWT_SECRET, algorithms=[JWT_ALGO])
+        expiry_value = legacy_payload.get("exp")
+        if not expiry_value:
+            raise ValueError("Missing expiry")
+        legacy_expiry = datetime.fromtimestamp(float(expiry_value), tz=timezone.utc)
+    except (jwt.PyJWTError, ValueError, TypeError, OverflowError):
+        raise HTTPException(status_code=401, detail="Legacy browser session is invalid")
+
+    await set_web_auth_cookie(response, current)
+    legacy_hash = hashlib.sha256(legacy_token.encode("utf-8")).hexdigest()
+    await db.web_revoked_tokens.update_one(
+        {"token_hash": legacy_hash},
+        {"$setOnInsert": {
+            "token_hash": legacy_hash,
+            "expires_at": legacy_expiry,
+            "created_at": datetime.now(timezone.utc),
+        }},
+        upsert=True,
+    )
+    return user_to_out(current)
+
+
+@api.post("/auth/logout")
+async def logout_web_session(request: Request, response: Response):
+    if is_cookie_auth_request(request):
+        require_trusted_cookie_origin(request)
+    raw_session = request.cookies.get(AUTH_COOKIE_NAME)
+    if raw_session:
+        session_hash = hashlib.sha256(raw_session.encode("utf-8")).hexdigest()
+        await db.web_sessions.delete_one({"token_hash": session_hash})
+    response.delete_cookie(
+        key=AUTH_COOKIE_NAME,
+        path="/",
+        secure=True,
+        httponly=True,
+        samesite="lax",
+    )
+    response.headers["Cache-Control"] = "no-store"
+    return {"ok": True}
 
 
 # ------------------ AUTH ROUTES ------------------
@@ -564,7 +719,7 @@ async def check_identifier(data: IdentifierCheckIn):
 
 
 @api.post("/auth/login", response_model=AuthOut)
-async def login(data: LoginIn):
+async def login(data: LoginIn, request: Request, response: Response):
     value = data.identifier.strip()
     if "@" in value:
         value = normalize_email(value)
@@ -583,7 +738,7 @@ async def login(data: LoginIn):
     if user.get("active", True) is False:
         raise HTTPException(status_code=403, detail="Account is suspended")
     token = create_token(user["id"], user["role"])
-    return {"token": token, "user": user_to_out(user)}
+    return await build_auth_response(request, response, token, user)
 
 
 @api.post("/auth/email-login/request")
@@ -612,7 +767,7 @@ async def request_email_login_otp(data: EmailLoginOtpRequestIn):
 
 
 @api.post("/auth/email-login/verify", response_model=AuthOut)
-async def verify_email_login_otp(data: EmailOtpVerifyIn):
+async def verify_email_login_otp(data: EmailOtpVerifyIn, request: Request, response: Response):
     record = await consume_email_otp(data.email, "login", data.otp)
     user = await db.users.find_one({"email": normalize_email(data.email)})
     if not user:
@@ -620,7 +775,7 @@ async def verify_email_login_otp(data: EmailOtpVerifyIn):
     if user.get("active", True) is False:
         raise HTTPException(status_code=403, detail="Account is suspended")
     token = create_token(user["id"], user["role"])
-    return {"token": token, "user": user_to_out(user)}
+    return await build_auth_response(request, response, token, user)
 
 
 @api.post("/auth/email-signup/request")
@@ -700,7 +855,7 @@ async def request_email_signup_otp(data: EmailSignupOtpRequestIn):
 
 
 @api.post("/auth/email-signup/verify", response_model=AuthOut)
-async def verify_email_signup_otp(data: EmailOtpVerifyIn):
+async def verify_email_signup_otp(data: EmailOtpVerifyIn, request: Request, response: Response):
     record = await consume_email_otp(data.email, "signup", data.otp)
     registration = (record.get("payload") or {}).get("registration") or {}
     email = normalize_email(data.email)
@@ -761,7 +916,7 @@ async def verify_email_signup_otp(data: EmailOtpVerifyIn):
         if not user_doc:
             raise HTTPException(status_code=409, detail="Google signup could not be completed. Please try again.")
         token = create_token(user_doc["id"], user_doc["role"])
-        return {"token": token, "user": user_to_out(user_doc)}
+        return await build_auth_response(request, response, token, user_doc)
 
     uid = str(uuid.uuid4())
     user_doc = {
@@ -778,13 +933,13 @@ async def verify_email_signup_otp(data: EmailOtpVerifyIn):
     }
     await db.users.insert_one(user_doc)
     token = create_token(uid, user_doc["role"])
-    return {"token": token, "user": user_to_out(user_doc)}
+    return await build_auth_response(request, response, token, user_doc)
 
 
 
 
 @api.post("/auth/google")
-async def google_login(data: GoogleLoginIn):
+async def google_login(data: GoogleLoginIn, request: Request, response: Response):
     if not GOOGLE_CLIENT_ID:
         raise HTTPException(status_code=503, detail="Google sign-in is not configured")
 
@@ -824,7 +979,7 @@ async def google_login(data: GoogleLoginIn):
         user["name"] = name or user.get("name", "")
 
         token = create_token(user["id"], user["role"])
-        return {"signup_required": False, "token": token, "user": user_to_out(user)}
+        return {"signup_required": False, **(await build_auth_response(request, response, token, user))}
 
     # Do not create an account from Google alone; complete the regular signup flow.
     return {"signup_required": True, "email": email, "name": name}
@@ -993,6 +1148,8 @@ async def reset_password(data: ResetPasswordIn):
         {"email": normalize_email(data.email)},
         {"$set": {"password": hash_password(data.new_password)}}
     )
+    # Revoke every active browser session after a password reset.
+    await db.web_sessions.delete_many({"user_id": user["id"]})
 
     await db.password_reset_otps.delete_many({
         "email": normalize_email(data.email)
@@ -1009,7 +1166,7 @@ async def request_otp(data: OtpRequestIn):
 
 
 @api.post("/auth/otp/verify", response_model=AuthOut)
-async def verify_otp(data: OtpVerifyIn):
+async def verify_otp(data: OtpVerifyIn, request: Request, response: Response):
     # Mock OTP ka existing 6-digit format check
     if not (len(data.otp) == 6 and data.otp.isdigit()):
         raise HTTPException(status_code=400, detail="Invalid OTP")
@@ -1057,10 +1214,7 @@ async def verify_otp(data: OtpVerifyIn):
     # Existing token creation
     token = create_token(user["id"], user["role"])
 
-    return {
-        "token": token,
-        "user": user_to_out(user)
-    }
+    return await build_auth_response(request, response, token, user)
 
 
 @api.get("/auth/me", response_model=UserOut)
@@ -5117,6 +5271,11 @@ async def ensure_db_indexes():
         db.travel_packages.create_index("id", unique=True),
         db.travel_packages.create_index([("page_id", 1), ("active", 1)]),
         db.travel_carts.create_index("user_id", unique=True),
+        db.web_sessions.create_index("token_hash", unique=True),
+        db.web_sessions.create_index("user_id"),
+        db.web_sessions.create_index("expires_at", expireAfterSeconds=0),
+        db.web_revoked_tokens.create_index("token_hash", unique=True),
+        db.web_revoked_tokens.create_index("expires_at", expireAfterSeconds=0),
     )
 
 
