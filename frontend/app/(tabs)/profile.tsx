@@ -76,7 +76,7 @@ export default function Profile() {
     setUploading(true);
 
     try {
-      const resData = await apiFetch<{ avatar?: string }>("/auth/update-avatar", {
+      const resData = await apiFetch<{ avatar?: string; detail?: string }>("/auth/update-avatar", {
         method: "POST",
         body: JSON.stringify({ avatar: base64String }),
       });
