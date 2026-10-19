@@ -7,7 +7,7 @@ import {
   Pressable,
   ScrollView,
   RefreshControl,
-  Dimensions,
+  useWindowDimensions,
   Alert,
   Platform,
 } from "react-native";
@@ -21,7 +21,6 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import Animated, {
   FadeInDown,
   FadeInUp,
-  ZoomIn,
   useAnimatedStyle,
   useSharedValue,
   withRepeat,
@@ -36,7 +35,6 @@ import {
   loadAdminSettings,
 } from "@/src/adminSettings";
 
-const { width } = Dimensions.get("window");
 
 /* =========================================================
    PRODUCTION ADMIN PALETTE
@@ -64,6 +62,9 @@ const THEME = {
 export default function AdminDashboard() {
   const router = useRouter();
   const { user } = useAuth();
+  const { width: viewportWidth } = useWindowDimensions();
+  const kpiCardWidth = Math.max(0, (viewportWidth - SPACING.lg * 2 - 10) / 2);
+  const quickActionCardWidth = Math.max(0, (viewportWidth - SPACING.lg * 2 - 20) / 3);
 
   const [stats, setStats] = useState<any>(null);
   const [pendingStores, setPendingStores] = useState<any[]>([]);
@@ -444,6 +445,7 @@ export default function AdminDashboard() {
             route="/admin/orders"
             delay={150}
             dark={adminSettings?.themeMode === "night"}
+            cardWidth={kpiCardWidth}
           />
 
           <KPI
@@ -454,6 +456,7 @@ export default function AdminDashboard() {
             route="/admin/orders"
             delay={200}
             dark={adminSettings?.themeMode === "night"}
+            cardWidth={kpiCardWidth}
           />
 
           <KPI
@@ -465,6 +468,7 @@ export default function AdminDashboard() {
             route="/admin/commission"
             delay={250}
             dark={adminSettings?.themeMode === "night"}
+            cardWidth={kpiCardWidth}
           />
 
           <KPI
@@ -475,6 +479,7 @@ export default function AdminDashboard() {
             route="/admin/users?role=customer"
             delay={300}
             dark={adminSettings?.themeMode === "night"}
+            cardWidth={kpiCardWidth}
           />
 
           <KPI
@@ -485,6 +490,7 @@ export default function AdminDashboard() {
             route="/admin/service-vendors"
             delay={300}
             dark={adminSettings?.themeMode === "night"}
+            cardWidth={kpiCardWidth}
           />
 
           <KPI
@@ -495,6 +501,7 @@ export default function AdminDashboard() {
             route="/admin/service-bookings"
             delay={350}
             dark={adminSettings?.themeMode === "night"}
+            cardWidth={kpiCardWidth}
           />
 
           <KPI
@@ -505,6 +512,7 @@ export default function AdminDashboard() {
             route="/admin/users?role=vendor"
             delay={400}
             dark={adminSettings?.themeMode === "night"}
+            cardWidth={kpiCardWidth}
           />
 
           <KPI
@@ -515,6 +523,7 @@ export default function AdminDashboard() {
             route="/admin/users?role=delivery"
             delay={450}
             dark={adminSettings?.themeMode === "night"}
+            cardWidth={kpiCardWidth}
           />
         </View>
 
@@ -735,13 +744,10 @@ export default function AdminDashboard() {
           </View>
 
           <View style={s.grid}>
-            {quickActions.map((a, index) => (
+            {quickActions.map((a) => (
               <Animated.View
                 key={a.label}
-                entering={ZoomIn
-                  .delay(700 + index * 60)
-                  .duration(400)}
-                style={s.gridWrapper}
+                style={[s.gridWrapper, { width: quickActionCardWidth }]}
               >
                 <Pressable
                   testID={`admin-action-${a.label}`}
@@ -827,13 +833,14 @@ function KPI({
   route,
   dark = false,
   delay = 0,
+  cardWidth,
 }: any) {
   const router = useRouter();
 
   return (
     <Animated.View
       entering={FadeInUp.delay(delay).duration(500)}
-      style={s.kpiCardWrap}
+      style={[s.kpiCardWrap, { width: cardWidth }]}
     >
       <Pressable
         testID={`admin-kpi-${label.toLowerCase().replace(/\\s+/g, "-")}`}
@@ -1079,12 +1086,14 @@ const s = StyleSheet.create({
   },
 
   kpiCardWrap: {
-    width: (width - SPACING.lg * 2 - 10) / 2,
+    flexGrow: 0,
+    flexShrink: 0,
   },
 
   kpiCard: {
     width: "100%",
-    minHeight: 124,
+    height: 164,
+    minHeight: 164,
     backgroundColor: THEME.white,
     borderRadius: 18,
     padding: 13,
@@ -1461,10 +1470,12 @@ const s = StyleSheet.create({
   },
 
   gridWrapper: {
-    width: (width - SPACING.lg * 2 - 20) / 3,
+    flexGrow: 0,
+    flexShrink: 0,
   },
 
   gridItem: {
+    height: 128,
     minHeight: 128,
     backgroundColor: THEME.white,
     borderRadius: 18,

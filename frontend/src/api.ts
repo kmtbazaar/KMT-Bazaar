@@ -16,11 +16,37 @@ export const WEB_SESSION_REFRESH_INTERVAL_MS = 30 * 1000;
 const WEB_LAST_ACTIVITY_KEY = "kmt_web_last_activity";
 const WEB_SESSION_EXPIRED_KEY = "kmt_web_session_expired";
 const WEB_SESSION_LOGGED_OUT_KEY = "kmt_web_session_logged_out";
+const WEB_TAB_ID_KEY = "kmt_web_tab_id";
+
+// Each browser tab keeps an independent opaque session-cookie selector. The
+// actual authentication credential remains HttpOnly and is never exposed here.
+export function getWebTabId(): string | null {
+  if (Platform.OS !== "web" || typeof window === "undefined") return null;
+  try {
+    const existing = window.sessionStorage.getItem(WEB_TAB_ID_KEY);
+    if (existing && /^[a-f0-9]{32}$/.test(existing)) return existing;
+    const bytes = new Uint8Array(16);
+    if (window.crypto && typeof window.crypto.getRandomValues === "function") {
+      window.crypto.getRandomValues(bytes);
+    } else {
+      for (let i = 0; i < bytes.length; i += 1) bytes[i] = Math.floor(Math.random() * 256);
+    }
+    const tabId = Array.from(bytes, (value) => value.toString(16).padStart(2, "0")).join("");
+    window.sessionStorage.setItem(WEB_TAB_ID_KEY, tabId);
+    return tabId;
+  } catch {
+    return null;
+  }
+}
+function webSessionStorageKey(key: string): string {
+  const tabId = getWebTabId();
+  return tabId ? `${key}_${tabId}` : key;
+}
 
 export function getWebSessionLastActivity(): number | null {
   if (Platform.OS !== "web" || typeof window === "undefined") return null;
   try {
-    const value = Number(window.localStorage.getItem(WEB_LAST_ACTIVITY_KEY));
+    const value = Number(window.localStorage.getItem(webSessionStorageKey(WEB_LAST_ACTIVITY_KEY)));
     return Number.isFinite(value) && value > 0 ? value : null;
   } catch {
     return null;
@@ -30,7 +56,7 @@ export function getWebSessionLastActivity(): number | null {
 export function recordWebSessionActivity(at = Date.now()): void {
   if (Platform.OS !== "web" || typeof window === "undefined") return;
   try {
-    window.localStorage.setItem(WEB_LAST_ACTIVITY_KEY, String(at));
+    window.localStorage.setItem(webSessionStorageKey(WEB_LAST_ACTIVITY_KEY), String(at));
   } catch {}
 }
 
@@ -42,7 +68,7 @@ export function isWebSessionIdleExpired(at = Date.now()): boolean {
 export function hasWebSessionExpiredNotice(): boolean {
   if (Platform.OS !== "web" || typeof window === "undefined") return false;
   try {
-    return window.localStorage.getItem(WEB_SESSION_EXPIRED_KEY) === "1";
+    return window.localStorage.getItem(webSessionStorageKey(WEB_SESSION_EXPIRED_KEY)) === "1";
   } catch {
     return false;
   }
@@ -51,7 +77,7 @@ export function hasWebSessionExpiredNotice(): boolean {
 export function hasWebSessionExplicitlyLoggedOut(): boolean {
   if (Platform.OS !== "web" || typeof window === "undefined") return false;
   try {
-    return window.localStorage.getItem(WEB_SESSION_LOGGED_OUT_KEY) === "1";
+    return window.localStorage.getItem(webSessionStorageKey(WEB_SESSION_LOGGED_OUT_KEY)) === "1";
   } catch {
     return false;
   }
@@ -60,24 +86,24 @@ export function hasWebSessionExplicitlyLoggedOut(): boolean {
 export function markWebSessionLoggedOut(): void {
   if (Platform.OS !== "web" || typeof window === "undefined") return;
   try {
-    window.localStorage.removeItem(WEB_LAST_ACTIVITY_KEY);
-    window.localStorage.removeItem(WEB_SESSION_EXPIRED_KEY);
-    window.localStorage.setItem(WEB_SESSION_LOGGED_OUT_KEY, "1");
+    window.localStorage.removeItem(webSessionStorageKey(WEB_LAST_ACTIVITY_KEY));
+    window.localStorage.removeItem(webSessionStorageKey(WEB_SESSION_EXPIRED_KEY));
+    window.localStorage.setItem(webSessionStorageKey(WEB_SESSION_LOGGED_OUT_KEY), "1");
   } catch {}
 }
 
 export function clearWebSessionLogoutFlag(): void {
   if (Platform.OS !== "web" || typeof window === "undefined") return;
   try {
-    window.localStorage.removeItem(WEB_SESSION_LOGGED_OUT_KEY);
+    window.localStorage.removeItem(webSessionStorageKey(WEB_SESSION_LOGGED_OUT_KEY));
   } catch {}
 }
 
 export function markWebSessionExpired(): void {
   if (Platform.OS !== "web" || typeof window === "undefined") return;
   try {
-    window.localStorage.removeItem(WEB_LAST_ACTIVITY_KEY);
-    window.localStorage.removeItem(WEB_SESSION_LOGGED_OUT_KEY);
+    window.localStorage.removeItem(webSessionStorageKey(WEB_LAST_ACTIVITY_KEY));
+    window.localStorage.removeItem(webSessionStorageKey(WEB_SESSION_LOGGED_OUT_KEY));
     window.localStorage.setItem(WEB_SESSION_EXPIRED_KEY, "1");
   } catch {}
 }
@@ -85,16 +111,16 @@ export function markWebSessionExpired(): void {
 export function clearWebSessionMarkers(): void {
   if (Platform.OS !== "web" || typeof window === "undefined") return;
   try {
-    window.localStorage.removeItem(WEB_LAST_ACTIVITY_KEY);
-    window.localStorage.removeItem(WEB_SESSION_EXPIRED_KEY);
-    window.localStorage.removeItem(WEB_SESSION_LOGGED_OUT_KEY);
+    window.localStorage.removeItem(webSessionStorageKey(WEB_LAST_ACTIVITY_KEY));
+    window.localStorage.removeItem(webSessionStorageKey(WEB_SESSION_EXPIRED_KEY));
+    window.localStorage.removeItem(webSessionStorageKey(WEB_SESSION_LOGGED_OUT_KEY));
   } catch {}
 }
 
 export function clearWebSessionExpiredNotice(): void {
   if (Platform.OS !== "web" || typeof window === "undefined") return;
   try {
-    window.localStorage.removeItem(WEB_SESSION_EXPIRED_KEY);
+    window.localStorage.removeItem(webSessionStorageKey(WEB_SESSION_EXPIRED_KEY));
   } catch {}
 }
 
@@ -117,12 +143,13 @@ export interface User {
 // only to migrate sessions created by older app versions; new web logins never
 // persist bearer tokens in localStorage or sessionStorage.
 function readWebStoredValue(key: string): string | null {
+  // Prefer this tab's legacy value before any old browser-wide value.
   try {
-    const persistent = window.localStorage.getItem(key);
-    if (persistent !== null) return persistent;
+    const tabValue = window.sessionStorage.getItem(key);
+    if (tabValue !== null) return tabValue;
   } catch {}
   try {
-    return window.sessionStorage.getItem(key);
+    return window.localStorage.getItem(key);
   } catch {
     return null;
   }
@@ -184,8 +211,9 @@ export async function setUser(u: User) {
 
 export async function getUser() {
   try {
+    // A user display cache must never bleed from another browser tab.
     const v = Platform.OS === "web"
-      ? readWebStoredValue(USER_KEY)
+      ? window.sessionStorage.getItem(USER_KEY)
       : await AsyncStorage.getItem(USER_KEY);
 
     if (!v || v === "undefined" || v === "null") return null;
@@ -214,6 +242,8 @@ export async function apiFetch<T = any>(
   }
   if (Platform.OS === "web") {
     headers["X-KMT-Auth-Mode"] = "cookie";
+    const tabId = getWebTabId();
+    if (tabId) headers["X-KMT-Tab-Id"] = tabId;
   }
 
   const cleanPath = path.startsWith("/") ? path : `/${path}`;
@@ -305,6 +335,8 @@ export async function uploadImageAsset(
 
   if (Platform.OS === "web") {
     uploadHeaders["X-KMT-Auth-Mode"] = "cookie";
+    const tabId = getWebTabId();
+    if (tabId) uploadHeaders["X-KMT-Tab-Id"] = tabId;
   }
   if (purpose === "product") {
     uploadHeaders["X-KMT-Image-Purpose"] = "product";

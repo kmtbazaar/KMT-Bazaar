@@ -97,6 +97,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     expiryInProgress.current = false;
   }, []);
 
+  const acceptRestoredWebUser = useCallback(async (fresh: User, cached: User | null) => {
+    // Never silently switch this tab to the account last used by another tab.
+    if (Platform.OS === "web" && cached?.id && fresh?.id && cached.id !== fresh.id) {
+      console.warn("[auth] This tab's saved user does not match its active session; requiring sign-in.");
+      try { await api.logoutSession(); } catch (error) {
+        console.warn("[auth] Could not clear the mismatched tab session", error);
+      }
+      await clearAuth();
+      clearWebSessionMarkers();
+      setSessionExpired(false);
+      setU(null);
+      return false;
+    }
+    await setUser(fresh);
+    markSessionActive();
+    setU(fresh);
+    return true;
+  }, [markSessionActive]);
+
   const expireWebSession = useCallback(async () => {
     if (Platform.OS !== "web" || expiryInProgress.current) return;
     expiryInProgress.current = true;
@@ -147,9 +166,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           try {
             const fresh = await retryTransientSessionRequest(() => api.migrateSession());
             await clearLegacyToken();
-            await setUser(fresh);
-            markSessionActive();
-            setU(fresh);
+            if (!(await acceptRestoredWebUser(fresh, cached))) return;
             return;
           } catch (error: any) {
             if (isAuthFailure(error)) {
@@ -157,9 +174,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               await clearLegacyToken();
               try {
                 const fresh = await retryTransientSessionRequest(() => api.me());
-                await setUser(fresh);
-                markSessionActive();
-                setU(fresh);
+                if (!(await acceptRestoredWebUser(fresh, cached))) return;
                 return;
               } catch (cookieError: any) {
                 if (isAuthFailure(cookieError)) {
@@ -186,9 +201,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         try {
           const fresh = await retryTransientSessionRequest(() => api.me());
-          await setUser(fresh);
-          markSessionActive();
-          setU(fresh);
+          if (!(await acceptRestoredWebUser(fresh, cached))) return;
         } catch (error: any) {
           if (isAuthFailure(error)) {
             const shouldNotify = Number(error?.status) === 401 && getWebSessionLastActivity() !== null;
@@ -232,7 +245,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } finally {
       setLoading(false);
     }
-  }, [expireWebSession, markSessionActive]);
+  }, [acceptRestoredWebUser, expireWebSession]);
 
   useEffect(() => {
     void bootstrap();

@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - fix/secure-cookie-web-auth
+      - customer-live
   pull_request:
     branches:
       - customer-live

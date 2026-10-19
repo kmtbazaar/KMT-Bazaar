@@ -63,6 +63,7 @@ WEB_SESSION_TIMEOUT_MIN = 30
 AUTH_COOKIE_NAME = "__Host-kmt_session"
 AUTH_COOKIE_MAX_AGE = WEB_SESSION_TIMEOUT_MIN * 60
 COOKIE_AUTH_MODE_HEADER = "x-kmt-auth-mode"
+AUTH_TAB_ID_HEADER = "x-kmt-tab-id"
 COOKIE_AUTH_ORIGINS = frozenset({
     "https://kmtbazaar.com",
     "https://www.kmtbazaar.com",
@@ -544,7 +545,12 @@ async def get_current_user(
         if not user_id:
             raise HTTPException(status_code=401, detail="Invalid session")
     else:
-        raw_session = request.cookies.get(AUTH_COOKIE_NAME)
+        cookie_name = get_web_auth_cookie_name(request)
+        raw_session = request.cookies.get(cookie_name)
+        if not raw_session and cookie_name != AUTH_COOKIE_NAME and request.url.path.rstrip("/").endswith("/auth/me"):
+            # Allow one legacy /auth/me check to upgrade the shared cookie into
+            # this tab's own cookie. Other API routes never inherit legacy auth.
+            raw_session = request.cookies.get(AUTH_COOKIE_NAME)
         if not raw_session:
             raise HTTPException(status_code=401, detail="Missing session")
 
@@ -600,9 +606,20 @@ def require_trusted_cookie_origin(request: Request) -> None:
         raise HTTPException(status_code=403, detail="Untrusted authentication origin")
 
 
-async def set_web_auth_cookie(response: Response, user: dict) -> None:
+def get_web_auth_cookie_name(request: Request) -> str:
+    # The selector is a tab identifier, not a credential. Validate it tightly
+    # before using it in a cookie name; the cookie value remains HttpOnly.
+    tab_id = request.headers.get(AUTH_TAB_ID_HEADER, "").strip().lower()
+    if re.fullmatch(r"[a-f0-9]{32}", tab_id):
+        return f"{AUTH_COOKIE_NAME}_{tab_id}"
+    return AUTH_COOKIE_NAME
+
+
+async def set_web_auth_cookie(response: Response, user: dict, request: Request) -> None:
     # The browser receives only an opaque, high-entropy session handle. Store its
     # SHA-256 digest server-side so raw cookie values are never written to MongoDB.
+    cookie_name = get_web_auth_cookie_name(request)
+    legacy_raw_session = request.cookies.get(AUTH_COOKIE_NAME) if cookie_name != AUTH_COOKIE_NAME else None
     now = datetime.now(timezone.utc)
     raw_session = secrets.token_urlsafe(32)
     session_hash = hashlib.sha256(raw_session.encode("utf-8")).hexdigest()
@@ -620,7 +637,7 @@ async def set_web_auth_cookie(response: Response, user: dict) -> None:
     })
 
     response.set_cookie(
-        key=AUTH_COOKIE_NAME,
+        key=cookie_name,
         value=raw_session,
         max_age=AUTH_COOKIE_MAX_AGE,
         path="/",
@@ -628,12 +645,24 @@ async def set_web_auth_cookie(response: Response, user: dict) -> None:
         httponly=True,
         samesite="lax",
     )
+    if legacy_raw_session:
+        # Retire the old browser-wide cookie during the first tab-scoped session.
+        legacy_hash = hashlib.sha256(legacy_raw_session.encode("utf-8")).hexdigest()
+        await db.web_sessions.delete_one({"token_hash": legacy_hash})
+        response.delete_cookie(
+            key=AUTH_COOKIE_NAME,
+            path="/",
+            secure=True,
+            httponly=True,
+            samesite="lax",
+        )
     response.headers["Cache-Control"] = "no-store"
 
 
 async def refresh_web_auth_session(request: Request, response: Response) -> bool:
-    """Slide the web session's 30-minute expiry and renew its persistent cookie."""
-    raw_session = request.cookies.get(AUTH_COOKIE_NAME)
+    """Slide this tab's 30-minute expiry and renew its HttpOnly cookie."""
+    cookie_name = get_web_auth_cookie_name(request)
+    raw_session = request.cookies.get(cookie_name)
     if not raw_session:
         return False
 
@@ -656,7 +685,7 @@ async def refresh_web_auth_session(request: Request, response: Response) -> bool
         return False
 
     response.set_cookie(
-        key=AUTH_COOKIE_NAME,
+        key=cookie_name,
         value=raw_session,
         max_age=AUTH_COOKIE_MAX_AGE,
         path="/",
@@ -671,7 +700,7 @@ async def refresh_web_auth_session(request: Request, response: Response) -> bool
 async def build_auth_response(request: Request, response: Response, token: str, user: dict) -> dict:
     if is_cookie_auth_request(request):
         require_trusted_cookie_origin(request)
-        await set_web_auth_cookie(response, user)
+        await set_web_auth_cookie(response, user, request)
         # Never expose a bearer credential to JavaScript in browser responses.
         return {"token": None, "user": user_to_out(user)}
     return {"token": token, "user": user_to_out(user)}
@@ -701,7 +730,7 @@ async def migrate_legacy_web_session(
     except (jwt.PyJWTError, ValueError, TypeError, OverflowError):
         raise HTTPException(status_code=401, detail="Legacy browser session is invalid")
 
-    await set_web_auth_cookie(response, current)
+    await set_web_auth_cookie(response, current, request)
     legacy_hash = hashlib.sha256(legacy_token.encode("utf-8")).hexdigest()
     await db.web_revoked_tokens.update_one(
         {"token_hash": legacy_hash},
@@ -719,12 +748,13 @@ async def migrate_legacy_web_session(
 async def logout_web_session(request: Request, response: Response):
     if is_cookie_auth_request(request):
         require_trusted_cookie_origin(request)
-    raw_session = request.cookies.get(AUTH_COOKIE_NAME)
+    cookie_name = get_web_auth_cookie_name(request)
+    raw_session = request.cookies.get(cookie_name)
     if raw_session:
         session_hash = hashlib.sha256(raw_session.encode("utf-8")).hexdigest()
         await db.web_sessions.delete_one({"token_hash": session_hash})
     response.delete_cookie(
-        key=AUTH_COOKIE_NAME,
+        key=cookie_name,
         path="/",
         secure=True,
         httponly=True,
@@ -1262,10 +1292,17 @@ async def me(
     response: Response,
     current=Depends(get_current_user),
 ):
-    # A successful browser session check also renews the idle-timeout window.
-    if request.cookies.get(AUTH_COOKIE_NAME) and not request.headers.get("authorization"):
-        if not await refresh_web_auth_session(request, response):
-            raise HTTPException(status_code=401, detail="Session expired. Please log in again.")
+    # Upgrade a legacy browser-wide cookie once, then keep all refreshes scoped
+    # to this tab. This prevents another tab's login/logout from replacing it.
+    cookie_name = get_web_auth_cookie_name(request)
+    scoped_session = request.cookies.get(cookie_name)
+    legacy_session = request.cookies.get(AUTH_COOKIE_NAME) if cookie_name != AUTH_COOKIE_NAME else None
+    if not request.headers.get("authorization"):
+        if legacy_session and not scoped_session:
+            await set_web_auth_cookie(response, current, request)
+        elif scoped_session:
+            if not await refresh_web_auth_session(request, response):
+                raise HTTPException(status_code=401, detail="Session expired. Please log in again.")
     return user_to_out(current)
 
 
@@ -1276,8 +1313,8 @@ async def refresh_web_session(
     current=Depends(get_current_user),
 ):
     # Only the first-party browser cookie session may use this endpoint.
-    if not request.cookies.get(AUTH_COOKIE_NAME) or request.headers.get("authorization"):
-        raise HTTPException(status_code=400, detail="Web session cookie is required")
+    if not request.cookies.get(get_web_auth_cookie_name(request)) or request.headers.get("authorization"):
+        raise HTTPException(status_code=400, detail="Tab-scoped web session cookie is required")
     if not await refresh_web_auth_session(request, response):
         raise HTTPException(status_code=401, detail="Session expired. Please log in again.")
     return {"ok": True, "expires_in_seconds": AUTH_COOKIE_MAX_AGE}
