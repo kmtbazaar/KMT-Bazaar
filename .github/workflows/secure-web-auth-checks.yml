@@ -38,3 +38,6 @@ jobs:
       - name: Export web app
         working-directory: frontend
         run: npm run build:web
+      - name: Smoke-check exported admin route and JavaScript asset
+        working-directory: frontend
+        run: node scripts/validate-admin-dashboard-layout.js --check-build

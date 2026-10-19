@@ -253,6 +253,10 @@ export default function AdminDashboard() {
     1,
     ...((stats?.chart || []).map((c: any) => c.orders))
   );
+  const quickActionRows = Array.from(
+    { length: Math.ceil(quickActions.length / 3) },
+    (_, rowIndex) => quickActions.slice(rowIndex * 3, rowIndex * 3 + 3)
+  );
 
   return (
     <View style={[s.root, adminSettings?.themeMode === "night" && s.rootNight]} testID="admin-dashboard">
@@ -432,86 +436,94 @@ export default function AdminDashboard() {
         =================================================== */}
 
         <View style={s.kpiGrid}>
-          <KPI
-            label="Revenue"
-            value={`₹${stats?.revenue ?? 0}`}
-            icon="cash-multiple"
-            color={THEME.success}
-            route="/admin/orders"
-            delay={150}
-            dark={adminSettings?.themeMode === "night"}
-          />
+          <View style={s.kpiRow}>
+            <KPI
+              label="Revenue"
+              value={`₹${stats?.revenue ?? 0}`}
+              icon="cash-multiple"
+              color={THEME.success}
+              route="/admin/orders"
+              delay={150}
+              dark={adminSettings?.themeMode === "night"}
+            />
 
-          <KPI
-            label="Orders"
-            value={stats?.orders ?? 0}
-            icon="package-variant"
-            color={THEME.orange}
-            route="/admin/orders"
-            delay={200}
-            dark={adminSettings?.themeMode === "night"}
-          />
+            <KPI
+              label="Orders"
+              value={stats?.orders ?? 0}
+              icon="package-variant"
+              color={THEME.orange}
+              route="/admin/orders"
+              delay={200}
+              dark={adminSettings?.themeMode === "night"}
+            />
+          </View>
 
-          <KPI
-            label="Platform Earnings"
-            value={`₹${stats?.platform_earnings ?? 0}`}
-            icon="currency-inr"
-            color={THEME.sky}
-            sub={`${stats?.commission_percent ?? 10}% commission`}
-            route="/admin/commission"
-            delay={250}
-            dark={adminSettings?.themeMode === "night"}
-          />
+          <View style={s.kpiRow}>
+            <KPI
+              label="Platform Earnings"
+              value={`₹${stats?.platform_earnings ?? 0}`}
+              icon="currency-inr"
+              color={THEME.sky}
+              sub={`${stats?.commission_percent ?? 10}% commission`}
+              route="/admin/commission"
+              delay={250}
+              dark={adminSettings?.themeMode === "night"}
+            />
 
-          <KPI
-            label="Customers"
-            value={stats?.users ?? 0}
-            icon="account-multiple"
-            color={THEME.brownLight}
-            route="/admin/users?role=customer"
-            delay={300}
-            dark={adminSettings?.themeMode === "night"}
-          />
+            <KPI
+              label="Customers"
+              value={stats?.users ?? 0}
+              icon="account-multiple"
+              color={THEME.brownLight}
+              route="/admin/users?role=customer"
+              delay={300}
+              dark={adminSettings?.themeMode === "night"}
+            />
+          </View>
 
-          <KPI
-            label="Service Vendor"
-            value={serviceVendorCount}
-            icon="briefcase-outline"
-            color={THEME.orange}
-            route="/admin/service-vendors"
-            delay={300}
-            dark={adminSettings?.themeMode === "night"}
-          />
+          <View style={s.kpiRow}>
+            <KPI
+              label="Service Vendor"
+              value={serviceVendorCount}
+              icon="briefcase-outline"
+              color={THEME.orange}
+              route="/admin/service-vendors"
+              delay={300}
+              dark={adminSettings?.themeMode === "night"}
+            />
 
-          <KPI
-            label="Service Bookings"
-            value={serviceBookingTotal}
-            icon="calendar-check-outline"
-            color={THEME.success}
-            route="/admin/service-bookings"
-            delay={350}
-            dark={adminSettings?.themeMode === "night"}
-          />
+            <KPI
+              label="Service Bookings"
+              value={serviceBookingTotal}
+              icon="calendar-check-outline"
+              color={THEME.success}
+              route="/admin/service-bookings"
+              delay={350}
+              dark={adminSettings?.themeMode === "night"}
+            />
+          </View>
 
-          <KPI
-            label="Vendors"
-            value={stats?.vendors ?? 0}
-            icon="store"
-            color={THEME.orange}
-            route="/admin/users?role=vendor"
-            delay={400}
-            dark={adminSettings?.themeMode === "night"}
-          />
+          <View style={s.kpiRow}>
+            <KPI
+              label="Vendors"
+              value={stats?.vendors ?? 0}
+              icon="store"
+              color={THEME.orange}
+              route="/admin/users?role=vendor"
+              delay={400}
+              dark={adminSettings?.themeMode === "night"}
+            />
 
-          <KPI
-            label="Delivery"
-            value={stats?.delivery ?? 0}
-            icon="moped"
-            color={THEME.sky}
-            route="/admin/users?role=delivery"
-            delay={450}
-            dark={adminSettings?.themeMode === "night"}
-          />
+            <KPI
+              label="Delivery"
+              value={stats?.delivery ?? 0}
+              icon="moped"
+              color={THEME.sky}
+              route="/admin/users?role=delivery"
+              delay={450}
+              dark={adminSettings?.themeMode === "night"}
+            />
+          </View>
         </View>
 
         {/* ===================================================
@@ -731,62 +743,57 @@ export default function AdminDashboard() {
           </View>
 
           <View style={s.grid}>
-            {quickActions.map((a) => (
-              <Animated.View
-                key={a.label}
-                style={[s.gridWrapper, { width: quickActionCardWidth }]}
-              >
-                <Pressable
-                  testID={`admin-action-${a.label}`}
-                  onPress={() =>
-                    router.push(a.path as any)
-                  }
-                  style={({ pressed }) => [
-                    s.gridItem,
-                    adminSettings?.themeMode === "night" && s.cardNight,
-                    pressed && s.gridPressed,
-                  ]}
-                >
-                  <View
-                    style={[
-                      s.gridIcon,
-                      {
-                        backgroundColor:
-                          a.color + "18",
-                        borderColor:
-                          a.color + "35",
-                      },
-                    ]}
-                  >
-                    <MaterialCommunityIcons
-                      name={a.icon as any}
-                      size={27}
-                      color={a.color}
-                    />
-                  </View>
-
-                  {a.label === "Service Bookings" && serviceBookingCount > 0 && (
-                    <View pointerEvents="none" style={s.serviceBookingCountBadge}>
-                      <Text style={s.serviceBookingCountBadgeText}>
-                        {serviceBookingCount}
+            {quickActionRows.map((row, rowIndex) => (
+              <View key={`quick-action-row-${rowIndex}`} style={s.gridRow}>
+                {row.map((a) => (
+                  <Animated.View key={a.label} style={s.gridWrapper}>
+                    <Pressable
+                      testID={`admin-action-${a.label}`}
+                      onPress={() => router.push(a.path as any)}
+                      style={({ pressed }) => [
+                        s.gridItem,
+                        adminSettings?.themeMode === "night" && s.cardNight,
+                        pressed && s.gridPressed,
+                      ]}
+                    >
+                      <View
+                        style={[
+                          s.gridIcon,
+                          {
+                            backgroundColor: a.color + "18",
+                            borderColor: a.color + "35",
+                          },
+                        ]}
+                      >
+                        <MaterialCommunityIcons name={a.icon as any} size={27} color={a.color} />
+                      </View>
+                      {a.label === "Service Bookings" && serviceBookingCount > 0 && (
+                        <View pointerEvents="none" style={s.serviceBookingCountBadge}>
+                          <Text style={s.serviceBookingCountBadgeText}>{serviceBookingCount}</Text>
+                        </View>
+                      )}
+                      <Text
+                        style={[s.gridLabel, adminSettings?.themeMode === "night" && s.textNight]}
+                        numberOfLines={2}
+                      >
+                        {a.label}
                       </Text>
-                    </View>
-                  )}
-
-                  <Text
-                    style={[s.gridLabel, adminSettings?.themeMode === "night" && s.textNight]}
-                    numberOfLines={2}
-                  >
-                    {a.label}
-                  </Text>
-                  <MaterialCommunityIcons
-                    name="chevron-right"
-                    size={15}
-                    color={THEME.muted}
-                    style={s.gridArrow}
-                  />
-                </Pressable>
-              </Animated.View>
+                      <MaterialCommunityIcons
+                        name="chevron-right"
+                        size={15}
+                        color={THEME.muted}
+                        style={s.gridArrow}
+                      />
+                    </Pressable>
+                  </Animated.View>
+                ))}
+                {row.length < 3 && Array.from(
+                  { length: 3 - row.length },
+                  (_, spacerIndex) => (
+                    <View key={`quick-action-spacer-${rowIndex}-${spacerIndex}`} style={s.gridWrapper} />
+                  )
+                )}
+              </View>
             ))}
           </View>
         </Animated.View>
@@ -1067,18 +1074,20 @@ const s = StyleSheet.create({
   kpiGrid: {
     width: "100%",
     alignSelf: "stretch",
-    flexDirection: "row",
-    flexWrap: "wrap",
+    flexDirection: "column",
     gap: 10,
     marginBottom: 8,
   },
 
+  kpiRow: {
+    width: "100%",
+    flexDirection: "row",
+    gap: 10,
+  },
+
   kpiCardWrap: {
-    width: "48%",
-    maxWidth: "48%",
-    flexBasis: "48%",
-    flexGrow: 0,
-    flexShrink: 0,
+    flex: 1,
+    minWidth: 0,
   },
 
   kpiCard: {
@@ -1460,17 +1469,19 @@ const s = StyleSheet.create({
   grid: {
     width: "100%",
     alignSelf: "stretch",
+    flexDirection: "column",
+    gap: 10,
+  },
+
+  gridRow: {
+    width: "100%",
     flexDirection: "row",
-    flexWrap: "wrap",
     gap: 10,
   },
 
   gridWrapper: {
-    width: "31%",
-    maxWidth: "31%",
-    flexBasis: "31%",
-    flexGrow: 0,
-    flexShrink: 0,
+    flex: 1,
+    minWidth: 0,
   },
 
   gridItem: {
