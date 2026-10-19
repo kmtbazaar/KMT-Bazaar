@@ -12,7 +12,7 @@ const USER_KEY = "kmt_user";
 
 export const WEB_SESSION_TIMEOUT_MS = 30 * 60 * 1000;
 export const WEB_SESSION_ACTIVITY_SYNC_DELAY_MS = 3 * 1000;
-export const WEB_SESSION_REFRESH_INTERVAL_MS = 5 * 60 * 1000;
+export const WEB_SESSION_REFRESH_INTERVAL_MS = 30 * 1000;
 const WEB_LAST_ACTIVITY_KEY = "kmt_web_last_activity";
 const WEB_SESSION_EXPIRED_KEY = "kmt_web_session_expired";
 
