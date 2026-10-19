@@ -10,6 +10,94 @@ export const API = `${BASE}/api`;
 const TOKEN_KEY = "kmt_token";
 const USER_KEY = "kmt_user";
 
+export const WEB_SESSION_TIMEOUT_MS = 30 * 60 * 1000;
+export const WEB_SESSION_ACTIVITY_SYNC_DELAY_MS = 3 * 1000;
+export const WEB_SESSION_REFRESH_INTERVAL_MS = 30 * 1000;
+const WEB_LAST_ACTIVITY_KEY = "kmt_web_last_activity";
+const WEB_SESSION_EXPIRED_KEY = "kmt_web_session_expired";
+const WEB_SESSION_LOGGED_OUT_KEY = "kmt_web_session_logged_out";
+
+export function getWebSessionLastActivity(): number | null {
+  if (Platform.OS !== "web" || typeof window === "undefined") return null;
+  try {
+    const value = Number(window.localStorage.getItem(WEB_LAST_ACTIVITY_KEY));
+    return Number.isFinite(value) && value > 0 ? value : null;
+  } catch {
+    return null;
+  }
+}
+
+export function recordWebSessionActivity(at = Date.now()): void {
+  if (Platform.OS !== "web" || typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(WEB_LAST_ACTIVITY_KEY, String(at));
+  } catch {}
+}
+
+export function isWebSessionIdleExpired(at = Date.now()): boolean {
+  const lastActivity = getWebSessionLastActivity();
+  return lastActivity !== null && at - lastActivity >= WEB_SESSION_TIMEOUT_MS;
+}
+
+export function hasWebSessionExpiredNotice(): boolean {
+  if (Platform.OS !== "web" || typeof window === "undefined") return false;
+  try {
+    return window.localStorage.getItem(WEB_SESSION_EXPIRED_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+export function hasWebSessionExplicitlyLoggedOut(): boolean {
+  if (Platform.OS !== "web" || typeof window === "undefined") return false;
+  try {
+    return window.localStorage.getItem(WEB_SESSION_LOGGED_OUT_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+export function markWebSessionLoggedOut(): void {
+  if (Platform.OS !== "web" || typeof window === "undefined") return;
+  try {
+    window.localStorage.removeItem(WEB_LAST_ACTIVITY_KEY);
+    window.localStorage.removeItem(WEB_SESSION_EXPIRED_KEY);
+    window.localStorage.setItem(WEB_SESSION_LOGGED_OUT_KEY, "1");
+  } catch {}
+}
+
+export function clearWebSessionLogoutFlag(): void {
+  if (Platform.OS !== "web" || typeof window === "undefined") return;
+  try {
+    window.localStorage.removeItem(WEB_SESSION_LOGGED_OUT_KEY);
+  } catch {}
+}
+
+export function markWebSessionExpired(): void {
+  if (Platform.OS !== "web" || typeof window === "undefined") return;
+  try {
+    window.localStorage.removeItem(WEB_LAST_ACTIVITY_KEY);
+    window.localStorage.removeItem(WEB_SESSION_LOGGED_OUT_KEY);
+    window.localStorage.setItem(WEB_SESSION_EXPIRED_KEY, "1");
+  } catch {}
+}
+
+export function clearWebSessionMarkers(): void {
+  if (Platform.OS !== "web" || typeof window === "undefined") return;
+  try {
+    window.localStorage.removeItem(WEB_LAST_ACTIVITY_KEY);
+    window.localStorage.removeItem(WEB_SESSION_EXPIRED_KEY);
+    window.localStorage.removeItem(WEB_SESSION_LOGGED_OUT_KEY);
+  } catch {}
+}
+
+export function clearWebSessionExpiredNotice(): void {
+  if (Platform.OS !== "web" || typeof window === "undefined") return;
+  try {
+    window.localStorage.removeItem(WEB_SESSION_EXPIRED_KEY);
+  } catch {}
+}
+
 export type UserRole = "customer" | "vendor" | "delivery" | "admin";
 export type VendorType = "store" | "service";
 export type ServiceType = "holiday" | "car_rental" | "daily_service";
@@ -390,6 +478,13 @@ export const api = {
     }),
 
   me: () => apiFetch<User>("/auth/me"),
+
+  // Extend the browser session only while the user is actively using the site.
+  refreshWebSession: () =>
+    apiFetch<{ ok: boolean; expires_in_seconds: number }>("/auth/session/refresh", {
+      method: "POST",
+      body: JSON.stringify({}),
+    }),
 
   // Convert a pre-cookie browser JWT into a fresh HttpOnly cookie once.
   migrateSession: () => apiFetch<User>("/auth/session/migrate", {

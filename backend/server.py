@@ -57,10 +57,11 @@ db = client[os.environ['DB_NAME']]
 
 JWT_SECRET = os.environ.get("JWT_SECRET", "kmt-bazaar-super-secret-key-change-me")
 JWT_ALGO = "HS256"
-JWT_EXPIRE_MIN = 60 * 24 * 30  # 30 days
-# Web sessions live in an HttpOnly cookie; mobile clients keep Bearer tokens.
+JWT_EXPIRE_MIN = 60 * 24 * 30  # 30 days for native Bearer tokens
+# Web sessions expire after 30 minutes without browser activity.
+WEB_SESSION_TIMEOUT_MIN = 30
 AUTH_COOKIE_NAME = "__Host-kmt_session"
-AUTH_COOKIE_MAX_AGE = JWT_EXPIRE_MIN * 60
+AUTH_COOKIE_MAX_AGE = WEB_SESSION_TIMEOUT_MIN * 60
 COOKIE_AUTH_MODE_HEADER = "x-kmt-auth-mode"
 COOKIE_AUTH_ORIGINS = frozenset({
     "https://kmtbazaar.com",
@@ -605,7 +606,7 @@ async def set_web_auth_cookie(response: Response, user: dict) -> None:
     now = datetime.now(timezone.utc)
     raw_session = secrets.token_urlsafe(32)
     session_hash = hashlib.sha256(raw_session.encode("utf-8")).hexdigest()
-    expires_at = now + timedelta(minutes=JWT_EXPIRE_MIN)
+    expires_at = now + timedelta(minutes=WEB_SESSION_TIMEOUT_MIN)
 
     # Opportunistically remove expired session records as users sign in.
     await db.web_sessions.delete_many({"expires_at": {"$lte": now}})
@@ -614,6 +615,7 @@ async def set_web_auth_cookie(response: Response, user: dict) -> None:
         "token_hash": session_hash,
         "user_id": user["id"],
         "created_at": now,
+        "last_activity_at": now,
         "expires_at": expires_at,
     })
 
@@ -627,6 +629,43 @@ async def set_web_auth_cookie(response: Response, user: dict) -> None:
         samesite="lax",
     )
     response.headers["Cache-Control"] = "no-store"
+
+
+async def refresh_web_auth_session(request: Request, response: Response) -> bool:
+    """Slide the web session's 30-minute expiry and renew its persistent cookie."""
+    raw_session = request.cookies.get(AUTH_COOKIE_NAME)
+    if not raw_session:
+        return False
+
+    now = datetime.now(timezone.utc)
+    session_hash = hashlib.sha256(raw_session.encode("utf-8")).hexdigest()
+    expires_at = now + timedelta(minutes=WEB_SESSION_TIMEOUT_MIN)
+    result = await db.web_sessions.update_one(
+        {
+            "token_hash": session_hash,
+            "expires_at": {"$gt": now},
+        },
+        {
+            "$set": {
+                "last_activity_at": now,
+                "expires_at": expires_at,
+            }
+        },
+    )
+    if not result.matched_count:
+        return False
+
+    response.set_cookie(
+        key=AUTH_COOKIE_NAME,
+        value=raw_session,
+        max_age=AUTH_COOKIE_MAX_AGE,
+        path="/",
+        secure=True,
+        httponly=True,
+        samesite="lax",
+    )
+    response.headers["Cache-Control"] = "no-store"
+    return True
 
 
 async def build_auth_response(request: Request, response: Response, token: str, user: dict) -> dict:
@@ -1218,8 +1257,30 @@ async def verify_otp(data: OtpVerifyIn, request: Request, response: Response):
 
 
 @api.get("/auth/me", response_model=UserOut)
-async def me(current=Depends(get_current_user)):
+async def me(
+    request: Request,
+    response: Response,
+    current=Depends(get_current_user),
+):
+    # A successful browser session check also renews the idle-timeout window.
+    if request.cookies.get(AUTH_COOKIE_NAME) and not request.headers.get("authorization"):
+        if not await refresh_web_auth_session(request, response):
+            raise HTTPException(status_code=401, detail="Session expired. Please log in again.")
     return user_to_out(current)
+
+
+@api.post("/auth/session/refresh")
+async def refresh_web_session(
+    request: Request,
+    response: Response,
+    current=Depends(get_current_user),
+):
+    # Only the first-party browser cookie session may use this endpoint.
+    if not request.cookies.get(AUTH_COOKIE_NAME) or request.headers.get("authorization"):
+        raise HTTPException(status_code=400, detail="Web session cookie is required")
+    if not await refresh_web_auth_session(request, response):
+        raise HTTPException(status_code=401, detail="Session expired. Please log in again.")
+    return {"ok": True, "expires_in_seconds": AUTH_COOKIE_MAX_AGE}
 
 @api.post("/auth/update-avatar", response_model=UserOut)
 async def update_avatar(data: AvatarUpdateIn, current=Depends(get_current_user)):
