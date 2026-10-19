@@ -14,6 +14,7 @@ import {
   markWebSessionExpired,
   recordWebSessionActivity,
   WEB_SESSION_ACTIVITY_SYNC_DELAY_MS,
+  WEB_SESSION_REFRESH_INTERVAL_MS,
   WEB_SESSION_TIMEOUT_MS,
   setToken,
   setUser,
@@ -248,6 +249,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     let refreshInFlight = false;
     let syncAgainAfterRefresh = false;
     let sessionRejected = false;
+    let lastServerRefreshAt = Date.now();
     let lastObservedActivityAt = getWebSessionLastActivity() ?? Date.now();
 
     const scheduleIdleCheck = () => {
@@ -285,6 +287,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       refreshInFlight = true;
       void retryTransientSessionRequest(() => api.refreshWebSession())
+        .then(() => {
+          lastServerRefreshAt = Date.now();
+        })
         .catch((error: any) => {
           if (Number(error?.status) === 401) {
             sessionRejected = true;
@@ -328,7 +333,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       lastObservedActivityAt = now;
       recordWebSessionActivity(now);
       scheduleIdleCheck();
-      scheduleActivitySync();
+
+      // Debounce ordinary interactions, but refresh periodically during long continuous use.
+      if (now - lastServerRefreshAt >= WEB_SESSION_REFRESH_INTERVAL_MS) {
+        if (activitySyncTimer) {
+          clearTimeout(activitySyncTimer);
+          activitySyncTimer = undefined;
+        }
+        syncActivityWithServer();
+      } else {
+        scheduleActivitySync();
+      }
     };
 
     const handleVisibility = () => {
@@ -346,7 +361,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     window.addEventListener("pointerdown", handleActivity, { passive: true });
     window.addEventListener("keydown", handleActivity);
     window.addEventListener("touchstart", handleActivity, { passive: true });
-    window.addEventListener("scroll", handleActivity, { passive: true });
+    window.addEventListener("touchmove", handleActivity, { passive: true });
+    window.addEventListener("scroll", handleActivity, true);
     window.addEventListener("wheel", handleActivity, { passive: true });
     window.addEventListener("pageshow", handleVisibility);
     document.addEventListener("visibilitychange", handleVisibility);
@@ -358,7 +374,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       window.removeEventListener("pointerdown", handleActivity);
       window.removeEventListener("keydown", handleActivity);
       window.removeEventListener("touchstart", handleActivity);
-      window.removeEventListener("scroll", handleActivity);
+      window.removeEventListener("touchmove", handleActivity);
+      window.removeEventListener("scroll", handleActivity, true);
       window.removeEventListener("wheel", handleActivity);
       window.removeEventListener("pageshow", handleVisibility);
       document.removeEventListener("visibilitychange", handleVisibility);
