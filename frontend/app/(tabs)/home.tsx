@@ -1204,7 +1204,7 @@ export default function Home() {
             <View key={c.id} style={s.catItemWrap}>
               <Pressable
                 testID={`category-${c.id}`}
-                onPress={() => router.push({ pathname: `/category/${c.id}`, params: { name: c.name } } as any)}
+                onPress={() => router.push({ pathname: "/(tabs)/categories", params: { categoryId: String(c.id) } } as any)}
                 style={s.catItem}
               >
                 <View style={s.catCircleWrap}>

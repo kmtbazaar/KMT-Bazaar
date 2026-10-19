@@ -33,7 +33,9 @@ export default function CategoryProducts() {
   }, [id]);
 
   const renderItem = useCallback(({ item }: { item: any }) => (
-    <ProductCard p={item} compact={true} />
+    <View style={s.productCell}>
+      <ProductCard p={item} compact={true} />
+    </View>
   ), []);
 
   if (loading) {
@@ -113,6 +115,14 @@ const s = StyleSheet.create({
     paddingHorizontal: 4,
     paddingTop: 6,
     paddingBottom: 100,
+  },
+
+  productCell: {
+    width: "33.333333%",
+    paddingHorizontal: 4,
+    paddingBottom: 8,
+    flexGrow: 0,
+    flexShrink: 0,
   },
 
   empty: {

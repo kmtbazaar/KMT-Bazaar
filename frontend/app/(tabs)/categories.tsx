@@ -2,7 +2,7 @@ import { LocalizedText as Text } from "@/src/LocalizedText";
 import React, { useEffect, useState, useRef } from "react";
 import { View, ScrollView, StyleSheet, Pressable, FlatList, ActivityIndicator, Animated } from "react-native";
 import { Image } from "expo-image";
-import { useRouter, useNavigation } from "expo-router";
+import { useRouter, useNavigation, useLocalSearchParams } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { api } from "@/src/api";
@@ -17,6 +17,7 @@ const RAIL_WIDTH = 88;
 export default function Categories() {
   const router = useRouter();
   const navigation = useNavigation();
+  const { categoryId } = useLocalSearchParams<{ categoryId?: string | string[] }>();
   const [cats, setCats] = useState<any[]>([]);
   const [brokenImages, setBrokenImages] = useState<Record<string, boolean>>({});
   const [active, setActive] = useState<string>("");
@@ -110,7 +111,18 @@ export default function Categories() {
     };
   }, [active]);
 
-  const activeCat = cats.find((c) => c.id === active);
+  useEffect(() => {
+    const requestedId = Array.isArray(categoryId) ? categoryId[0] : categoryId;
+    if (!requestedId || !cats.length) return;
+    const selectedCategory = cats.find((category) => String(category.id) === String(requestedId));
+    if (selectedCategory) {
+      setActive((current) =>
+        String(current) === String(selectedCategory.id) ? current : String(selectedCategory.id)
+      );
+    }
+  }, [categoryId, cats]);
+
+  const activeCat = cats.find((c) => String(c.id) === String(active));
   const bottomPad = itemCount > 0 ? 140 : 24;
 
   return (
@@ -185,7 +197,11 @@ export default function Categories() {
               keyExtractor={(i) => i.id}
               numColumns={2}
               contentContainerStyle={{ paddingHorizontal: 4, paddingBottom: bottomPad }}
-              renderItem={({ item }) => <ProductCard p={item} compact />}
+              renderItem={({ item }) => (
+                <View style={s.productCell}>
+                  <ProductCard p={item} compact />
+                </View>
+              )}}
               ListEmptyComponent={
                 <View style={s.emptyWrap}>
                   <MaterialCommunityIcons name="package-variant" size={48} color={COLORS.textMuted} />
@@ -275,6 +291,13 @@ const s = StyleSheet.create({
     textAlign: "center",
     lineHeight: 13,
     paddingHorizontal: 2,
+  },
+  productCell: {
+    width: "50%",
+    paddingHorizontal: 4,
+    paddingBottom: 8,
+    flexGrow: 0,
+    flexShrink: 0,
   },
   gridWrap: { flex: 1, minWidth: 0 },
   gridHeader: {

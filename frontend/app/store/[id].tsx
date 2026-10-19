@@ -434,8 +434,11 @@ const s = StyleSheet.create({
 
   gridCell: {
     width: "50%",
+    minWidth: 0,
+    flexGrow: 0,
+    flexShrink: 0,
     paddingHorizontal: 3,
-    alignSelf: "flex-start",
+    alignSelf: "stretch",
   },
 
   empty: {

@@ -35,6 +35,9 @@ jobs:
       - name: Validate admin dashboard tile dimensions
         working-directory: frontend
         run: node scripts/validate-admin-dashboard-layout.js
+      - name: Validate product grid sizing and category navigation
+        working-directory: frontend
+        run: node scripts/validate-product-grid-layout.js
       - name: Export web app
         working-directory: frontend
         run: npm run build:web

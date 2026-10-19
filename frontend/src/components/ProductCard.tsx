@@ -24,8 +24,6 @@ import { useWishlist } from "@/src/WishlistContext";
 
 const SCREEN_W = Dimensions.get("window").width;
 
-const CARD_MARGIN = 6;
-
 export default function ProductCard({
   p,
   compact = false,
@@ -320,19 +318,20 @@ const s = StyleSheet.create({
   },
 
   /*
-   * Compact card:
-   * Exactly sized for 3 cards per row.
+   * Compact cards always fill their fixed-width grid cell.
+   * The parent owns column width and spacing, so incomplete rows never stretch.
    */
   cardCompact: {
-    flex: 1,
+    width: "100%",
+    flex: 0,
     minWidth: 0,
     backgroundColor: COLORS.surface,
     borderRadius: RADIUS.md,
-    margin: CARD_MARGIN,
+    margin: 0,
     overflow: "hidden",
     borderWidth: 1,
     borderColor: COLORS.border,
-    alignSelf: "flex-start",
+    alignSelf: "stretch",
   },
 
   cardRecommendation: {
@@ -350,8 +349,10 @@ const s = StyleSheet.create({
   },
 
   cardStoreGrid: {
+    width: "100%",
+    flex: 0,
     margin: 0,
-    alignSelf: "flex-start",
+    alignSelf: "stretch",
   },
 
   cardWishlist: {

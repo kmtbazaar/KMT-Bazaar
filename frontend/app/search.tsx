@@ -148,7 +148,9 @@ export default function SearchScreen() {
   };
 
   const renderItem = useCallback(({ item }: { item: any }) => (
-    <ProductCard p={item} compact={true} />
+    <View style={s.productCell}>
+      <ProductCard p={item} compact={true} />
+    </View>
   ), []);
 
   return (
@@ -369,6 +371,14 @@ const s = StyleSheet.create({
     paddingHorizontal: 8,
     paddingTop: 10,
     paddingBottom: 110,
+  },
+
+  productCell: {
+    width: "50%",
+    paddingHorizontal: 4,
+    paddingBottom: 8,
+    flexGrow: 0,
+    flexShrink: 0,
   },
 
   resultsHeader: {
