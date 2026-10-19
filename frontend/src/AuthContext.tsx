@@ -13,7 +13,7 @@ import {
   isWebSessionIdleExpired,
   markWebSessionExpired,
   recordWebSessionActivity,
-  WEB_SESSION_REFRESH_INTERVAL_MS,
+  WEB_SESSION_ACTIVITY_SYNC_DELAY_MS,
   WEB_SESSION_TIMEOUT_MS,
   setToken,
   setUser,
@@ -244,8 +244,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     let disposed = false;
     let idleTimer: ReturnType<typeof setTimeout> | undefined;
+    let activitySyncTimer: ReturnType<typeof setTimeout> | undefined;
     let refreshInFlight = false;
-    let lastServerRefreshAt = Date.now();
+    let syncAgainAfterRefresh = false;
+    let sessionRejected = false;
     let lastObservedActivityAt = getWebSessionLastActivity() ?? Date.now();
 
     const scheduleIdleCheck = () => {
@@ -267,6 +269,53 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }, remaining + 25);
     };
 
+    const syncActivityWithServer = () => {
+      activitySyncTimer = undefined;
+      if (disposed) return;
+      if (refreshInFlight) {
+        syncAgainAfterRefresh = true;
+        return;
+      }
+
+      const activityAtRequest = getWebSessionLastActivity() ?? lastObservedActivityAt;
+      if (Date.now() - activityAtRequest >= WEB_SESSION_TIMEOUT_MS) {
+        void expireWebSession();
+        return;
+      }
+
+      refreshInFlight = true;
+      void retryTransientSessionRequest(() => api.refreshWebSession())
+        .catch((error: any) => {
+          if (Number(error?.status) === 401) {
+            sessionRejected = true;
+            syncAgainAfterRefresh = false;
+            void expireWebSession();
+          } else if (Number(error?.status) === 403) {
+            sessionRejected = true;
+            syncAgainAfterRefresh = false;
+            void clearRejectedSession().then(() => {
+              clearWebSessionMarkers();
+              setSessionExpired(false);
+              setU(null);
+            });
+          } else {
+            console.warn("[auth] Could not refresh the active web session", error);
+          }
+        })
+        .finally(() => {
+          refreshInFlight = false;
+          if (!sessionRejected && syncAgainAfterRefresh && !disposed) {
+            syncAgainAfterRefresh = false;
+            scheduleActivitySync();
+          }
+        });
+    };
+
+    const scheduleActivitySync = () => {
+      if (activitySyncTimer) clearTimeout(activitySyncTimer);
+      activitySyncTimer = setTimeout(syncActivityWithServer, WEB_SESSION_ACTIVITY_SYNC_DELAY_MS);
+    };
+
     const handleActivity = () => {
       if (disposed) return;
       const now = Date.now();
@@ -279,28 +328,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       lastObservedActivityAt = now;
       recordWebSessionActivity(now);
       scheduleIdleCheck();
-
-      // Throttle refresh requests while still moving the server expiry forward.
-      if (refreshInFlight || now - lastServerRefreshAt < WEB_SESSION_REFRESH_INTERVAL_MS) return;
-      refreshInFlight = true;
-      void api.refreshWebSession()
-        .then(() => {
-          if (disposed) return;
-          lastServerRefreshAt = Date.now();
-          lastObservedActivityAt = lastServerRefreshAt;
-          recordWebSessionActivity(lastServerRefreshAt);
-          scheduleIdleCheck();
-        })
-        .catch((error: any) => {
-          if (isAuthFailure(error)) {
-            void expireWebSession();
-          } else {
-            console.warn("[auth] Could not refresh the active web session", error);
-          }
-        })
-        .finally(() => {
-          refreshInFlight = false;
-        });
+      scheduleActivitySync();
     };
 
     const handleVisibility = () => {
@@ -326,6 +354,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return () => {
       disposed = true;
       if (idleTimer) clearTimeout(idleTimer);
+      if (activitySyncTimer) clearTimeout(activitySyncTimer);
       window.removeEventListener("pointerdown", handleActivity);
       window.removeEventListener("keydown", handleActivity);
       window.removeEventListener("touchstart", handleActivity);
