@@ -221,7 +221,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } finally {
       setLoading(false);
     }
-  }, [bootstrap, expireWebSession, markSessionActive]);
+  }, [expireWebSession, markSessionActive]);
 
   useEffect(() => {
     void bootstrap();
@@ -246,10 +246,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     let idleTimer: ReturnType<typeof setTimeout> | undefined;
     let refreshInFlight = false;
     let lastServerRefreshAt = Date.now();
+    let lastObservedActivityAt = getWebSessionLastActivity() ?? Date.now();
 
     const scheduleIdleCheck = () => {
       if (idleTimer) clearTimeout(idleTimer);
-      const lastActivity = getWebSessionLastActivity() ?? Date.now();
+      const lastActivity = getWebSessionLastActivity() ?? lastObservedActivityAt;
       const remaining = WEB_SESSION_TIMEOUT_MS - (Date.now() - lastActivity);
       if (remaining <= 0) {
         void expireWebSession();
@@ -257,8 +258,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
       idleTimer = setTimeout(() => {
         if (disposed) return;
-        const currentActivity = getWebSessionLastActivity();
-        if (currentActivity !== null && Date.now() - currentActivity >= WEB_SESSION_TIMEOUT_MS) {
+        const currentActivity = getWebSessionLastActivity() ?? lastObservedActivityAt;
+        if (Date.now() - currentActivity >= WEB_SESSION_TIMEOUT_MS) {
           void expireWebSession();
         } else {
           scheduleIdleCheck();
@@ -269,12 +270,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const handleActivity = () => {
       if (disposed) return;
       const now = Date.now();
-      const previousActivity = getWebSessionLastActivity();
-      if (previousActivity !== null && now - previousActivity >= WEB_SESSION_TIMEOUT_MS) {
+      const previousActivity = getWebSessionLastActivity() ?? lastObservedActivityAt;
+      if (now - previousActivity >= WEB_SESSION_TIMEOUT_MS) {
         void expireWebSession();
         return;
       }
 
+      lastObservedActivityAt = now;
       recordWebSessionActivity(now);
       scheduleIdleCheck();
 
@@ -285,6 +287,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         .then(() => {
           if (disposed) return;
           lastServerRefreshAt = Date.now();
+          lastObservedActivityAt = lastServerRefreshAt;
           recordWebSessionActivity(lastServerRefreshAt);
           scheduleIdleCheck();
         })
