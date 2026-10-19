@@ -18,7 +18,6 @@ import { useFocusEffect, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Animated, {
   FadeIn,
-  FadeInDown,
   FadeInUp,
   useAnimatedStyle,
   useSharedValue,
@@ -461,18 +460,6 @@ export default function HolidayPage() {
             </Animated.View>
           </Animated.View>
 
-          <Animated.View entering={FadeInDown.duration(450)} style={s.heroSectionHead}>
-            <View style={{ flex: 1 }}>
-              <Text style={s.heroEyebrow}>YOUR NEXT ESCAPE</Text>
-              <Text style={s.heroSectionTitle}>Find your kind of holiday</Text>
-              <Text style={s.heroSectionSub}>Use travel style and destination to narrow the list.</Text>
-            </View>
-            <View style={s.heroResultPill}>
-              <Text style={s.heroResultNum}>{filtered.length}</Text>
-              <Text style={s.heroResultText}>trips</Text>
-            </View>
-          </Animated.View>
-
           <Animated.View entering={FadeInUp.delay(100).duration(600)} style={s.searchCard}>
             <View style={s.searchIcon}>
               <MaterialCommunityIcons name="magnify" size={22} color="#EA580C" />
@@ -493,15 +480,9 @@ export default function HolidayPage() {
 
           <Animated.View entering={FadeInUp.delay(170).duration(650)} style={s.heroStats}>
             <View style={s.stat}>
-              <Text style={s.statValue}>5</Text>
-              <Text style={s.statLabel}>photos / listing</Text>
-            </View>
-            <View style={s.statDivider} />
-            <View style={s.stat}>
               <Text style={s.statValue}>{items.length || "—"}</Text>
               <Text style={s.statLabel}>holiday packages</Text>
             </View>
-            <View style={s.statDivider} />
             <View style={s.stat}>
               <Text style={s.statValue}>24/7</Text>
               <Text style={s.statLabel}>browse & enquire</Text>
@@ -1023,7 +1004,7 @@ const s = StyleSheet.create({
   heroSub: { marginTop: 10, color: "rgba(255,255,255,.90)", fontSize: 13, lineHeight: 19, maxWidth: 560 },
 
   searchCard: {
-    minHeight: 54, marginTop: 20, paddingHorizontal: 8, paddingRight: 12,
+    minHeight: 54, marginTop: 14, paddingHorizontal: 8, paddingRight: 12,
     borderRadius: 16, backgroundColor: "#fff", flexDirection: "row", alignItems: "center", gap: 10,
     shadowColor: "#7C2D12", shadowOpacity: 0.14, shadowRadius: 22, shadowOffset: { width: 0, height: 11 }, elevation: 7,
   },
@@ -1031,34 +1012,28 @@ const s = StyleSheet.create({
   searchInput: { flex: 1, color: "#0F172A", fontSize: 13 },
 
   heroStats: {
-    marginTop: 15, paddingHorizontal: 14, paddingVertical: 12, borderRadius: 16,
-    backgroundColor: "rgba(15,23,42,.18)", borderWidth: 1, borderColor: "rgba(255,255,255,.18)",
-    flexDirection: "row", alignItems: "center", justifyContent: "space-between",
+    marginTop: 11,
+    flexDirection: "row",
+    alignItems: "stretch",
+    gap: 10,
   },
-  stat: { flex: 1, alignItems: "center" },
+  stat: {
+    flex: 1,
+    minWidth: 0,
+    minHeight: 62,
+    paddingHorizontal: 8,
+    paddingVertical: 10,
+    borderRadius: 14,
+    backgroundColor: "rgba(15,23,42,.18)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,.22)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
   statValue: { color: "#fff", fontSize: 18, fontWeight: "900" },
-  statLabel: { marginTop: 2, color: "rgba(255,255,255,.78)", fontSize: 9, fontWeight: "700", textAlign: "center" },
-  statDivider: { width: 1, height: 28, backgroundColor: "rgba(255,255,255,.18)" },
+  statLabel: { marginTop: 2, color: "rgba(255,255,255,.82)", fontSize: 9, fontWeight: "700", textAlign: "center" },
 
   body: { padding: 16, backgroundColor: "#FFFDF8" },
-  heroSectionHead: {
-    marginTop: 12,
-    marginBottom: 2,
-    padding: 12,
-    borderRadius: 18,
-    backgroundColor: "rgba(255,255,255,.12)",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,.24)",
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-  },
-  heroEyebrow: { color: "#FED7AA", fontSize: 10, fontWeight: "900", letterSpacing: 1.45 },
-  heroSectionTitle: { marginTop: 4, color: "#FFFFFF", fontSize: 22, lineHeight: 27, fontWeight: "900" },
-  heroSectionSub: { marginTop: 3, color: "rgba(255,255,255,.78)", fontSize: 11, lineHeight: 16 },
-  heroResultPill: { minWidth: 54, alignItems: "center", paddingHorizontal: 10, paddingVertical: 8, borderRadius: 16, backgroundColor: "rgba(255,255,255,.16)", borderWidth: 1, borderColor: "rgba(255,255,255,.22)" },
-  heroResultNum: { color: "#fff", fontSize: 18, fontWeight: "900" },
-  heroResultText: { color: "rgba(255,255,255,.78)", fontSize: 9, fontWeight: "800" },
 
   sectionHead: { flexDirection: "row", alignItems: "center", gap: 12, marginBottom: 2 },
   eyebrow: { color: "#EA580C", fontSize: 10, fontWeight: "900", letterSpacing: 1.45 },
