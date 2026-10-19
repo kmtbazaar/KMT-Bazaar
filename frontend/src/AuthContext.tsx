@@ -1,10 +1,30 @@
-import React, { createContext, useContext, useEffect, useState, useCallback } from "react";
+import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from "react";
 import { Platform } from "react-native";
-import { api, clearAuth, clearLegacyToken, getToken, getUser, setToken, setUser, User, GoogleLoginResult } from "./api";
+import {
+  api,
+  clearAuth,
+  clearLegacyToken,
+  clearWebSessionExpiredNotice,
+  clearWebSessionMarkers,
+  getToken,
+  getUser,
+  getWebSessionLastActivity,
+  hasWebSessionExpiredNotice,
+  isWebSessionIdleExpired,
+  markWebSessionExpired,
+  recordWebSessionActivity,
+  WEB_SESSION_REFRESH_INTERVAL_MS,
+  WEB_SESSION_TIMEOUT_MS,
+  setToken,
+  setUser,
+  User,
+  GoogleLoginResult,
+} from "./api";
 
 interface AuthCtx {
   user: User | null;
   loading: boolean;
+  sessionExpired: boolean;
   login: (email: string, password: string) => Promise<User>;
   requestEmailLoginOtp: (email: string, password: string) => Promise<any>;
   verifyEmailLoginOtp: (email: string, otp: string) => Promise<User>;
@@ -60,10 +80,50 @@ const Ctx = createContext<AuthCtx | null>(null);
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setU] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [sessionExpired, setSessionExpired] = useState(false);
+  const expiryInProgress = useRef(false);
+
+  const markSessionActive = useCallback(() => {
+    if (Platform.OS === "web") {
+      recordWebSessionActivity();
+      clearWebSessionExpiredNotice();
+      setSessionExpired(false);
+    }
+    expiryInProgress.current = false;
+  }, []);
+
+  const expireWebSession = useCallback(async () => {
+    if (Platform.OS !== "web" || expiryInProgress.current) return;
+    expiryInProgress.current = true;
+    markWebSessionExpired();
+    setSessionExpired(true);
+    try {
+      // Revoke the server-side session as well as expiring it in this browser.
+      await api.logoutSession();
+    } catch (error) {
+      console.warn("[auth] Could not revoke the expired web session", error);
+    }
+    await clearAuth();
+    setU(null);
+    setLoading(false);
+  }, []);
 
   const bootstrap = useCallback(async () => {
     setLoading(true);
     try {
+      if (Platform.OS === "web") {
+        setSessionExpired(hasWebSessionExpiredNotice());
+        if (hasWebSessionExpiredNotice()) {
+          await clearRejectedSession();
+          setU(null);
+          return;
+        }
+        if (isWebSessionIdleExpired()) {
+          await expireWebSession();
+          return;
+        }
+      }
+
       const cached = await getUser();
       if (cached) setU(cached);
 
@@ -77,6 +137,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             const fresh = await retryTransientSessionRequest(() => api.migrateSession());
             await clearLegacyToken();
             await setUser(fresh);
+            markSessionActive();
             setU(fresh);
             return;
           } catch (error: any) {
@@ -86,11 +147,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               try {
                 const fresh = await retryTransientSessionRequest(() => api.me());
                 await setUser(fresh);
+                markSessionActive();
                 setU(fresh);
                 return;
               } catch (cookieError: any) {
                 if (isAuthFailure(cookieError)) {
+                  const shouldNotify = Number(cookieError?.status) === 401 && getWebSessionLastActivity() !== null;
                   await clearRejectedSession();
+                  if (shouldNotify) {
+                    markWebSessionExpired();
+                    setSessionExpired(true);
+                  } else {
+                    clearWebSessionMarkers();
+                    setSessionExpired(false);
+                  }
                   setU(null);
                 } else {
                   console.warn("[auth] Session check temporarily failed; cached profile retained", cookieError);
@@ -106,10 +176,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         try {
           const fresh = await retryTransientSessionRequest(() => api.me());
           await setUser(fresh);
+          markSessionActive();
           setU(fresh);
         } catch (error: any) {
           if (isAuthFailure(error)) {
+            const shouldNotify = Number(error?.status) === 401 && getWebSessionLastActivity() !== null;
             await clearRejectedSession();
+            if (shouldNotify) {
+              markWebSessionExpired();
+              setSessionExpired(true);
+            } else {
+              clearWebSessionMarkers();
+              setSessionExpired(false);
+            }
             setU(null);
           } else {
             // Network/5xx errors must not erase a valid server cookie.
@@ -142,7 +221,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [bootstrap, expireWebSession, markSessionActive]);
 
   useEffect(() => {
     void bootstrap();
@@ -159,10 +238,106 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return () => window.removeEventListener("pageshow", handlePageShow);
   }, [bootstrap]);
 
+  // Browser idle timeout: activity extends the server cookie and the local timer.
+  useEffect(() => {
+    if (Platform.OS !== "web" || loading || !user) return;
+
+    let disposed = false;
+    let idleTimer: ReturnType<typeof setTimeout> | undefined;
+    let refreshInFlight = false;
+    let lastServerRefreshAt = Date.now();
+
+    const scheduleIdleCheck = () => {
+      if (idleTimer) clearTimeout(idleTimer);
+      const lastActivity = getWebSessionLastActivity() ?? Date.now();
+      const remaining = WEB_SESSION_TIMEOUT_MS - (Date.now() - lastActivity);
+      if (remaining <= 0) {
+        void expireWebSession();
+        return;
+      }
+      idleTimer = setTimeout(() => {
+        if (disposed) return;
+        const currentActivity = getWebSessionLastActivity();
+        if (currentActivity !== null && Date.now() - currentActivity >= WEB_SESSION_TIMEOUT_MS) {
+          void expireWebSession();
+        } else {
+          scheduleIdleCheck();
+        }
+      }, remaining + 25);
+    };
+
+    const handleActivity = () => {
+      if (disposed) return;
+      const now = Date.now();
+      const previousActivity = getWebSessionLastActivity();
+      if (previousActivity !== null && now - previousActivity >= WEB_SESSION_TIMEOUT_MS) {
+        void expireWebSession();
+        return;
+      }
+
+      recordWebSessionActivity(now);
+      scheduleIdleCheck();
+
+      // Throttle refresh requests while still moving the server expiry forward.
+      if (refreshInFlight || now - lastServerRefreshAt < WEB_SESSION_REFRESH_INTERVAL_MS) return;
+      refreshInFlight = true;
+      void api.refreshWebSession()
+        .then(() => {
+          if (disposed) return;
+          lastServerRefreshAt = Date.now();
+          recordWebSessionActivity(lastServerRefreshAt);
+          scheduleIdleCheck();
+        })
+        .catch((error: any) => {
+          if (isAuthFailure(error)) {
+            void expireWebSession();
+          } else {
+            console.warn("[auth] Could not refresh the active web session", error);
+          }
+        })
+        .finally(() => {
+          refreshInFlight = false;
+        });
+    };
+
+    const handleVisibility = () => {
+      if (typeof document !== "undefined" && document.visibilityState === "visible") {
+        handleActivity();
+      }
+    };
+
+    if (isWebSessionIdleExpired()) {
+      void expireWebSession();
+    } else {
+      scheduleIdleCheck();
+    }
+
+    window.addEventListener("pointerdown", handleActivity, { passive: true });
+    window.addEventListener("keydown", handleActivity);
+    window.addEventListener("touchstart", handleActivity, { passive: true });
+    window.addEventListener("scroll", handleActivity, { passive: true });
+    window.addEventListener("wheel", handleActivity, { passive: true });
+    window.addEventListener("pageshow", handleVisibility);
+    document.addEventListener("visibilitychange", handleVisibility);
+
+    return () => {
+      disposed = true;
+      if (idleTimer) clearTimeout(idleTimer);
+      window.removeEventListener("pointerdown", handleActivity);
+      window.removeEventListener("keydown", handleActivity);
+      window.removeEventListener("touchstart", handleActivity);
+      window.removeEventListener("scroll", handleActivity);
+      window.removeEventListener("wheel", handleActivity);
+      window.removeEventListener("pageshow", handleVisibility);
+      document.removeEventListener("visibilitychange", handleVisibility);
+    };
+  }, [user, loading, expireWebSession]);
+
   const login = async (email: string, password: string) => {
     const r = await api.login(email, password);
     await setToken(r.token);
     await setUser(r.user);
+    markSessionActive();
     setU(r.user);
     setLoading(false);
     return r.user;
@@ -171,6 +346,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const r = await api.register(data);
     await setToken(r.token);
     await setUser(r.user);
+    markSessionActive();
     setU(r.user);
     setLoading(false);
     return r.user;
@@ -184,6 +360,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const r = await api.verifyEmailLoginOtp(email, otp);
     await setToken(r.token);
     await setUser(r.user);
+    markSessionActive();
     setU(r.user);
     setLoading(false);
     return r.user;
@@ -197,6 +374,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const r = await api.verifyEmailSignupOtp(email, otp);
     await setToken(r.token);
     await setUser(r.user);
+    markSessionActive();
     setU(r.user);
     setLoading(false);
     return r.user;
@@ -205,6 +383,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const r = await api.otpVerify(phone, otp, name);
     await setToken(r.token);
     await setUser(r.user);
+    markSessionActive();
     setU(r.user);
     setLoading(false);
     return r.user;
@@ -215,6 +394,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     await setToken(r.token);
     await setUser(r.user);
+    markSessionActive();
     setU(r.user);
     setLoading(false);
     return r;
@@ -229,6 +409,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     }
     await clearAuth();
+    if (Platform.OS === "web") {
+      clearWebSessionMarkers();
+      setSessionExpired(false);
+    }
+    expiryInProgress.current = false;
     setU(null);
   };
 
@@ -244,7 +429,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   return (
     // <-- updateAddress ko Provider mein add kiya hai
-    <Ctx.Provider value={{ user, loading, login, requestEmailLoginOtp, verifyEmailLoginOtp, register, requestEmailSignupOtp, verifyEmailSignupOtp, loginOtp, googleLogin, logout, refresh: bootstrap, updateAddress }}>
+    <Ctx.Provider value={{ user, loading, sessionExpired, login, requestEmailLoginOtp, verifyEmailLoginOtp, register, requestEmailSignupOtp, verifyEmailSignupOtp, loginOtp, googleLogin, logout, refresh: bootstrap, updateAddress }}>
       {children}
     </Ctx.Provider>
   );
@@ -255,6 +440,7 @@ export const useAuth = () => {
  if (!c) return {
   user: null,
   loading: true,
+  sessionExpired: false,
   login: async () => { throw new Error("Auth not ready"); },
   register: async () => { throw new Error("Auth not ready"); },
   requestEmailLoginOtp: async () => { throw new Error("Auth not ready"); },
