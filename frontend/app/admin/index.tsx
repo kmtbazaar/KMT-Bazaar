@@ -63,8 +63,29 @@ export default function AdminDashboard() {
   const router = useRouter();
   const { user } = useAuth();
   const { width: viewportWidth } = useWindowDimensions();
-  const kpiCardWidth = Math.max(0, (viewportWidth - SPACING.lg * 2 - 10) / 2);
-  const quickActionCardWidth = Math.max(0, (viewportWidth - SPACING.lg * 2 - 20) / 3);
+  const [kpiGridWidth, setKpiGridWidth] = useState(0);
+  const [quickActionsGridWidth, setQuickActionsGridWidth] = useState(0);
+  const fallbackContentWidth = Math.max(0, viewportWidth - SPACING.lg * 2);
+  const kpiCardWidth = Math.max(0, ((kpiGridWidth || fallbackContentWidth) - 10) / 2);
+  const quickActionCardWidth = Math.max(0, ((quickActionsGridWidth || fallbackContentWidth) - 20) / 3);
+
+  const handleKpiGridLayout = useCallback((event: any) => {
+    const nextWidth = Number(event?.nativeEvent?.layout?.width || 0);
+    if (nextWidth > 0) {
+      setKpiGridWidth((current) =>
+        Math.abs(current - nextWidth) > 1 ? nextWidth : current
+      );
+    }
+  }, []);
+
+  const handleQuickActionsGridLayout = useCallback((event: any) => {
+    const nextWidth = Number(event?.nativeEvent?.layout?.width || 0);
+    if (nextWidth > 0) {
+      setQuickActionsGridWidth((current) =>
+        Math.abs(current - nextWidth) > 1 ? nextWidth : current
+      );
+    }
+  }, []);
 
   const [stats, setStats] = useState<any>(null);
   const [pendingStores, setPendingStores] = useState<any[]>([]);
@@ -436,7 +457,7 @@ export default function AdminDashboard() {
             KPI CARDS
         =================================================== */}
 
-        <View style={s.kpiGrid}>
+        <View style={s.kpiGrid} onLayout={handleKpiGridLayout}>
           <KPI
             label="Revenue"
             value={`₹${stats?.revenue ?? 0}`}
@@ -743,7 +764,7 @@ export default function AdminDashboard() {
             </View>
           </View>
 
-          <View style={s.grid}>
+          <View style={s.grid} onLayout={handleQuickActionsGridLayout}>
             {quickActions.map((a) => (
               <Animated.View
                 key={a.label}
