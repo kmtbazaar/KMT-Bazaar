@@ -32,6 +32,9 @@ jobs:
       - name: Install locked dependencies
         working-directory: frontend
         run: npm install --ignore-scripts --no-audit --no-fund
+      - name: Validate admin dashboard tile dimensions
+        working-directory: frontend
+        run: node scripts/validate-admin-dashboard-layout.js
       - name: Export web app
         working-directory: frontend
         run: npm run build:web
