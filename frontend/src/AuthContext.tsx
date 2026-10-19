@@ -105,7 +105,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         console.warn("[auth] Could not clear the mismatched tab session", error);
       }
       await clearAuth();
-      clearWebSessionMarkers();
+      // Keep this tab signed out even if the server could not revoke its cookie.
+      markWebSessionLoggedOut();
       setSessionExpired(false);
       setU(null);
       return false;
