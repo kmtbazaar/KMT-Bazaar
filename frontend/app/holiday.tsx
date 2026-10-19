@@ -18,6 +18,7 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useFocusEffect, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Animated, {
+  Easing,
   FadeIn,
   FadeInUp,
   SlideInLeft,
@@ -378,9 +379,9 @@ export default function HolidayPage() {
     const count = galleryFor(selected).length;
     const timer = setInterval(() => {
       setSelectedPhoto((current) => (current + 1) % count);
-    }, 4500);
+    }, 6500);
     return () => clearInterval(timer);
-  }, [selected, bookingOpen]);
+  }, [selected, selectedPhoto, bookingOpen]);
 
   const photoPanResponder = useMemo(() => PanResponder.create({
     onMoveShouldSetPanResponder: (_event, gesture) =>
@@ -788,7 +789,7 @@ export default function HolidayPage() {
 
                 <Animated.View
                   key={selected.id + "-photo-" + selectedPhoto}
-                  entering={SlideInLeft.duration(420)}
+                  entering={SlideInLeft.duration(850).easing(Easing.out(Easing.cubic))}
                   style={s.detailHero}
                   {...photoPanResponder.panHandlers}
                 >
@@ -814,15 +815,6 @@ export default function HolidayPage() {
                     <Text style={s.detailCounterText}>{selectedPhoto + 1} / 5</Text>
                   </View>
                 </Animated.View>
-
-                <Text style={s.galleryLabel}>5-photo gallery</Text>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.modalThumbRow}>
-                  {galleryFor(selected).map((photo, index) => (
-                    <Pressable key={selected.id + "-detail-" + index} onPress={() => setSelectedPhoto(index)} style={s.modalThumbPress}>
-                      <Image source={{ uri: photo }} style={[s.modalThumb, index === selectedPhoto && s.modalThumbActive]} contentFit="cover" />
-                    </Pressable>
-                  ))}
-                </ScrollView>
 
                 <ScrollView showsVerticalScrollIndicator={false} style={s.detailContentScroll}>
                   <View style={s.detailStats}>
@@ -1206,14 +1198,8 @@ const s = StyleSheet.create({
   photoArrowRight: { right: 10 },
   detailCounter: { position: "absolute", right: 11, bottom: 11, flexDirection: "row", alignItems: "center", gap: 5, paddingHorizontal: 9, paddingVertical: 7, borderRadius: 999, backgroundColor: "rgba(15,23,42,.65)" },
   detailCounterText: { color: "#fff", fontSize: 10, fontWeight: "900" },
-  galleryLabel: { marginTop: 2, marginBottom: 2, color: "#0F172A", fontSize: 13, fontWeight: "900" },
-  modalThumbRow: { gap: 8, paddingTop: 7, paddingBottom: 14 },
-  modalThumbPress: { width: 70, height: 58 },
-  modalThumb: { width: 70, height: 58, borderRadius: 10, borderWidth: 2, borderColor: "transparent" },
-  modalThumbActive: { borderColor: "#EA580C" },
-
-  detailContentScroll: { maxHeight: 400 },
-  detailStats: { flexDirection: "row", gap: 8, marginTop: 2 },
+  detailContentScroll: { maxHeight: 400, marginTop: 14 },
+  detailStats: { flexDirection: "row", gap: 8, marginTop: 0 },
   detailStat: { flex: 1, padding: 10, borderRadius: 14, backgroundColor: "#F0F9FF" },
   detailStatLabel: { color: "#64748B", fontSize: 9, fontWeight: "800" },
   detailStatValue: { marginTop: 3, color: "#0F172A", fontSize: 12, fontWeight: "900" },
