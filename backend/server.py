@@ -2622,6 +2622,8 @@ class VendorServiceIn(BaseModel):
     child_price: float = 0
     unit: str = "visit"
     duration: str = ""
+    nights: int = 0
+    days: int = 0
     seats: int = 0
     bags: int = 0
     transmission: str = ""

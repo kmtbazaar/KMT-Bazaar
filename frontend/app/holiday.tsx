@@ -1183,7 +1183,7 @@ const s = StyleSheet.create({
   trustText: { marginTop: 5, color: "#64748B", fontSize: 10, lineHeight: 16 },
 
   modalBackdrop: { flex: 1, justifyContent: "flex-end", backgroundColor: "rgba(2,8,23,.62)" },
-  detailSheet: { maxHeight: "94%", padding: 16, backgroundColor: "#fff", borderTopLeftRadius: 30, borderTopRightRadius: 30 },
+  detailSheet: { maxHeight: "97%", padding: 16, backgroundColor: "#fff", borderTopLeftRadius: 30, borderTopRightRadius: 30 },
   bookingSheet: { maxHeight: "92%", padding: 16, backgroundColor: "#fff", borderTopLeftRadius: 30, borderTopRightRadius: 30 },
   modalHeader: { flexDirection: "row", alignItems: "flex-start", gap: 10, marginBottom: 12 },
   modalEyebrow: { color: "#EA580C", fontSize: 9, fontWeight: "900", letterSpacing: 1.2 },

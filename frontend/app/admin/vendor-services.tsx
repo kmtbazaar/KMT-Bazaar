@@ -12,7 +12,7 @@ import ImageUploader from "@/src/components/ImageUploader";
 const EMPTY = {
   name:"", vendor_name:"", description:"", image:"", gallery:[],
   location:"", category:"", type:"", phone:"", order:"99", active:true,
-  price:"", unit:"day", duration:"", seats:"", bags:"",
+  price:"", adult_price:"", child_price:"", unit:"day", duration:"", nights:"4", days:"5", seats:"", bags:"",
   transmission:"Automatic", fuel:"Petrol", tag:"", includesText:""
 };
 
@@ -22,7 +22,7 @@ const TRANSMISSIONS = ["Automatic","Manual"];
 
 export default function AdminVendorServices() {
   const router = useRouter();
-  const { vendor_id, service_type } = useLocalSearchParams<{vendor_id?:string;service_type?:string}>();
+  const { vendor_id, service_type, vendor_name } = useLocalSearchParams<{vendor_id?:string;service_type?:string;vendor_name?:string}>();
   const isVendorMode = !!vendor_id;
   const isCar = (service_type || "") === "car_rental";
 
@@ -49,7 +49,11 @@ export default function AdminVendorServices() {
     gallery:Array.isArray(x?.gallery)?x.gallery:[],
     order:String(x?.order??99),
     price:String(x?.price??""),
+    adult_price:String(x?.adult_price??x?.price??""),
+    child_price:String(x?.child_price??((Number(x?.adult_price??x?.price)||0)*0.5||"")),
     duration:String(x?.duration??""),
+    nights:String(x?.nights??(String(x?.duration||"").match(/(\d+)\s*N/i)?.[1]||"4")),
+    days:String(x?.days??(String(x?.duration||"").match(/(\d+)\s*D/i)?.[1]||"5")),
     seats:String(x?.seats??""),
     bags:String(x?.bags??""),
     transmission:x?.transmission||"Automatic",
@@ -59,7 +63,7 @@ export default function AdminVendorServices() {
 
   const openAdd=()=>{
     setEditingId(null);
-    setF({...EMPTY, vendor_name: items[0]?.vendor_name||"", unit:isCar?"day":"per person"});
+    setF({...EMPTY, vendor_name: String(vendor_name||items[0]?.vendor_name||""), unit:isCar?"day":"per person"});
     setModal(true);
   };
 
@@ -77,6 +81,10 @@ export default function AdminVendorServices() {
     }
 
     const includes=String(f.includesText||"").split(",").map((x:string)=>x.trim()).filter(Boolean);
+    const adultPrice=Number(f.adult_price||f.price)||0;
+    const childPrice=Number(f.child_price)||(adultPrice*0.5);
+    const nights=Math.max(0,Number(f.nights)||0);
+    const days=Math.max(0,Number(f.days)||0);
     const data={
       name:String(f.name||"").trim(),
       vendor_name:String(f.vendor_name||items[0]?.vendor_name||"").trim(),
@@ -88,10 +96,14 @@ export default function AdminVendorServices() {
       type:String(f.type||"").trim(),
       phone:String(f.phone||"").trim(),
       order:Number(f.order)||99,
-      active:true,
-      price:Number(f.price)||0,
+      active:f.active!==false,
+      price:isCar?(Number(f.price)||0):adultPrice,
+      adult_price:isCar?(Number(f.price)||0):adultPrice,
+      child_price:isCar?0:childPrice,
       unit:isCar?"day":"per person",
-      duration:String(f.duration||"").trim(),
+      duration:isCar?String(f.duration||"").trim():`${nights} ${nights===1?"night":"nights"} / ${days} ${days===1?"day":"days"}`,
+      nights:isCar?0:nights,
+      days:isCar?0:days,
       seats:isCar?(Number(f.seats)||0):0,
       bags:isCar?(Number(f.bags)||0):0,
       transmission:isCar?String(f.transmission||""):"",
@@ -176,6 +188,7 @@ export default function AdminVendorServices() {
             </View>
 
             <Field label={isCar?"Car Name *":"Package Name *"} value={f.name} onChange={(v:string)=>setF({...f,name:v})} placeholder={isCar?"Toyota Innova Crysta":"Goa Beach Escape"}/>
+            <Field label="Vendor Display Name" value={f.vendor_name} onChange={(v:string)=>setF({...f,vendor_name:v})} placeholder="Vendor name shown to customers"/>
 
             {isCar?<>
               <SelectRow label="Vehicle Type" options={CAR_TYPES} value={f.type} onChange={(v:string)=>setF({...f,type:v})}/>
@@ -195,9 +208,15 @@ export default function AdminVendorServices() {
               <Field label="Destination / Location" value={f.location} onChange={(v:string)=>setF({...f,location:v})} placeholder="Goa"/>
               <Field label="Category" value={f.category} onChange={(v:string)=>setF({...f,category:v})} placeholder="Beach / Mountains / Spiritual"/>
               <View style={m.two}>
-                <Field label="Duration" value={f.duration} onChange={(v:string)=>setF({...f,duration:v})} placeholder="4 nights / 5 days"/>
-                <Field label="Price / Person (₹)" value={f.price} onChange={(v:string)=>setF({...f,price:v})} placeholder="14999" keyboardType="numeric"/>
+                <Field label="Nights" value={f.nights} onChange={(v:string)=>setF({...f,nights:v})} placeholder="4" keyboardType="numeric"/>
+                <Field label="Days" value={f.days} onChange={(v:string)=>setF({...f,days:v})} placeholder="5" keyboardType="numeric"/>
               </View>
+              <Text style={m.helper}>Customer listing duration will display as “N nights / D days”.</Text>
+              <View style={m.two}>
+                <Field label="Adult Price / Person (₹)" value={f.adult_price||f.price} onChange={(v:string)=>setF({...f,adult_price:v,price:v})} placeholder="14999" keyboardType="numeric"/>
+                <Field label="Child Price / Person (₹)" value={f.child_price} onChange={(v:string)=>setF({...f,child_price:v})} placeholder="7499" keyboardType="numeric"/>
+              </View>
+              <Text style={m.helper}>Child price defaults to 50% of adult price when left empty.</Text>
               <Field label="Tag" value={f.tag} onChange={(v:string)=>setF({...f,tag:v})} placeholder="Best value"/>
               <Field label="Description" value={f.description} onChange={(v:string)=>setF({...f,description:v})} placeholder="Package details..." multiline/>
               <Field label="Includes" value={f.includesText} onChange={(v:string)=>setF({...f,includesText:v})} placeholder="Hotel, Breakfast, Transfer, Sightseeing"/>
@@ -207,7 +226,7 @@ export default function AdminVendorServices() {
             <ImageUploader value={f.image} onChange={(uri)=>setF({...f,image:uri})} label={isCar?"Car Main Photo":"Package Cover Photo"} aspect={[16,9]}/>
             <Text style={m.galleryTitle}>{isCar?"Car Photos · 2 Gallery Photos":"Destination Gallery · Up to 5 Photos"}</Text>
             {(isCar?[0,1]:[0,1,2,3,4]).map((i)=>
-              <ImageUploader key={i} value={f.gallery?.[i]||""} onChange={(uri)=>setF({...f,gallery:Object.assign([],f.gallery||[],{[i]:uri}).slice(isCar?2:5)})} label={isCar?(i===0?"Main Car Photo":"Second Car Photo"):`Photo ${i+1}`} aspect={[4,3]}/>
+              <ImageUploader key={i} value={f.gallery?.[i]||""} onChange={(uri)=>setF({...f,gallery:Object.assign([],f.gallery||[],{[i]:uri}).slice(0,isCar?2:5)})} label={isCar?(i===0?"Main Car Photo":"Second Car Photo"):`Photo ${i+1}`} aspect={[4,3]}/>
             )}
 
             <View style={{flexDirection:"row",gap:8,marginTop:10}}>
