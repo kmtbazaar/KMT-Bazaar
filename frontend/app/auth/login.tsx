@@ -78,7 +78,7 @@ function AnimatedTile({
 
 export default function Login() {
   const router = useRouter();
-  const { login, requestEmailLoginOtp, verifyEmailLoginOtp, googleLogin } = useAuth();
+  const { login, requestEmailLoginOtp, verifyEmailLoginOtp, googleLogin, sessionExpired } = useAuth();
   const insets = useSafeAreaInsets();
 
   const goToDashboard = (user: any) => {
@@ -442,6 +442,13 @@ export default function Login() {
               style={s.cardTopBorder}
             />
 
+            {sessionExpired && (
+              <View style={s.sessionExpiredBanner} accessibilityRole="alert" testID="session-expired-notice">
+                <MaterialCommunityIcons name="alert-circle-outline" size={18} color="#9A3412" />
+                <Text style={s.sessionExpiredText}>Session expired. Please log in again.</Text>
+              </View>
+            )}
+
             <View style={s.tabsRow}>
               <Pressable
                 testID="login-type-email"
@@ -761,6 +768,25 @@ const s = StyleSheet.create({
     left: 0,
     right: 0,
     height: 5,
+  },
+
+  sessionExpiredBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    backgroundColor: "#FFF7ED",
+    borderWidth: 1,
+    borderColor: "#FDBA74",
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    marginBottom: SPACING.md,
+  },
+  sessionExpiredText: {
+    flex: 1,
+    color: "#9A3412",
+    fontSize: 13,
+    fontWeight: "700",
   },
 
   tabsRow: {
