@@ -5,13 +5,16 @@ import {
   clearAuth,
   clearLegacyToken,
   clearWebSessionExpiredNotice,
+  clearWebSessionLogoutFlag,
   clearWebSessionMarkers,
   getToken,
   getUser,
   getWebSessionLastActivity,
   hasWebSessionExpiredNotice,
+  hasWebSessionExplicitlyLoggedOut,
   isWebSessionIdleExpired,
   markWebSessionExpired,
+  markWebSessionLoggedOut,
   recordWebSessionActivity,
   WEB_SESSION_ACTIVITY_SYNC_DELAY_MS,
   WEB_SESSION_REFRESH_INTERVAL_MS,
@@ -88,6 +91,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (Platform.OS === "web") {
       recordWebSessionActivity();
       clearWebSessionExpiredNotice();
+      clearWebSessionLogoutFlag();
       setSessionExpired(false);
     }
     expiryInProgress.current = false;
@@ -114,6 +118,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       if (Platform.OS === "web") {
         setSessionExpired(hasWebSessionExpiredNotice());
+        if (hasWebSessionExplicitlyLoggedOut()) {
+          setSessionExpired(false);
+          await clearRejectedSession();
+          setU(null);
+          return;
+        }
         if (hasWebSessionExpiredNotice()) {
           await clearRejectedSession();
           setU(null);
@@ -480,7 +490,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
     await clearAuth();
     if (Platform.OS === "web") {
-      clearWebSessionMarkers();
+      markWebSessionLoggedOut();
       setSessionExpired(false);
     }
     expiryInProgress.current = false;
