@@ -250,11 +250,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     let syncAgainAfterRefresh = false;
     let sessionRejected = false;
     let lastServerRefreshAt = Date.now();
+    let lastStoredActivityAt = getWebSessionLastActivity() ?? 0;
     let lastObservedActivityAt = getWebSessionLastActivity() ?? Date.now();
+    let lastHighFrequencyActivityAt = 0;
+
+    const effectiveLastActivity = () =>
+      Math.max(getWebSessionLastActivity() ?? 0, lastObservedActivityAt);
 
     const scheduleIdleCheck = () => {
       if (idleTimer) clearTimeout(idleTimer);
-      const lastActivity = getWebSessionLastActivity() ?? lastObservedActivityAt;
+      const lastActivity = effectiveLastActivity();
       const remaining = WEB_SESSION_TIMEOUT_MS - (Date.now() - lastActivity);
       if (remaining <= 0) {
         void expireWebSession();
@@ -262,7 +267,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
       idleTimer = setTimeout(() => {
         if (disposed) return;
-        const currentActivity = getWebSessionLastActivity() ?? lastObservedActivityAt;
+        const currentActivity = effectiveLastActivity();
         if (Date.now() - currentActivity >= WEB_SESSION_TIMEOUT_MS) {
           void expireWebSession();
         } else {
@@ -279,7 +284,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return;
       }
 
-      const activityAtRequest = getWebSessionLastActivity() ?? lastObservedActivityAt;
+      const activityAtRequest = effectiveLastActivity();
       if (Date.now() - activityAtRequest >= WEB_SESSION_TIMEOUT_MS) {
         void expireWebSession();
         return;
@@ -324,14 +329,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const handleActivity = () => {
       if (disposed) return;
       const now = Date.now();
-      const previousActivity = getWebSessionLastActivity() ?? lastObservedActivityAt;
+      const previousActivity = effectiveLastActivity();
       if (now - previousActivity >= WEB_SESSION_TIMEOUT_MS) {
         void expireWebSession();
         return;
       }
 
       lastObservedActivityAt = now;
-      recordWebSessionActivity(now);
+      if (now - lastStoredActivityAt >= 1000) {
+        recordWebSessionActivity(now);
+        lastStoredActivityAt = now;
+      }
       scheduleIdleCheck();
 
       // Debounce ordinary interactions, but refresh periodically during long continuous use.
@@ -344,6 +352,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       } else {
         scheduleActivitySync();
       }
+    };
+
+    const handleHighFrequencyActivity = () => {
+      const now = Date.now();
+      if (now - lastHighFrequencyActivityAt < 1000) return;
+      lastHighFrequencyActivityAt = now;
+      handleActivity();
     };
 
     const handleVisibility = () => {
@@ -359,11 +374,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     window.addEventListener("pointerdown", handleActivity, { passive: true });
+    window.addEventListener("pointermove", handleHighFrequencyActivity, { passive: true });
     window.addEventListener("keydown", handleActivity);
     window.addEventListener("touchstart", handleActivity, { passive: true });
-    window.addEventListener("touchmove", handleActivity, { passive: true });
-    window.addEventListener("scroll", handleActivity, true);
-    window.addEventListener("wheel", handleActivity, { passive: true });
+    window.addEventListener("touchmove", handleHighFrequencyActivity, { passive: true });
+    window.addEventListener("scroll", handleHighFrequencyActivity, true);
+    window.addEventListener("wheel", handleHighFrequencyActivity, { passive: true });
     window.addEventListener("pageshow", handleVisibility);
     document.addEventListener("visibilitychange", handleVisibility);
 
@@ -372,11 +388,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (idleTimer) clearTimeout(idleTimer);
       if (activitySyncTimer) clearTimeout(activitySyncTimer);
       window.removeEventListener("pointerdown", handleActivity);
+      window.removeEventListener("pointermove", handleHighFrequencyActivity);
       window.removeEventListener("keydown", handleActivity);
       window.removeEventListener("touchstart", handleActivity);
-      window.removeEventListener("touchmove", handleActivity);
-      window.removeEventListener("scroll", handleActivity, true);
-      window.removeEventListener("wheel", handleActivity);
+      window.removeEventListener("touchmove", handleHighFrequencyActivity);
+      window.removeEventListener("scroll", handleHighFrequencyActivity, true);
+      window.removeEventListener("wheel", handleHighFrequencyActivity);
       window.removeEventListener("pageshow", handleVisibility);
       document.removeEventListener("visibilitychange", handleVisibility);
     };
