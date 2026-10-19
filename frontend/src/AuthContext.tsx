@@ -144,7 +144,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, []);
 
-  useEffect(() => { bootstrap(); }, [bootstrap]);
+  useEffect(() => {
+    void bootstrap();
+
+    if (Platform.OS !== "web") return;
+
+    // Browser session restore/BFCache can resume a page with stale React auth
+    // state without a normal remount. Re-check the server cookie on restoration.
+    const handlePageShow = (event: PageTransitionEvent) => {
+      if (event.persisted) void bootstrap();
+    };
+
+    window.addEventListener("pageshow", handlePageShow);
+    return () => window.removeEventListener("pageshow", handlePageShow);
+  }, [bootstrap]);
 
   const login = async (email: string, password: string) => {
     const r = await api.login(email, password);
