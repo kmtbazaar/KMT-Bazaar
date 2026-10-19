@@ -296,6 +296,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           lastServerRefreshAt = Date.now();
         })
         .catch((error: any) => {
+          // Ignore a late refresh response after this provider has unmounted/logged out.
+          if (disposed) return;
           if (Number(error?.status) === 401) {
             sessionRejected = true;
             syncAgainAfterRefresh = false;
@@ -467,6 +469,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
   const logout = async () => {
     if (Platform.OS === "web") {
+      // Prevent an in-flight idle timer from showing an expiry notice during explicit logout.
+      expiryInProgress.current = true;
       try {
         await api.logoutSession();
       } catch (error) {
