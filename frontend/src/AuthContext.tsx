@@ -23,6 +23,26 @@ function isAuthFailure(error: any): boolean {
   return status === 401 || status === 403 || /HTTP (401|403)\b/.test(String(error?.message || ""));
 }
 
+// Browser startup can hit a short network/TLS/proxy hiccup before the API is
+// reachable. Retry only network/5xx failures; do not retry real auth denials.
+async function retryTransientSessionRequest<T>(request: () => Promise<T>): Promise<T> {
+  const delaysMs = [500, 1200];
+  for (let attempt = 0; ; attempt += 1) {
+    try {
+      return await request();
+    } catch (error: any) {
+      const status = Number(error?.status);
+      const transient = !Number.isFinite(status) || status === 0 || status >= 500;
+      if (!transient || attempt >= delaysMs.length) throw error;
+      console.warn(
+        `[auth] Temporary session request failure; retrying (${attempt + 1}/${delaysMs.length})`,
+        error
+      );
+      await new Promise<void>((resolve) => setTimeout(resolve, delaysMs[attempt]));
+    }
+  }
+}
+
 async function clearRejectedSession() {
   if (Platform.OS === "web") {
     try {
@@ -54,7 +74,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const legacyToken = await getToken();
         if (legacyToken) {
           try {
-            const fresh = await api.migrateSession();
+            const fresh = await retryTransientSessionRequest(() => api.migrateSession());
             await clearLegacyToken();
             await setUser(fresh);
             setU(fresh);
@@ -64,7 +84,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               // An expired legacy bearer must not mask a still-valid cookie.
               await clearLegacyToken();
               try {
-                const fresh = await api.me();
+                const fresh = await retryTransientSessionRequest(() => api.me());
                 await setUser(fresh);
                 setU(fresh);
                 return;
@@ -84,7 +104,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
 
         try {
-          const fresh = await api.me();
+          const fresh = await retryTransientSessionRequest(() => api.me());
           await setUser(fresh);
           setU(fresh);
         } catch (error: any) {
