@@ -5,6 +5,7 @@ import {
   StyleSheet,
   ScrollView,
   Pressable,
+  PanResponder,
   ActivityIndicator,
   Alert,
   Platform,
@@ -19,6 +20,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import Animated, {
   FadeIn,
   FadeInUp,
+  SlideInLeft,
   useAnimatedStyle,
   useSharedValue,
   withRepeat,
@@ -364,6 +366,29 @@ export default function HolidayPage() {
     setChildCount(0);
     setBookingNote("");
   };
+
+  const movePhoto = useCallback((direction: number) => {
+    if (!selected) return;
+    const count = galleryFor(selected).length;
+    setSelectedPhoto((current) => (current + direction + count) % count);
+  }, [selected]);
+
+  useEffect(() => {
+    if (!selected || bookingOpen) return;
+    const count = galleryFor(selected).length;
+    const timer = setInterval(() => {
+      setSelectedPhoto((current) => (current + 1) % count);
+    }, 4500);
+    return () => clearInterval(timer);
+  }, [selected, bookingOpen]);
+
+  const photoPanResponder = useMemo(() => PanResponder.create({
+    onMoveShouldSetPanResponder: (_event, gesture) =>
+      Math.abs(gesture.dx) > 14 && Math.abs(gesture.dx) > Math.abs(gesture.dy) * 1.15,
+    onPanResponderRelease: (_event, gesture) => {
+      if (Math.abs(gesture.dx) >= 45) movePhoto(gesture.dx < 0 ? 1 : -1);
+    },
+  }), [movePhoto]);
 
   const submitBooking = async () => {
     if (!selected) return;
@@ -761,13 +786,34 @@ export default function HolidayPage() {
                   </Pressable>
                 </View>
 
-                <View style={s.detailHero}>
+                <Animated.View
+                  key={selected.id + "-photo-" + selectedPhoto}
+                  entering={SlideInLeft.duration(420)}
+                  style={s.detailHero}
+                  {...photoPanResponder.panHandlers}
+                >
                   <Image source={{ uri: galleryFor(selected)[selectedPhoto] }} style={s.detailHeroImage} contentFit="cover" />
+                  <Pressable
+                    accessibilityLabel="Previous holiday photo"
+                    onPress={() => movePhoto(-1)}
+                    style={[s.photoArrow, s.photoArrowLeft]}
+                    hitSlop={8}
+                  >
+                    <MaterialCommunityIcons name="chevron-left" size={28} color="#fff" />
+                  </Pressable>
+                  <Pressable
+                    accessibilityLabel="Next holiday photo"
+                    onPress={() => movePhoto(1)}
+                    style={[s.photoArrow, s.photoArrowRight]}
+                    hitSlop={8}
+                  >
+                    <MaterialCommunityIcons name="chevron-right" size={28} color="#fff" />
+                  </Pressable>
                   <View style={s.detailCounter}>
                     <MaterialCommunityIcons name="camera-outline" size={13} color="#fff" />
                     <Text style={s.detailCounterText}>{selectedPhoto + 1} / 5</Text>
                   </View>
-                </View>
+                </Animated.View>
 
                 <Text style={s.galleryLabel}>5-photo gallery</Text>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.modalThumbRow}>
@@ -1153,8 +1199,11 @@ const s = StyleSheet.create({
   modalLocation: { marginTop: 4, color: "#64748B", fontSize: 11, fontWeight: "700" },
   closeBtn: { width: 38, height: 38, borderRadius: 19, backgroundColor: "#F1F5F9", alignItems: "center", justifyContent: "center" },
 
-  detailHero: { position: "relative" },
+  detailHero: { position: "relative", overflow: "hidden", borderRadius: 20 },
   detailHeroImage: { width: "100%", height: 258, borderRadius: 20, backgroundColor: "#E2E8F0" },
+  photoArrow: { position: "absolute", top: "43%", width: 38, height: 38, borderRadius: 19, alignItems: "center", justifyContent: "center", backgroundColor: "rgba(15,23,42,0.62)", borderWidth: 1, borderColor: "rgba(255,255,255,0.75)", zIndex: 2 },
+  photoArrowLeft: { left: 10 },
+  photoArrowRight: { right: 10 },
   detailCounter: { position: "absolute", right: 11, bottom: 11, flexDirection: "row", alignItems: "center", gap: 5, paddingHorizontal: 9, paddingVertical: 7, borderRadius: 999, backgroundColor: "rgba(15,23,42,.65)" },
   detailCounterText: { color: "#fff", fontSize: 10, fontWeight: "900" },
   galleryLabel: { marginTop: 2, marginBottom: 2, color: "#0F172A", fontSize: 13, fontWeight: "900" },
