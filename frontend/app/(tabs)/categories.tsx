@@ -201,7 +201,7 @@ export default function Categories() {
                 <View style={s.productCell}>
                   <ProductCard p={item} compact />
                 </View>
-              )}}
+              )}
               ListEmptyComponent={
                 <View style={s.emptyWrap}>
                   <MaterialCommunityIcons name="package-variant" size={48} color={COLORS.textMuted} />
