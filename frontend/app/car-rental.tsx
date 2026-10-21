@@ -20,11 +20,6 @@ import Animated, {
   FadeIn,
   FadeInDown,
   FadeInUp,
-  useAnimatedStyle,
-  useSharedValue,
-  withRepeat,
-  withSequence,
-  withTiming,
 } from "react-native-reanimated";
 import { api } from "@/src/api";
 
@@ -274,43 +269,23 @@ export default function CarRentalPage() {
   const [days, setDays] = useState(1);
   const [passengers, setPassengers] = useState(2);
   const [tripNote, setTripNote] = useState("");
-
-  const carX = useSharedValue(-180);
-  const roadX = useSharedValue(0);
-  const pulse = useSharedValue(0.95);
-  const shine = useSharedValue(-1);
+  const [bannerIndex, setBannerIndex] = useState(0);
+  const [bannerImageBroken, setBannerImageBroken] = useState(false);
 
   useEffect(() => {
-    carX.value = withRepeat(
-      withSequence(withTiming(width + 220, { duration: 14500 }), withTiming(-220, { duration: 0 })),
-      -1,
-      false
-    );
-    roadX.value = withRepeat(
-      withSequence(withTiming(-90, { duration: 1200 }), withTiming(0, { duration: 0 })),
-      -1,
-      false
-    );
-    pulse.value = withRepeat(
-      withSequence(withTiming(1.04, { duration: 1800 }), withTiming(0.95, { duration: 1800 })),
-      -1,
-      true
-    );
-    shine.value = withRepeat(
-      withSequence(withTiming(1.15, { duration: 2600 }), withTiming(-1, { duration: 40 })),
-      -1,
-      false
-    );
-  }, [carX, pulse, roadX]);
+    if (items.length < 2) {
+      setBannerIndex(0);
+      return;
+    }
+    const interval = setInterval(() => {
+      setBannerIndex((current) => (current + 1) % items.length);
+    }, 7000);
+    return () => clearInterval(interval);
+  }, [items.length]);
 
-  const carStyle = useAnimatedStyle(() => ({
-    transform: [{ translateX: carX.value }, { translateY: -Math.abs(Math.sin(carX.value / 120)) * 4 }],
-  }));
-  const roadStyle = useAnimatedStyle(() => ({
-    transform: [{ translateX: roadX.value }],
-  }));
-  const pulseStyle = useAnimatedStyle(() => ({ transform: [{ scale: pulse.value }] }));
-  const shineStyle = useAnimatedStyle(() => ({ transform: [{ translateX: shine.value * (width + 260) }, { skewX: "-18deg" }] }));
+  useEffect(() => {
+    setBannerImageBroken(false);
+  }, [bannerIndex, items.length]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -443,8 +418,6 @@ export default function CarRentalPage() {
       <ScrollView style={styles.scrollSurface} contentContainerStyle={styles.page} showsVerticalScrollIndicator={false}>
         <LinearGradient colors={["#04101e", "#08344a", "#06202f"]} style={styles.hero}>
           <View style={styles.glow} />
-          <Animated.View style={[styles.neonRing, pulseStyle]} />
-          <Animated.View pointerEvents="none" style={[styles.heroShine, shineStyle]} />
           <View style={styles.heroTop}>
             <View style={styles.badge}>
               <MaterialCommunityIcons name="steering" size={15} color={RED} />
@@ -456,47 +429,49 @@ export default function CarRentalPage() {
             </View>
           </View>
 
-          <View style={styles.heroCopy}>
-            <Animated.View entering={FadeInDown.duration(600)}>
-              <Text style={styles.kicker}>DRIVE. DISCOVER. ARRIVE.</Text>
-              <Text style={styles.heroTitle}>Your journey starts with the{"\n"}right <Text style={styles.heroAccent}>car.</Text></Text>
-            </Animated.View>
+          <Animated.View entering={FadeIn.duration(500)} style={styles.heroBanner}>
+            <Image
+              key={bannerIndex % Math.max(1, items.length)}
+              source={{ uri: bannerImageBroken ? MOCK_FLEET[0].image : (items.length ? (items[bannerIndex % items.length]?.image || MOCK_FLEET[0].image) : MOCK_FLEET[1].image) }}
+              style={styles.heroBannerImage}
+              contentFit="cover"
+              transition={350}
+              onError={() => setBannerImageBroken(true)}
+            />
+            <LinearGradient
+              colors={["rgba(2, 10, 20, 0.02)", "rgba(2, 10, 20, 0.78)"]}
+              style={styles.heroBannerShade}
+            />
+            <View style={styles.heroBannerText}>
+              <Text style={styles.bannerKicker}>KMT BAZAAR CAR RENTALS</Text>
+              <Text style={styles.bannerTitle} numberOfLines={1}>
+                {items.length ? (items[bannerIndex % items.length]?.name || "Explore your next ride") : "Explore your next ride"}
+              </Text>
+              <Text style={styles.bannerSubtitle}>City rides · Family trips · Outstation travel</Text>
+            </View>
+            {items.length > 1 ? (
+              <View style={styles.bannerPosition}>
+                <Text style={styles.bannerPositionText}>{(bannerIndex % items.length) + 1} / {items.length}</Text>
+              </View>
+            ) : null}
+          </Animated.View>
 
-            <Animated.View entering={FadeInUp.delay(160).duration(650)} style={styles.searchBox}>
-              <MaterialCommunityIcons name="magnify" size={24} color={MUTED} />
-              <TextInput
-                value={query}
-                onChangeText={setQuery}
-                placeholder="Search car, city, tour or travel..."
-                placeholderTextColor="#7f858f"
-                style={styles.searchInput}
-                returnKeyType="search"
-                onSubmitEditing={heroSearch}
-              />
-              <Pressable onPress={heroSearch} style={styles.searchBtn}>
-                <MaterialCommunityIcons name="arrow-right" size={20} color={WHITE} />
-              </Pressable>
-            </Animated.View>
-          </View>
-
-          <View style={styles.road}>
-            <Animated.View style={[styles.roadMarks, roadStyle]}>
-              {Array.from({ length: 12 }).map((_, i) => <View key={i} style={styles.roadMark} />)}
-            </Animated.View>
-            <Animated.View style={[styles.heroCar, carStyle]}>
-              <MaterialCommunityIcons name="car-sports" size={58} color={WHITE} />
-              <View style={styles.carGlow} />
-            </Animated.View>
-          </View>
+          <Animated.View entering={FadeInUp.delay(160).duration(650)} style={styles.searchBox}>
+            <MaterialCommunityIcons name="magnify" size={24} color={MUTED} />
+            <TextInput
+              value={query}
+              onChangeText={setQuery}
+              placeholder="Search car, city, tour or travel..."
+              placeholderTextColor="#7f858f"
+              style={styles.searchInput}
+              returnKeyType="search"
+              onSubmitEditing={heroSearch}
+            />
+            <Pressable onPress={heroSearch} style={styles.searchBtn}>
+              <MaterialCommunityIcons name="arrow-right" size={20} color={WHITE} />
+            </Pressable>
+          </Animated.View>
         </LinearGradient>
-
-        <Animated.View entering={FadeInUp.delay(80).duration(600)} style={styles.introCard}>
-          <View style={styles.introIcon}><MaterialCommunityIcons name="map-marker-distance" size={25} color={RED} /></View>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.introTitle}>Tour & Travel made simple</Text>
-            <Text style={styles.introText}>Choose a vehicle, share your route and complete booking in the same KMT Bazaar checkout flow.</Text>
-          </View>
-        </Animated.View>
 
         <View style={styles.sectionHeader}>
           <View>
@@ -694,33 +669,27 @@ const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: BLACK },
   scrollSurface: { flex: 1, backgroundColor: BLACK },
   page: { paddingBottom: 0 },
-  hero: { minHeight: 405, paddingHorizontal: 18, paddingTop: 22, overflow: "hidden", borderBottomLeftRadius: 30, borderBottomRightRadius: 30 },
+  hero: { paddingHorizontal: 18, paddingTop: 20, paddingBottom: 22, overflow: "hidden", borderBottomLeftRadius: 30, borderBottomRightRadius: 30 },
   glow: { position: "absolute", width: 260, height: 260, borderRadius: 130, backgroundColor: "rgba(24,214,255,.16)", right: -80, top: 35 },
-  heroShine: { position: "absolute", top: -70, left: -180, width: 110, height: 620, backgroundColor: "rgba(255,255,255,.07)", zIndex: 2 },
-  neonRing: { position: "absolute", width: 220, height: 220, borderRadius: 110, borderWidth: 1, borderColor: "rgba(24,214,255,.34)", right: -44, top: 40 },
+  heroBanner: { width: "100%", maxWidth: 980, height: 190, alignSelf: "center", marginTop: 16, borderRadius: 22, overflow: "hidden", position: "relative", backgroundColor: "#102033", borderWidth: 1, borderColor: "rgba(255,255,255,.16)" },
+  heroBannerImage: { ...StyleSheet.absoluteFillObject, width: "100%", height: "100%" },
+  heroBannerShade: { ...StyleSheet.absoluteFillObject },
+  heroBannerText: { position: "absolute", left: 17, right: 76, bottom: 17 },
+  bannerKicker: { color: "#A5F3FC", fontSize: 10, fontWeight: "900", letterSpacing: 1.5 },
+  bannerTitle: { color: WHITE, fontSize: 24, lineHeight: 29, fontWeight: "900", marginTop: 5, textShadowColor: "rgba(0,0,0,.55)", textShadowRadius: 8 },
+  bannerSubtitle: { color: "rgba(255,255,255,.90)", fontSize: 11, fontWeight: "700", marginTop: 5 },
+  bannerPosition: { position: "absolute", right: 12, bottom: 12, paddingHorizontal: 9, paddingVertical: 6, borderRadius: 999, backgroundColor: "rgba(4,16,30,.78)", borderWidth: 1, borderColor: "rgba(255,255,255,.20)" },
+  bannerPositionText: { color: WHITE, fontSize: 10, fontWeight: "900" },
   heroTop: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", zIndex: 4 },
   badge: { flexDirection: "row", gap: 7, alignItems: "center", paddingHorizontal: 11, paddingVertical: 8, backgroundColor: "rgba(255,255,255,.06)", borderWidth: 1, borderColor: "rgba(255,255,255,.09)", borderRadius: 999 },
   badgeText: { color: "#e8e9ec", fontSize: 10, fontWeight: "900", letterSpacing: 1.2 },
   livePill: { flexDirection: "row", gap: 6, alignItems: "center", paddingHorizontal: 10, paddingVertical: 8, borderRadius: 999, backgroundColor: "rgba(24,214,255,.12)", borderWidth: 1, borderColor: "rgba(24,214,255,.34)" },
   liveDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: RED },
   liveText: { color: "#d8f9ff", fontSize: 10, fontWeight: "900" },
-  heroCopy: { zIndex: 5, maxWidth: 920, width: "100%", alignSelf: "center", paddingTop: 46 },
-  kicker: { color: RED, fontSize: 12, fontWeight: "900", letterSpacing: 2.2, marginBottom: 10 },
-  heroTitle: { color: WHITE, fontSize: 39, lineHeight: 46, fontWeight: "900" },
-  heroAccent: { color: AMBER },
-  searchBox: { marginTop: 24, backgroundColor: WHITE, borderWidth: 1, borderColor: "rgba(255,255,255,.25)", borderRadius: 17, padding: 7, flexDirection: "row", alignItems: "center", maxWidth: 840, shadowColor: RED, shadowOpacity: .22, shadowRadius: 28 },
+  searchBox: { marginTop: 14, width: "100%", maxWidth: 840, alignSelf: "center", backgroundColor: WHITE, borderWidth: 1, borderColor: "rgba(255,255,255,.25)", borderRadius: 17, padding: 7, flexDirection: "row", alignItems: "center", shadowColor: RED, shadowOpacity: .22, shadowRadius: 28 },
   searchInput: { flex: 1, paddingHorizontal: 10, paddingVertical: 13, fontSize: 15, color: BLACK },
   searchBtn: { width: 48, height: 48, borderRadius: 13, backgroundColor: RED, alignItems: "center", justifyContent: "center" },
-  road: { position: "absolute", left: 0, right: 0, bottom: 0, height: 100, backgroundColor: "#08090b", borderTopWidth: 1, borderTopColor: "#183247", overflow: "hidden" },
-  roadMarks: { flexDirection: "row", alignItems: "center", gap: 40, position: "absolute", top: 46, left: -80, right: -80 },
-  roadMark: { width: 46, height: 4, backgroundColor: "rgba(255,255,255,.62)", borderRadius: 2 },
-  heroCar: { position: "absolute", top: 19, left: 0, alignItems: "center", justifyContent: "center" },
-  carGlow: { position: "absolute", width: 90, height: 24, borderRadius: 50, backgroundColor: "rgba(24,214,255,.38)", bottom: 3, zIndex: -1 },
-  introCard: { maxWidth: 980, width: "calc(100% - 36px)" as any, alignSelf: "center", marginTop: -22, flexDirection: "row", gap: 14, alignItems: "center", padding: 16, borderRadius: 20, backgroundColor: WHITE, borderWidth: 1, borderColor: "#e6e7eb", shadowColor: "#000", shadowOpacity: .14, shadowRadius: 18 },
-  introIcon: { width: 49, height: 49, borderRadius: 15, backgroundColor: "#e9fbff", alignItems: "center", justifyContent: "center" },
-  introTitle: { color: BLACK, fontSize: 16, fontWeight: "900" },
-  introText: { color: "#61798c", fontSize: 12, lineHeight: 18, marginTop: 3 },
-  sectionTitle: { maxWidth: 980, width: "calc(100% - 36px)" as any, alignSelf: "center", color: "#22C55E", fontSize: 22, fontWeight: "900", marginTop: 27, marginBottom: 9 },
+  sectionTitle: { color: "#22C55E", fontSize: 22, fontWeight: "900", marginBottom: 4 },
   sectionSub: { color: MUTED, fontSize: 12, lineHeight: 18 },
   filterRow: { paddingHorizontal: 18, gap: 9, paddingBottom: 4 },
   filterChip: { flexDirection: "row", gap: 7, alignItems: "center", paddingVertical: 11, paddingHorizontal: 14, borderRadius: 999, borderWidth: 1, borderColor: LINE, backgroundColor: BLACK_2 },
@@ -732,7 +701,7 @@ const styles = StyleSheet.create({
   locationActive: { borderColor: RED, backgroundColor: "#2a0b10" },
   locationText: { color: "#9ba0a9", fontSize: 11, fontWeight: "800" },
   locationTextActive: { color: "#ffdce0" },
-  sectionHeader: { maxWidth: 980, width: "calc(100% - 36px)" as any, alignSelf: "center", marginTop: 30, marginBottom: 12, flexDirection: "row", alignItems: "flex-end", justifyContent: "space-between" },
+  sectionHeader: { maxWidth: 980, width: "calc(100% - 36px)" as any, alignSelf: "center", marginTop: 12, marginBottom: 12, flexDirection: "row", alignItems: "flex-end", justifyContent: "space-between" },
   countPill: { borderRadius: 999, paddingHorizontal: 12, paddingVertical: 6, backgroundColor: "#102337", borderWidth: 1, borderColor: LINE },
   countText: { color: "#e8f6fb", fontSize: 11, fontWeight: "900" },
   loader: { alignItems: "center", paddingVertical: 80 },
