@@ -154,7 +154,7 @@ function NightSky() {
           vec2 uv = v_uv;
           float aspect = u_resolution.x / max(u_resolution.y, 1.0);
           float clock = mod(u_hour + 24.0, 24.0);
-          float t = u_time * 0.00016;
+          float t = u_time * 0.000055;
 
           // Smooth, local-time lighting transitions: sunrise, clear daytime, sunset and deep night.
           float day = smoothstep(5.1, 7.8, clock) * (1.0 - smoothstep(16.7, 19.6, clock));
@@ -271,12 +271,12 @@ function NightSky() {
           sky = mix(sky, mistColor, mistBand * (0.15 + twilight * 0.16));
 
           // Wind-torn smoke plume: billows widen, curl, drift, and fade into the upper cloud layer.
-          float smokeY = smoothstep(0.075, 0.145, uv.y) * (1.0 - smoothstep(0.47, 0.66, uv.y));
+          float smokeY = smoothstep(0.405, 0.455, uv.y) * (1.0 - smoothstep(0.82, 0.95, uv.y));
           float smokeCenter = 0.335
-            + 0.034 * sin(uv.y * 14.0 - t * 2.2)
-            + 0.016 * sin(uv.y * 38.0 + t * 1.55)
-            + 0.008 * sin(uv.y * 72.0 - t * 1.9);
-          float smokeWidth = 0.008 + uv.y * 0.060;
+            + 0.028 * sin(uv.y * 10.0 - t * 2.2)
+            + 0.015 * sin(uv.y * 27.0 + t * 1.55)
+            + 0.007 * sin(uv.y * 56.0 - t * 1.9);
+          float smokeWidth = 0.008 + max(uv.y - 0.37, 0.0) * 0.072;
           float smokeDistance = abs(uv.x - smokeCenter) / max(smokeWidth, 0.006);
           float smokeNoise = fbm(vec2(uv.x * 13.0 + t * 0.28, uv.y * 10.0 - t * 1.18));
           float smokeRimNoise = fbm(vec2(uv.x * 18.0 - t * 0.22, uv.y * 15.0 + t * 0.76));
@@ -285,16 +285,16 @@ function NightSky() {
           vec3 smokeColor = mix(vec3(0.48, 0.54, 0.60), vec3(0.79, 0.81, 0.83), day);
           smokeColor = mix(smokeColor, vec3(0.83, 0.52, 0.43), twilight * 0.72);
           smokeColor = mix(smokeColor, vec3(0.16, 0.21, 0.30), night * 0.72);
-          sky = mix(sky, smokeColor, smokeRim * 0.25);
-          sky = mix(sky, smokeColor * 0.80, smokeCore * (0.22 + night * 0.10));
+          sky = mix(sky, smokeColor, smokeRim * 0.36);
+          sky = mix(sky, smokeColor * 0.82, smokeCore * (0.32 + twilight * 0.10 + night * 0.08));
 
           // Rolling landscape and a small distant exhaust stack anchor the plume in the scene.
           float hillA = fbm(vec2(uv.x * 2.1 + 3.0, 6.0));
           float hillB = fbm(vec2(uv.x * 4.2 - 1.0, 9.0));
-          float hillLine = 0.047 + hillA * 0.033 + 0.008 * sin(uv.x * 11.0 + t * 0.12);
-          float farHill = 1.0 - smoothstep(hillLine, hillLine + 0.012, uv.y);
-          float nearLine = 0.024 + hillB * 0.022;
-          float nearHill = 1.0 - smoothstep(nearLine, nearLine + 0.009, uv.y);
+          float hillLine = 0.095 + hillA * 0.042 + 0.008 * sin(uv.x * 11.0 + t * 0.12);
+          float farHill = 1.0 - smoothstep(hillLine, hillLine + 0.014, uv.y);
+          float nearLine = 0.045 + hillB * 0.024;
+          float nearHill = 1.0 - smoothstep(nearLine, nearLine + 0.010, uv.y);
           vec3 farLand = mix(vec3(0.12, 0.22, 0.28), vec3(0.018, 0.034, 0.058), night * 0.92);
           vec3 nearLand = mix(vec3(0.065, 0.15, 0.16), vec3(0.008, 0.017, 0.030), night);
           sky = mix(sky, farLand, farHill * 0.92);
@@ -306,28 +306,28 @@ function NightSky() {
 
           float leftTreeCrown = max(
             max(
-              circleMask(uv, vec2(0.075 + treeWindLeft, 0.184), 0.031, 0.0025),
-              circleMask(uv, vec2(0.054 + treeWindLeft, 0.160), 0.030, 0.0025)
+              circleMask(uv, vec2(0.075 + treeWindLeft, 0.354), 0.050, 0.003),
+              circleMask(uv, vec2(0.042 + treeWindLeft, 0.311), 0.048, 0.003)
             ),
             max(
-              circleMask(uv, vec2(0.096 + treeWindLeft, 0.157), 0.031, 0.0025),
-              circleMask(uv, vec2(0.075 + treeWindLeft, 0.143), 0.033, 0.0025)
+              circleMask(uv, vec2(0.107 + treeWindLeft, 0.307), 0.050, 0.003),
+              circleMask(uv, vec2(0.075 + treeWindLeft, 0.278), 0.053, 0.003)
             )
           );
-          float leftTreeTrunk = boxMask(uv, vec2(0.076, 0.094), vec2(0.006, 0.044), 0.002);
+          float leftTreeTrunk = boxMask(uv, vec2(0.076, 0.151), vec2(0.008, 0.096), 0.0025);
           float leftTree = max(leftTreeCrown, leftTreeTrunk);
 
           float rightTreeCrown = max(
             max(
-              circleMask(uv, vec2(0.790 + treeWindRight, 0.178), 0.030, 0.0025),
-              circleMask(uv, vec2(0.770 + treeWindRight, 0.157), 0.028, 0.0025)
+              circleMask(uv, vec2(0.790 + treeWindRight, 0.344), 0.048, 0.003),
+              circleMask(uv, vec2(0.762 + treeWindRight, 0.311), 0.045, 0.003)
             ),
             max(
-              circleMask(uv, vec2(0.810 + treeWindRight, 0.155), 0.029, 0.0025),
-              circleMask(uv, vec2(0.790 + treeWindRight, 0.142), 0.031, 0.0025)
+              circleMask(uv, vec2(0.820 + treeWindRight, 0.306), 0.047, 0.003),
+              circleMask(uv, vec2(0.790 + treeWindRight, 0.282), 0.050, 0.003)
             )
           );
-          float rightTreeTrunk = boxMask(uv, vec2(0.790, 0.091), vec2(0.0055, 0.041), 0.002);
+          float rightTreeTrunk = boxMask(uv, vec2(0.790, 0.145), vec2(0.0075, 0.088), 0.0025);
           float rightTree = max(rightTreeCrown, rightTreeTrunk);
 
           vec3 treeBark = mix(vec3(0.20, 0.105, 0.055), vec3(0.012, 0.020, 0.026), night * 0.92);
@@ -341,21 +341,21 @@ function NightSky() {
 
           float leafGlints = max(
             max(
-              circleMask(uv, vec2(0.064 + treeWindLeft, 0.184), 0.013, 0.002),
-              circleMask(uv, vec2(0.086 + treeWindLeft, 0.164), 0.012, 0.002)
+              circleMask(uv, vec2(0.064 + treeWindLeft, 0.354), 0.018, 0.0025),
+              circleMask(uv, vec2(0.091 + treeWindLeft, 0.319), 0.016, 0.0025)
             ),
             max(
-              circleMask(uv, vec2(0.780 + treeWindRight, 0.179), 0.011, 0.002),
-              circleMask(uv, vec2(0.801 + treeWindRight, 0.158), 0.010, 0.002)
+              circleMask(uv, vec2(0.780 + treeWindRight, 0.344), 0.017, 0.0025),
+              circleMask(uv, vec2(0.803 + treeWindRight, 0.311), 0.015, 0.0025)
             )
           );
           sky = mix(sky, foliageLight, leafGlints * (0.23 + day * 0.30));
 
           // A small village with a warm, thatched focal hut; its chimney anchors the drifting smoke.
-          float houseLeftBody = boxMask(uv, vec2(0.12, 0.050), vec2(0.040, 0.028), 0.002);
-          float houseMainBody = boxMask(uv, vec2(0.335, 0.052), vec2(0.062, 0.031), 0.002);
-          float houseRightBody = boxMask(uv, vec2(0.66, 0.045), vec2(0.045, 0.027), 0.002);
-          float houseFarRightBody = boxMask(uv, vec2(0.855, 0.035), vec2(0.034, 0.019), 0.002);
+          float houseLeftBody = boxMask(uv, vec2(0.12, 0.093), vec2(0.030, 0.038), 0.0025);
+          float houseMainBody = boxMask(uv, vec2(0.335, 0.178), vec2(0.047, 0.064), 0.0025);
+          float houseRightBody = boxMask(uv, vec2(0.66, 0.086), vec2(0.036, 0.036), 0.0025);
+          float houseFarRightBody = boxMask(uv, vec2(0.855, 0.066), vec2(0.027, 0.025), 0.0025);
           float houseBodies = max(max(houseLeftBody, houseMainBody), max(houseRightBody, houseFarRightBody));
           vec3 houseColor = mix(vec3(0.15, 0.23, 0.28), vec3(0.012, 0.022, 0.039), night * 0.94);
           sky = mix(sky, houseColor, houseBodies * 0.98);
@@ -364,10 +364,10 @@ function NightSky() {
           hutWallColor = mix(hutWallColor, vec3(0.24, 0.095, 0.065), dusk * 0.42);
           sky = mix(sky, hutWallColor, houseMainBody * 0.98);
 
-          float roofLeft = roofMask(uv, 0.12, 0.076, 0.122, 0.052);
-          float roofMain = roofMask(uv, 0.335, 0.081, 0.139, 0.071);
-          float roofRight = roofMask(uv, 0.66, 0.070, 0.119, 0.057);
-          float roofFarRight = roofMask(uv, 0.855, 0.052, 0.090, 0.041);
+          float roofLeft = roofMask(uv, 0.12, 0.131, 0.207, 0.039);
+          float roofMain = roofMask(uv, 0.335, 0.241, 0.402, 0.058);
+          float roofRight = roofMask(uv, 0.66, 0.122, 0.198, 0.044);
+          float roofFarRight = roofMask(uv, 0.855, 0.089, 0.150, 0.031);
           float houseRoofs = max(max(roofLeft, roofMain), max(roofRight, roofFarRight));
           vec3 roofColor = mix(vec3(0.085, 0.14, 0.18), vec3(0.006, 0.012, 0.025), night * 0.92);
           roofColor = mix(roofColor, vec3(0.18, 0.075, 0.075), dusk * 0.40);
@@ -377,24 +377,27 @@ function NightSky() {
           thatchColor = mix(thatchColor, vec3(0.30, 0.085, 0.052), dusk * 0.48);
           sky = mix(sky, thatchColor, roofMain * 0.98);
 
-          float eave = boxMask(uv, vec2(0.335, 0.081), vec2(0.073, 0.003), 0.0015);
-          sky = mix(sky, mix(vec3(0.25, 0.14, 0.075), vec3(0.018, 0.018, 0.026), night * 0.88), eave * 0.88);
+          float eave = boxMask(uv, vec2(0.335, 0.241), vec2(0.061, 0.004), 0.0018);
+          sky = mix(sky, mix(vec3(0.25, 0.14, 0.075), vec3(0.018, 0.018, 0.026), night * 0.88), eave * 0.92);
 
-          float hutDoor = boxMask(uv, vec2(0.335, 0.038), vec2(0.010, 0.018), 0.0015);
-          sky = mix(sky, mix(vec3(0.075, 0.045, 0.026), vec3(0.006, 0.009, 0.016), night * 0.90), hutDoor * 0.95);
+          float hutDoor = boxMask(uv, vec2(0.335, 0.145), vec2(0.010, 0.034), 0.0018);
+          sky = mix(sky, mix(vec3(0.075, 0.045, 0.026), vec3(0.006, 0.009, 0.016), night * 0.90), hutDoor * 0.98);
 
-          float houseWindows = max(
-            max(boxMask(uv, vec2(0.106, 0.046), vec2(0.007, 0.009), 0.001),
-                boxMask(uv, vec2(0.306, 0.048), vec2(0.007, 0.009), 0.001)),
-            max(max(boxMask(uv, vec2(0.365, 0.048), vec2(0.007, 0.009), 0.001),
-                    boxMask(uv, vec2(0.645, 0.041), vec2(0.007, 0.008), 0.001)),
-                boxMask(uv, vec2(0.672, 0.041), vec2(0.007, 0.008), 0.001))
+          float hutWindowLeft = boxMask(uv, vec2(0.304, 0.202), vec2(0.007, 0.013), 0.0015);
+          float hutWindowRight = boxMask(uv, vec2(0.366, 0.202), vec2(0.007, 0.013), 0.0015);
+          float smallWindows = max(
+            max(boxMask(uv, vec2(0.106, 0.089), vec2(0.006, 0.009), 0.001),
+                boxMask(uv, vec2(0.134, 0.089), vec2(0.006, 0.009), 0.001)),
+            max(max(boxMask(uv, vec2(0.645, 0.083), vec2(0.006, 0.009), 0.001),
+                    boxMask(uv, vec2(0.675, 0.083), vec2(0.006, 0.009), 0.001)),
+                boxMask(uv, vec2(0.855, 0.064), vec2(0.005, 0.007), 0.001))
           );
+          float houseWindows = max(max(hutWindowLeft, hutWindowRight), smallWindows);
           vec3 windowColor = mix(vec3(0.84, 0.74, 0.53), vec3(1.0, 0.52, 0.16), night);
           sky = mix(sky, windowColor, houseWindows * (0.10 + night * 0.76));
 
-          float stackBody = boxMask(uv, vec2(0.335, 0.152), vec2(0.008, 0.021), 0.002);
-          float stackCap = boxMask(uv, vec2(0.335, 0.174), vec2(0.012, 0.003), 0.001);
+          float stackBody = boxMask(uv, vec2(0.335, 0.411), vec2(0.008, 0.027), 0.002);
+          float stackCap = boxMask(uv, vec2(0.335, 0.439), vec2(0.012, 0.0035), 0.0015);
           sky = mix(sky, vec3(0.028, 0.037, 0.047), max(stackBody, stackCap));
 
           // Gentle cinematic vignette; keep the whole scene readable behind the search controls.
@@ -761,10 +764,11 @@ function NightSky() {
         <View style={[s.houseWindow, { left: 9, backgroundColor: houseWindowColor }]} />
       </View>
       <View style={[s.house, s.houseCenter]}>
-        <View style={[s.houseRoof, { borderBottomColor: houseRoofColor }]} />
-        <View style={[s.houseBody, { backgroundColor: houseBodyColor }]} />
-        <View style={[s.houseWindow, { left: 11, backgroundColor: houseWindowColor }]} />
-        <View style={[s.houseWindow, { right: 11, backgroundColor: houseWindowColor }]} />
+        <View style={[s.houseRoof, s.houseCenterRoof, { borderBottomColor: houseRoofColor }]} />
+        <View style={[s.houseBody, s.houseCenterBody, { backgroundColor: isNight ? "#18241F" : isSunset ? "#7A4330" : "#A66D43" }]} />
+        <View style={[s.houseWindow, s.houseCenterWindow, { left: 16, backgroundColor: houseWindowColor }]} />
+        <View style={[s.houseWindow, s.houseCenterWindow, { right: 16, backgroundColor: houseWindowColor }]} />
+        <View style={[s.houseCenterDoor, { backgroundColor: isNight ? "#100E12" : "#49301E" }]} />
       </View>
       <View style={[s.house, s.houseRight]}>
         <View style={[s.houseRoof, { borderBottomColor: houseRoofColor }]} />
@@ -1592,15 +1596,19 @@ const s = StyleSheet.create({
   horizonSilhouette: { position: "absolute", left: 0, right: 0, bottom: 0, height: 18, backgroundColor: "rgba(13,28,38,0.58)" },
   house: { position: "absolute", bottom: 1, height: 22, zIndex: 3 },
   houseLeft: { left: "8%", width: 34, height: 20 },
-  houseCenter: { left: "28%", width: 44, height: 22 },
+  houseCenter: { left: "28%", width: 76, height: 46 },
   houseRight: { right: "28%", width: 40, height: 19 },
   houseFarRight: { right: "5%", width: 30, height: 17 },
   houseRoof: { position: "absolute", left: 0, bottom: 10, width: 0, height: 0, borderLeftWidth: 17, borderRightWidth: 17, borderBottomWidth: 10, borderLeftColor: "transparent", borderRightColor: "transparent" },
   houseBody: { position: "absolute", left: 4, right: 4, bottom: 0, height: 12, borderTopLeftRadius: 1, borderTopRightRadius: 1 },
   houseWindow: { position: "absolute", bottom: 3, width: 4, height: 5, borderRadius: 1 },
-  smokeColumn: { position: "absolute", left: "21%", bottom: 20, width: 94, height: 118 },
+  houseCenterRoof: { bottom: 21, borderLeftWidth: 38, borderRightWidth: 38, borderBottomWidth: 24 } as any,
+  houseCenterBody: { left: 8, right: 8, height: 26, borderTopLeftRadius: 2, borderTopRightRadius: 2 },
+  houseCenterWindow: { bottom: 9, width: 6, height: 8, borderRadius: 1 },
+  houseCenterDoor: { position: "absolute", bottom: 0, left: 33, width: 10, height: 18, borderTopLeftRadius: 5, borderTopRightRadius: 5 },
+  smokeColumn: { position: "absolute", left: "21%", bottom: 36, width: 94, height: 110 },
   smokePuff: { position: "absolute", borderRadius: 50, backgroundColor: "rgba(206,218,226,0.35)", shadowColor: "#CBD5E1", shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.28, shadowRadius: 12, elevation: 1 },
-  smokeStack: { position: "absolute", bottom: 12, left: "32.5%", width: 7, height: 12, backgroundColor: "#263442", borderTopWidth: 2, borderTopColor: "#526170" },
+  smokeStack: { position: "absolute", bottom: 39, left: "37.5%", width: 9, height: 14, backgroundColor: "#49372D", borderTopWidth: 2, borderTopColor: "#A18A72" },
   heroTree: { position: "absolute", bottom: 0, width: 62, height: 82, zIndex: 2, transformOrigin: "bottom" } as any,
   heroTreeLeft: { left: "1%" },
   heroTreeRight: { right: "2%", width: 58, height: 72 },
