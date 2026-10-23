@@ -103,7 +103,24 @@ export default function Categories() {
         if (requestedCategory) {
           setActive(String(requestedCategory.id));
         } else if (availableCategories.length) {
-          setActive(String(availableCategories[0].id));
+          let availableProductCategories = new Set<string>();
+          if (!requestedId) {
+            try {
+              const allProducts = await api.products();
+              if (cancelled) return;
+              availableProductCategories = new Set(
+                (Array.isArray(allProducts) ? allProducts : [])
+                  .map((product: any) => String(product.category_id || ""))
+                  .filter(Boolean)
+              );
+            } catch (error) {
+              console.warn("Catalog products unavailable while selecting a default category:", error);
+            }
+          }
+          const firstCategoryWithProducts = availableCategories.find(
+            (category) => availableProductCategories.has(String(category.id))
+          );
+          setActive(String((firstCategoryWithProducts || availableCategories[0]).id));
         } else if (requestedId) {
           // The page was opened from Home; still try fetching that category's products.
           setActive(String(requestedId));
