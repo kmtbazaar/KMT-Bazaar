@@ -66,6 +66,8 @@ function NightSky() {
   const cloudDepth = useSharedValue(0);
   const smokeRise = useSharedValue(0);
   const smokeSway = useSharedValue(0);
+  const treeSway = useSharedValue(0);
+  const treeFarSway = useSharedValue(0);
 
   useEffect(() => {
     const clock = setInterval(() => {
@@ -134,6 +136,10 @@ function NightSky() {
         float boxMask(vec2 p, vec2 center, vec2 halfSize, float softness) {
           float d = max(abs(p.x - center.x) - halfSize.x, abs(p.y - center.y) - halfSize.y);
           return 1.0 - smoothstep(0.0, softness, d);
+        }
+
+        float circleMask(vec2 p, vec2 center, float radius, float softness) {
+          return 1.0 - smoothstep(radius - softness, radius + softness, length(p - center));
         }
 
         float roofMask(vec2 p, float centerX, float baseY, float peakY, float halfWidth) {
@@ -294,7 +300,58 @@ function NightSky() {
           sky = mix(sky, farLand, farHill * 0.92);
           sky = mix(sky, nearLand, nearHill * 0.96);
 
-          // Tiny village houses sit along the horizon; the center roof anchors the moving chimney smoke.
+          // Two leafy trees frame the village. Their outer crowns flex gently in the breeze.
+          float treeWindLeft = 0.0055 * sin(t * 1.35);
+          float treeWindRight = 0.0040 * sin(t * 1.08 + 1.7);
+
+          float leftTreeCrown = max(
+            max(
+              circleMask(uv, vec2(0.075 + treeWindLeft, 0.184), 0.031, 0.0025),
+              circleMask(uv, vec2(0.054 + treeWindLeft, 0.160), 0.030, 0.0025)
+            ),
+            max(
+              circleMask(uv, vec2(0.096 + treeWindLeft, 0.157), 0.031, 0.0025),
+              circleMask(uv, vec2(0.075 + treeWindLeft, 0.143), 0.033, 0.0025)
+            )
+          );
+          float leftTreeTrunk = boxMask(uv, vec2(0.076, 0.094), vec2(0.006, 0.044), 0.002);
+          float leftTree = max(leftTreeCrown, leftTreeTrunk);
+
+          float rightTreeCrown = max(
+            max(
+              circleMask(uv, vec2(0.790 + treeWindRight, 0.178), 0.030, 0.0025),
+              circleMask(uv, vec2(0.770 + treeWindRight, 0.157), 0.028, 0.0025)
+            ),
+            max(
+              circleMask(uv, vec2(0.810 + treeWindRight, 0.155), 0.029, 0.0025),
+              circleMask(uv, vec2(0.790 + treeWindRight, 0.142), 0.031, 0.0025)
+            )
+          );
+          float rightTreeTrunk = boxMask(uv, vec2(0.790, 0.091), vec2(0.0055, 0.041), 0.002);
+          float rightTree = max(rightTreeCrown, rightTreeTrunk);
+
+          vec3 treeBark = mix(vec3(0.20, 0.105, 0.055), vec3(0.012, 0.020, 0.026), night * 0.92);
+          vec3 foliageBase = mix(vec3(0.035, 0.19, 0.078), vec3(0.008, 0.025, 0.030), night * 0.92);
+          foliageBase = mix(foliageBase, vec3(0.19, 0.095, 0.075), twilight * 0.48);
+          vec3 foliageLight = mix(vec3(0.10, 0.31, 0.105), vec3(0.022, 0.055, 0.065), night * 0.88);
+          foliageLight = mix(foliageLight, vec3(0.34, 0.15, 0.10), twilight * 0.42);
+
+          sky = mix(sky, treeBark, max(leftTreeTrunk, rightTreeTrunk) * 0.98);
+          sky = mix(sky, foliageBase, max(leftTree, rightTree) * 0.99);
+
+          float leafGlints = max(
+            max(
+              circleMask(uv, vec2(0.064 + treeWindLeft, 0.184), 0.013, 0.002),
+              circleMask(uv, vec2(0.086 + treeWindLeft, 0.164), 0.012, 0.002)
+            ),
+            max(
+              circleMask(uv, vec2(0.780 + treeWindRight, 0.179), 0.011, 0.002),
+              circleMask(uv, vec2(0.801 + treeWindRight, 0.158), 0.010, 0.002)
+            )
+          );
+          sky = mix(sky, foliageLight, leafGlints * (0.23 + day * 0.30));
+
+          // A small village with a warm, thatched focal hut; its chimney anchors the drifting smoke.
           float houseLeftBody = boxMask(uv, vec2(0.12, 0.050), vec2(0.040, 0.028), 0.002);
           float houseMainBody = boxMask(uv, vec2(0.335, 0.052), vec2(0.062, 0.031), 0.002);
           float houseRightBody = boxMask(uv, vec2(0.66, 0.045), vec2(0.045, 0.027), 0.002);
@@ -302,6 +359,10 @@ function NightSky() {
           float houseBodies = max(max(houseLeftBody, houseMainBody), max(houseRightBody, houseFarRightBody));
           vec3 houseColor = mix(vec3(0.15, 0.23, 0.28), vec3(0.012, 0.022, 0.039), night * 0.94);
           sky = mix(sky, houseColor, houseBodies * 0.98);
+
+          vec3 hutWallColor = mix(vec3(0.31, 0.19, 0.105), vec3(0.018, 0.025, 0.035), night * 0.92);
+          hutWallColor = mix(hutWallColor, vec3(0.24, 0.095, 0.065), dusk * 0.42);
+          sky = mix(sky, hutWallColor, houseMainBody * 0.98);
 
           float roofLeft = roofMask(uv, 0.12, 0.076, 0.122, 0.052);
           float roofMain = roofMask(uv, 0.335, 0.081, 0.139, 0.071);
@@ -311,6 +372,16 @@ function NightSky() {
           vec3 roofColor = mix(vec3(0.085, 0.14, 0.18), vec3(0.006, 0.012, 0.025), night * 0.92);
           roofColor = mix(roofColor, vec3(0.18, 0.075, 0.075), dusk * 0.40);
           sky = mix(sky, roofColor, houseRoofs * 0.98);
+
+          vec3 thatchColor = mix(vec3(0.47, 0.30, 0.13), vec3(0.026, 0.018, 0.025), night * 0.92);
+          thatchColor = mix(thatchColor, vec3(0.30, 0.085, 0.052), dusk * 0.48);
+          sky = mix(sky, thatchColor, roofMain * 0.98);
+
+          float eave = boxMask(uv, vec2(0.335, 0.081), vec2(0.073, 0.003), 0.0015);
+          sky = mix(sky, mix(vec3(0.25, 0.14, 0.075), vec3(0.018, 0.018, 0.026), night * 0.88), eave * 0.88);
+
+          float hutDoor = boxMask(uv, vec2(0.335, 0.038), vec2(0.010, 0.018), 0.0015);
+          sky = mix(sky, mix(vec3(0.075, 0.045, 0.026), vec3(0.006, 0.009, 0.016), night * 0.90), hutDoor * 0.95);
 
           float houseWindows = max(
             max(boxMask(uv, vec2(0.106, 0.046), vec2(0.007, 0.009), 0.001),
@@ -377,11 +448,11 @@ function NightSky() {
 
       const resize = () => {
         const widthPx = Math.max(1, Math.floor(window.innerWidth * Math.min(window.devicePixelRatio, 2)));
-        const heightPx = Math.max(1, Math.floor(100 * Math.min(window.devicePixelRatio, 2)));
+        const heightPx = Math.max(1, Math.floor(140 * Math.min(window.devicePixelRatio, 2)));
         canvas.width = widthPx;
         canvas.height = heightPx;
         canvas.style.width = "100%";
-        canvas.style.height = "100px";
+        canvas.style.height = "140px";
         gl.viewport(0, 0, widthPx, heightPx);
       };
 
@@ -449,6 +520,23 @@ function NightSky() {
       -1,
       true
     );
+
+    treeSway.value = withRepeat(
+      withSequence(
+        withTiming(-1.1, { duration: 2900 }),
+        withTiming(1.0, { duration: 3300 })
+      ),
+      -1,
+      true
+    );
+    treeFarSway.value = withRepeat(
+      withSequence(
+        withTiming(0.8, { duration: 3700 }),
+        withTiming(-0.9, { duration: 4100 })
+      ),
+      -1,
+      true
+    );
   }, []);
 
   const isNight = hour >= 19 || hour < 6;
@@ -457,7 +545,7 @@ function NightSky() {
   if (Platform.OS === "web") {
     return (
       <View pointerEvents="none" style={s.nightSky}>
-        {React.createElement("canvas" as any, { ref: canvasRef, style: { width: "100%", height: "100px", display: "block" } })}
+        {React.createElement("canvas" as any, { ref: canvasRef, style: { width: "100%", height: "140px", display: "block" } })}
       </View>
     );
   }
@@ -485,6 +573,13 @@ function NightSky() {
       { scale: 0.82 + smokeRise.value * 0.32 },
     ],
     opacity: 0.56 - smokeRise.value * 0.22,
+  }));
+
+  const treeSwayStyle = useAnimatedStyle(() => ({
+    transform: [{ rotate: `${treeSway.value}deg` }],
+  }));
+  const treeFarSwayStyle = useAnimatedStyle(() => ({
+    transform: [{ rotate: `${treeFarSway.value}deg` }],
   }));
 
   const sunProgress = Math.max(0, Math.min(1, (hour - 5.1) / 14.2));
@@ -585,6 +680,80 @@ function NightSky() {
       </Animated.View>
 
       <View style={s.horizonSilhouette} />
+
+      <Animated.View style={[s.heroTree, s.heroTreeLeft, treeSwayStyle]}>
+        <View
+          style={[
+            s.heroTreeTrunk,
+            { backgroundColor: isNight ? "#14231D" : "#493321" },
+          ]}
+        />
+        <View
+          style={[
+            s.heroTreeCanopy,
+            s.heroTreeCanopyLeft,
+            { backgroundColor: isNight ? "#142C25" : isSunset ? "#2A4931" : "#2B6137" },
+          ]}
+        />
+        <View
+          style={[
+            s.heroTreeCanopy,
+            s.heroTreeCanopyTop,
+            { backgroundColor: isNight ? "#19372C" : isSunset ? "#36553A" : "#397642" },
+          ]}
+        />
+        <View
+          style={[
+            s.heroTreeCanopy,
+            s.heroTreeCanopyRight,
+            { backgroundColor: isNight ? "#102820" : isSunset ? "#25432D" : "#245632" },
+          ]}
+        />
+        <View
+          style={[
+            s.heroTreeCanopy,
+            s.heroTreeCanopyLower,
+            { backgroundColor: isNight ? "#112820" : isSunset ? "#29472F" : "#326B3A" },
+          ]}
+        />
+      </Animated.View>
+
+      <Animated.View style={[s.heroTree, s.heroTreeRight, treeFarSwayStyle]}>
+        <View
+          style={[
+            s.heroTreeTrunk,
+            { backgroundColor: isNight ? "#14231D" : "#493321" },
+          ]}
+        />
+        <View
+          style={[
+            s.heroTreeCanopy,
+            s.heroTreeCanopyLeft,
+            { backgroundColor: isNight ? "#142C25" : isSunset ? "#2A4931" : "#2B6137" },
+          ]}
+        />
+        <View
+          style={[
+            s.heroTreeCanopy,
+            s.heroTreeCanopyTop,
+            { backgroundColor: isNight ? "#19372C" : isSunset ? "#36553A" : "#397642" },
+          ]}
+        />
+        <View
+          style={[
+            s.heroTreeCanopy,
+            s.heroTreeCanopyRight,
+            { backgroundColor: isNight ? "#102820" : isSunset ? "#25432D" : "#245632" },
+          ]}
+        />
+        <View
+          style={[
+            s.heroTreeCanopy,
+            s.heroTreeCanopyLower,
+            { backgroundColor: isNight ? "#112820" : isSunset ? "#29472F" : "#326B3A" },
+          ]}
+        />
+      </Animated.View>
 
       <View style={[s.house, s.houseLeft]}>
         <View style={[s.houseRoof, { borderBottomColor: houseRoofColor }]} />
@@ -1416,7 +1585,7 @@ const s = StyleSheet.create({
   root: { flex: 1, backgroundColor: THEME.whiteBg },
   /* Realistic 3D-style sky layers stay behind the existing header/search only */
   heroHeaderShell: { position: "relative", width: "100%", overflow: "hidden" },
-  nightSky: { position: "absolute", top: 0, left: 0, right: 0, height: 100, overflow: "hidden", zIndex: 0, pointerEvents: "none" },
+  nightSky: { position: "absolute", top: 0, left: 0, right: 0, height: 140, overflow: "hidden", zIndex: 0, pointerEvents: "none" },
   nightGradientLayer: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0 },
   nightGradient: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0 },
   horizonGlow: { position: "absolute", left: "12%", right: "12%", bottom: 4, height: 68, borderTopLeftRadius: 170, borderTopRightRadius: 170, backgroundColor: "rgba(255,190,130,0.10)" },
@@ -1432,6 +1601,15 @@ const s = StyleSheet.create({
   smokeColumn: { position: "absolute", left: "21%", bottom: 20, width: 94, height: 118 },
   smokePuff: { position: "absolute", borderRadius: 50, backgroundColor: "rgba(206,218,226,0.35)", shadowColor: "#CBD5E1", shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.28, shadowRadius: 12, elevation: 1 },
   smokeStack: { position: "absolute", bottom: 12, left: "32.5%", width: 7, height: 12, backgroundColor: "#263442", borderTopWidth: 2, borderTopColor: "#526170" },
+  heroTree: { position: "absolute", bottom: 0, width: 62, height: 82, zIndex: 2, transformOrigin: "bottom" } as any,
+  heroTreeLeft: { left: "1%" },
+  heroTreeRight: { right: "2%", width: 58, height: 72 },
+  heroTreeTrunk: { position: "absolute", bottom: 0, left: "44%", width: 8, height: 34, borderTopLeftRadius: 2, borderTopRightRadius: 2 },
+  heroTreeCanopy: { position: "absolute", borderRadius: 50 },
+  heroTreeCanopyLeft: { left: 2, top: 25, width: 39, height: 36 },
+  heroTreeCanopyTop: { left: 16, top: 2, width: 37, height: 39 },
+  heroTreeCanopyRight: { right: 0, top: 25, width: 36, height: 33 },
+  heroTreeCanopyLower: { left: 9, top: 39, width: 45, height: 31 },
   starLayer: { position: "absolute", top: 0, left: 0, right: 0, height: 92 },
   star: { position: "absolute", backgroundColor: "#FFFFFF", shadowColor: "#FFFFFF", shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.95, shadowRadius: 5, elevation: 3 },
   sunGlow: { position: "absolute", top: 10, right: "12%", width: 90, height: 90, alignItems: "center", justifyContent: "center" },
