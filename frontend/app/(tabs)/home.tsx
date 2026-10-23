@@ -122,60 +122,43 @@ function NightSky() {
           return mix(mix(a, b, f.x), mix(c, d, f.x), f.y);
         }
 
+        // Three inexpensive octaves provide texture without a heavy procedural-rendering cost.
         float fbm(vec2 p) {
-          float v = 0.0;
-          float a = 0.5;
-          for (int i = 0; i < 5; i++) {
-            v += noise(p) * a;
+          float value = 0.0;
+          float amplitude = 0.5;
+          for (int i = 0; i < 3; i++) {
+            value += noise(p) * amplitude;
             p = p * 2.02 + vec2(17.1, 9.2);
-            a *= 0.5;
+            amplitude *= 0.5;
           }
-          return v;
+          return value;
         }
 
-        float boxMask(vec2 p, vec2 center, vec2 halfSize, float softness) {
-          float d = max(abs(p.x - center.x) - halfSize.x, abs(p.y - center.y) - halfSize.y);
-          return 1.0 - smoothstep(0.0, softness, d);
-        }
-
-        float circleMask(vec2 p, vec2 center, float radius, float softness) {
-          return 1.0 - smoothstep(radius - softness, radius + softness, length(p - center));
-        }
-
-        // Aspect-correct masks keep foliage, clock details and stonework from looking stretched.
-        float ellipseMask(vec2 p, vec2 center, vec2 radii, float softness, float aspect) {
+        float ellipse(vec2 p, vec2 center, vec2 radii, float softness, float aspect) {
           vec2 delta = vec2((p.x - center.x) * aspect, p.y - center.y);
-          float edge = length(delta / radii);
-          return 1.0 - smoothstep(1.0 - softness, 1.0 + softness, edge);
+          float radius = length(delta / radii);
+          return 1.0 - smoothstep(1.0 - softness, 1.0 + softness, radius);
         }
 
-        float boxMaskAspect(vec2 p, vec2 center, vec2 halfSize, float softness, float aspect) {
+        float box(vec2 p, vec2 center, vec2 halfSize, float softness, float aspect) {
           vec2 delta = vec2((p.x - center.x) * aspect, p.y - center.y);
           float d = max(abs(delta.x) - halfSize.x, abs(delta.y) - halfSize.y);
           return 1.0 - smoothstep(0.0, softness, d);
         }
 
-        float segmentMaskAspect(vec2 p, vec2 a, vec2 b, float thickness, float aspect) {
+        float lineMask(vec2 p, vec2 a, vec2 b, float thickness, float aspect) {
           vec2 pa = vec2((p.x - a.x) * aspect, p.y - a.y);
           vec2 ba = vec2((b.x - a.x) * aspect, b.y - a.y);
-          float denom = max(dot(ba, ba), 0.000001);
-          float h = clamp(dot(pa, ba) / denom, 0.0, 1.0);
+          float h = clamp(dot(pa, ba) / max(dot(ba, ba), 0.000001), 0.0, 1.0);
           float d = length(pa - ba * h);
-          return 1.0 - smoothstep(thickness * 0.72, thickness * 1.30, d);
+          return 1.0 - smoothstep(thickness * 0.65, thickness * 1.35, d);
         }
 
-        float roofMaskAspect(vec2 p, float centerX, float baseY, float peakY, float halfWidth, float aspect) {
+        float thatchedRoof(vec2 p, float cx, float baseY, float peakY, float halfWidth, float aspect) {
           float rise = clamp((p.y - baseY) / max(peakY - baseY, 0.001), 0.0, 1.0);
-          float allowedHalfWidth = halfWidth * (1.0 - rise);
-          float roofX = 1.0 - smoothstep(max(allowedHalfWidth - 0.006, 0.0), allowedHalfWidth + 0.006, abs(p.x - centerX) * aspect);
-          float roofY = step(baseY, p.y) * (1.0 - step(peakY + 0.001, p.y));
-          return roofX * roofY;
-        }
-
-        float roofMask(vec2 p, float centerX, float baseY, float peakY, float halfWidth) {
-          float rise = clamp((p.y - baseY) / max(peakY - baseY, 0.001), 0.0, 1.0);
-          float allowedHalfWidth = halfWidth * (1.0 - rise);
-          float roofX = 1.0 - smoothstep(max(allowedHalfWidth - 0.002, 0.0), allowedHalfWidth + 0.002, abs(p.x - centerX));
+          float allowedWidth = halfWidth * (1.0 - rise);
+          float across = abs(p.x - cx) * aspect;
+          float roofX = 1.0 - smoothstep(max(allowedWidth - 0.006, 0.0), allowedWidth + 0.006, across);
           float roofY = step(baseY, p.y) * (1.0 - step(peakY + 0.001, p.y));
           return roofX * roofY;
         }
@@ -186,374 +169,259 @@ function NightSky() {
           float clock = mod(u_hour + 24.0, 24.0);
           float t = u_time * 0.000055;
 
-          // Smooth, local-time lighting transitions: sunrise, clear daytime, sunset and deep night.
-          float day = smoothstep(5.1, 7.8, clock) * (1.0 - smoothstep(16.7, 19.6, clock));
-          float dawn = smoothstep(4.2, 5.8, clock) * (1.0 - smoothstep(7.1, 8.5, clock));
-          float dusk = smoothstep(16.0, 18.25, clock) * (1.0 - smoothstep(19.3, 21.0, clock));
+          // Distinct but smooth daylight, golden-hour and blue-hour grades.
+          float day = smoothstep(5.6, 7.4, clock) * (1.0 - smoothstep(17.0, 19.1, clock));
+          float dawn = smoothstep(4.4, 6.0, clock) * (1.0 - smoothstep(7.2, 8.4, clock));
+          float dusk = smoothstep(16.2, 18.25, clock) * (1.0 - smoothstep(19.2, 20.7, clock));
           float night = clamp(1.0 - max(day, max(dawn * 0.84, dusk)), 0.0, 1.0);
           float twilight = clamp(max(dawn, dusk), 0.0, 1.0);
-          float vertical = smoothstep(0.015, 0.99, uv.y);
-          float horizonGlow = exp(-pow((uv.y - 0.12) * 5.0, 2.0));
+          float horizonGlow = exp(-pow((uv.y - 0.145) * 4.3, 2.0));
+          float vertical = smoothstep(0.015, 0.98, uv.y);
 
-          vec3 dayTop = vec3(0.035, 0.23, 0.49);
-          vec3 dayMid = vec3(0.13, 0.48, 0.76);
-          vec3 dayHorizon = vec3(0.76, 0.88, 0.95);
-          vec3 dawnTop = vec3(0.11, 0.12, 0.30);
-          vec3 dawnMid = vec3(0.37, 0.31, 0.53);
-          vec3 dawnHorizon = vec3(1.00, 0.53, 0.32);
-          vec3 duskTop = vec3(0.055, 0.045, 0.21);
-          vec3 duskMid = vec3(0.37, 0.12, 0.32);
-          vec3 duskHorizon = vec3(1.00, 0.34, 0.13);
-          vec3 nightTop = vec3(0.003, 0.009, 0.035);
-          vec3 nightMid = vec3(0.015, 0.045, 0.115);
-          vec3 nightHorizon = vec3(0.055, 0.105, 0.17);
+          vec3 dayTop = vec3(0.025, 0.19, 0.39);
+          vec3 dayMid = vec3(0.12, 0.46, 0.70);
+          vec3 dayHorizon = vec3(0.80, 0.88, 0.91);
+          vec3 dawnTop = vec3(0.075, 0.085, 0.20);
+          vec3 dawnMid = vec3(0.32, 0.26, 0.40);
+          vec3 dawnHorizon = vec3(1.00, 0.58, 0.34);
+          vec3 duskTop = vec3(0.024, 0.025, 0.10);
+          vec3 duskMid = vec3(0.30, 0.105, 0.20);
+          vec3 duskHorizon = vec3(1.00, 0.37, 0.17);
+          vec3 nightTop = vec3(0.0015, 0.004, 0.018);
+          vec3 nightMid = vec3(0.009, 0.029, 0.073);
+          vec3 nightHorizon = vec3(0.035, 0.075, 0.115);
 
-          vec3 daySky = mix(dayHorizon, dayTop, vertical);
-          daySky = mix(daySky, dayMid, 0.33 + horizonGlow * 0.12);
-          vec3 dawnSky = mix(dawnHorizon, dawnTop, vertical);
-          dawnSky = mix(dawnSky, dawnMid, 0.40 + horizonGlow * 0.14);
-          vec3 duskSky = mix(duskHorizon, duskTop, vertical);
-          duskSky = mix(duskSky, duskMid, 0.42 + horizonGlow * 0.16);
-          vec3 nightSky = mix(nightHorizon, nightTop, vertical);
-          nightSky = mix(nightSky, nightMid, 0.36 + horizonGlow * 0.12);
+          vec3 topColor = mix(nightTop, dayTop, day);
+          topColor = mix(topColor, dawnTop, dawn * 0.96);
+          topColor = mix(topColor, duskTop, dusk);
+          vec3 midColor = mix(nightMid, dayMid, day);
+          midColor = mix(midColor, dawnMid, dawn * 0.96);
+          midColor = mix(midColor, duskMid, dusk);
+          vec3 horizonColor = mix(nightHorizon, dayHorizon, day);
+          horizonColor = mix(horizonColor, dawnHorizon, dawn * 0.98);
+          horizonColor = mix(horizonColor, duskHorizon, dusk);
+          vec3 sky = mix(horizonColor, midColor, smoothstep(0.10, 0.48, uv.y));
+          sky = mix(sky, topColor, smoothstep(0.40, 0.98, vertical));
+          sky += vec3(0.20, 0.22, 0.27) * horizonGlow * night * 0.12;
 
-          vec3 sky = mix(nightSky, daySky, day);
-          sky = mix(sky, dawnSky, dawn * 0.96);
-          sky = mix(sky, duskSky, dusk);
-          sky += vec3(0.22, 0.31, 0.43) * horizonGlow * night * 0.15;
+          // Sun: larger disk, warm atmospheric scattering and softened limb.
+          float sunPhase = clamp((clock - 5.0) / 14.2, 0.0, 1.0);
+          vec2 sunPos = vec2(mix(0.055, 0.945, sunPhase), 0.13 + 0.60 * sin(sunPhase * 3.1415926));
+          vec2 sunDelta = vec2((uv.x - sunPos.x) * aspect, uv.y - sunPos.y);
+          float sunDistance = length(sunDelta);
+          float sunVisible = clamp(day + max(dawn, dusk) * 0.94, 0.0, 1.0);
+          float sunHalo = exp(-sunDistance * 6.2);
+          float sunBloom = exp(-sunDistance * 20.0);
+          float sunDisk = 1.0 - smoothstep(0.050, 0.061, sunDistance);
+          float sunEdge = clamp(sunDistance / 0.061, 0.0, 1.0);
+          float sunLimb = 0.82 + 0.18 * sqrt(max(0.0, 1.0 - sunEdge * sunEdge));
+          sky += vec3(1.00, 0.48, 0.19) * sunHalo * sunVisible * (0.13 + twilight * 0.30);
+          sky += vec3(1.00, 0.36, 0.10) * sunBloom * dusk * 0.18;
+          sky += vec3(1.00, 0.88, 0.65) * sunDisk * sunLimb * sunVisible * 0.84;
 
-          // A slow sun arc, atmospheric scattering and a soft warm rim at the horizon.
-          float sunPhase = clamp((clock - 5.1) / 14.2, 0.0, 1.0);
-          float sunX = mix(0.08, 0.92, sunPhase);
-          float sunY = 0.115 + 0.62 * sin(sunPhase * 3.1415926);
-          vec2 sunDelta = vec2((uv.x - sunX) * aspect, uv.y - sunY);
-          float sunDist = length(sunDelta);
-          float sunVisible = clamp(day + max(dawn, dusk) * 0.93, 0.0, 1.0);
-          float sunHalo = exp(-sunDist * 6.4);
-          float sunBloom = exp(-sunDist * 21.0);
-          float sunDisk = 1.0 - smoothstep(0.046, 0.056, sunDist);
-          float sunRadius = clamp(sunDist / 0.056, 0.0, 1.0);
-          float sunLimbLight = 0.80 + 0.20 * sqrt(max(0.0, 1.0 - sunRadius * sunRadius));
-          sky += vec3(1.0, 0.53, 0.25) * sunHalo * sunVisible * (0.16 + twilight * 0.30);
-          sky += vec3(1.0, 0.42, 0.18) * sunBloom * dusk * 0.24;
-          sky += vec3(1.0, 0.74, 0.45) * (1.0 - smoothstep(0.038, 0.052, sunDist)) * sunVisible * (0.07 + twilight * 0.12);
-          sky += vec3(1.0, 0.91, 0.73) * sunDisk * sunLimbLight * sunVisible * 0.82;
-
-          // Stars emerge gradually at twilight and softly twinkle at night.
-          float starNight = max(1.0 - smoothstep(5.0, 6.7, clock), smoothstep(18.2, 20.1, clock));
-          vec2 starGrid = floor(vec2(uv.x * 230.0, uv.y * 132.0));
-          float starSeed = hash(starGrid);
-          float stars = step(0.9915, starSeed) * smoothstep(0.19, 0.55, uv.y);
-          float twinkle = 0.76 + 0.24 * sin(u_time * 0.001 + starSeed * 41.0);
-          sky += vec3(0.63, 0.78, 1.0) * stars * twinkle * starNight * 0.83;
-
-          vec2 brightGrid = floor(vec2(uv.x * 88.0 + 7.0, uv.y * 51.0 + 3.0));
-          float brightSeed = hash(brightGrid);
-          float brightStar = step(0.987, brightSeed) * smoothstep(0.26, 0.72, uv.y);
-          sky += vec3(0.86, 0.92, 1.0) * brightStar * starNight * 0.48;
-
-          // Moonlight, subtle crater detail and a soft halo.
-          float moonProgress = clamp(mod(clock - 19.0 + 24.0, 24.0) / 10.0, 0.0, 1.0);
-          vec2 moonPos = vec2(mix(0.89, 0.11, moonProgress), 0.23 + 0.49 * sin(moonProgress * 3.1415926));
+          // A softly shaded lunar disk and restrained crater texture, never a flat white circle.
+          float moonProgress = clamp(mod(clock - 18.3 + 24.0, 24.0) / 11.8, 0.0, 1.0);
+          vec2 moonPos = vec2(mix(0.93, 0.07, moonProgress), 0.22 + 0.47 * sin(moonProgress * 3.1415926));
           vec2 moonDelta = vec2((uv.x - moonPos.x) * aspect, uv.y - moonPos.y);
-          float moonDist = length(moonDelta);
-          float moonVisible = max(1.0 - smoothstep(4.8, 6.5, clock), smoothstep(18.0, 20.0, clock));
-          vec2 moonLocal = moonDelta / 0.079;
-          float moonRadius = length(moonLocal);
+          float moonDistance = length(moonDelta);
+          float moonVisible = max(1.0 - smoothstep(5.0, 6.5, clock), smoothstep(18.1, 20.0, clock));
+          vec2 moonLocal = moonDelta / 0.075;
+          float moonR = length(moonLocal);
           float moonSphereZ = sqrt(max(0.0, 1.0 - dot(moonLocal, moonLocal)));
-          float moonMask = 1.0 - smoothstep(0.91, 1.0, moonRadius);
-          float moonHalo = exp(-moonDist * 6.2);
-          float craterA = exp(-length(moonLocal - vec2(-0.25, 0.20)) * 8.0);
-          float craterB = exp(-length(moonLocal - vec2(0.26, -0.23)) * 9.0);
-          float craterC = exp(-length(moonLocal - vec2(0.07, 0.43)) * 10.0);
-          float maria = exp(-length(moonLocal - vec2(0.22, 0.12)) * 3.8);
-          float lunarGrain = fbm(moonLocal * 8.0 + vec2(5.0, 2.0));
-          float moonSurface = (0.98 - craterA * 0.12 - craterB * 0.09 - craterC * 0.055 - maria * 0.055);
-          moonSurface *= 0.69 + 0.31 * moonSphereZ;
-          moonSurface += (lunarGrain - 0.5) * 0.035;
-          sky += vec3(0.34, 0.47, 0.76) * moonHalo * moonVisible * 0.27;
-          sky += vec3(0.84, 0.88, 0.95) * moonMask * moonSurface * moonVisible * (0.83 - night * 0.04);
+          float moonDisk = 1.0 - smoothstep(0.92, 1.0, moonR);
+          float craterA = exp(-length(moonLocal - vec2(-0.24, 0.18)) * 8.5);
+          float craterB = exp(-length(moonLocal - vec2(0.28, -0.20)) * 9.0);
+          float craterC = exp(-length(moonLocal - vec2(0.03, 0.40)) * 10.0);
+          float moonGrain = noise(moonLocal * 8.0 + vec2(4.0, 7.0));
+          float moonSurface = (0.97 - craterA * 0.11 - craterB * 0.085 - craterC * 0.05);
+          moonSurface *= 0.70 + 0.30 * moonSphereZ;
+          moonSurface += (moonGrain - 0.5) * 0.035;
+          sky += vec3(0.34, 0.47, 0.76) * exp(-moonDistance * 6.0) * moonVisible * 0.26;
+          sky += vec3(0.85, 0.89, 0.97) * moonDisk * moonSurface * moonVisible * 0.90;
 
-          // Large, layered cloud banks with drifting turbulence and silver lining.
-          float warp = fbm(vec2(uv.x * 1.75 + t * 0.42, uv.y * 3.0 + 4.8));
-          float lowA = fbm(vec2(uv.x * 3.0 + t * 0.72, uv.y * 8.0 + warp * 1.15));
-          float lowB = fbm(vec2(uv.x * 7.2 - t * 0.46, uv.y * 13.5 + warp * 0.85 + 8.0));
-          float cloudDetail = fbm(vec2(uv.x * 16.0 + t * 0.22, uv.y * 22.0 + warp * 1.8 + 23.0));
-          float cloudFine = fbm(vec2(uv.x * 31.0 - t * 0.32, uv.y * 38.0 + warp * 2.5 + 6.0));
-          float cloudField = lowA * 0.56 + lowB * 0.29 + cloudDetail * 0.15;
-          float lowCloud = smoothstep(0.465, 0.715, cloudField + (0.40 - uv.y) * 0.14);
-          lowCloud *= smoothstep(0.08, 0.21, uv.y) * (1.0 - smoothstep(0.42, 0.64, uv.y));
-          lowCloud *= 0.90 + cloudFine * 0.10;
-
-          float highField = fbm(vec2(uv.x * 2.6 - t * 0.25, uv.y * 5.6 + 15.0));
-          float highCloud = smoothstep(0.59, 0.76, highField);
-          highCloud *= smoothstep(0.38, 0.57, uv.y) * (1.0 - smoothstep(0.82, 0.97, uv.y)) * 0.34;
-
-          vec3 dayCloudShadow = vec3(0.30, 0.43, 0.55);
-          vec3 dayCloudLight = vec3(0.97, 0.985, 1.0);
-          vec3 duskCloudShadow = vec3(0.22, 0.16, 0.32);
-          vec3 duskCloudLight = vec3(1.0, 0.60, 0.40);
-          vec3 nightCloudShadow = vec3(0.035, 0.07, 0.13);
-          vec3 nightCloudLight = vec3(0.22, 0.30, 0.43);
-          float cloudLight = clamp(
-            0.18 + smoothstep(0.38, 0.75, cloudField + uv.y * 0.34) * 0.60 + cloudDetail * 0.22,
-            0.0,
-            1.0
-          );
-          vec3 dayCloud = mix(dayCloudShadow, dayCloudLight, cloudLight);
-          vec3 duskCloud = mix(duskCloudShadow, duskCloudLight, cloudLight);
-          vec3 nightCloud = mix(nightCloudShadow, nightCloudLight, cloudLight);
-          dayCloud *= 0.87 + cloudFine * 0.22;
-          duskCloud *= 0.90 + cloudFine * 0.16;
-          nightCloud *= 0.91 + cloudFine * 0.12;
+          // Layered drifting clouds; one low-cost shape field and fine noise create lit and shaded edges.
+          float cloudWarp = noise(vec2(uv.x * 2.0 + t * 0.18, uv.y * 4.2 + 3.0));
+          float cloudMass = fbm(vec2(uv.x * 3.3 + t * 0.46, uv.y * 9.0 + cloudWarp * 1.7 + 7.0));
+          float cloudDetail = noise(vec2(uv.x * 22.0 - t * 0.34, uv.y * 27.0 + cloudWarp * 2.2));
+          float lowCloud = smoothstep(0.48, 0.70, cloudMass + (0.39 - uv.y) * 0.12);
+          lowCloud *= smoothstep(0.12, 0.25, uv.y) * (1.0 - smoothstep(0.43, 0.63, uv.y));
+          lowCloud *= 0.84 + cloudDetail * 0.16;
+          float upperCloud = smoothstep(0.61, 0.76, noise(vec2(uv.x * 4.2 - t * 0.22, uv.y * 6.5 + 12.0)));
+          upperCloud *= smoothstep(0.40, 0.58, uv.y) * (1.0 - smoothstep(0.84, 0.97, uv.y)) * 0.24;
+          float cloudShade = clamp(0.22 + cloudDetail * 0.38 + cloudMass * 0.40, 0.0, 1.0);
+          vec3 dayCloud = mix(vec3(0.24, 0.36, 0.47), vec3(0.96, 0.97, 0.97), cloudShade);
+          vec3 duskCloud = mix(vec3(0.17, 0.12, 0.24), vec3(1.00, 0.57, 0.38), cloudShade);
+          vec3 nightCloud = mix(vec3(0.018, 0.038, 0.078), vec3(0.15, 0.22, 0.32), cloudShade);
           vec3 cloudColor = mix(nightCloud, dayCloud, day);
-          cloudColor = mix(cloudColor, duskCloud, max(dawn, dusk * 0.96));
-          sky = mix(sky, cloudColor, lowCloud * (0.36 + day * 0.32 + twilight * 0.30 + night * 0.18));
+          cloudColor = mix(cloudColor, duskCloud, twilight * 0.96);
+          sky = mix(sky, cloudColor, lowCloud * (0.30 + day * 0.26 + twilight * 0.24 + night * 0.12));
+          sky = mix(sky, mix(nightCloud, dayCloud, day), upperCloud * (0.24 + day * 0.16));
 
-          vec3 wisps = mix(vec3(0.18, 0.30, 0.44), vec3(0.91, 0.94, 0.98), day);
-          wisps = mix(wisps, vec3(0.66, 0.36, 0.44), twilight * 0.78);
-          sky = mix(sky, wisps, highCloud * (0.22 + day * 0.15));
+          float starNight = max(1.0 - smoothstep(5.0, 6.7, clock), smoothstep(18.0, 19.8, clock));
+          vec2 starGrid = floor(vec2(uv.x * 210.0, uv.y * 112.0));
+          float starSeed = hash(starGrid);
+          float stars = step(0.989, starSeed) * smoothstep(0.20, 0.56, uv.y);
+          float twinkle = 0.78 + 0.22 * sin(u_time * 0.001 + starSeed * 41.0);
+          sky += vec3(0.64, 0.77, 1.00) * stars * twinkle * starNight * 0.74;
 
-          // Atmospheric mist gives the horizon depth without covering the search bar.
-          float mistBand = exp(-pow((uv.y - 0.10) * 15.0, 2.0));
-          vec3 mistColor = mix(vec3(0.43, 0.54, 0.68), vec3(0.95, 0.67, 0.50), twilight * 0.75);
-          mistColor = mix(mistColor, vec3(0.10, 0.16, 0.25), night * 0.60);
-          sky = mix(sky, mistColor, mistBand * (0.15 + twilight * 0.16));
+          // Distant hill layers create real depth; the closest ground receives a gentle light gradient.
+          float mountainEdge = 0.175 + noise(vec2(uv.x * 4.2 + 2.0, 8.0)) * 0.065 + 0.012 * sin(uv.x * 7.0);
+          float mountainMask = 1.0 - smoothstep(mountainEdge - 0.006, mountainEdge + 0.010, uv.y);
+          vec3 mountainColor = mix(vec3(0.28, 0.36, 0.41), vec3(0.018, 0.031, 0.052), night * 0.90);
+          sky = mix(sky, mountainColor, mountainMask * 0.70);
+          float farHillEdge = 0.092 + noise(vec2(uv.x * 3.1 + 13.0, 4.0)) * 0.034;
+          float farHillMask = 1.0 - smoothstep(farHillEdge - 0.006, farHillEdge + 0.012, uv.y);
+          vec3 farHillColor = mix(vec3(0.12, 0.22, 0.18), vec3(0.010, 0.027, 0.035), night * 0.95);
+          sky = mix(sky, farHillColor, farHillMask * 0.92);
+          float groundEdge = 0.042 + noise(vec2(uv.x * 8.0 + 1.0, 5.0)) * 0.014;
+          float groundMask = 1.0 - smoothstep(groundEdge - 0.004, groundEdge + 0.006, uv.y);
+          float grassTexture = noise(vec2(uv.x * 82.0 + 3.0, uv.y * 20.0 + 8.0));
+          vec3 groundColor = mix(vec3(0.075, 0.15, 0.075), vec3(0.006, 0.016, 0.020), night);
+          groundColor *= 0.82 + grassTexture * 0.28;
+          sky = mix(sky, groundColor, groundMask * 0.98);
 
-          // Wind-torn smoke plume: billows widen, curl, drift, and fade into the upper cloud layer.
-          float smokeY = smoothstep(0.405, 0.455, uv.y) * (1.0 - smoothstep(0.82, 0.95, uv.y));
-          float smokeCenter = 0.335
-            + 0.028 * sin(uv.y * 10.0 - t * 2.2)
-            + 0.015 * sin(uv.y * 27.0 + t * 1.55)
-            + 0.007 * sin(uv.y * 56.0 - t * 1.9);
-          float smokeWidth = 0.008 + max(uv.y - 0.37, 0.0) * 0.072;
-          float smokeDistance = abs(uv.x - smokeCenter) / max(smokeWidth, 0.006);
-          float smokeNoise = fbm(vec2(uv.x * 13.0 + t * 0.28, uv.y * 10.0 - t * 1.18));
-          float smokeRimNoise = fbm(vec2(uv.x * 18.0 - t * 0.22, uv.y * 15.0 + t * 0.76));
-          float smokeFine = fbm(vec2(uv.x * 38.0 + t * 0.45, uv.y * 32.0 - t * 1.40));
-          float smokeDensity = smoothstep(0.27, 0.70, smokeNoise) * mix(0.68, 1.02, smokeFine);
-          float smokeCore = (1.0 - smoothstep(0.20, 1.17, smokeDistance)) * smokeDensity * smokeY;
-          float smokeRim = (1.0 - smoothstep(0.55, 1.62, smokeDistance)) * smoothstep(0.35, 0.74, smokeRimNoise) * smokeY;
-          vec3 smokeColor = mix(vec3(0.48, 0.54, 0.60), vec3(0.79, 0.81, 0.83), day);
-          smokeColor = mix(smokeColor, vec3(0.83, 0.52, 0.43), twilight * 0.72);
-          smokeColor = mix(smokeColor, vec3(0.16, 0.21, 0.30), night * 0.72);
-          sky = mix(sky, smokeColor, smokeRim * 0.36);
-          sky = mix(sky, smokeColor * 0.82, smokeCore * (0.32 + twilight * 0.10 + night * 0.08));
-
-          // Rolling landscape and a small distant exhaust stack anchor the plume in the scene.
-          float hillA = fbm(vec2(uv.x * 2.1 + 3.0, 6.0));
-          float hillB = fbm(vec2(uv.x * 4.2 - 1.0, 9.0));
-          float hillLine = 0.095 + hillA * 0.042 + 0.008 * sin(uv.x * 11.0 + t * 0.12);
-          float farHill = 1.0 - smoothstep(hillLine, hillLine + 0.014, uv.y);
-          float nearLine = 0.045 + hillB * 0.024;
-          float nearHill = 1.0 - smoothstep(nearLine, nearLine + 0.010, uv.y);
-          float mountainField = fbm(vec2(uv.x * 3.1 + 5.0, 11.0));
-          float mountainLine = 0.155 + mountainField * 0.075 + 0.020 * sin(uv.x * 5.1 + 1.2);
-          float mountainMask = 1.0 - smoothstep(mountainLine, mountainLine + 0.012, uv.y);
-          vec3 distantLand = mix(vec3(0.22, 0.31, 0.39), vec3(0.025, 0.045, 0.071), night * 0.92);
-          float landTexture = fbm(vec2(uv.x * 78.0 + t * 0.03, uv.y * 26.0 + 9.0));
-          vec3 farLand = mix(vec3(0.12, 0.22, 0.28), vec3(0.018, 0.034, 0.058), night * 0.92);
-          vec3 nearLand = mix(vec3(0.065, 0.15, 0.16), vec3(0.008, 0.017, 0.030), night);
-          farLand *= 0.88 + landTexture * 0.20;
-          nearLand *= 0.84 + landTexture * 0.23;
-          sky = mix(sky, distantLand, mountainMask * 0.54);
-          sky = mix(sky, farLand, farHill * 0.92);
-          sky = mix(sky, nearLand, nearHill * 0.96);
-
-          // Aspect-corrected trees: layered irregular crowns, visible limbs and textured leaf clusters.
-          float treeWindLeft = (0.006 / aspect) * sin(t * 1.35);
-          float treeWindRight = (0.0045 / aspect) * sin(t * 1.08 + 1.7);
-          float leftTreeX = 0.075 + treeWindLeft;
-          float rightTreeX = 0.790 + treeWindRight;
-
-          float leftTreeCrown = max(
-            max(
-              ellipseMask(uv, vec2(leftTreeX - 0.10 / aspect, 0.405), vec2(0.145, 0.105), 0.10, aspect),
-              ellipseMask(uv, vec2(leftTreeX + 0.00 / aspect, 0.458), vec2(0.150, 0.135), 0.10, aspect)
-            ),
-            max(
-              max(
-                ellipseMask(uv, vec2(leftTreeX + 0.105 / aspect, 0.407), vec2(0.135, 0.108), 0.10, aspect),
-                ellipseMask(uv, vec2(leftTreeX - 0.035 / aspect, 0.345), vec2(0.150, 0.095), 0.10, aspect)
-              ),
-              ellipseMask(uv, vec2(leftTreeX - 0.085 / aspect, 0.492), vec2(0.105, 0.085), 0.10, aspect)
-            )
+          // Organic, irregular tree crowns with branch structure, dappled light and slow wind.
+          float treeWind = 0.005 * sin(t * 1.15);
+          float leftX = 0.074 + treeWind / aspect;
+          float rightX = 0.805 - treeWind * 0.82 / aspect;
+          float leftCrown = max(
+            max(ellipse(uv, vec2(leftX - 0.105 / aspect, 0.397), vec2(0.125, 0.108), 0.13, aspect),
+                ellipse(uv, vec2(leftX + 0.005 / aspect, 0.443), vec2(0.145, 0.132), 0.13, aspect)),
+            max(ellipse(uv, vec2(leftX + 0.110 / aspect, 0.397), vec2(0.125, 0.103), 0.13, aspect),
+                ellipse(uv, vec2(leftX - 0.04 / aspect, 0.335), vec2(0.145, 0.09), 0.13, aspect))
           );
-          float leftTreeTrunk = boxMaskAspect(uv, vec2(leftTreeX, 0.165), vec2(0.018, 0.130), 0.008, aspect);
-          float leftBranchMask = max(
-            segmentMaskAspect(uv, vec2(leftTreeX, 0.235), vec2(leftTreeX - 0.125 / aspect, 0.365), 0.010, aspect),
-            max(
-              segmentMaskAspect(uv, vec2(leftTreeX, 0.255), vec2(leftTreeX + 0.125 / aspect, 0.375), 0.010, aspect),
-              segmentMaskAspect(uv, vec2(leftTreeX, 0.295), vec2(leftTreeX + 0.035 / aspect, 0.425), 0.008, aspect)
-            )
+          float rightCrown = max(
+            max(ellipse(uv, vec2(rightX - 0.10 / aspect, 0.397), vec2(0.12, 0.10), 0.13, aspect),
+                ellipse(uv, vec2(rightX + 0.005 / aspect, 0.437), vec2(0.14, 0.128), 0.13, aspect)),
+            max(ellipse(uv, vec2(rightX + 0.105 / aspect, 0.394), vec2(0.12, 0.10), 0.13, aspect),
+                ellipse(uv, vec2(rightX - 0.035 / aspect, 0.333), vec2(0.14, 0.09), 0.13, aspect))
           );
-
-          float rightTreeCrown = max(
-            max(
-              ellipseMask(uv, vec2(rightTreeX - 0.095 / aspect, 0.397), vec2(0.135, 0.102), 0.10, aspect),
-              ellipseMask(uv, vec2(rightTreeX + 0.00 / aspect, 0.448), vec2(0.145, 0.126), 0.10, aspect)
-            ),
-            max(
-              max(
-                ellipseMask(uv, vec2(rightTreeX + 0.095 / aspect, 0.398), vec2(0.130, 0.105), 0.10, aspect),
-                ellipseMask(uv, vec2(rightTreeX - 0.025 / aspect, 0.342), vec2(0.142, 0.090), 0.10, aspect)
-              ),
-              ellipseMask(uv, vec2(rightTreeX - 0.070 / aspect, 0.481), vec2(0.100, 0.082), 0.10, aspect)
-            )
+          float leftTrunk = box(uv, vec2(leftX, 0.143), vec2(0.016, 0.112), 0.006, aspect);
+          float rightTrunk = box(uv, vec2(rightX, 0.142), vec2(0.015, 0.108), 0.006, aspect);
+          float leftBranches = max(
+            lineMask(uv, vec2(leftX, 0.222), vec2(leftX - 0.13 / aspect, 0.362), 0.009, aspect),
+            lineMask(uv, vec2(leftX, 0.242), vec2(leftX + 0.13 / aspect, 0.362), 0.009, aspect)
           );
-          float rightTreeTrunk = boxMaskAspect(uv, vec2(rightTreeX, 0.155), vec2(0.017, 0.118), 0.008, aspect);
-          float rightBranchMask = max(
-            segmentMaskAspect(uv, vec2(rightTreeX, 0.222), vec2(rightTreeX - 0.115 / aspect, 0.350), 0.009, aspect),
-            max(
-              segmentMaskAspect(uv, vec2(rightTreeX, 0.245), vec2(rightTreeX + 0.112 / aspect, 0.366), 0.009, aspect),
-              segmentMaskAspect(uv, vec2(rightTreeX, 0.285), vec2(rightTreeX + 0.025 / aspect, 0.410), 0.008, aspect)
-            )
+          float rightBranches = max(
+            lineMask(uv, vec2(rightX, 0.222), vec2(rightX - 0.115 / aspect, 0.355), 0.008, aspect),
+            lineMask(uv, vec2(rightX, 0.240), vec2(rightX + 0.115 / aspect, 0.355), 0.008, aspect)
           );
+          vec3 bark = mix(vec3(0.19, 0.095, 0.045), vec3(0.010, 0.018, 0.024), night * 0.92);
+          float leafNoise = noise(vec2(uv.x * 96.0 + t * 0.025, uv.y * 108.0 + 6.0));
+          float leafLight = clamp(leafNoise * 0.70 + cloudDetail * 0.30, 0.0, 1.0);
+          vec3 leafBase = mix(vec3(0.018, 0.105, 0.043), vec3(0.006, 0.020, 0.025), night * 0.92);
+          vec3 leafSunlit = mix(vec3(0.095, 0.225, 0.075), vec3(0.025, 0.055, 0.060), night * 0.87);
+          leafSunlit = mix(leafSunlit, vec3(0.29, 0.12, 0.065), twilight * 0.38);
+          vec3 leaves = mix(leafBase * 0.64, leafSunlit, smoothstep(0.25, 0.76, leafLight));
+          sky = mix(sky, bark, max(leftTrunk, rightTrunk) * 0.98);
+          sky = mix(sky, bark * 0.84, max(leftBranches, rightBranches) * 0.72);
+          sky = mix(sky, leaves, max(leftCrown, rightCrown) * 0.99);
 
-          vec3 treeBark = mix(vec3(0.20, 0.105, 0.055), vec3(0.012, 0.020, 0.026), night * 0.92);
-          vec3 foliageBase = mix(vec3(0.035, 0.19, 0.078), vec3(0.008, 0.025, 0.030), night * 0.92);
-          foliageBase = mix(foliageBase, vec3(0.19, 0.095, 0.075), twilight * 0.48);
-          vec3 foliageLight = mix(vec3(0.10, 0.31, 0.105), vec3(0.022, 0.055, 0.065), night * 0.88);
-          foliageLight = mix(foliageLight, vec3(0.34, 0.15, 0.10), twilight * 0.42);
+          // A lived-in thatched hut: textured roof, earthen walls, recessed door and windows.
+          float hutX = 0.345;
+          float hutShadow = ellipse(uv, vec2(hutX, 0.066), vec2(0.135, 0.019), 0.14, aspect);
+          sky = mix(sky, mix(vec3(0.045, 0.058, 0.040), vec3(0.003, 0.009, 0.014), night), hutShadow * 0.60);
+          float hutBody = box(uv, vec2(hutX, 0.141), vec2(0.092, 0.075), 0.005, aspect);
+          vec3 plaster = mix(vec3(0.32, 0.21, 0.125), vec3(0.020, 0.025, 0.032), night * 0.91);
+          plaster = mix(plaster, vec3(0.26, 0.10, 0.058), twilight * 0.42);
+          float plasterGrain = noise(vec2(uv.x * 130.0 + 2.0, uv.y * 90.0 + 12.0));
+          sky = mix(sky, plaster * (0.84 + plasterGrain * 0.24), hutBody * 0.99);
 
-          float leafTexture = fbm(vec2(uv.x * 83.0 + t * 0.06, uv.y * 91.0 + 7.0));
-          float leafGrain = fbm(vec2(uv.x * 142.0 - t * 0.08, uv.y * 164.0 + 13.0));
-          float canopyMask = max(leftTreeCrown, rightTreeCrown);
-          float leafShade = clamp(0.18 + leafTexture * 0.48 + leafGrain * 0.34, 0.0, 1.0);
-          vec3 foliageSurface = mix(foliageBase * 0.68, foliageLight * 0.90, smoothstep(0.24, 0.79, leafShade));
-          sky = mix(sky, treeBark * 0.80, max(leftTreeTrunk, rightTreeTrunk) * 0.98);
-          sky = mix(sky, foliageSurface, canopyMask * 0.99);
-          // Small dark limbs break up the solid green silhouette like real branches beneath leaves.
-          sky = mix(sky, treeBark * 0.82, max(leftBranchMask, rightBranchMask) * (0.42 + day * 0.12));
+          float hutRoof = thatchedRoof(uv, hutX, 0.207, 0.432, 0.145, aspect);
+          float thatchNoise = noise(vec2(uv.x * 75.0, uv.y * 135.0 + 2.0));
+          float strawLines = 0.5 + 0.5 * sin((uv.x * aspect - uv.y * 0.7) * 210.0 + thatchNoise * 4.0);
+          vec3 thatch = mix(vec3(0.32, 0.19, 0.080), vec3(0.015, 0.018, 0.025), night * 0.92);
+          thatch = mix(thatch, vec3(0.31, 0.095, 0.045), dusk * 0.42);
+          vec3 roofSurface = thatch * (0.72 + strawLines * 0.20 + thatchNoise * 0.23);
+          sky = mix(sky, roofSurface, hutRoof * 0.99);
+          float hutEave = box(uv, vec2(hutX, 0.208), vec2(0.153, 0.005), 0.002, aspect);
+          sky = mix(sky, thatch * 0.70, hutEave * 0.90);
 
-          float leafGlints = max(
-            max(
-              ellipseMask(uv, vec2(leftTreeX - 0.085 / aspect, 0.424), vec2(0.055, 0.032), 0.16, aspect),
-              ellipseMask(uv, vec2(leftTreeX + 0.020 / aspect, 0.472), vec2(0.060, 0.035), 0.16, aspect)
-            ),
-            max(
-              ellipseMask(uv, vec2(rightTreeX - 0.055 / aspect, 0.422), vec2(0.050, 0.030), 0.16, aspect),
-              ellipseMask(uv, vec2(rightTreeX + 0.035 / aspect, 0.457), vec2(0.052, 0.030), 0.16, aspect)
-            )
+          float hutDoor = box(uv, vec2(hutX, 0.112), vec2(0.019, 0.045), 0.003, aspect);
+          sky = mix(sky, mix(vec3(0.065, 0.038, 0.022), vec3(0.004, 0.007, 0.013), night * 0.90), hutDoor * 0.98);
+
+          float hutWinL = box(uv, vec2(hutX - 0.054 / aspect, 0.159), vec2(0.016, 0.022), 0.003, aspect);
+          float hutWinR = box(uv, vec2(hutX + 0.054 / aspect, 0.159), vec2(0.016, 0.022), 0.003, aspect);
+          float hutGlassL = box(uv, vec2(hutX - 0.054 / aspect, 0.159), vec2(0.010, 0.016), 0.002, aspect);
+          float hutGlassR = box(uv, vec2(hutX + 0.054 / aspect, 0.159), vec2(0.010, 0.016), 0.002, aspect);
+          float hutWindowGlow = max(
+            exp(-length(vec2((uv.x - (hutX - 0.054 / aspect)) * aspect, uv.y - 0.159)) * 70.0),
+            exp(-length(vec2((uv.x - (hutX + 0.054 / aspect)) * aspect, uv.y - 0.159)) * 70.0)
           );
-          sky = mix(sky, foliageLight, leafGlints * (0.16 + day * 0.20));
+          vec3 windowFrame = mix(vec3(0.12, 0.080, 0.046), vec3(0.007, 0.014, 0.020), night);
+          sky = mix(sky, windowFrame, max(hutWinL, hutWinR) * 0.98);
+          sky += vec3(1.0, 0.34, 0.065) * hutWindowGlow * night * 0.25;
+          vec3 hutGlass = mix(vec3(0.055, 0.095, 0.10), vec3(1.0, 0.51, 0.13), night);
+          sky = mix(sky, hutGlass, max(hutGlassL, hutGlassR) * (0.66 + night * 0.30));
 
-          // A small village with a warm, thatched focal hut; its chimney anchors the drifting smoke.
-          float houseLeftBody = boxMask(uv, vec2(0.12, 0.093), vec2(0.030, 0.038), 0.0025);
-          float houseMainBody = boxMask(uv, vec2(0.335, 0.178), vec2(0.047, 0.064), 0.0025);
-          float houseRightBody = boxMask(uv, vec2(0.66, 0.086), vec2(0.036, 0.036), 0.0025);
-          float houseFarRightBody = boxMask(uv, vec2(0.855, 0.066), vec2(0.027, 0.025), 0.0025);
-          float houseBodies = max(max(houseLeftBody, houseMainBody), max(houseRightBody, houseFarRightBody));
-          vec3 houseColor = mix(vec3(0.15, 0.23, 0.28), vec3(0.012, 0.022, 0.039), night * 0.94);
-          sky = mix(sky, houseColor, houseBodies * 0.98);
+          // Clock tower with shaded masonry, two narrow windows and a live analog clock face.
+          float towerX = 0.585;
+          float towerShadow = box(uv, vec2(towerX + 0.025 / aspect, 0.215), vec2(0.091, 0.17), 0.006, aspect);
+          float towerBody = box(uv, vec2(towerX, 0.205), vec2(0.081, 0.157), 0.005, aspect);
+          float towerUpper = box(uv, vec2(towerX, 0.426), vec2(0.095, 0.092), 0.005, aspect);
+          float towerRoof = thatchedRoof(uv, towerX, 0.515, 0.65, 0.127, aspect);
+          vec3 stone = mix(vec3(0.34, 0.34, 0.29), vec3(0.018, 0.027, 0.042), night * 0.91);
+          float stoneGrain = noise(vec2(uv.x * 112.0 + 5.0, uv.y * 85.0 + 19.0));
+          vec3 stoneSurface = stone * (0.82 + stoneGrain * 0.27);
+          sky = mix(sky, mix(stone * 0.46, vec3(0.006, 0.012, 0.020), night), towerShadow * 0.65);
+          sky = mix(sky, stoneSurface * 0.82, towerBody * 0.99);
+          sky = mix(sky, stoneSurface * 1.10, towerUpper * 0.99);
+          sky = mix(sky, stone * 0.72, towerRoof * 0.98);
+          float towerWindowL = box(uv, vec2(towerX - 0.028 / aspect, 0.245), vec2(0.013, 0.026), 0.004, aspect);
+          float towerWindowR = box(uv, vec2(towerX + 0.028 / aspect, 0.245), vec2(0.013, 0.026), 0.004, aspect);
+          vec3 towerGlass = mix(vec3(0.025, 0.060, 0.074), vec3(1.0, 0.52, 0.18), night);
+          sky = mix(sky, towerGlass, max(towerWindowL, towerWindowR) * (0.50 + night * 0.45));
 
-          vec3 hutWallColor = mix(vec3(0.31, 0.19, 0.105), vec3(0.018, 0.025, 0.035), night * 0.92);
-          hutWallColor = mix(hutWallColor, vec3(0.24, 0.095, 0.065), dusk * 0.42);
-          float wallTexture = fbm(vec2(uv.x * 155.0 + 1.5, uv.y * 120.0 + 4.0));
-          vec3 texturedWall = hutWallColor * (0.86 + wallTexture * 0.24);
-          sky = mix(sky, texturedWall, houseMainBody * 0.98);
-
-          float roofLeft = roofMask(uv, 0.12, 0.131, 0.207, 0.039);
-          float roofMain = roofMask(uv, 0.335, 0.241, 0.402, 0.058);
-          float roofRight = roofMask(uv, 0.66, 0.122, 0.198, 0.044);
-          float roofFarRight = roofMask(uv, 0.855, 0.089, 0.150, 0.031);
-          float houseRoofs = max(max(roofLeft, roofMain), max(roofRight, roofFarRight));
-          vec3 roofColor = mix(vec3(0.085, 0.14, 0.18), vec3(0.006, 0.012, 0.025), night * 0.92);
-          roofColor = mix(roofColor, vec3(0.18, 0.075, 0.075), dusk * 0.40);
-          sky = mix(sky, roofColor, houseRoofs * 0.98);
-
-          vec3 thatchColor = mix(vec3(0.47, 0.30, 0.13), vec3(0.026, 0.018, 0.025), night * 0.92);
-          thatchColor = mix(thatchColor, vec3(0.30, 0.085, 0.052), dusk * 0.48);
-          float thatchGrain = 0.5 + 0.5 * sin((uv.x - uv.y * 0.60) * 340.0 + fbm(vec2(uv.x * 45.0, uv.y * 50.0)) * 4.0);
-          float thatchVariation = fbm(vec2(uv.x * 90.0, uv.y * 130.0 + t * 0.03));
-          float thatchLuma = clamp(thatchGrain * 0.25 + thatchVariation * 0.75, 0.0, 1.0);
-          vec3 thatchSurface = mix(thatchColor * 0.74, thatchColor * 1.18, thatchLuma);
-          sky = mix(sky, thatchSurface, roofMain * 0.98);
-
-          float eave = boxMask(uv, vec2(0.335, 0.241), vec2(0.061, 0.004), 0.0018);
-          sky = mix(sky, mix(vec3(0.25, 0.14, 0.075), vec3(0.018, 0.018, 0.026), night * 0.88), eave * 0.92);
-
-          float hutDoor = boxMask(uv, vec2(0.335, 0.145), vec2(0.010, 0.034), 0.0018);
-          sky = mix(sky, mix(vec3(0.075, 0.045, 0.026), vec3(0.006, 0.009, 0.016), night * 0.90), hutDoor * 0.98);
-
-          float hutWindowLeft = boxMask(uv, vec2(0.304, 0.202), vec2(0.007, 0.013), 0.0015);
-          float hutWindowRight = boxMask(uv, vec2(0.366, 0.202), vec2(0.007, 0.013), 0.0015);
-          float smallWindows = max(
-            max(boxMask(uv, vec2(0.106, 0.089), vec2(0.006, 0.009), 0.001),
-                boxMask(uv, vec2(0.134, 0.089), vec2(0.006, 0.009), 0.001)),
-            max(max(boxMask(uv, vec2(0.645, 0.083), vec2(0.006, 0.009), 0.001),
-                    boxMask(uv, vec2(0.675, 0.083), vec2(0.006, 0.009), 0.001)),
-                boxMask(uv, vec2(0.855, 0.064), vec2(0.005, 0.007), 0.001))
-          );
-          float houseWindows = max(max(hutWindowLeft, hutWindowRight), smallWindows);
-          vec3 windowColor = mix(vec3(0.84, 0.74, 0.53), vec3(1.0, 0.52, 0.16), night);
-          sky = mix(sky, windowColor, houseWindows * (0.10 + night * 0.76));
-
-          // Clock tower: stone silhouette, inset windows, a readable dial and hands following local time.
-          float towerX = 0.545;
-          float towerBodyShadow = boxMaskAspect(uv, vec2(towerX + 0.035 / aspect, 0.215), vec2(0.105, 0.165), 0.008, aspect);
-          float towerBody = boxMaskAspect(uv, vec2(towerX, 0.215), vec2(0.108, 0.165), 0.008, aspect);
-          float towerUpper = boxMaskAspect(uv, vec2(towerX, 0.411), vec2(0.125, 0.103), 0.009, aspect);
-          float towerBase = boxMaskAspect(uv, vec2(towerX, 0.052), vec2(0.145, 0.018), 0.006, aspect);
-          float towerRoof = roofMaskAspect(uv, towerX, 0.507, 0.645, 0.188, aspect);
-          vec3 towerStone = mix(vec3(0.37, 0.37, 0.32), vec3(0.025, 0.035, 0.052), night * 0.90);
-          towerStone = mix(towerStone, vec3(0.34, 0.20, 0.17), twilight * 0.42);
-          vec3 towerTexture = towerStone * (0.86 + fbm(vec2(uv.x * 150.0, uv.y * 82.0 + 17.0)) * 0.24);
-          vec3 towerShadowColor = mix(vec3(0.19, 0.21, 0.20), vec3(0.010, 0.016, 0.028), night * 0.92);
-          sky = mix(sky, towerShadowColor, towerBodyShadow * 0.76);
-          sky = mix(sky, towerTexture * 0.80, towerBody * 0.99);
-          sky = mix(sky, towerTexture * 1.08, towerUpper * 0.99);
-          sky = mix(sky, towerStone * 0.90, towerBase * 0.99);
-
-          float towerEdgeLight = boxMaskAspect(uv, vec2(towerX - 0.082 / aspect, 0.219), vec2(0.012, 0.155), 0.004, aspect);
-          sky = mix(sky, towerStone * (0.98 + day * 0.10), towerEdgeLight * 0.88);
-          float towerSeam = boxMaskAspect(uv, vec2(towerX, 0.294), vec2(0.105, 0.004), 0.003, aspect);
-          sky = mix(sky, towerShadowColor * 0.90, towerSeam * 0.54);
-
-          float towerWindowTop = boxMaskAspect(uv, vec2(towerX, 0.278), vec2(0.024, 0.030), 0.010, aspect);
-          float towerWindowBottom = boxMaskAspect(uv, vec2(towerX, 0.130), vec2(0.024, 0.030), 0.010, aspect);
-          float towerWindowLeftInset = boxMaskAspect(uv, vec2(towerX - 0.002 / aspect, 0.278), vec2(0.016, 0.022), 0.009, aspect);
-          float towerWindowRightInset = boxMaskAspect(uv, vec2(towerX + 0.002 / aspect, 0.130), vec2(0.016, 0.022), 0.009, aspect);
-          sky = mix(sky, towerStone * 1.14, max(towerWindowTop, towerWindowBottom) * 0.94);
-          vec3 towerWindowGlow = mix(vec3(0.33, 0.48, 0.54), vec3(1.0, 0.58, 0.23), night);
-          sky = mix(sky, towerWindowGlow, max(towerWindowLeftInset, towerWindowRightInset) * (0.36 + night * 0.56));
-
-          float clockTowerY = 0.414;
-          float clockRim = ellipseMask(uv, vec2(towerX, clockTowerY), vec2(0.083, 0.083), 0.04, aspect);
-          float clockFace = ellipseMask(uv, vec2(towerX, clockTowerY), vec2(0.071, 0.071), 0.04, aspect);
-          sky = mix(sky, mix(vec3(0.76, 0.67, 0.48), vec3(0.21, 0.24, 0.29), night * 0.75), clockRim);
-          sky = mix(sky, mix(vec3(0.94, 0.90, 0.76), vec3(0.76, 0.81, 0.88), night * 0.40), clockFace);
-
-          float clockTicks = 0.0;
-          for (int tick = 0; tick < 12; tick++) {
-            float tickAngle = float(tick) * 6.2831853 / 12.0;
-            vec2 tickStart = vec2(towerX + sin(tickAngle) * 0.052 / aspect, clockTowerY + cos(tickAngle) * 0.052);
-            vec2 tickEnd = vec2(towerX + sin(tickAngle) * 0.061 / aspect, clockTowerY + cos(tickAngle) * 0.061);
-            clockTicks = max(clockTicks, segmentMaskAspect(uv, tickStart, tickEnd, 0.0045, aspect));
+          float dialY = 0.432;
+          float dialRim = ellipse(uv, vec2(towerX, dialY), vec2(0.078, 0.078), 0.04, aspect);
+          float dialFace = ellipse(uv, vec2(towerX, dialY), vec2(0.066, 0.066), 0.04, aspect);
+          sky = mix(sky, mix(vec3(0.72, 0.61, 0.42), vec3(0.28, 0.30, 0.34), night * 0.70), dialRim);
+          sky = mix(sky, mix(vec3(0.93, 0.87, 0.70), vec3(0.68, 0.74, 0.82), night * 0.45), dialFace);
+          float tickMarks = 0.0;
+          for (int i = 0; i < 12; i++) {
+            float angle = float(i) * 6.2831853 / 12.0;
+            vec2 start = vec2(towerX + sin(angle) * 0.048 / aspect, dialY + cos(angle) * 0.048);
+            vec2 finish = vec2(towerX + sin(angle) * 0.057 / aspect, dialY + cos(angle) * 0.057);
+            tickMarks = max(tickMarks, lineMask(uv, start, finish, 0.0038, aspect));
           }
-          sky = mix(sky, vec3(0.16, 0.18, 0.19), clockTicks * 0.98);
-
+          sky = mix(sky, vec3(0.11, 0.13, 0.15), tickMarks * 0.99);
           float minuteAngle = fract(clock) * 6.2831853;
           float hourAngle = mod(clock, 12.0) / 12.0 * 6.2831853;
-          vec2 minuteEnd = vec2(towerX + sin(minuteAngle) * 0.052 / aspect, clockTowerY + cos(minuteAngle) * 0.052);
-          vec2 hourEnd = vec2(towerX + sin(hourAngle) * 0.036 / aspect, clockTowerY + cos(hourAngle) * 0.036);
-          float minuteHand = segmentMaskAspect(uv, vec2(towerX, clockTowerY), minuteEnd, 0.0042, aspect);
-          float hourHand = segmentMaskAspect(uv, vec2(towerX, clockTowerY), hourEnd, 0.0062, aspect);
-          sky = mix(sky, vec3(0.07, 0.09, 0.12), max(minuteHand, hourHand) * 0.99);
-          sky = mix(sky, vec3(0.12, 0.15, 0.18), ellipseMask(uv, vec2(towerX, clockTowerY), vec2(0.010, 0.010), 0.12, aspect) * 0.99);
+          vec2 minuteEnd = vec2(towerX + sin(minuteAngle) * 0.047 / aspect, dialY + cos(minuteAngle) * 0.047);
+          vec2 hourEnd = vec2(towerX + sin(hourAngle) * 0.032 / aspect, dialY + cos(hourAngle) * 0.032);
+          float minuteHand = lineMask(uv, vec2(towerX, dialY), minuteEnd, 0.0035, aspect);
+          float hourHand = lineMask(uv, vec2(towerX, dialY), hourEnd, 0.0055, aspect);
+          sky = mix(sky, vec3(0.055, 0.065, 0.075), max(minuteHand, hourHand) * 0.99);
+          sky = mix(sky, vec3(0.62, 0.19, 0.075), ellipse(uv, vec2(towerX, dialY), vec2(0.008, 0.008), 0.12, aspect));
 
-          float stackBody = boxMask(uv, vec2(0.335, 0.411), vec2(0.008, 0.027), 0.002);
-          float stackCap = boxMask(uv, vec2(0.335, 0.439), vec2(0.012, 0.0035), 0.0015);
-          sky = mix(sky, vec3(0.028, 0.037, 0.047), max(stackBody, stackCap));
+          // The chimney is part of the roofline. Smoke is intentionally restricted to nighttime.
+          float chimneyX = hutX;
+          float smokeActive = max(smoothstep(17.8, 19.0, clock), 1.0 - smoothstep(5.3, 6.8, clock));
+          float smokeY = smoothstep(0.426, 0.470, uv.y) * (1.0 - smoothstep(0.80, 0.93, uv.y)) * smokeActive;
+          float smokeCenter = chimneyX + (
+            0.020 * sin(uv.y * 10.0 - t * 2.0) +
+            0.012 * sin(uv.y * 25.0 + t * 1.35)
+          ) / aspect;
+          float smokeWidth = 0.007 + max(uv.y - 0.40, 0.0) * 0.055;
+          float smokeDistance = abs(uv.x - smokeCenter) * aspect / smokeWidth;
+          float smokeGrain = noise(vec2(uv.x * 24.0 + t * 0.26, uv.y * 19.0 - t * 1.10));
+          float smokeEdge = noise(vec2(uv.x * 39.0 - t * 0.20, uv.y * 29.0 + t * 0.70));
+          float smokeCore = (1.0 - smoothstep(0.22, 1.18, smokeDistance)) * smoothstep(0.28, 0.72, smokeGrain) * smokeY;
+          float smokeRim = (1.0 - smoothstep(0.55, 1.70, smokeDistance)) * smoothstep(0.35, 0.76, smokeEdge) * smokeY;
+          vec3 smokeColor = mix(vec3(0.50, 0.56, 0.60), vec3(0.16, 0.21, 0.29), night);
+          sky = mix(sky, smokeColor, smokeRim * 0.28);
+          sky = mix(sky, smokeColor * 0.80, smokeCore * 0.40);
+          float chimney = box(uv, vec2(chimneyX, 0.413), vec2(0.011, 0.028), 0.0025, aspect);
+          float chimneyCap = box(uv, vec2(chimneyX, 0.442), vec2(0.016, 0.004), 0.002, aspect);
+          vec3 chimneyStone = mix(vec3(0.13, 0.08, 0.045), vec3(0.015, 0.020, 0.028), night * 0.90);
+          sky = mix(sky, chimneyStone, max(chimney, chimneyCap) * 0.98);
 
-          // Gentle cinematic vignette; keep the whole scene readable behind the search controls.
-          vec2 centered = uv - 0.5;
-          float vignette = 1.0 - smoothstep(0.32, 0.82, length(vec2(centered.x * 0.9, centered.y)));
-          sky *= 0.91 + vignette * 0.09;
-
+          // Subtle filmic falloff keeps the scenery atmospheric without adding visual clutter.
+          vec2 center = uv - 0.5;
+          float vignette = 1.0 - smoothstep(0.30, 0.84, length(vec2(center.x * 0.9, center.y)));
+          sky *= 0.93 + vignette * 0.07;
           gl_FragColor = vec4(clamp(sky, 0.0, 1.0), 1.0);
         }
-      `;
 
       const compile = (type: number, source: string) => {
         const shader = gl.createShader(type);
@@ -596,8 +464,10 @@ function NightSky() {
       const resolutionUniform = gl.getUniformLocation(program, "u_resolution");
 
       const resize = () => {
-        const widthPx = Math.max(1, Math.floor(window.innerWidth * Math.min(window.devicePixelRatio, 2)));
-        const heightPx = Math.max(1, Math.floor(140 * Math.min(window.devicePixelRatio, 2)));
+        // This decorative panorama needs far fewer pixels than a full-screen canvas.
+        const renderScale = Math.min(window.devicePixelRatio || 1, 1.25);
+        const widthPx = Math.max(1, Math.floor(window.innerWidth * renderScale));
+        const heightPx = Math.max(1, Math.floor(140 * renderScale));
         canvas.width = widthPx;
         canvas.height = heightPx;
         canvas.style.width = "100%";
@@ -609,7 +479,10 @@ function NightSky() {
       window.addEventListener("resize", resize);
 
       let frame = 0;
+      let lastDrawTime = 0;
       const render = (time: number) => {
+        // Draw at most 30 frames a second; clouds and smoke move slowly by design.
+        if (time - lastDrawTime >= 1000 / 30 || lastDrawTime === 0) {
         gl.useProgram(program);
         gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
         gl.enableVertexAttribArray(position);
@@ -618,6 +491,8 @@ function NightSky() {
         gl.uniform1f(hourUniform, hourRef.current);
         gl.uniform2f(resolutionUniform, canvas.width, canvas.height);
         gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+        lastDrawTime = time;
+        }
         frame = window.requestAnimationFrame(render);
       };
 
@@ -739,12 +614,12 @@ function NightSky() {
   const isDawn = hour >= 4.4 && hour < 7.4;
   const houseBodyColor = isNight ? "#0B1727" : isSunset ? "#26313F" : "#284653";
   const houseRoofColor = isNight ? "#070F1D" : isSunset ? "#342737" : "#203743";
-  const houseWindowColor = isNight ? "#FFC66D" : "rgba(255,226,158,0.50)";
+  const houseWindowColor = isNight ? "#FFD079" : isSunset ? "#5A4740" : "#28434D";
   const clockMinuteAngle = (hour % 1) * 360;
   const clockHourAngle = ((hour % 12) / 12) * 360;
   const clockTowerStoneColor = isNight ? "#27313D" : isSunset ? "#62504A" : "#83877D";
   const clockTowerRoofColor = isNight ? "#171C29" : isSunset ? "#332A31" : "#4B4E4A";
-  const clockTowerWindowColor = isNight ? "#FFD28B" : isSunset ? "#E9B27C" : "#8AB5C7";
+  const clockTowerWindowColor = isNight ? "#FFD28B" : isSunset ? "#6F5147" : "#365766";
 
   return (
     <View pointerEvents="none" style={s.nightSky}>
@@ -934,8 +809,8 @@ function NightSky() {
       <View style={[s.house, s.houseCenter]}>
         <View style={[s.houseRoof, s.houseCenterRoof, { borderBottomColor: houseRoofColor }]} />
         <View style={[s.houseBody, s.houseCenterBody, { backgroundColor: isNight ? "#18241F" : isSunset ? "#7A4330" : "#A66D43" }]} />
-        <View style={[s.houseWindow, s.houseCenterWindow, { left: 16, backgroundColor: houseWindowColor }]} />
-        <View style={[s.houseWindow, s.houseCenterWindow, { right: 16, backgroundColor: houseWindowColor }]} />
+        <View style={[s.houseWindow, s.houseCenterWindow, { left: 16, backgroundColor: houseWindowColor, shadowColor: isNight ? "#FFB44D" : "transparent", shadowOpacity: isNight ? 0.95 : 0, shadowRadius: isNight ? 8 : 0, elevation: isNight ? 4 : 0 }]} />
+        <View style={[s.houseWindow, s.houseCenterWindow, { right: 16, backgroundColor: houseWindowColor, shadowColor: isNight ? "#FFB44D" : "transparent", shadowOpacity: isNight ? 0.95 : 0, shadowRadius: isNight ? 8 : 0, elevation: isNight ? 4 : 0 }]} />
         <View style={[s.houseCenterDoor, { backgroundColor: isNight ? "#100E12" : "#49301E" }]} />
       </View>
       <View style={[s.house, s.houseRight]}>
@@ -975,20 +850,16 @@ function NightSky() {
         </View>
       </View>
 
-      <Animated.View
-        style={[
-          s.smokeColumn,
-          smokeAnimatedStyle,
-          {
-            opacity: isNight ? 0.58 : isSunset ? 0.80 : 0.64,
-          },
-        ]}
-      >
-        <View style={[s.smokePuff, { width: 27, height: 25, left: 39, top: 91, opacity: 0.68 }]} />
-        <View style={[s.smokePuff, { width: 37, height: 32, left: 30, top: 68, opacity: 0.56 }]} />
-        <View style={[s.smokePuff, { width: 47, height: 42, left: 23, top: 43, opacity: 0.43 }]} />
-        <View style={[s.smokePuff, { width: 56, height: 49, left: 19, top: 19, opacity: 0.28 }]} />
-      </Animated.View>
+      {isNight && (
+        <Animated.View
+          style={[s.smokeColumn, smokeAnimatedStyle, { opacity: 0.66 }]}
+        >
+          <View style={[s.smokePuff, { width: 27, height: 25, left: 39, top: 91, opacity: 0.68 }]} />
+          <View style={[s.smokePuff, { width: 37, height: 32, left: 30, top: 68, opacity: 0.56 }]} />
+          <View style={[s.smokePuff, { width: 47, height: 42, left: 23, top: 43, opacity: 0.43 }]} />
+          <View style={[s.smokePuff, { width: 56, height: 49, left: 19, top: 19, opacity: 0.28 }]} />
+        </Animated.View>
+      )}
       <View style={s.smokeStack} />
     </View>
   );
@@ -1781,7 +1652,7 @@ const s = StyleSheet.create({
   locationGateError: { marginTop: 10, color: "#B91C1C", fontSize: 11, lineHeight: 16, textAlign: "center" },
   locationGatePrivacy: { marginTop: 12, color: THEME.blackMuted, fontSize: 10, lineHeight: 15, textAlign: "center" },
   root: { flex: 1, backgroundColor: THEME.whiteBg },
-  /* Realistic 3D-style sky layers stay behind the existing header/search only */
+  /* Lightweight cinematic day/night countryside stays behind existing header/search; no video or 3D engine. */
   heroHeaderShell: { position: "relative", width: "100%", overflow: "hidden" },
   nightSky: { position: "absolute", top: 0, left: 0, right: 0, height: 140, overflow: "hidden", zIndex: 0, pointerEvents: "none" },
   nightGradientLayer: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0 },
