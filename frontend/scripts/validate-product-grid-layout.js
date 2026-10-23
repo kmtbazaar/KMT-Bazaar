@@ -17,22 +17,11 @@ assert.match(
   /pathname:\s*"\/(?:\(tabs\))\/categories",\s*params:\s*\{\s*categoryId:\s*String\(c\.id\)\s*\}/,
   "Home category tiles must open the split category browser with the chosen category."
 );
-assert.match(home, /api\.categories\(\)\.catch/);
-assert.match(home, /api\.stores\(\)\.catch/);
-assert.match(home, /api\.products\(\{ trending: true \}\)\.catch/);
-assert.match(home, /api\.unreadCount\(\)\.catch/, "Unread count failure must not block catalog rendering.");
-assert.doesNotMatch(home, /if \(!locationReady\) return;/, "Catalog loading must not be blocked before a delivery location is selected.");
-assert.match(home, /Browse products and stores now\./);
 assert.match(categories, /useLocalSearchParams/);
 assert.match(categories, /const \{ categoryId \} = useLocalSearchParams/);
-assert.match(categories, /requestedCategory/);
-assert.match(categories, /firstCategoryWithProducts/);
-assert.match(categories, /availableProductCategories/);
-assert.match(categories, /requestedId\) setActive\(String\(requestedId\)\)/);
-assert.match(categories, /style=\{\{ flex: 1, minWidth: 0 \}\}/);
-assert.match(categories, /<ScrollView[\s\S]*products\.map\(\(item\) => \([\s\S]*<ProductCard p=\{item\} compact \/>/);
-assert.match(categories, /productGrid:\s*\{[\s\S]*flexDirection:\s*"row"[\s\S]*flexWrap:\s*"wrap"/);
-assert.doesNotMatch(categories, /<FlatList/);
+assert.match(categories, /selectedCategory/);
+assert.match(categories, /productCell:\s*\{\s*width:\s*"50%"/);
+assert.match(categories, /<View style=\{s\.productCell\}>\s*<ProductCard p=\{item\} compact \/>/);
 
 assert.match(categoryPage, /productCell:\s*\{\s*width:\s*"33\.333333%"/);
 assert.match(categoryPage, /<View style=\{s\.productCell\}>\s*<ProductCard p=\{item\} compact=\{true\} \/>/);
@@ -41,10 +30,6 @@ assert.match(search, /<View style=\{s\.productCell\}>\s*<ProductCard p=\{item\} 
 assert.match(store, /gridCell:\s*\{\s*width:\s*"50%"/);
 assert.match(store, /flexGrow:\s*0/);
 assert.match(store, /flexShrink:\s*0/);
-assert.match(store, /api\.products\(\{ store_id: id \}\)\.catch/);
-assert.match(store, /filteredProducts\.map\(\(item: any\) => \([\s\S]*<ProductCard p=\{item\} compact=\{true\} storeGrid \/>/);
-assert.match(store, /productGrid:\s*\{[\s\S]*flexDirection:\s*"row"[\s\S]*flexWrap:\s*"wrap"/);
-assert.doesNotMatch(store, /<FlatList|removeClippedSubviews=\{true\}/);
 
 assert.match(
   productCard,

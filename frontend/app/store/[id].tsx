@@ -3,10 +3,10 @@ import React, { useEffect, useMemo, useState, useCallback } from "react";
 import {
   View,
   StyleSheet,
+  FlatList,
   ActivityIndicator,
   Pressable,
   ScrollView,
-  FlatList,
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
@@ -72,18 +72,9 @@ export default function StoreProducts() {
 
       try {
         const [storeList, categoryList, productList] = await Promise.all([
-          api.stores().catch((error) => {
-            console.warn("Store list unavailable; continuing to load store products:", error);
-            return [];
-          }),
-          api.categories().catch((error) => {
-            console.warn("Global categories unavailable; continuing to load store products:", error);
-            return [];
-          }),
-          api.products({ store_id: id }).catch((error) => {
-            console.error("Store products request failed:", error);
-            return [];
-          }),
+          api.stores(),
+          api.categories(),
+          api.products({ store_id: id }),
         ]);
 
         const selectedStore = (storeList || []).find(
@@ -97,10 +88,7 @@ export default function StoreProducts() {
           : [];
 
         const configuredItemCategories = selectedStore
-          ? await api.itemCategories(undefined, id).catch((error) => {
-              console.warn("Store item categories unavailable; deriving categories from products:", error);
-              return [];
-            })
+          ? await api.itemCategories(undefined, id)
           : [];
 
         if (!mounted) return;
@@ -267,6 +255,7 @@ export default function StoreProducts() {
           columnWrapperStyle={s.column}
           initialNumToRender={6}
           windowSize={4}
+          removeClippedSubviews={true}
           ListHeaderComponent={
             <View style={s.productsHeading}>
               <Text style={s.productsTitle}>

@@ -1,5 +1,5 @@
 import { LocalizedText as Text, LocalizedTextInput as TextInput } from "@/src/LocalizedText";
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useMemo, useState } from "react";
 import {
   View,
   Pressable,
@@ -41,6 +41,7 @@ export default function ProductCard({
   const { add, update, cart } = useCart();
   const { isWishlisted, toggle: toggleWishlist, ready: wishlistReady } = useWishlist();
   const wished = isWishlisted(p.id);
+  const [imageFailed, setImageFailed] = useState(false);
   const scale = useSharedValue(1);
 
   const qty = useMemo(() => {
@@ -111,50 +112,7 @@ export default function ProductCard({
       ? Math.round(((p.mrp - p.price) / p.mrp) * 100)
       : 0;
 
-  // Read the first non-empty label: some older records have blank "name" or
-  // "unit" fields even when a populated legacy field exists.
-  const firstProductText = (...values: any[]) => {
-    for (const value of values) {
-      if (typeof value === "string" && value.trim()) return value.trim();
-      if (typeof value === "number" && Number.isFinite(value) && value > 0) return String(value);
-    }
-    return "";
-  };
-
-  const productName = firstProductText(p?.name, p?.product_name, p?.productName, p?.title);
-  const productUnit = firstProductText(
-    p?.unit, p?.quantity_label, p?.unit_label, p?.unit_name,
-    p?.pack_size, p?.size, p?.weight, p?.volume, p?.quantity
-  );
-
-  // Try all stored image variants, not just a possibly stale primary image.
-  const productImageCandidates = useMemo(() => {
-    const candidates = [
-      p?.image,
-      ...(Array.isArray(p?.images) ? p.images : []),
-      p?.image_url,
-      p?.imageUrl,
-      p?.photo_url,
-    ];
-    const urls = candidates.map((value: any) => {
-      if (typeof value === "string") return value.trim();
-      if (value && typeof value === "object") {
-        return String(value.url || value.uri || value.src || "").trim();
-      }
-      return "";
-    }).filter(Boolean);
-    return Array.from(new Set(urls));
-  }, [p?.image, p?.images, p?.image_url, p?.imageUrl, p?.photo_url]);
-
-  const [imageIndex, setImageIndex] = useState(0);
-  const imageCandidatesKey = productImageCandidates.join("|");
-  useEffect(() => {
-    setImageIndex(0);
-  }, [p?.id, imageCandidatesKey]);
-  const productImage = productImageCandidates[imageIndex] || IMAGE_FALLBACK_URL;
-
-  const stockValue = p?.stock ?? p?.available_quantity ?? p?.quantity_in_stock ?? 0;
-  const outOfStock = Number(stockValue) <= 0;
+  const outOfStock = (p.stock ?? 0) <= 0;
 
   const onToggleWishlist = (e: any) => {
     e?.stopPropagation?.();
@@ -186,13 +144,11 @@ export default function ProductCard({
           style={[s.imgWrap, wishlistGrid && s.wishlistImgWrap, recommendationGrid && s.recommendationImgWrap]}
         >
           <Image
-            source={{ uri: productImage }}
+            source={{ uri: imageFailed ? IMAGE_FALLBACK_URL : (p.image || IMAGE_FALLBACK_URL) }}
             style={StyleSheet.absoluteFillObject}
             contentFit="cover"
             transition={200}
-            onError={() => setImageIndex((current) =>
-              current < productImageCandidates.length ? current + 1 : current
-            )}
+            onError={() => setImageFailed(true)}
           />
 
           {discount > 0 && (
@@ -230,14 +186,14 @@ export default function ProductCard({
             numberOfLines={2}
             ellipsizeMode="tail"
           >
-            {productName || "Product"}
+            {p.name}
           </Text>
 
           <Text
             style={[s.unit, wishlistGrid && s.wishlistUnit, recommendationGrid && s.recommendationUnit]}
             numberOfLines={1}
           >
-            {productUnit || " "}
+            {p.unit || " "}
           </Text>
 
           <View style={[s.priceRow, wishlistGrid && s.wishlistPriceRow, recommendationGrid && s.recommendationPriceRow]}>

@@ -97,10 +97,8 @@ export default function AdminOrders() {
     >
       <View style={s.header}>
         <Pressable
-          onPress={() => router.replace("/admin")}
+          onPress={() => router.back()}
           hitSlop={10}
-          accessibilityRole="button"
-          accessibilityLabel="Back to Admin Dashboard"
         >
           <MaterialCommunityIcons
             name="arrow-left"

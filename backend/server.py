@@ -58,8 +58,8 @@ db = client[os.environ['DB_NAME']]
 JWT_SECRET = os.environ.get("JWT_SECRET", "kmt-bazaar-super-secret-key-change-me")
 JWT_ALGO = "HS256"
 JWT_EXPIRE_MIN = 60 * 24 * 30  # 30 days for native Bearer tokens
-# Web sessions expire after 30 days without browser activity.
-WEB_SESSION_TIMEOUT_MIN = 60 * 24 * 30
+# Web sessions expire after 30 minutes without browser activity.
+WEB_SESSION_TIMEOUT_MIN = 30
 AUTH_COOKIE_NAME = "__Host-kmt_session"
 AUTH_COOKIE_MAX_AGE = WEB_SESSION_TIMEOUT_MIN * 60
 COOKIE_AUTH_MODE_HEADER = "x-kmt-auth-mode"
@@ -660,7 +660,7 @@ async def set_web_auth_cookie(response: Response, user: dict, request: Request) 
 
 
 async def refresh_web_auth_session(request: Request, response: Response) -> bool:
-    """Slide this tab's 30-day idle expiry and renew its HttpOnly cookie."""
+    """Slide this tab's 30-minute expiry and renew its HttpOnly cookie."""
     cookie_name = get_web_auth_cookie_name(request)
     raw_session = request.cookies.get(cookie_name)
     if not raw_session:
