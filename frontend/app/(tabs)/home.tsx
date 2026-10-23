@@ -142,6 +142,36 @@ function NightSky() {
           return 1.0 - smoothstep(radius - softness, radius + softness, length(p - center));
         }
 
+        // Aspect-correct masks keep foliage, clock details and stonework from looking stretched.
+        float ellipseMask(vec2 p, vec2 center, vec2 radii, float softness, float aspect) {
+          vec2 delta = vec2((p.x - center.x) * aspect, p.y - center.y);
+          float edge = length(delta / radii);
+          return 1.0 - smoothstep(1.0 - softness, 1.0 + softness, edge);
+        }
+
+        float boxMaskAspect(vec2 p, vec2 center, vec2 halfSize, float softness, float aspect) {
+          vec2 delta = vec2((p.x - center.x) * aspect, p.y - center.y);
+          float d = max(abs(delta.x) - halfSize.x, abs(delta.y) - halfSize.y);
+          return 1.0 - smoothstep(0.0, softness, d);
+        }
+
+        float segmentMaskAspect(vec2 p, vec2 a, vec2 b, float thickness, float aspect) {
+          vec2 pa = vec2((p.x - a.x) * aspect, p.y - a.y);
+          vec2 ba = vec2((b.x - a.x) * aspect, b.y - a.y);
+          float denom = max(dot(ba, ba), 0.000001);
+          float h = clamp(dot(pa, ba) / denom, 0.0, 1.0);
+          float d = length(pa - ba * h);
+          return 1.0 - smoothstep(thickness * 0.72, thickness * 1.30, d);
+        }
+
+        float roofMaskAspect(vec2 p, float centerX, float baseY, float peakY, float halfWidth, float aspect) {
+          float rise = clamp((p.y - baseY) / max(peakY - baseY, 0.001), 0.0, 1.0);
+          float allowedHalfWidth = halfWidth * (1.0 - rise);
+          float roofX = 1.0 - smoothstep(max(allowedHalfWidth - 0.006, 0.0), allowedHalfWidth + 0.006, abs(p.x - centerX) * aspect);
+          float roofY = step(baseY, p.y) * (1.0 - step(peakY + 0.001, p.y));
+          return roofX * roofY;
+        }
+
         float roofMask(vec2 p, float centerX, float baseY, float peakY, float halfWidth) {
           float rise = clamp((p.y - baseY) / max(peakY - baseY, 0.001), 0.0, 1.0);
           float allowedHalfWidth = halfWidth * (1.0 - rise);
@@ -330,35 +360,55 @@ function NightSky() {
           sky = mix(sky, farLand, farHill * 0.92);
           sky = mix(sky, nearLand, nearHill * 0.96);
 
-          // Two leafy trees frame the village. Their outer crowns flex gently in the breeze.
-          float treeWindLeft = 0.0055 * sin(t * 1.35);
-          float treeWindRight = 0.0040 * sin(t * 1.08 + 1.7);
+          // Aspect-corrected trees: layered irregular crowns, visible limbs and textured leaf clusters.
+          float treeWindLeft = (0.006 / aspect) * sin(t * 1.35);
+          float treeWindRight = (0.0045 / aspect) * sin(t * 1.08 + 1.7);
+          float leftTreeX = 0.075 + treeWindLeft;
+          float rightTreeX = 0.790 + treeWindRight;
 
           float leftTreeCrown = max(
             max(
-              circleMask(uv, vec2(0.075 + treeWindLeft, 0.354), 0.050, 0.003),
-              circleMask(uv, vec2(0.042 + treeWindLeft, 0.311), 0.048, 0.003)
+              ellipseMask(uv, vec2(leftTreeX - 0.10 / aspect, 0.405), vec2(0.145, 0.105), 0.10, aspect),
+              ellipseMask(uv, vec2(leftTreeX + 0.00 / aspect, 0.458), vec2(0.150, 0.135), 0.10, aspect)
             ),
             max(
-              circleMask(uv, vec2(0.107 + treeWindLeft, 0.307), 0.050, 0.003),
-              circleMask(uv, vec2(0.075 + treeWindLeft, 0.278), 0.053, 0.003)
+              max(
+                ellipseMask(uv, vec2(leftTreeX + 0.105 / aspect, 0.407), vec2(0.135, 0.108), 0.10, aspect),
+                ellipseMask(uv, vec2(leftTreeX - 0.035 / aspect, 0.345), vec2(0.150, 0.095), 0.10, aspect)
+              ),
+              ellipseMask(uv, vec2(leftTreeX - 0.085 / aspect, 0.492), vec2(0.105, 0.085), 0.10, aspect)
             )
           );
-          float leftTreeTrunk = boxMask(uv, vec2(0.076, 0.151), vec2(0.008, 0.096), 0.0025);
-          float leftTree = max(leftTreeCrown, leftTreeTrunk);
+          float leftTreeTrunk = boxMaskAspect(uv, vec2(leftTreeX, 0.165), vec2(0.018, 0.130), 0.008, aspect);
+          float leftBranchMask = max(
+            segmentMaskAspect(uv, vec2(leftTreeX, 0.235), vec2(leftTreeX - 0.125 / aspect, 0.365), 0.010, aspect),
+            max(
+              segmentMaskAspect(uv, vec2(leftTreeX, 0.255), vec2(leftTreeX + 0.125 / aspect, 0.375), 0.010, aspect),
+              segmentMaskAspect(uv, vec2(leftTreeX, 0.295), vec2(leftTreeX + 0.035 / aspect, 0.425), 0.008, aspect)
+            )
+          );
 
           float rightTreeCrown = max(
             max(
-              circleMask(uv, vec2(0.790 + treeWindRight, 0.344), 0.048, 0.003),
-              circleMask(uv, vec2(0.762 + treeWindRight, 0.311), 0.045, 0.003)
+              ellipseMask(uv, vec2(rightTreeX - 0.095 / aspect, 0.397), vec2(0.135, 0.102), 0.10, aspect),
+              ellipseMask(uv, vec2(rightTreeX + 0.00 / aspect, 0.448), vec2(0.145, 0.126), 0.10, aspect)
             ),
             max(
-              circleMask(uv, vec2(0.820 + treeWindRight, 0.306), 0.047, 0.003),
-              circleMask(uv, vec2(0.790 + treeWindRight, 0.282), 0.050, 0.003)
+              max(
+                ellipseMask(uv, vec2(rightTreeX + 0.095 / aspect, 0.398), vec2(0.130, 0.105), 0.10, aspect),
+                ellipseMask(uv, vec2(rightTreeX - 0.025 / aspect, 0.342), vec2(0.142, 0.090), 0.10, aspect)
+              ),
+              ellipseMask(uv, vec2(rightTreeX - 0.070 / aspect, 0.481), vec2(0.100, 0.082), 0.10, aspect)
             )
           );
-          float rightTreeTrunk = boxMask(uv, vec2(0.790, 0.145), vec2(0.0075, 0.088), 0.0025);
-          float rightTree = max(rightTreeCrown, rightTreeTrunk);
+          float rightTreeTrunk = boxMaskAspect(uv, vec2(rightTreeX, 0.155), vec2(0.017, 0.118), 0.008, aspect);
+          float rightBranchMask = max(
+            segmentMaskAspect(uv, vec2(rightTreeX, 0.222), vec2(rightTreeX - 0.115 / aspect, 0.350), 0.009, aspect),
+            max(
+              segmentMaskAspect(uv, vec2(rightTreeX, 0.245), vec2(rightTreeX + 0.112 / aspect, 0.366), 0.009, aspect),
+              segmentMaskAspect(uv, vec2(rightTreeX, 0.285), vec2(rightTreeX + 0.025 / aspect, 0.410), 0.008, aspect)
+            )
+          );
 
           vec3 treeBark = mix(vec3(0.20, 0.105, 0.055), vec3(0.012, 0.020, 0.026), night * 0.92);
           vec3 foliageBase = mix(vec3(0.035, 0.19, 0.078), vec3(0.008, 0.025, 0.030), night * 0.92);
@@ -367,21 +417,26 @@ function NightSky() {
           foliageLight = mix(foliageLight, vec3(0.34, 0.15, 0.10), twilight * 0.42);
 
           float leafTexture = fbm(vec2(uv.x * 83.0 + t * 0.06, uv.y * 91.0 + 7.0));
-          vec3 foliageSurface = mix(foliageBase * 0.72, foliageLight * 0.84, smoothstep(0.24, 0.81, leafTexture));
-          sky = mix(sky, treeBark, max(leftTreeTrunk, rightTreeTrunk) * 0.98);
-          sky = mix(sky, foliageSurface, max(leftTreeCrown, rightTreeCrown) * 0.99);
+          float leafGrain = fbm(vec2(uv.x * 142.0 - t * 0.08, uv.y * 164.0 + 13.0));
+          float canopyMask = max(leftTreeCrown, rightTreeCrown);
+          float leafShade = clamp(0.18 + leafTexture * 0.48 + leafGrain * 0.34, 0.0, 1.0);
+          vec3 foliageSurface = mix(foliageBase * 0.68, foliageLight * 0.90, smoothstep(0.24, 0.79, leafShade));
+          sky = mix(sky, treeBark * 0.80, max(leftTreeTrunk, rightTreeTrunk) * 0.98);
+          sky = mix(sky, foliageSurface, canopyMask * 0.99);
+          // Small dark limbs break up the solid green silhouette like real branches beneath leaves.
+          sky = mix(sky, treeBark * 0.82, max(leftBranchMask, rightBranchMask) * (0.42 + day * 0.12));
 
           float leafGlints = max(
             max(
-              circleMask(uv, vec2(0.064 + treeWindLeft, 0.354), 0.018, 0.0025),
-              circleMask(uv, vec2(0.091 + treeWindLeft, 0.319), 0.016, 0.0025)
+              ellipseMask(uv, vec2(leftTreeX - 0.085 / aspect, 0.424), vec2(0.055, 0.032), 0.16, aspect),
+              ellipseMask(uv, vec2(leftTreeX + 0.020 / aspect, 0.472), vec2(0.060, 0.035), 0.16, aspect)
             ),
             max(
-              circleMask(uv, vec2(0.780 + treeWindRight, 0.344), 0.017, 0.0025),
-              circleMask(uv, vec2(0.803 + treeWindRight, 0.311), 0.015, 0.0025)
+              ellipseMask(uv, vec2(rightTreeX - 0.055 / aspect, 0.422), vec2(0.050, 0.030), 0.16, aspect),
+              ellipseMask(uv, vec2(rightTreeX + 0.035 / aspect, 0.457), vec2(0.052, 0.030), 0.16, aspect)
             )
           );
-          sky = mix(sky, foliageLight, leafGlints * (0.23 + day * 0.30));
+          sky = mix(sky, foliageLight, leafGlints * (0.16 + day * 0.20));
 
           // A small village with a warm, thatched focal hut; its chimney anchors the drifting smoke.
           float houseLeftBody = boxMask(uv, vec2(0.12, 0.093), vec2(0.030, 0.038), 0.0025);
@@ -433,6 +488,59 @@ function NightSky() {
           float houseWindows = max(max(hutWindowLeft, hutWindowRight), smallWindows);
           vec3 windowColor = mix(vec3(0.84, 0.74, 0.53), vec3(1.0, 0.52, 0.16), night);
           sky = mix(sky, windowColor, houseWindows * (0.10 + night * 0.76));
+
+          // Clock tower: stone silhouette, inset windows, a readable dial and hands following local time.
+          float towerX = 0.545;
+          float towerBodyShadow = boxMaskAspect(uv, vec2(towerX + 0.035 / aspect, 0.215), vec2(0.105, 0.165), 0.008, aspect);
+          float towerBody = boxMaskAspect(uv, vec2(towerX, 0.215), vec2(0.108, 0.165), 0.008, aspect);
+          float towerUpper = boxMaskAspect(uv, vec2(towerX, 0.411), vec2(0.125, 0.103), 0.009, aspect);
+          float towerBase = boxMaskAspect(uv, vec2(towerX, 0.052), vec2(0.145, 0.018), 0.006, aspect);
+          float towerRoof = roofMaskAspect(uv, towerX, 0.507, 0.645, 0.188, aspect);
+          vec3 towerStone = mix(vec3(0.37, 0.37, 0.32), vec3(0.025, 0.035, 0.052), night * 0.90);
+          towerStone = mix(towerStone, vec3(0.34, 0.20, 0.17), twilight * 0.42);
+          vec3 towerTexture = towerStone * (0.86 + fbm(vec2(uv.x * 150.0, uv.y * 82.0 + 17.0)) * 0.24);
+          vec3 towerShadowColor = mix(vec3(0.19, 0.21, 0.20), vec3(0.010, 0.016, 0.028), night * 0.92);
+          sky = mix(sky, towerShadowColor, towerBodyShadow * 0.76);
+          sky = mix(sky, towerTexture * 0.80, towerBody * 0.99);
+          sky = mix(sky, towerTexture * 1.08, towerUpper * 0.99);
+          sky = mix(sky, towerStone * 0.90, towerBase * 0.99);
+
+          float towerEdgeLight = boxMaskAspect(uv, vec2(towerX - 0.082 / aspect, 0.219), vec2(0.012, 0.155), 0.004, aspect);
+          sky = mix(sky, towerStone * (0.98 + day * 0.10), towerEdgeLight * 0.88);
+          float towerSeam = boxMaskAspect(uv, vec2(towerX, 0.294), vec2(0.105, 0.004), 0.003, aspect);
+          sky = mix(sky, towerShadowColor * 0.90, towerSeam * 0.54);
+
+          float towerWindowTop = boxMaskAspect(uv, vec2(towerX, 0.278), vec2(0.024, 0.030), 0.010, aspect);
+          float towerWindowBottom = boxMaskAspect(uv, vec2(towerX, 0.130), vec2(0.024, 0.030), 0.010, aspect);
+          float towerWindowLeftInset = boxMaskAspect(uv, vec2(towerX - 0.002 / aspect, 0.278), vec2(0.016, 0.022), 0.009, aspect);
+          float towerWindowRightInset = boxMaskAspect(uv, vec2(towerX + 0.002 / aspect, 0.130), vec2(0.016, 0.022), 0.009, aspect);
+          sky = mix(sky, towerStone * 1.14, max(towerWindowTop, towerWindowBottom) * 0.94);
+          vec3 towerWindowGlow = mix(vec3(0.33, 0.48, 0.54), vec3(1.0, 0.58, 0.23), night);
+          sky = mix(sky, towerWindowGlow, max(towerWindowLeftInset, towerWindowRightInset) * (0.36 + night * 0.56));
+
+          float clockTowerY = 0.414;
+          float clockRim = ellipseMask(uv, vec2(towerX, clockTowerY), vec2(0.083, 0.083), 0.04, aspect);
+          float clockFace = ellipseMask(uv, vec2(towerX, clockTowerY), vec2(0.071, 0.071), 0.04, aspect);
+          sky = mix(sky, mix(vec3(0.76, 0.67, 0.48), vec3(0.21, 0.24, 0.29), night * 0.75), clockRim);
+          sky = mix(sky, mix(vec3(0.94, 0.90, 0.76), vec3(0.76, 0.81, 0.88), night * 0.40), clockFace);
+
+          float clockTicks = 0.0;
+          for (int tick = 0; tick < 12; tick++) {
+            float tickAngle = float(tick) * 6.2831853 / 12.0;
+            vec2 tickStart = vec2(towerX + sin(tickAngle) * 0.052 / aspect, clockTowerY + cos(tickAngle) * 0.052);
+            vec2 tickEnd = vec2(towerX + sin(tickAngle) * 0.061 / aspect, clockTowerY + cos(tickAngle) * 0.061);
+            clockTicks = max(clockTicks, segmentMaskAspect(uv, tickStart, tickEnd, 0.0045, aspect));
+          }
+          sky = mix(sky, vec3(0.16, 0.18, 0.19), clockTicks * 0.98);
+
+          float minuteAngle = fract(clock) * 6.2831853;
+          float hourAngle = mod(clock, 12.0) / 12.0 * 6.2831853;
+          vec2 minuteEnd = vec2(towerX + sin(minuteAngle) * 0.052 / aspect, clockTowerY + cos(minuteAngle) * 0.052);
+          vec2 hourEnd = vec2(towerX + sin(hourAngle) * 0.036 / aspect, clockTowerY + cos(hourAngle) * 0.036);
+          float minuteHand = segmentMaskAspect(uv, vec2(towerX, clockTowerY), minuteEnd, 0.0042, aspect);
+          float hourHand = segmentMaskAspect(uv, vec2(towerX, clockTowerY), hourEnd, 0.0062, aspect);
+          sky = mix(sky, vec3(0.07, 0.09, 0.12), max(minuteHand, hourHand) * 0.99);
+          sky = mix(sky, vec3(0.12, 0.15, 0.18), ellipseMask(uv, vec2(towerX, clockTowerY), vec2(0.010, 0.010), 0.12, aspect) * 0.99);
 
           float stackBody = boxMask(uv, vec2(0.335, 0.411), vec2(0.008, 0.027), 0.002);
           float stackCap = boxMask(uv, vec2(0.335, 0.439), vec2(0.012, 0.0035), 0.0015);
@@ -632,6 +740,11 @@ function NightSky() {
   const houseBodyColor = isNight ? "#0B1727" : isSunset ? "#26313F" : "#284653";
   const houseRoofColor = isNight ? "#070F1D" : isSunset ? "#342737" : "#203743";
   const houseWindowColor = isNight ? "#FFC66D" : "rgba(255,226,158,0.50)";
+  const clockMinuteAngle = (hour % 1) * 360;
+  const clockHourAngle = ((hour % 12) / 12) * 360;
+  const clockTowerStoneColor = isNight ? "#27313D" : isSunset ? "#62504A" : "#83877D";
+  const clockTowerRoofColor = isNight ? "#171C29" : isSunset ? "#332A31" : "#4B4E4A";
+  const clockTowerWindowColor = isNight ? "#FFD28B" : isSunset ? "#E9B27C" : "#8AB5C7";
 
   return (
     <View pointerEvents="none" style={s.nightSky}>
@@ -734,6 +847,9 @@ function NightSky() {
             { backgroundColor: isNight ? "#14231D" : "#493321" },
           ]}
         />
+        <View style={[s.heroTreeBranch, s.heroTreeBranchLeft, { backgroundColor: isNight ? "#18251F" : "#493321" }]} />
+        <View style={[s.heroTreeBranch, s.heroTreeBranchRight, { backgroundColor: isNight ? "#17231F" : "#493321" }]} />
+        <View style={[s.heroTreeBranch, s.heroTreeBranchUpper, { backgroundColor: isNight ? "#17231F" : "#493321" }]} />
         <View
           style={[
             s.heroTreeCanopy,
@@ -762,6 +878,9 @@ function NightSky() {
             { backgroundColor: isNight ? "#112820" : isSunset ? "#29472F" : "#326B3A" },
           ]}
         />
+        <View style={[s.heroTreeLeafGlint, s.heroTreeLeafGlintOne, { backgroundColor: isNight ? "rgba(77,111,93,0.26)" : "rgba(150,190,91,0.36)" }]} />
+        <View style={[s.heroTreeLeafGlint, s.heroTreeLeafGlintTwo, { backgroundColor: isNight ? "rgba(77,111,93,0.22)" : "rgba(165,198,102,0.34)" }]} />
+        <View style={[s.heroTreeLeafGlint, s.heroTreeLeafGlintThree, { backgroundColor: isNight ? "rgba(77,111,93,0.20)" : "rgba(132,176,78,0.32)" }]} />
       </Animated.View>
 
       <Animated.View style={[s.heroTree, s.heroTreeRight, treeFarSwayStyle]}>
@@ -771,6 +890,9 @@ function NightSky() {
             { backgroundColor: isNight ? "#14231D" : "#493321" },
           ]}
         />
+        <View style={[s.heroTreeBranch, s.heroTreeBranchLeft, { backgroundColor: isNight ? "#18251F" : "#493321" }]} />
+        <View style={[s.heroTreeBranch, s.heroTreeBranchRight, { backgroundColor: isNight ? "#17231F" : "#493321" }]} />
+        <View style={[s.heroTreeBranch, s.heroTreeBranchUpper, { backgroundColor: isNight ? "#17231F" : "#493321" }]} />
         <View
           style={[
             s.heroTreeCanopy,
@@ -799,6 +921,9 @@ function NightSky() {
             { backgroundColor: isNight ? "#112820" : isSunset ? "#29472F" : "#326B3A" },
           ]}
         />
+        <View style={[s.heroTreeLeafGlint, s.heroTreeLeafGlintOne, { backgroundColor: isNight ? "rgba(77,111,93,0.26)" : "rgba(150,190,91,0.36)" }]} />
+        <View style={[s.heroTreeLeafGlint, s.heroTreeLeafGlintTwo, { backgroundColor: isNight ? "rgba(77,111,93,0.22)" : "rgba(165,198,102,0.34)" }]} />
+        <View style={[s.heroTreeLeafGlint, s.heroTreeLeafGlintThree, { backgroundColor: isNight ? "rgba(77,111,93,0.20)" : "rgba(132,176,78,0.32)" }]} />
       </Animated.View>
 
       <View style={[s.house, s.houseLeft]}>
@@ -822,6 +947,32 @@ function NightSky() {
       <View style={[s.house, s.houseFarRight]}>
         <View style={[s.houseRoof, { borderBottomColor: houseRoofColor }]} />
         <View style={[s.houseBody, { backgroundColor: houseBodyColor }]} />
+      </View>
+
+      <View style={s.clockTower}>
+        <View style={[s.clockTowerBody, { backgroundColor: clockTowerStoneColor, borderColor: isNight ? "#3B4652" : "#A9A99A" }]} />
+        <View style={[s.clockTowerFrontEdge, { backgroundColor: isNight ? "rgba(125,143,154,0.12)" : "rgba(255,245,220,0.22)" }]} />
+        <View style={[s.clockTowerSideEdge, { backgroundColor: isNight ? "#141D29" : "#646A65" }]} />
+        <View style={[s.clockTowerUpper, { backgroundColor: clockTowerStoneColor, borderColor: isNight ? "#3B4652" : "#A9A99A" }]} />
+        <View style={[s.clockTowerRoof, { borderBottomColor: clockTowerRoofColor }]} />
+        <View style={[s.clockTowerWindow, s.clockTowerWindowUpper, { backgroundColor: clockTowerWindowColor, borderColor: isNight ? "#B5A88C" : "#C1B59A" }]} />
+        <View style={[s.clockTowerWindow, s.clockTowerWindowLower, { backgroundColor: clockTowerWindowColor, borderColor: isNight ? "#B5A88C" : "#C1B59A" }]} />
+        <View style={[s.clockFaceOuter, { borderColor: isNight ? "#B9B9B4" : "#B99B68" }]}>
+          <View style={s.clockFaceInner}>
+            {Array.from({ length: 12 }, (_, index) => (
+              <View key={index} style={[s.clockTickWrapper, { transform: [{ rotate: `${index * 30}deg` }] }]}>
+                <View style={s.clockTick} />
+              </View>
+            ))}
+            <View style={[s.clockHandPivot, { transform: [{ rotate: `${clockMinuteAngle}deg` }] }]}>
+              <View style={s.clockMinuteHand} />
+            </View>
+            <View style={[s.clockHandPivot, { transform: [{ rotate: `${clockHourAngle}deg` }] }]}>
+              <View style={s.clockHourHand} />
+            </View>
+            <View style={s.clockHandCenter} />
+          </View>
+        </View>
       </View>
 
       <Animated.View
@@ -1652,11 +1803,36 @@ const s = StyleSheet.create({
   smokeColumn: { position: "absolute", left: "21%", bottom: 36, width: 94, height: 110 },
   smokePuff: { position: "absolute", borderRadius: 50, backgroundColor: "rgba(206,218,226,0.35)", shadowColor: "#CBD5E1", shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.28, shadowRadius: 12, elevation: 1 },
   smokeStack: { position: "absolute", bottom: 39, left: "37.5%", width: 9, height: 14, backgroundColor: "#49372D", borderTopWidth: 2, borderTopColor: "#A18A72" },
+  clockTower: { position: "absolute", bottom: 0, left: "51%", width: 38, height: 92, zIndex: 4, alignItems: "center" } as any,
+  clockTowerBody: { position: "absolute", bottom: 0, left: 5, width: 28, height: 53, borderWidth: 1, borderBottomWidth: 0 },
+  clockTowerFrontEdge: { position: "absolute", bottom: 0, left: 6, width: 4, height: 52 },
+  clockTowerSideEdge: { position: "absolute", bottom: 0, right: 5, width: 5, height: 52 },
+  clockTowerUpper: { position: "absolute", bottom: 47, left: 2, width: 34, height: 29, borderWidth: 1, borderBottomWidth: 0 },
+  clockTowerRoof: { position: "absolute", bottom: 71, width: 0, height: 0, borderLeftWidth: 19, borderRightWidth: 19, borderBottomWidth: 20, borderLeftColor: "transparent", borderRightColor: "transparent" },
+  clockTowerWindow: { position: "absolute", width: 7, height: 10, borderWidth: 1, borderRadius: 3 },
+  clockTowerWindowUpper: { bottom: 32 },
+  clockTowerWindowLower: { bottom: 14 },
+  clockFaceOuter: { position: "absolute", bottom: 53, width: 25, height: 25, borderRadius: 13, borderWidth: 2, backgroundColor: "#B89D6D", alignItems: "center", justifyContent: "center", zIndex: 6 },
+  clockFaceInner: { position: "absolute", width: 19, height: 19, borderRadius: 10, backgroundColor: "#F0E8D3", overflow: "hidden" },
+  clockTickWrapper: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, alignItems: "center" },
+  clockTick: { position: "absolute", top: 1, width: 1.4, height: 2.5, backgroundColor: "#26313B", borderRadius: 1 },
+  clockHandPivot: { position: "absolute", left: "50%", top: "50%", width: 0, height: 0 },
+  clockMinuteHand: { position: "absolute", bottom: 0, left: -0.65, width: 1.3, height: 7.5, backgroundColor: "#27313B", borderRadius: 2 },
+  clockHourHand: { position: "absolute", bottom: 0, left: -0.9, width: 1.8, height: 5.3, backgroundColor: "#27313B", borderRadius: 2 },
+  clockHandCenter: { position: "absolute", left: 8, top: 8, width: 3, height: 3, borderRadius: 2, backgroundColor: "#A34A2E" },
   heroTree: { position: "absolute", bottom: 0, width: 62, height: 82, zIndex: 2, transformOrigin: "bottom" } as any,
   heroTreeLeft: { left: "1%" },
   heroTreeRight: { right: "2%", width: 58, height: 72 },
-  heroTreeTrunk: { position: "absolute", bottom: 0, left: "44%", width: 8, height: 34, borderTopLeftRadius: 2, borderTopRightRadius: 2 },
-  heroTreeCanopy: { position: "absolute", borderRadius: 50 },
+  heroTreeTrunk: { position: "absolute", bottom: 0, left: "44%", width: 8, height: 34, borderTopLeftRadius: 2, borderTopRightRadius: 2, zIndex: 2 },
+  heroTreeBranch: { position: "absolute", height: 3, borderRadius: 4, opacity: 0.72, zIndex: 4 },
+  heroTreeBranchLeft: { bottom: 28, left: 13, width: 25, transform: [{ rotate: "-34deg" }] },
+  heroTreeBranchRight: { bottom: 31, left: 25, width: 27, transform: [{ rotate: "32deg" }] },
+  heroTreeBranchUpper: { bottom: 39, left: 19, width: 21, height: 2.5, transform: [{ rotate: "-18deg" }] },
+  heroTreeCanopy: { position: "absolute", borderRadius: 50, zIndex: 3 },
+  heroTreeLeafGlint: { position: "absolute", height: 8, borderRadius: 8, zIndex: 5 },
+  heroTreeLeafGlintOne: { left: 13, top: 18, width: 16, transform: [{ rotate: "-24deg" }] },
+  heroTreeLeafGlintTwo: { left: 31, top: 32, width: 13, transform: [{ rotate: "21deg" }] },
+  heroTreeLeafGlintThree: { left: 9, top: 43, width: 12, height: 6, transform: [{ rotate: "14deg" }] },
   heroTreeCanopyLeft: { left: 2, top: 25, width: 39, height: 36 },
   heroTreeCanopyTop: { left: 16, top: 2, width: 37, height: 39 },
   heroTreeCanopyRight: { right: 0, top: 25, width: 36, height: 33 },
