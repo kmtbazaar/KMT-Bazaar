@@ -413,6 +413,7 @@ function NightSky() {
           sky *= 0.94 + vignette * 0.06;
           gl_FragColor = vec4(clamp(sky, 0.0, 1.0), 1.0);
         }
+      `;
 
       const compile = (type: number, source: string) => {
         const shader = gl.createShader(type);
