@@ -6,6 +6,7 @@ import {
   ActivityIndicator,
   Pressable,
   ScrollView,
+  FlatList,
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
@@ -254,33 +255,33 @@ export default function StoreProducts() {
           </ScrollView>
         </View>
 
-        <ScrollView
+        <FlatList
           style={s.productList}
+          data={filteredProducts}
+          keyExtractor={(item, index) =>
+            String(item.id ?? item._id ?? index)
+          }
+          renderItem={renderItem}
+          numColumns={2}
           contentContainerStyle={s.listContent}
-          showsVerticalScrollIndicator={false}
-        >
-          <View style={s.productsHeading}>
-            <Text style={s.productsTitle}>
-              {selectedItemCategory === "All"
-                ? "All Products"
-                : itemCategories.find(
-                    (category: any) => String(category.id) === String(selectedItemCategory)
-                  )?.name || selectedItemCategory}
-            </Text>
-            <Text style={s.productsCount}>
-              {filteredProducts.length} item{filteredProducts.length === 1 ? "" : "s"}
-            </Text>
-          </View>
-
-          {filteredProducts.length > 0 ? (
-            <View style={s.productGrid}>
-              {filteredProducts.map((item: any) => (
-                <View key={String(item.id ?? item._id)} style={s.gridCell}>
-                  <ProductCard p={item} compact={true} storeGrid />
-                </View>
-              ))}
+          columnWrapperStyle={s.column}
+          initialNumToRender={6}
+          windowSize={4}
+          ListHeaderComponent={
+            <View style={s.productsHeading}>
+              <Text style={s.productsTitle}>
+                {selectedItemCategory === "All"
+                  ? "All Products"
+                  : itemCategories.find(
+                      (category: any) => String(category.id) === String(selectedItemCategory)
+                    )?.name || selectedItemCategory}
+              </Text>
+              <Text style={s.productsCount}>
+                {filteredProducts.length} item{filteredProducts.length === 1 ? "" : "s"}
+              </Text>
             </View>
-          ) : (
+          }
+          ListEmptyComponent={
             <View style={s.empty}>
               <MaterialCommunityIcons
                 name="package-variant-closed"
@@ -291,8 +292,8 @@ export default function StoreProducts() {
                 No products in this category yet.
               </Text>
             </View>
-          )}
-        </ScrollView>
+          }
+        />
       </View>
 
       <CheckoutBar label="View Cart" route="/cart" bottomOffset={16} />
@@ -435,13 +436,10 @@ const s = StyleSheet.create({
   listContent: {
     paddingHorizontal: 2,
     paddingBottom: 100,
-    flexGrow: 1,
   },
 
-  productGrid: {
-    width: "100%",
-    flexDirection: "row",
-    flexWrap: "wrap",
+  column: {
+    gap: 0,
     alignItems: "stretch",
   },
 
