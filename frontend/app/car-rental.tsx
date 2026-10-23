@@ -271,31 +271,44 @@ export default function CarRentalPage() {
   const [tripNote, setTripNote] = useState("");
   const [bannerIndex, setBannerIndex] = useState(0);
   const [bannerImageBroken, setBannerImageBroken] = useState(false);
+  const [bannerConfigs, setBannerConfigs] = useState<any[]>([]);
+  const bannerSlideCount = bannerConfigs.length || items.length;
+  const activeBanner = bannerConfigs.length
+    ? bannerConfigs[bannerIndex % bannerConfigs.length]
+    : null;
+  const activeCar = items.length ? items[bannerIndex % items.length] : null;
 
   useEffect(() => {
-    if (items.length < 2) {
+    if (bannerSlideCount < 2) {
       setBannerIndex(0);
       return;
     }
     const interval = setInterval(() => {
-      setBannerIndex((current) => (current + 1) % items.length);
+      setBannerIndex((current) => (current + 1) % bannerSlideCount);
     }, 7000);
     return () => clearInterval(interval);
-  }, [items.length]);
+  }, [bannerSlideCount]);
 
   useEffect(() => {
     setBannerImageBroken(false);
-  }, [bannerIndex, items.length]);
+  }, [bannerIndex, bannerSlideCount]);
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await api.serviceCatalog("car_rental");
+      const [data, customBanners] = await Promise.all([
+        api.serviceCatalog("car_rental").catch((e) => {
+          console.log("Car Rental catalog load error", e);
+          return [];
+        }),
+        api.carRentalBanners().catch((e) => {
+          console.log("Car Rental banner load error", e);
+          return [];
+        }),
+      ]);
       const real = Array.isArray(data) ? data : [];
       setItems((real.length ? real : MOCK_FLEET).map((x, i) => enrich(x, i)));
-    } catch (e) {
-      console.log("Car Rental catalog load error", e);
-      setItems(MOCK_FLEET.map((x, i) => enrich(x, i)));
+      setBannerConfigs(Array.isArray(customBanners) ? customBanners : []);
     } finally {
       setLoading(false);
     }
@@ -431,8 +444,8 @@ export default function CarRentalPage() {
 
           <Animated.View entering={FadeIn.duration(500)} style={styles.heroBanner}>
             <Image
-              key={bannerIndex % Math.max(1, items.length)}
-              source={{ uri: bannerImageBroken ? MOCK_FLEET[0].image : (items.length ? (items[bannerIndex % items.length]?.image || MOCK_FLEET[0].image) : MOCK_FLEET[1].image) }}
+              key={activeBanner?.id || activeCar?.id || `car-rental-banner-${bannerIndex}`}
+              source={{ uri: bannerImageBroken ? MOCK_FLEET[0].image : (activeBanner?.image || activeCar?.image || MOCK_FLEET[1].image) }}
               style={styles.heroBannerImage}
               contentFit="cover"
               transition={350}
@@ -445,13 +458,15 @@ export default function CarRentalPage() {
             <View style={styles.heroBannerText}>
               <Text style={styles.bannerKicker}>KMT BAZAAR CAR RENTALS</Text>
               <Text style={styles.bannerTitle} numberOfLines={1}>
-                {items.length ? (items[bannerIndex % items.length]?.name || "Explore your next ride") : "Explore your next ride"}
+                {activeBanner?.title || activeCar?.name || "Explore your next ride"}
               </Text>
-              <Text style={styles.bannerSubtitle}>City rides · Family trips · Outstation travel</Text>
+              <Text style={styles.bannerSubtitle}>
+                {activeBanner?.subtitle || "City rides · Family trips · Outstation travel"}
+              </Text>
             </View>
-            {items.length > 1 ? (
+            {bannerSlideCount > 1 ? (
               <View style={styles.bannerPosition}>
-                <Text style={styles.bannerPositionText}>{(bannerIndex % items.length) + 1} / {items.length}</Text>
+                <Text style={styles.bannerPositionText}>{(bannerIndex % bannerSlideCount) + 1} / {bannerSlideCount}</Text>
               </View>
             ) : null}
           </Animated.View>

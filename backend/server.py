@@ -1467,6 +1467,40 @@ async def list_banners():
     return banners
 
 
+@api.get("/car-rental/banners")
+async def list_car_rental_banners():
+    users = await db.users.find(
+        {
+            "role": Role.VENDOR.value,
+            "vendor_type": VendorType.SERVICE.value,
+            "service_type": ServiceType.CAR_RENTAL.value,
+            "is_active": {"$ne": False},
+            "active": {"$ne": False},
+            "car_rental_banner_active": {"$ne": False},
+            "car_rental_banner_image": {"$exists": True, "$nin": [None, ""]},
+        },
+        {
+            "_id": 0,
+            "id": 1,
+            "name": 1,
+            "car_rental_banner_title": 1,
+            "car_rental_banner_subtitle": 1,
+            "car_rental_banner_image": 1,
+        },
+    ).sort("name", 1).to_list(100)
+    return [
+        {
+            "id": user.get("id", ""),
+            "vendor_name": user.get("name", ""),
+            "title": user.get("car_rental_banner_title", ""),
+            "subtitle": user.get("car_rental_banner_subtitle", ""),
+            "image": user.get("car_rental_banner_image", ""),
+        }
+        for user in users
+        if str(user.get("car_rental_banner_image") or "").strip()
+    ]
+
+
 @api.get("/stores")
 async def list_stores():
     stores = await db.stores.find({"is_approved": True}, {"_id": 0}).to_list(100)
@@ -2684,6 +2718,10 @@ class AdminUserUpdateIn(BaseModel):
     name: str
     email: Optional[EmailStr] = None
     phone: Optional[str] = None
+    car_rental_banner_title: Optional[str] = None
+    car_rental_banner_subtitle: Optional[str] = None
+    car_rental_banner_image: Optional[str] = None
+    car_rental_banner_active: Optional[bool] = None
 
 
 @api.get("/admin/stats")
@@ -2829,6 +2867,20 @@ async def admin_update_service_vendor(
         update["email"] = str(data.email).strip().lower()
     if data.phone is not None:
         update["phone"] = str(data.phone).strip()
+    if user.get("service_type") == ServiceType.CAR_RENTAL.value:
+        banner_fields = (
+            ("car_rental_banner_title", data.car_rental_banner_title, 120),
+            ("car_rental_banner_subtitle", data.car_rental_banner_subtitle, 240),
+            ("car_rental_banner_image", data.car_rental_banner_image, 2000),
+        )
+        for field, value, max_length in banner_fields:
+            if value is not None:
+                clean_value = str(value).strip()
+                if len(clean_value) > max_length:
+                    raise HTTPException(status_code=400, detail=f"{field} is too long")
+                update[field] = clean_value
+        if data.car_rental_banner_active is not None:
+            update["car_rental_banner_active"] = data.car_rental_banner_active
     duplicate = await db.users.find_one({
         "$or": [
             {"email": update.get("email")} if update.get("email") else {"id": "__none__"},
@@ -4111,6 +4163,72 @@ async def vendor_service_stats(current=Depends(require_roles("vendor"))):
         "commission_percent": commission,
         "payout": payout,
     }
+
+@api.get("/vendor/car-rental/banner")
+async def vendor_car_rental_banner(current=Depends(require_roles("vendor"))):
+    _require_vendor_type(current, "service")
+    if current.get("service_type") != ServiceType.CAR_RENTAL.value:
+        raise HTTPException(status_code=403, detail="Car Rental Vendor access required")
+    user = await db.users.find_one(
+        {"id": current["id"]},
+        {
+            "_id": 0,
+            "name": 1,
+            "car_rental_banner_title": 1,
+            "car_rental_banner_subtitle": 1,
+            "car_rental_banner_image": 1,
+            "car_rental_banner_active": 1,
+        },
+    ) or {}
+    return {
+        "title": user.get("car_rental_banner_title", ""),
+        "subtitle": user.get("car_rental_banner_subtitle", ""),
+        "image": user.get("car_rental_banner_image", ""),
+        "active": user.get("car_rental_banner_active", True) is not False,
+        "vendor_name": user.get("name", current.get("name", "")),
+    }
+
+
+@api.put("/vendor/car-rental/banner")
+async def update_vendor_car_rental_banner(
+    data: Dict[str, Any],
+    current=Depends(require_roles("vendor")),
+):
+    _require_vendor_type(current, "service")
+    if current.get("service_type") != ServiceType.CAR_RENTAL.value:
+        raise HTTPException(status_code=403, detail="Car Rental Vendor access required")
+    title = str(data.get("title") or "").strip()
+    subtitle = str(data.get("subtitle") or "").strip()
+    image = str(data.get("image") or "").strip()
+    active = data.get("active", True)
+    if not isinstance(active, bool):
+        raise HTTPException(status_code=400, detail="Banner visibility must be true or false")
+    if len(title) > 120:
+        raise HTTPException(status_code=400, detail="Banner title must be 120 characters or fewer")
+    if len(subtitle) > 240:
+        raise HTTPException(status_code=400, detail="Banner subtitle must be 240 characters or fewer")
+    if len(image) > 2000:
+        raise HTTPException(status_code=400, detail="Banner image URL is too long")
+    await db.users.update_one(
+        {"id": current["id"]},
+        {
+            "$set": {
+                "car_rental_banner_title": title,
+                "car_rental_banner_subtitle": subtitle,
+                "car_rental_banner_image": image,
+                "car_rental_banner_active": active,
+                "updated_at": now_iso(),
+            }
+        },
+    )
+    return {
+        "title": title,
+        "subtitle": subtitle,
+        "image": image,
+        "active": active,
+        "vendor_name": current.get("name", ""),
+    }
+
 
 @api.get("/vendor/holiday/banner")
 async def vendor_holiday_banner(current=Depends(require_roles("vendor"))):

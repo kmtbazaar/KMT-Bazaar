@@ -1,6 +1,6 @@
 import { LocalizedText as Text, LocalizedTextInput as TextInput } from "@/src/LocalizedText";
 import React, { useCallback, useState } from "react";
-import { View, StyleSheet, ScrollView, Pressable } from "react-native";
+import { View, StyleSheet, ScrollView, Pressable, Switch, Alert, Platform } from "react-native";
 import { useFocusEffect, useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -8,18 +8,62 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { vendorApi } from "@/src/roleApi";
 import { useAuth } from "@/src/AuthContext";
 import { COLORS, RADIUS, SPACING } from "@/src/theme";
+import ImageUploader from "@/src/components/ImageUploader";
 
 export default function CarRentalVendorDashboard() {
   const router = useRouter();
   const { user, logout } = useAuth();
   const [stats, setStats] = useState<any>(null);
   const [bookingCount, setBookingCount] = useState(0);
+  const [bannerForm, setBannerForm] = useState<any>({ title: "", subtitle: "", image: "", active: true });
+  const [savingBanner, setSavingBanner] = useState(false);
 
   const load = useCallback(async () => {
-    try { const [st, bookings] = await Promise.all([vendorApi.serviceStats(), vendorApi.serviceBookings()]); setStats(st); setBookingCount((bookings || []).filter((x:any) => ["pending","booking_requested","confirmed","accepted"].includes(String(x.status || "").toLowerCase())).length); } catch {}
+    const [st, bookings, banner] = await Promise.all([
+      vendorApi.serviceStats().catch(() => null),
+      vendorApi.serviceBookings().catch(() => []),
+      vendorApi.carRentalBanner().catch(() => null),
+    ]);
+    if (st) setStats(st);
+    setBookingCount((bookings || []).filter((x:any) => ["pending","booking_requested","confirmed","accepted"].includes(String(x.status || "").toLowerCase())).length);
+    if (banner) {
+      setBannerForm({
+        title: banner.title || "",
+        subtitle: banner.subtitle || "",
+        image: banner.image || "",
+        active: banner.active !== false,
+      });
+    }
   }, []);
 
   useFocusEffect(useCallback(() => { load(); }, [load]));
+
+  const saveBanner = async () => {
+    setSavingBanner(true);
+    try {
+      const saved = await vendorApi.updateCarRentalBanner({
+        title: String(bannerForm.title || "").trim(),
+        subtitle: String(bannerForm.subtitle || "").trim(),
+        image: String(bannerForm.image || "").trim(),
+        active: bannerForm.active !== false,
+      });
+      setBannerForm({
+        title: saved.title || "",
+        subtitle: saved.subtitle || "",
+        image: saved.image || "",
+        active: saved.active !== false,
+      });
+      const message = "Car Rental banner settings saved.";
+      if (Platform.OS === "web") window.alert(message);
+      else Alert.alert("Banner saved", message);
+    } catch (e: any) {
+      const message = e?.message || "Could not save banner settings.";
+      if (Platform.OS === "web") window.alert(message);
+      else Alert.alert("Save failed", message);
+    } finally {
+      setSavingBanner(false);
+    }
+  };
 
   return (
     <View style={s.root} testID="car-rental-vendor-dashboard">
@@ -55,6 +99,58 @@ export default function CarRentalVendorDashboard() {
           <Text style={s.payoutLabel}>ESTIMATED PAYOUT</Text>
           <Text style={s.payoutValue}>{`₹${stats?.payout ?? 0}`}</Text>
           <Text style={s.payoutSub}>After {stats?.commission_percent ?? 10}% platform commission</Text>
+        </View>
+
+        <Text style={s.sectionTitle}>Customer Page Banner</Text>
+        <View style={s.bannerCard} testID="car-rental-banner-settings">
+          <Text style={s.bannerHelp}>Customize the image and message shown on the public Car Rental page.</Text>
+          <Text style={s.bannerFieldLabel}>Banner title</Text>
+          <TextInput
+            value={bannerForm.title}
+            onChangeText={(value) => setBannerForm((prev: any) => ({ ...prev, title: value }))}
+            placeholder="Explore your next ride"
+            maxLength={120}
+            style={s.bannerInput}
+            testID="car-rental-banner-title"
+          />
+          <Text style={s.bannerFieldLabel}>Banner subtitle</Text>
+          <TextInput
+            value={bannerForm.subtitle}
+            onChangeText={(value) => setBannerForm((prev: any) => ({ ...prev, subtitle: value }))}
+            placeholder="City rides · Family trips · Outstation travel"
+            maxLength={240}
+            style={s.bannerInput}
+            testID="car-rental-banner-subtitle"
+          />
+          <ImageUploader
+            value={bannerForm.image}
+            onChange={(image) => setBannerForm((prev: any) => ({ ...prev, image }))}
+            label="Banner image (wide landscape)"
+            aspect={[16, 5]}
+            testID="car-rental-banner-image"
+          />
+          <View style={s.bannerToggleRow}>
+            <View style={{ flex: 1 }}>
+              <Text style={s.bannerToggleTitle}>Show custom banner</Text>
+              <Text style={s.bannerHelp}>Turn off to use the automatic fleet-photo banner.</Text>
+            </View>
+            <Switch
+              value={bannerForm.active !== false}
+              onValueChange={(active) => setBannerForm((prev: any) => ({ ...prev, active }))}
+              trackColor={{ false: "#CBD5E1", true: "#7DD3FC" }}
+              thumbColor={bannerForm.active !== false ? "#0284C7" : "#64748B"}
+              testID="car-rental-banner-active"
+            />
+          </View>
+          <Pressable
+            disabled={savingBanner}
+            onPress={saveBanner}
+            style={[s.bannerSave, savingBanner && { opacity: 0.65 }]}
+            testID="car-rental-banner-save"
+          >
+            <MaterialCommunityIcons name="content-save-outline" size={18} color="#fff" />
+            <Text style={s.bannerSaveText}>{savingBanner ? "Saving..." : "Save Banner Settings"}</Text>
+          </Pressable>
         </View>
 
         <Text style={s.sectionTitle}>Car Rental Management</Text>
@@ -106,6 +202,14 @@ const s = StyleSheet.create({
   payoutValue: { color: "#fff", fontSize: 30, fontWeight: "900", marginTop: 3 },
   payoutSub: { color: "rgba(255,255,255,0.72)", fontSize: 11, marginTop: 2 },
   sectionTitle: { fontSize: 17, fontWeight: "900", color: COLORS.text, marginBottom: 10 },
+  bannerCard: { backgroundColor: "#fff", padding: 15, borderRadius: RADIUS.lg, borderWidth: 1, borderColor: "#BAE6FD", marginBottom: 20 },
+  bannerHelp: { color: COLORS.textMuted, fontSize: 11, lineHeight: 16, marginBottom: 10 },
+  bannerFieldLabel: { color: COLORS.text, fontSize: 11, fontWeight: "800", marginBottom: 5 },
+  bannerInput: { backgroundColor: "#F8FAFC", borderWidth: 1, borderColor: "#CBD5E1", borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, color: COLORS.text, marginBottom: 12 },
+  bannerToggleRow: { flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 8, marginBottom: 8 },
+  bannerToggleTitle: { color: COLORS.text, fontSize: 12, fontWeight: "900", marginBottom: 3 },
+  bannerSave: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, backgroundColor: "#0284C7", paddingVertical: 13, borderRadius: 12, marginTop: 3 },
+  bannerSaveText: { color: "#fff", fontWeight: "900", fontSize: 13 },
   actionCard: { flexDirection: "row", alignItems: "center", gap: 12, backgroundColor: "#fff", padding: 15, borderRadius: RADIUS.md, borderWidth: 1, borderColor: "#E2E8F0", marginBottom: 10 },
   actionIcon: { width: 44, height: 44, borderRadius: 22, backgroundColor: "#E0F2FE", alignItems: "center", justifyContent: "center" },
   actionTitle: { color: COLORS.text, fontWeight: "900", fontSize: 14 },

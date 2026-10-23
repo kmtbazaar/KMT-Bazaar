@@ -1,11 +1,12 @@
 import { LocalizedText as Text, LocalizedTextInput as TextInput } from "@/src/LocalizedText";
 import React, { useCallback, useState } from "react";
-import { View, StyleSheet, FlatList, Pressable, Modal, ScrollView, Alert, Platform } from "react-native";
+import { View, StyleSheet, FlatList, Pressable, Modal, ScrollView, Alert, Platform, Switch } from "react-native";
 import { useFocusEffect, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { adminApi } from "@/src/roleApi";
 import { COLORS, RADIUS, SPACING } from "@/src/theme";
+import ImageUploader from "@/src/components/ImageUploader";
 
 export default function AdminServiceVendors() {
   const router=useRouter();
@@ -14,7 +15,10 @@ export default function AdminServiceVendors() {
   const [bookings,setBookings]=useState<any[]>([]);
   const [selected,setSelected]=useState<any>(null);
   const [modal,setModal]=useState(false);
-  const [form,setForm]=useState<any>({name:"",email:"",phone:""});
+  const [form,setForm]=useState<any>({
+    name:"",email:"",phone:"",
+    car_rental_banner_title:"",car_rental_banner_subtitle:"",car_rental_banner_image:"",car_rental_banner_active:true
+  });
 
   const load=useCallback(async()=>{
     try{
@@ -25,7 +29,17 @@ export default function AdminServiceVendors() {
   },[]);
   useFocusEffect(useCallback(()=>{load()},[load]));
 
-  const open=(v:any)=>{setSelected(v);setForm({name:v.name||"",email:v.email||"",phone:v.phone||""});setModal(true)};
+  const open=(v:any)=>{
+    setSelected(v);
+    setForm({
+      name:v.name||"",email:v.email||"",phone:v.phone||"",
+      car_rental_banner_title:v.car_rental_banner_title||"",
+      car_rental_banner_subtitle:v.car_rental_banner_subtitle||"",
+      car_rental_banner_image:v.car_rental_banner_image||"",
+      car_rental_banner_active:v.car_rental_banner_active!==false
+    });
+    setModal(true);
+  };
   const save=async()=>{
     try{await adminApi.updateServiceVendor(selected.id,form);setModal(false);await load();window.alert?.("Vendor profile saved");}catch(e:any){Platform.OS==="web"?window.alert(e?.message||"Update failed"):Alert.alert("Update failed",e?.message||"Update failed")}
   };
@@ -54,7 +68,33 @@ export default function AdminServiceVendors() {
         <Field label="Name" value={form.name} onChangeText={(v:string)=>setForm({...form,name:v})}/>
         <Field label="Email" value={form.email} onChangeText={(v:string)=>setForm({...form,email:v})}/>
         <Field label="Mobile" value={form.phone} onChangeText={(v:string)=>setForm({...form,phone:v})} keyboardType="phone-pad"/>
-        <Pressable style={m.save} onPress={save}><Text style={m.saveText}>Save Vendor Profile</Text></Pressable>
+        {selected.service_type==="car_rental"&&<>
+          <Text style={m.section}>Customer Car Rental Banner</Text>
+          <Text style={m.helper}>Admin can update this vendor's banner; saving publishes the settings to the customer page.</Text>
+          <Field label="Banner title (max 120 characters)" value={form.car_rental_banner_title} onChangeText={(v:string)=>setForm({...form,car_rental_banner_title:v})}/>
+          <Field label="Banner subtitle (max 240 characters)" value={form.car_rental_banner_subtitle} onChangeText={(v:string)=>setForm({...form,car_rental_banner_subtitle:v})}/>
+          <ImageUploader
+            value={form.car_rental_banner_image}
+            onChange={(image)=>setForm({...form,car_rental_banner_image:image})}
+            label="Banner image (wide landscape)"
+            aspect={[16,5]}
+            testID="admin-car-rental-banner-image"
+          />
+          <View style={m.toggleRow}>
+            <View style={{flex:1}}>
+              <Text style={m.itemName}>Show custom banner</Text>
+              <Text style={m.itemMeta}>Off uses the automatic fleet-photo banner.</Text>
+            </View>
+            <Switch
+              value={form.car_rental_banner_active!==false}
+              onValueChange={(active)=>setForm({...form,car_rental_banner_active:active})}
+              trackColor={{false:"#CBD5E1",true:"#7DD3FC"}}
+              thumbColor={form.car_rental_banner_active!==false?"#0284C7":"#64748B"}
+              testID="admin-car-rental-banner-active"
+            />
+          </View>
+        </>}
+        <Pressable style={m.save} onPress={save}><Text style={m.saveText}>{selected.service_type==="car_rental"?"Save Vendor Profile & Banner":"Save Vendor Profile"}</Text></Pressable>
 
         <Text style={m.section}>Dashboard Summary</Text>
         <View style={s.kpiRow}><KPI label="Bookings" value={vendorBookings.length}/><KPI label="Completed" value={completed}/><KPI label="Pending" value={pending}/></View>
@@ -82,4 +122,4 @@ export default function AdminServiceVendors() {
 function Field(p:any){return <View style={{marginBottom:9}}><Text style={m.label}>{p.label}</Text><TextInput value={p.value} onChangeText={p.onChangeText} keyboardType={p.keyboardType} style={m.input}/></View>}
 function KPI({label,value}:any){return <View style={s.kpi}><Text style={s.kpiVal}>{value}</Text><Text style={s.kpiLab}>{label}</Text></View>}
 const s=StyleSheet.create({root:{flex:1,backgroundColor:"#F8FAFC"},header:{flexDirection:"row",alignItems:"center",justifyContent:"space-between",padding:16,backgroundColor:"#fff",borderBottomWidth:1,borderBottomColor:"#E2E8F0"},title:{fontSize:19,fontWeight:"900"},card:{flexDirection:"row",alignItems:"center",gap:12,backgroundColor:"#fff",padding:14,borderRadius:16,borderWidth:1,borderColor:"#E2E8F0"},avatar:{width:48,height:48,borderRadius:24,alignItems:"center",justifyContent:"center"},name:{fontWeight:"900",fontSize:15},meta:{fontSize:11,color:"#64748B",marginTop:3},empty:{padding:40,alignItems:"center",textAlign:"center",color:"#64748B"},emptyText:{marginTop:10,color:"#64748B"},kpiRow:{flexDirection:"row",gap:8,marginBottom:8},kpi:{flex:1,backgroundColor:"#F8FAFC",padding:12,borderRadius:12},kpiVal:{fontSize:17,fontWeight:"900"},kpiLab:{fontSize:10,color:"#64748B",marginTop:2}});
-const m=StyleSheet.create({back:{flex:1,backgroundColor:"rgba(0,0,0,.55)",justifyContent:"flex-end"},sheet:{backgroundColor:"#fff",maxHeight:"94%",borderTopLeftRadius:24,borderTopRightRadius:24,padding:18},head:{flexDirection:"row",justifyContent:"space-between",alignItems:"center",marginBottom:10},title:{fontSize:20,fontWeight:"900"},sub:{fontSize:11,color:"#64748B"},section:{fontSize:16,fontWeight:"900",marginTop:15,marginBottom:9},label:{fontSize:11,fontWeight:"800",color:"#475569",marginBottom:4},input:{backgroundColor:"#F8FAFC",borderWidth:1,borderColor:"#E2E8F0",borderRadius:10,padding:11,marginBottom:1},save:{backgroundColor:"#F97316",padding:13,borderRadius:12,alignItems:"center",marginTop:2},saveText:{color:"#fff",fontWeight:"900"},item:{flexDirection:"row",alignItems:"center",padding:12,borderRadius:12,backgroundColor:"#F8FAFC",marginBottom:7},itemName:{fontWeight:"900"},itemMeta:{fontSize:11,color:"#64748B",marginTop:3},booking:{padding:12,borderRadius:12,borderWidth:1,borderColor:"#E2E8F0",marginBottom:7},bookingTop:{flexDirection:"row",alignItems:"flex-start"},detail:{fontSize:11,color:"#475569",marginTop:5},status:{fontSize:10,fontWeight:"900",color:"#0284C7",marginTop:5}});
+const m=StyleSheet.create({back:{flex:1,backgroundColor:"rgba(0,0,0,.55)",justifyContent:"flex-end"},sheet:{backgroundColor:"#fff",maxHeight:"94%",borderTopLeftRadius:24,borderTopRightRadius:24,padding:18},head:{flexDirection:"row",justifyContent:"space-between",alignItems:"center",marginBottom:10},title:{fontSize:20,fontWeight:"900"},sub:{fontSize:11,color:"#64748B"},section:{fontSize:16,fontWeight:"900",marginTop:15,marginBottom:9},helper:{fontSize:11,color:"#64748B",lineHeight:16,marginBottom:10},toggleRow:{flexDirection:"row",alignItems:"center",gap:12,padding:10,borderRadius:12,backgroundColor:"#F8FAFC",marginTop:4,marginBottom:8},label:{fontSize:11,fontWeight:"800",color:"#475569",marginBottom:4},input:{backgroundColor:"#F8FAFC",borderWidth:1,borderColor:"#E2E8F0",borderRadius:10,padding:11,marginBottom:1},save:{backgroundColor:"#F97316",padding:13,borderRadius:12,alignItems:"center",marginTop:2},saveText:{color:"#fff",fontWeight:"900"},item:{flexDirection:"row",alignItems:"center",padding:12,borderRadius:12,backgroundColor:"#F8FAFC",marginBottom:7},itemName:{fontWeight:"900"},itemMeta:{fontSize:11,color:"#64748B",marginTop:3},booking:{padding:12,borderRadius:12,borderWidth:1,borderColor:"#E2E8F0",marginBottom:7},bookingTop:{flexDirection:"row",alignItems:"flex-start"},detail:{fontSize:11,color:"#475569",marginTop:5},status:{fontSize:10,fontWeight:"900",color:"#0284C7",marginTop:5}});

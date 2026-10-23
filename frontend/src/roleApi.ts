@@ -234,6 +234,12 @@ export const vendorApi = {
 
   serviceStats: () => apiFetch<any>("/vendor/service-stats"),
   serviceBookings: () => apiFetch<any[]>("/vendor/service-bookings"),
+  carRentalBanner: () => apiFetch<any>("/vendor/car-rental/banner"),
+  updateCarRentalBanner: (data: any) =>
+    apiFetch<any>("/vendor/car-rental/banner", {
+      method: "PUT",
+      body: JSON.stringify(data),
+    }),
   holidayBanner: () => apiFetch<any>("/vendor/holiday/banner"),
   updateHolidayBanner: (url: string) =>
     apiFetch<any>("/vendor/holiday/banner", {
