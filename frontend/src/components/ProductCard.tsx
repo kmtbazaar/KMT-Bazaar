@@ -112,7 +112,25 @@ export default function ProductCard({
       ? Math.round(((p.mrp - p.price) / p.mrp) * 100)
       : 0;
 
-  const outOfStock = (p.stock ?? 0) <= 0;
+  // Normalize customer-facing product fields returned by current and legacy catalog records.
+  const productName = String(p?.name ?? p?.product_name ?? p?.productName ?? p?.title ?? "").trim();
+  const productUnit = String(p?.unit ?? p?.quantity ?? p?.size ?? p?.pack_size ?? "").trim();
+  const productImage = useMemo(() => {
+    const candidates = [
+      p?.image,
+      ...(Array.isArray(p?.images) ? p.images : []),
+      p?.image_url,
+      p?.imageUrl,
+      p?.photo_url,
+    ];
+    const image = candidates.find(
+      (value: any) => typeof value === "string" && value.trim().length > 0
+    );
+    return image ? image.trim() : IMAGE_FALLBACK_URL;
+  }, [p?.image, p?.images, p?.image_url, p?.imageUrl, p?.photo_url]);
+
+  const stockValue = p?.stock ?? p?.available_quantity ?? p?.quantity_in_stock ?? 0;
+  const outOfStock = Number(stockValue) <= 0;
 
   const onToggleWishlist = (e: any) => {
     e?.stopPropagation?.();
@@ -144,7 +162,7 @@ export default function ProductCard({
           style={[s.imgWrap, wishlistGrid && s.wishlistImgWrap, recommendationGrid && s.recommendationImgWrap]}
         >
           <Image
-            source={{ uri: imageFailed ? IMAGE_FALLBACK_URL : (p.image || IMAGE_FALLBACK_URL) }}
+            source={{ uri: imageFailed ? IMAGE_FALLBACK_URL : productImage }}
             style={StyleSheet.absoluteFillObject}
             contentFit="cover"
             transition={200}
@@ -186,14 +204,14 @@ export default function ProductCard({
             numberOfLines={2}
             ellipsizeMode="tail"
           >
-            {p.name}
+            {productName || "Product"}
           </Text>
 
           <Text
             style={[s.unit, wishlistGrid && s.wishlistUnit, recommendationGrid && s.recommendationUnit]}
             numberOfLines={1}
           >
-            {p.unit || " "}
+            {productUnit || " "}
           </Text>
 
           <View style={[s.priceRow, wishlistGrid && s.wishlistPriceRow, recommendationGrid && s.recommendationPriceRow]}>
