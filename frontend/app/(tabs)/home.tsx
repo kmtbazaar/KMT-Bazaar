@@ -156,18 +156,18 @@ function NightSky() {
           float twilight = clamp(max(dawn, dusk), 0.0, 1.0);
           float night = clamp(1.0 - max(day, twilight * 0.84), 0.0, 1.0);
 
-          vec3 dayTop = vec3(0.025, 0.17, 0.34);
-          vec3 dayMid = vec3(0.10, 0.42, 0.66);
-          vec3 dayHorizon = vec3(0.77, 0.86, 0.90);
-          vec3 dawnTop = vec3(0.055, 0.07, 0.17);
-          vec3 dawnMid = vec3(0.32, 0.22, 0.35);
+          vec3 dayTop = vec3(0.025, 0.10, 0.31);
+          vec3 dayMid = vec3(0.025, 0.36, 0.59);
+          vec3 dayHorizon = vec3(0.96, 0.51, 0.39);
+          vec3 dawnTop = vec3(0.075, 0.045, 0.24);
+          vec3 dawnMid = vec3(0.34, 0.13, 0.43);
           vec3 dawnHorizon = vec3(1.00, 0.56, 0.34);
-          vec3 duskTop = vec3(0.018, 0.024, 0.085);
-          vec3 duskMid = vec3(0.25, 0.095, 0.19);
+          vec3 duskTop = vec3(0.012, 0.018, 0.105);
+          vec3 duskMid = vec3(0.20, 0.045, 0.29);
           vec3 duskHorizon = vec3(1.00, 0.36, 0.17);
-          vec3 nightTop = vec3(0.002, 0.006, 0.022);
-          vec3 nightMid = vec3(0.008, 0.027, 0.068);
-          vec3 nightHorizon = vec3(0.035, 0.070, 0.11);
+          vec3 nightTop = vec3(0.003, 0.008, 0.045);
+          vec3 nightMid = vec3(0.010, 0.030, 0.125);
+          vec3 nightHorizon = vec3(0.025, 0.105, 0.18);
 
           vec3 topColor = mix(nightTop, dayTop, day);
           topColor = mix(topColor, dawnTop, dawn * 0.96);
@@ -181,6 +181,17 @@ function NightSky() {
 
           vec3 sky = mix(horizonColor, midColor, smoothstep(0.10, 0.49, uv.y));
           sky = mix(sky, topColor, smoothstep(0.40, 0.98, uv.y));
+
+          // Slow-flowing teal and violet aurora curtains define the new cosmic theme.
+          float auroraShift = t * 2.0;
+          float auroraWaveA = 0.60 + sin(uv.x * 5.2 + auroraShift) * 0.067 + sin(uv.x * 10.1 - auroraShift * 0.55) * 0.018;
+          float auroraWaveB = 0.485 + sin(uv.x * 4.3 - auroraShift * 0.72 + 1.3) * 0.054;
+          float auroraA = exp(-abs(uv.y - auroraWaveA) * 24.0);
+          float auroraB = exp(-abs(uv.y - auroraWaveB) * 30.0);
+          float auroraFold = 0.40 + 0.60 * (0.5 + 0.5 * sin(uv.x * 12.5 + t * 1.1));
+          sky += vec3(0.06, 0.92, 0.78) * auroraA * auroraFold * night * 0.52;
+          sky += mix(vec3(0.15, 0.38, 1.0), vec3(0.65, 0.18, 0.96), 0.5 + 0.5 * sin(uv.x * 4.1 + t * 0.8)) * auroraB * night * 0.27;
+          sky += vec3(0.30, 0.17, 0.48) * auroraA * twilight * 0.12;
           float horizonGlow = exp(-abs(uv.y - 0.19) * 11.0);
           sky += vec3(0.24, 0.17, 0.15) * horizonGlow * twilight * 0.12;
 
@@ -190,6 +201,8 @@ function NightSky() {
           vec2 sunDelta = vec2((uv.x - sunPos.x) * aspect, uv.y - sunPos.y);
           float sunDistance = length(sunDelta);
           float sunVisible = clamp(max(day, twilight), 0.0, 1.0);
+          float solarRing = 1.0 - smoothstep(0.003, 0.008, abs(sunDistance - 0.084));
+          sky += vec3(1.0, 0.43, 0.20) * solarRing * sunVisible * 0.24;
           sky += vec3(1.00, 0.40, 0.15) * exp(-sunDistance * 6.0) * sunVisible * (0.13 + twilight * 0.20);
           float sunDisk = 1.0 - smoothstep(0.054, 0.063, sunDistance);
           float sunRim = 0.82 + 0.18 * sqrt(max(0.0, 1.0 - pow(clamp(sunDistance / 0.063, 0.0, 1.0), 2.0)));
@@ -223,9 +236,9 @@ function NightSky() {
                 ellipse(uv, vec2(cloudX2 - 0.15 / aspect, 0.519), vec2(0.16, 0.041), 0.18, aspect)),
             ellipse(uv, vec2(cloudX2 + 0.16 / aspect, 0.499), vec2(0.16, 0.027), 0.18, aspect)
           );
-          vec3 dayCloud = mix(vec3(0.25, 0.36, 0.47), vec3(0.94, 0.96, 0.97), day * 0.86 + 0.08);
-          vec3 nightCloud = vec3(0.025, 0.050, 0.093);
-          vec3 duskCloud = mix(vec3(0.21, 0.11, 0.20), vec3(0.98, 0.51, 0.34), twilight * 0.85);
+          vec3 dayCloud = mix(vec3(0.20, 0.40, 0.57), vec3(0.72, 0.93, 0.96), day * 0.86 + 0.08);
+          vec3 nightCloud = vec3(0.035, 0.065, 0.19);
+          vec3 duskCloud = mix(vec3(0.20, 0.055, 0.31), vec3(0.98, 0.32, 0.43), twilight * 0.85);
           vec3 cloudColor = mix(nightCloud, dayCloud, day);
           cloudColor = mix(cloudColor, duskCloud, twilight * 0.95);
           sky = mix(sky, cloudColor, cloudOne * (0.21 + day * 0.21 + twilight * 0.15 + night * 0.08));
@@ -241,18 +254,18 @@ function NightSky() {
           // Distant ridges and foreground grass add depth with only a few noise samples.
           float ridge = 0.177 + noise(vec2(uv.x * 4.6 + 2.0, 5.0)) * 0.043 + 0.008 * sin(uv.x * 8.0);
           float ridgeMask = 1.0 - smoothstep(ridge - 0.006, ridge + 0.009, uv.y);
-          vec3 ridgeColor = mix(vec3(0.24, 0.32, 0.36), vec3(0.014, 0.025, 0.042), night * 0.92);
+          vec3 ridgeColor = mix(vec3(0.09, 0.28, 0.34), vec3(0.008, 0.020, 0.062), night * 0.92);
           sky = mix(sky, ridgeColor, ridgeMask * 0.74);
 
           float farHill = 0.096 + noise(vec2(uv.x * 3.4 + 12.0, 3.0)) * 0.027;
           float farHillMask = 1.0 - smoothstep(farHill - 0.005, farHill + 0.009, uv.y);
-          vec3 hillColor = mix(vec3(0.11, 0.19, 0.13), vec3(0.010, 0.025, 0.031), night * 0.96);
+          vec3 hillColor = mix(vec3(0.035, 0.18, 0.16), vec3(0.004, 0.018, 0.045), night * 0.96);
           sky = mix(sky, hillColor, farHillMask * 0.93);
 
           float groundEdge = 0.041 + noise(vec2(uv.x * 8.0 + 1.0, 5.0)) * 0.012;
           float groundMask = 1.0 - smoothstep(groundEdge - 0.004, groundEdge + 0.006, uv.y);
           float grassGrain = noise(vec2(uv.x * 68.0, uv.y * 34.0));
-          vec3 groundColor = mix(vec3(0.060, 0.13, 0.060), vec3(0.006, 0.016, 0.019), night);
+          vec3 groundColor = mix(vec3(0.025, 0.16, 0.095), vec3(0.003, 0.012, 0.032), night);
           groundColor *= 0.88 + grassGrain * 0.22;
           sky = mix(sky, groundColor, groundMask * 0.98);
 
@@ -261,7 +274,7 @@ function NightSky() {
           float pathCenter = 0.345 - (0.10 - uv.y) * 0.20;
           float path = (1.0 - smoothstep(pathHalfWidth - 0.004, pathHalfWidth + 0.004, abs((uv.x - pathCenter) * aspect)));
           path *= 1.0 - smoothstep(0.08, 0.13, uv.y);
-          vec3 pathColor = mix(vec3(0.19, 0.15, 0.095), vec3(0.035, 0.034, 0.032), night);
+          vec3 pathColor = mix(vec3(0.26, 0.15, 0.08), vec3(0.025, 0.09, 0.17), night);
           sky = mix(sky, pathColor, path * 0.52);
 
           // Mature trees frame the scene. Canopies sway by a few pixels in the breeze.
@@ -290,11 +303,11 @@ function NightSky() {
             max(lineMask(uv, vec2(rightX, 0.208), vec2(rightX - 0.19 / aspect, 0.342), 0.008, aspect),
                 lineMask(uv, vec2(rightX, 0.228), vec2(rightX + 0.19 / aspect, 0.346), 0.008, aspect))
           );
-          vec3 bark = mix(vec3(0.20, 0.10, 0.046), vec3(0.012, 0.020, 0.026), night * 0.93);
-          vec3 leavesBase = mix(vec3(0.018, 0.095, 0.038), vec3(0.006, 0.022, 0.026), night * 0.94);
-          leavesBase = mix(leavesBase, vec3(0.20, 0.075, 0.040), twilight * 0.30);
+          vec3 bark = mix(vec3(0.22, 0.075, 0.045), vec3(0.012, 0.025, 0.075), night * 0.93);
+          vec3 leavesBase = mix(vec3(0.015, 0.28, 0.15), vec3(0.008, 0.045, 0.15), night * 0.94);
+          leavesBase = mix(leavesBase, vec3(0.22, 0.055, 0.28), twilight * 0.30);
           float leafGrain = noise(vec2(uv.x * 92.0, uv.y * 86.0));
-          vec3 leafHighlight = mix(vec3(0.095, 0.22, 0.075), vec3(0.020, 0.052, 0.055), night * 0.91);
+          vec3 leafHighlight = mix(vec3(0.04, 0.68, 0.28), vec3(0.025, 0.12, 0.34), night * 0.91);
           vec3 leaves = mix(leavesBase, leafHighlight, smoothstep(0.26, 0.76, leafGrain) * 0.72);
           sky = mix(sky, bark, treeTrunks * 0.99);
           sky = mix(sky, bark * 0.82, branches * 0.80);
@@ -306,8 +319,8 @@ function NightSky() {
           sky = mix(sky, mix(vec3(0.045, 0.052, 0.035), vec3(0.004, 0.009, 0.012), night), hutShadow * 0.62);
 
           float hutBody = box(uv, vec2(hutX, 0.126), vec2(0.108, 0.073), 0.005, aspect);
-          vec3 plaster = mix(vec3(0.32, 0.21, 0.125), vec3(0.021, 0.025, 0.031), night * 0.92);
-          plaster = mix(plaster, vec3(0.27, 0.105, 0.060), twilight * 0.40);
+          vec3 plaster = mix(vec3(0.35, 0.16, 0.14), vec3(0.022, 0.035, 0.095), night * 0.92);
+          plaster = mix(plaster, vec3(0.28, 0.06, 0.27), twilight * 0.40);
           sky = mix(sky, plaster, hutBody * 0.99);
 
           float roofRise = clamp((uv.y - 0.190) / 0.215, 0.0, 1.0);
@@ -317,8 +330,8 @@ function NightSky() {
           hutRoof *= step(0.190, uv.y) * (1.0 - step(0.407, uv.y));
           float strawTexture = noise(vec2(uv.x * 95.0, uv.y * 110.0));
           float strawLines = 0.5 + 0.5 * sin((uv.x * aspect - uv.y * 0.65) * 150.0 + strawTexture * 3.0);
-          vec3 thatch = mix(vec3(0.32, 0.19, 0.08), vec3(0.014, 0.018, 0.024), night * 0.92);
-          thatch = mix(thatch, vec3(0.31, 0.092, 0.042), twilight * 0.38);
+          vec3 thatch = mix(vec3(0.38, 0.15, 0.075), vec3(0.055, 0.025, 0.12), night * 0.92);
+          thatch = mix(thatch, vec3(0.38, 0.065, 0.22), twilight * 0.38);
           vec3 roofColor = thatch * (0.78 + strawLines * 0.14 + strawTexture * 0.16);
           sky = mix(sky, roofColor, hutRoof * 0.99);
           float eave = box(uv, vec2(hutX, 0.190), vec2(0.164, 0.005), 0.002, aspect);
@@ -357,11 +370,11 @@ function NightSky() {
           float smokeTwo = ellipse(uv, vec2(chimneyX - smokeSway * 0.55, 0.374 + fract(smokeCycle + 0.34) * 0.032), vec2(0.033, 0.029), 0.25, aspect);
           float smokeThree = ellipse(uv, vec2(chimneyX + smokeSway, 0.444 + fract(smokeCycle + 0.67) * 0.027), vec2(0.044, 0.034), 0.25, aspect);
           float smokeMask = max(max(smokeOne * 0.68, smokeTwo * 0.53), smokeThree * 0.38) * night;
-          sky = mix(sky, vec3(0.49, 0.56, 0.64), smokeMask * 0.42);
+          sky = mix(sky, vec3(0.30, 0.62, 0.95), smokeMask * 0.50);
 
           // Clock tower: stone silhouette, copper roof, glowing windows and a readable moving clock face.
           float towerX = 0.565;
-          vec3 stone = mix(vec3(0.36, 0.35, 0.30), vec3(0.025, 0.036, 0.047), night * 0.92);
+          vec3 stone = mix(vec3(0.25, 0.20, 0.19), vec3(0.018, 0.030, 0.095), night * 0.92);
           float towerBody = box(uv, vec2(towerX, 0.137), vec2(0.050, 0.083), 0.004, aspect);
           sky = mix(sky, stone, towerBody * 0.99);
           float towerUpper = box(uv, vec2(towerX, 0.242), vec2(0.059, 0.066), 0.004, aspect);
@@ -370,14 +383,14 @@ function NightSky() {
           float towerRoofHalfWidth = 0.066 * (1.0 - towerRoofRise);
           float towerRoof = (1.0 - smoothstep(max(towerRoofHalfWidth - 0.005, 0.0), towerRoofHalfWidth + 0.005, abs((uv.x - towerX) * aspect)));
           towerRoof *= step(0.296, uv.y) * (1.0 - step(0.403, uv.y));
-          vec3 roofTint = mix(vec3(0.22, 0.095, 0.055), vec3(0.026, 0.030, 0.043), night);
+          vec3 roofTint = mix(vec3(0.28, 0.07, 0.09), vec3(0.075, 0.020, 0.17), night);
           sky = mix(sky, roofTint, towerRoof * 0.98);
 
           float towerWindow = max(
             box(uv, vec2(towerX, 0.197), vec2(0.014, 0.018), 0.003, aspect),
             box(uv, vec2(towerX, 0.087), vec2(0.013, 0.016), 0.003, aspect)
           );
-          sky = mix(sky, mix(vec3(0.055, 0.11, 0.14), vec3(1.0, 0.65, 0.26), night), towerWindow);
+          sky = mix(sky, mix(vec3(0.025, 0.18, 0.26), vec3(1.0, 0.66, 0.24), night), towerWindow);
 
           vec2 faceCenter = vec2(towerX, 0.265);
           float faceOuter = ellipse(uv, faceCenter, vec2(0.050, 0.050), 0.06, aspect);
@@ -405,7 +418,7 @@ function NightSky() {
           sky = mix(sky, vec3(0.14, 0.16, 0.17), minuteHand * 0.98);
           sky = mix(sky, vec3(0.10, 0.12, 0.13), hourHand * 0.98);
           float handPivot = ellipse(uv, faceCenter, vec2(0.004, 0.004), 0.1, aspect);
-          sky = mix(sky, vec3(0.72, 0.22, 0.10), handPivot);
+          sky = mix(sky, vec3(0.03, 0.70, 0.82), handPivot);
 
           // A subtle vignette adds a finished editorial look without textures or assets.
           vec2 center = uv - 0.5;
