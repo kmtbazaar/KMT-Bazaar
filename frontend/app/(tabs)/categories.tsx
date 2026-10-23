@@ -1,6 +1,6 @@
 import { LocalizedText as Text } from "@/src/LocalizedText";
 import React, { useEffect, useState, useRef } from "react";
-import { View, ScrollView, StyleSheet, Pressable, FlatList, ActivityIndicator, Animated } from "react-native";
+import { View, ScrollView, StyleSheet, Pressable, ActivityIndicator, Animated } from "react-native";
 import { Image } from "expo-image";
 import { useRouter, useNavigation, useLocalSearchParams } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -226,27 +226,28 @@ export default function Categories() {
               <ActivityIndicator color={COLORS.brand} />
             </View>
           ) : (
-            <FlatList
+            <ScrollView
               style={{ flex: 1, minWidth: 0 }}
-              data={products}
-              keyExtractor={(i) => i.id}
-              numColumns={2}
-              contentContainerStyle={{ paddingHorizontal: 4, paddingBottom: bottomPad }}
-              renderItem={({ item }) => (
-                <View style={s.productCell}>
-                  <ProductCard p={item} compact />
+              contentContainerStyle={{ paddingHorizontal: 4, paddingBottom: bottomPad, flexGrow: 1 }}
+              showsVerticalScrollIndicator={false}
+              onScroll={handleScroll}
+              scrollEventThrottle={16}
+            >
+              {products.length > 0 ? (
+                <View style={s.productGrid}>
+                  {products.map((item) => (
+                    <View key={String(item.id)} style={s.productCell}>
+                      <ProductCard p={item} compact />
+                    </View>
+                  ))}
                 </View>
-              )}
-              ListEmptyComponent={
+              ) : (
                 <View style={s.emptyWrap}>
                   <MaterialCommunityIcons name="package-variant" size={48} color={COLORS.textMuted} />
                   <Text style={s.empty}>No products in this category</Text>
                 </View>
-              }
-              showsVerticalScrollIndicator={false}
-              onScroll={handleScroll}
-              scrollEventThrottle={16}
-            />
+              )}
+            </ScrollView>
           )}
         </View>
       </View>
@@ -327,8 +328,15 @@ const s = StyleSheet.create({
     lineHeight: 13,
     paddingHorizontal: 2,
   },
+  productGrid: {
+    width: "100%",
+    flexDirection: "row",
+    flexWrap: "wrap",
+    alignItems: "stretch",
+  },
   productCell: {
     width: "50%",
+    minWidth: 0,
     paddingHorizontal: 4,
     paddingBottom: 8,
     flexGrow: 0,

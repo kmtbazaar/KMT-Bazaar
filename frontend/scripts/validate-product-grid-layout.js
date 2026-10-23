@@ -30,8 +30,9 @@ assert.match(categories, /firstCategoryWithProducts/);
 assert.match(categories, /availableProductCategories/);
 assert.match(categories, /requestedId\) setActive\(String\(requestedId\)\)/);
 assert.match(categories, /style=\{\{ flex: 1, minWidth: 0 \}\}/);
-assert.match(categories, /productCell:\s*\{\s*width:\s*"50%"/);
-assert.match(categories, /<View style=\{s\.productCell\}>\s*<ProductCard p=\{item\} compact \/>/);
+assert.match(categories, /<ScrollView[\s\S]*products\.map\(\(item\) => \([\s\S]*<ProductCard p=\{item\} compact \/>/);
+assert.match(categories, /productGrid:\s*\{[\s\S]*flexDirection:\s*"row"[\s\S]*flexWrap:\s*"wrap"/);
+assert.doesNotMatch(categories, /<FlatList/);
 
 assert.match(categoryPage, /productCell:\s*\{\s*width:\s*"33\.333333%"/);
 assert.match(categoryPage, /<View style=\{s\.productCell\}>\s*<ProductCard p=\{item\} compact=\{true\} \/>/);
@@ -41,7 +42,9 @@ assert.match(store, /gridCell:\s*\{\s*width:\s*"50%"/);
 assert.match(store, /flexGrow:\s*0/);
 assert.match(store, /flexShrink:\s*0/);
 assert.match(store, /api\.products\(\{ store_id: id \}\)\.catch/);
-assert.doesNotMatch(store, /removeClippedSubviews=\{true\}/);
+assert.match(store, /filteredProducts\.map\(\(item: any\) => \([\s\S]*<ProductCard p=\{item\} compact=\{true\} storeGrid \/>/);
+assert.match(store, /productGrid:\s*\{[\s\S]*flexDirection:\s*"row"[\s\S]*flexWrap:\s*"wrap"/);
+assert.doesNotMatch(store, /<FlatList|removeClippedSubviews=\{true\}/);
 
 assert.match(
   productCard,

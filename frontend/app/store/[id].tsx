@@ -3,7 +3,6 @@ import React, { useEffect, useMemo, useState, useCallback } from "react";
 import {
   View,
   StyleSheet,
-  FlatList,
   ActivityIndicator,
   Pressable,
   ScrollView,
@@ -255,33 +254,33 @@ export default function StoreProducts() {
           </ScrollView>
         </View>
 
-        <FlatList
+        <ScrollView
           style={s.productList}
-          data={filteredProducts}
-          keyExtractor={(item, index) =>
-            String(item.id ?? item._id ?? index)
-          }
-          renderItem={renderItem}
-          numColumns={2}
           contentContainerStyle={s.listContent}
-          columnWrapperStyle={s.column}
-          initialNumToRender={6}
-          windowSize={4}
-          ListHeaderComponent={
-            <View style={s.productsHeading}>
-              <Text style={s.productsTitle}>
-                {selectedItemCategory === "All"
-                  ? "All Products"
-                  : itemCategories.find(
-                      (category: any) => String(category.id) === String(selectedItemCategory)
-                    )?.name || selectedItemCategory}
-              </Text>
-              <Text style={s.productsCount}>
-                {filteredProducts.length} item{filteredProducts.length === 1 ? "" : "s"}
-              </Text>
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={s.productsHeading}>
+            <Text style={s.productsTitle}>
+              {selectedItemCategory === "All"
+                ? "All Products"
+                : itemCategories.find(
+                    (category: any) => String(category.id) === String(selectedItemCategory)
+                  )?.name || selectedItemCategory}
+            </Text>
+            <Text style={s.productsCount}>
+              {filteredProducts.length} item{filteredProducts.length === 1 ? "" : "s"}
+            </Text>
+          </View>
+
+          {filteredProducts.length > 0 ? (
+            <View style={s.productGrid}>
+              {filteredProducts.map((item: any) => (
+                <View key={String(item.id ?? item._id)} style={s.gridCell}>
+                  <ProductCard p={item} compact={true} storeGrid />
+                </View>
+              ))}
             </View>
-          }
-          ListEmptyComponent={
+          ) : (
             <View style={s.empty}>
               <MaterialCommunityIcons
                 name="package-variant-closed"
@@ -292,8 +291,8 @@ export default function StoreProducts() {
                 No products in this category yet.
               </Text>
             </View>
-          }
-        />
+          )}
+        </ScrollView>
       </View>
 
       <CheckoutBar label="View Cart" route="/cart" bottomOffset={16} />
@@ -436,10 +435,13 @@ const s = StyleSheet.create({
   listContent: {
     paddingHorizontal: 2,
     paddingBottom: 100,
+    flexGrow: 1,
   },
 
-  column: {
-    gap: 0,
+  productGrid: {
+    width: "100%",
+    flexDirection: "row",
+    flexWrap: "wrap",
     alignItems: "stretch",
   },
 
