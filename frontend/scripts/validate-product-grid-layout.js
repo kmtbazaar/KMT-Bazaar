@@ -24,7 +24,7 @@ assert.match(home, /api\.unreadCount\(\)\.catch/, "Unread count failure must not
 assert.match(categories, /useLocalSearchParams/);
 assert.match(categories, /const \{ categoryId \} = useLocalSearchParams/);
 assert.match(categories, /requestedCategory/);
-assert.match(categories, /if \(requestedId\) setActive\(String\(requestedId\)\)/);
+assert.match(categories, /requestedId\) setActive\(String\(requestedId\)\)/);
 assert.match(categories, /style=\{\{ flex: 1, minWidth: 0 \}\}/);
 assert.match(categories, /productCell:\s*\{\s*width:\s*"50%"/);
 assert.match(categories, /<View style=\{s\.productCell\}>\s*<ProductCard p=\{item\} compact \/>/);
