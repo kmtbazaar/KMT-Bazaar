@@ -1,5 +1,5 @@
 import { LocalizedText as Text, LocalizedTextInput as TextInput } from "@/src/LocalizedText";
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   View,
   Pressable,
@@ -41,7 +41,6 @@ export default function ProductCard({
   const { add, update, cart } = useCart();
   const { isWishlisted, toggle: toggleWishlist, ready: wishlistReady } = useWishlist();
   const wished = isWishlisted(p.id);
-  const [imageFailed, setImageFailed] = useState(false);
   const scale = useSharedValue(1);
 
   const qty = useMemo(() => {
@@ -112,10 +111,24 @@ export default function ProductCard({
       ? Math.round(((p.mrp - p.price) / p.mrp) * 100)
       : 0;
 
-  // Normalize customer-facing product fields returned by current and legacy catalog records.
-  const productName = String(p?.name ?? p?.product_name ?? p?.productName ?? p?.title ?? "").trim();
-  const productUnit = String(p?.unit ?? p?.quantity ?? p?.size ?? p?.pack_size ?? "").trim();
-  const productImage = useMemo(() => {
+  // Read the first non-empty label: some older records have blank "name" or
+  // "unit" fields even when a populated legacy field exists.
+  const firstProductText = (...values: any[]) => {
+    for (const value of values) {
+      if (typeof value === "string" && value.trim()) return value.trim();
+      if (typeof value === "number" && Number.isFinite(value) && value > 0) return String(value);
+    }
+    return "";
+  };
+
+  const productName = firstProductText(p?.name, p?.product_name, p?.productName, p?.title);
+  const productUnit = firstProductText(
+    p?.unit, p?.quantity_label, p?.unit_label, p?.unit_name,
+    p?.pack_size, p?.size, p?.weight, p?.volume, p?.quantity
+  );
+
+  // Try all stored image variants, not just a possibly stale primary image.
+  const productImageCandidates = useMemo(() => {
     const candidates = [
       p?.image,
       ...(Array.isArray(p?.images) ? p.images : []),
@@ -123,11 +136,22 @@ export default function ProductCard({
       p?.imageUrl,
       p?.photo_url,
     ];
-    const image = candidates.find(
-      (value: any) => typeof value === "string" && value.trim().length > 0
-    );
-    return image ? image.trim() : IMAGE_FALLBACK_URL;
+    const urls = candidates.map((value: any) => {
+      if (typeof value === "string") return value.trim();
+      if (value && typeof value === "object") {
+        return String(value.url || value.uri || value.src || "").trim();
+      }
+      return "";
+    }).filter(Boolean);
+    return Array.from(new Set(urls));
   }, [p?.image, p?.images, p?.image_url, p?.imageUrl, p?.photo_url]);
+
+  const [imageIndex, setImageIndex] = useState(0);
+  const imageCandidatesKey = productImageCandidates.join("|");
+  useEffect(() => {
+    setImageIndex(0);
+  }, [p?.id, imageCandidatesKey]);
+  const productImage = productImageCandidates[imageIndex] || IMAGE_FALLBACK_URL;
 
   const stockValue = p?.stock ?? p?.available_quantity ?? p?.quantity_in_stock ?? 0;
   const outOfStock = Number(stockValue) <= 0;
@@ -162,11 +186,13 @@ export default function ProductCard({
           style={[s.imgWrap, wishlistGrid && s.wishlistImgWrap, recommendationGrid && s.recommendationImgWrap]}
         >
           <Image
-            source={{ uri: imageFailed ? IMAGE_FALLBACK_URL : productImage }}
+            source={{ uri: productImage }}
             style={StyleSheet.absoluteFillObject}
             contentFit="cover"
             transition={200}
-            onError={() => setImageFailed(true)}
+            onError={() => setImageIndex((current) =>
+              current < productImageCandidates.length ? current + 1 : current
+            )}
           />
 
           {discount > 0 && (
