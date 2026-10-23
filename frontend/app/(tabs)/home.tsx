@@ -99,7 +99,8 @@ function NightSky() {
       `;
 
       const fragmentSource = `
-        precision highp float;
+
+        precision mediump float;
         varying vec2 v_uv;
         uniform float u_time;
         uniform float u_hour;
@@ -122,28 +123,16 @@ function NightSky() {
           return mix(mix(a, b, f.x), mix(c, d, f.x), f.y);
         }
 
-        // Three inexpensive octaves provide texture without a heavy procedural-rendering cost.
-        float fbm(vec2 p) {
-          float value = 0.0;
-          float amplitude = 0.5;
-          for (int i = 0; i < 3; i++) {
-            value += noise(p) * amplitude;
-            p = p * 2.02 + vec2(17.1, 9.2);
-            amplitude *= 0.5;
-          }
-          return value;
-        }
-
         float ellipse(vec2 p, vec2 center, vec2 radii, float softness, float aspect) {
-          vec2 delta = vec2((p.x - center.x) * aspect, p.y - center.y);
-          float radius = length(delta / radii);
+          vec2 d = vec2((p.x - center.x) * aspect, p.y - center.y);
+          float radius = length(d / radii);
           return 1.0 - smoothstep(1.0 - softness, 1.0 + softness, radius);
         }
 
         float box(vec2 p, vec2 center, vec2 halfSize, float softness, float aspect) {
-          vec2 delta = vec2((p.x - center.x) * aspect, p.y - center.y);
-          float d = max(abs(delta.x) - halfSize.x, abs(delta.y) - halfSize.y);
-          return 1.0 - smoothstep(0.0, softness, d);
+          vec2 d = vec2((p.x - center.x) * aspect, p.y - center.y);
+          float edge = max(abs(d.x) - halfSize.x, abs(d.y) - halfSize.y);
+          return 1.0 - smoothstep(0.0, softness, edge);
         }
 
         float lineMask(vec2 p, vec2 a, vec2 b, float thickness, float aspect) {
@@ -154,42 +143,31 @@ function NightSky() {
           return 1.0 - smoothstep(thickness * 0.65, thickness * 1.35, d);
         }
 
-        float thatchedRoof(vec2 p, float cx, float baseY, float peakY, float halfWidth, float aspect) {
-          float rise = clamp((p.y - baseY) / max(peakY - baseY, 0.001), 0.0, 1.0);
-          float allowedWidth = halfWidth * (1.0 - rise);
-          float across = abs(p.x - cx) * aspect;
-          float roofX = 1.0 - smoothstep(max(allowedWidth - 0.006, 0.0), allowedWidth + 0.006, across);
-          float roofY = step(baseY, p.y) * (1.0 - step(peakY + 0.001, p.y));
-          return roofX * roofY;
-        }
-
         void main() {
           vec2 uv = v_uv;
           float aspect = u_resolution.x / max(u_resolution.y, 1.0);
           float clock = mod(u_hour + 24.0, 24.0);
-          float t = u_time * 0.000055;
+          float t = u_time * 0.000018;
 
-          // Distinct but smooth daylight, golden-hour and blue-hour grades.
+          // A cinematic day-to-night color grade with soft dawn and sunset bands.
           float day = smoothstep(5.6, 7.4, clock) * (1.0 - smoothstep(17.0, 19.1, clock));
           float dawn = smoothstep(4.4, 6.0, clock) * (1.0 - smoothstep(7.2, 8.4, clock));
           float dusk = smoothstep(16.2, 18.25, clock) * (1.0 - smoothstep(19.2, 20.7, clock));
-          float night = clamp(1.0 - max(day, max(dawn * 0.84, dusk)), 0.0, 1.0);
           float twilight = clamp(max(dawn, dusk), 0.0, 1.0);
-          float horizonGlow = exp(-pow((uv.y - 0.145) * 4.3, 2.0));
-          float vertical = smoothstep(0.015, 0.98, uv.y);
+          float night = clamp(1.0 - max(day, twilight * 0.84), 0.0, 1.0);
 
-          vec3 dayTop = vec3(0.025, 0.19, 0.39);
-          vec3 dayMid = vec3(0.12, 0.46, 0.70);
-          vec3 dayHorizon = vec3(0.80, 0.88, 0.91);
-          vec3 dawnTop = vec3(0.075, 0.085, 0.20);
-          vec3 dawnMid = vec3(0.32, 0.26, 0.40);
-          vec3 dawnHorizon = vec3(1.00, 0.58, 0.34);
-          vec3 duskTop = vec3(0.024, 0.025, 0.10);
-          vec3 duskMid = vec3(0.30, 0.105, 0.20);
-          vec3 duskHorizon = vec3(1.00, 0.37, 0.17);
-          vec3 nightTop = vec3(0.0015, 0.004, 0.018);
-          vec3 nightMid = vec3(0.009, 0.029, 0.073);
-          vec3 nightHorizon = vec3(0.035, 0.075, 0.115);
+          vec3 dayTop = vec3(0.025, 0.17, 0.34);
+          vec3 dayMid = vec3(0.10, 0.42, 0.66);
+          vec3 dayHorizon = vec3(0.77, 0.86, 0.90);
+          vec3 dawnTop = vec3(0.055, 0.07, 0.17);
+          vec3 dawnMid = vec3(0.32, 0.22, 0.35);
+          vec3 dawnHorizon = vec3(1.00, 0.56, 0.34);
+          vec3 duskTop = vec3(0.018, 0.024, 0.085);
+          vec3 duskMid = vec3(0.25, 0.095, 0.19);
+          vec3 duskHorizon = vec3(1.00, 0.36, 0.17);
+          vec3 nightTop = vec3(0.002, 0.006, 0.022);
+          vec3 nightMid = vec3(0.008, 0.027, 0.068);
+          vec3 nightHorizon = vec3(0.035, 0.070, 0.11);
 
           vec3 topColor = mix(nightTop, dayTop, day);
           topColor = mix(topColor, dawnTop, dawn * 0.96);
@@ -200,229 +178,241 @@ function NightSky() {
           vec3 horizonColor = mix(nightHorizon, dayHorizon, day);
           horizonColor = mix(horizonColor, dawnHorizon, dawn * 0.98);
           horizonColor = mix(horizonColor, duskHorizon, dusk);
-          vec3 sky = mix(horizonColor, midColor, smoothstep(0.10, 0.48, uv.y));
-          sky = mix(sky, topColor, smoothstep(0.40, 0.98, vertical));
-          sky += vec3(0.20, 0.22, 0.27) * horizonGlow * night * 0.12;
 
-          // Sun: larger disk, warm atmospheric scattering and softened limb.
+          vec3 sky = mix(horizonColor, midColor, smoothstep(0.10, 0.49, uv.y));
+          sky = mix(sky, topColor, smoothstep(0.40, 0.98, uv.y));
+          float horizonGlow = exp(-abs(uv.y - 0.19) * 11.0);
+          sky += vec3(0.24, 0.17, 0.15) * horizonGlow * twilight * 0.12;
+
+          // Sun and moon keep the same daily cycle, with very inexpensive soft halos.
           float sunPhase = clamp((clock - 5.0) / 14.2, 0.0, 1.0);
-          vec2 sunPos = vec2(mix(0.055, 0.945, sunPhase), 0.13 + 0.60 * sin(sunPhase * 3.1415926));
+          vec2 sunPos = vec2(mix(-0.025, 1.025, sunPhase), 0.14 + 0.61 * sin(sunPhase * 3.1415926));
           vec2 sunDelta = vec2((uv.x - sunPos.x) * aspect, uv.y - sunPos.y);
           float sunDistance = length(sunDelta);
-          float sunVisible = clamp(day + max(dawn, dusk) * 0.94, 0.0, 1.0);
-          float sunHalo = exp(-sunDistance * 6.2);
-          float sunBloom = exp(-sunDistance * 20.0);
-          float sunDisk = 1.0 - smoothstep(0.050, 0.061, sunDistance);
-          float sunEdge = clamp(sunDistance / 0.061, 0.0, 1.0);
-          float sunLimb = 0.82 + 0.18 * sqrt(max(0.0, 1.0 - sunEdge * sunEdge));
-          sky += vec3(1.00, 0.48, 0.19) * sunHalo * sunVisible * (0.13 + twilight * 0.30);
-          sky += vec3(1.00, 0.36, 0.10) * sunBloom * dusk * 0.18;
-          sky += vec3(1.00, 0.88, 0.65) * sunDisk * sunLimb * sunVisible * 0.84;
+          float sunVisible = clamp(max(day, twilight), 0.0, 1.0);
+          sky += vec3(1.00, 0.40, 0.15) * exp(-sunDistance * 6.0) * sunVisible * (0.13 + twilight * 0.20);
+          float sunDisk = 1.0 - smoothstep(0.054, 0.063, sunDistance);
+          float sunRim = 0.82 + 0.18 * sqrt(max(0.0, 1.0 - pow(clamp(sunDistance / 0.063, 0.0, 1.0), 2.0)));
+          sky += vec3(1.00, 0.86, 0.62) * sunDisk * sunRim * sunVisible * 0.9;
 
-          // A softly shaded lunar disk and restrained crater texture, never a flat white circle.
-          float moonProgress = clamp(mod(clock - 18.3 + 24.0, 24.0) / 11.8, 0.0, 1.0);
-          vec2 moonPos = vec2(mix(0.93, 0.07, moonProgress), 0.22 + 0.47 * sin(moonProgress * 3.1415926));
+          float moonPhase = clamp(mod(clock - 18.3 + 24.0, 24.0) / 11.8, 0.0, 1.0);
+          vec2 moonPos = vec2(mix(0.93, 0.07, moonPhase), 0.22 + 0.47 * sin(moonPhase * 3.1415926));
           vec2 moonDelta = vec2((uv.x - moonPos.x) * aspect, uv.y - moonPos.y);
           float moonDistance = length(moonDelta);
           float moonVisible = max(1.0 - smoothstep(5.0, 6.5, clock), smoothstep(18.1, 20.0, clock));
-          vec2 moonLocal = moonDelta / 0.075;
-          float moonR = length(moonLocal);
-          float moonSphereZ = sqrt(max(0.0, 1.0 - dot(moonLocal, moonLocal)));
-          float moonDisk = 1.0 - smoothstep(0.92, 1.0, moonR);
-          float craterA = exp(-length(moonLocal - vec2(-0.24, 0.18)) * 8.5);
-          float craterB = exp(-length(moonLocal - vec2(0.28, -0.20)) * 9.0);
-          float craterC = exp(-length(moonLocal - vec2(0.03, 0.40)) * 10.0);
-          float moonGrain = noise(moonLocal * 8.0 + vec2(4.0, 7.0));
-          float moonSurface = (0.97 - craterA * 0.11 - craterB * 0.085 - craterC * 0.05);
-          moonSurface *= 0.70 + 0.30 * moonSphereZ;
-          moonSurface += (moonGrain - 0.5) * 0.035;
-          sky += vec3(0.34, 0.47, 0.76) * exp(-moonDistance * 6.0) * moonVisible * 0.26;
-          sky += vec3(0.85, 0.89, 0.97) * moonDisk * moonSurface * moonVisible * 0.90;
+          vec2 moonLocal = moonDelta / 0.076;
+          float moonRadius = length(moonLocal);
+          float moonDisk = 1.0 - smoothstep(0.93, 1.0, moonRadius);
+          float moonSphere = sqrt(max(0.0, 1.0 - dot(moonLocal, moonLocal)));
+          float craterOne = ellipse(uv, moonPos + vec2(-0.022 / aspect, 0.017), vec2(0.014, 0.012), 0.12, aspect);
+          float craterTwo = ellipse(uv, moonPos + vec2(0.022 / aspect, -0.019), vec2(0.010, 0.009), 0.12, aspect);
+          float moonSurface = (0.91 + 0.09 * moonSphere - craterOne * 0.12 - craterTwo * 0.08) * moonDisk;
+          sky += vec3(0.28, 0.42, 0.72) * exp(-moonDistance * 6.2) * moonVisible * 0.22;
+          sky += vec3(0.84, 0.89, 0.98) * moonSurface * moonVisible;
 
-          // Layered drifting clouds; one low-cost shape field and fine noise create lit and shaded edges.
-          float cloudWarp = noise(vec2(uv.x * 2.0 + t * 0.18, uv.y * 4.2 + 3.0));
-          float cloudMass = fbm(vec2(uv.x * 3.3 + t * 0.46, uv.y * 9.0 + cloudWarp * 1.7 + 7.0));
-          float cloudDetail = noise(vec2(uv.x * 22.0 - t * 0.34, uv.y * 27.0 + cloudWarp * 2.2));
-          float lowCloud = smoothstep(0.48, 0.70, cloudMass + (0.39 - uv.y) * 0.12);
-          lowCloud *= smoothstep(0.12, 0.25, uv.y) * (1.0 - smoothstep(0.43, 0.63, uv.y));
-          lowCloud *= 0.84 + cloudDetail * 0.16;
-          float upperCloud = smoothstep(0.61, 0.76, noise(vec2(uv.x * 4.2 - t * 0.22, uv.y * 6.5 + 12.0)));
-          upperCloud *= smoothstep(0.40, 0.58, uv.y) * (1.0 - smoothstep(0.84, 0.97, uv.y)) * 0.24;
-          float cloudShade = clamp(0.22 + cloudDetail * 0.38 + cloudMass * 0.40, 0.0, 1.0);
-          vec3 dayCloud = mix(vec3(0.24, 0.36, 0.47), vec3(0.96, 0.97, 0.97), cloudShade);
-          vec3 duskCloud = mix(vec3(0.17, 0.12, 0.24), vec3(1.00, 0.57, 0.38), cloudShade);
-          vec3 nightCloud = mix(vec3(0.018, 0.038, 0.078), vec3(0.15, 0.22, 0.32), cloudShade);
+          // Two drifting cloud banks: layered silhouettes instead of expensive multi-octave noise.
+          float cloudX1 = mod(0.08 + t * 0.075, 1.32) - 0.16;
+          float cloudX2 = mod(0.91 - t * 0.055, 1.30) - 0.15;
+          float cloudOne = max(
+            max(ellipse(uv, vec2(cloudX1, 0.66), vec2(0.25, 0.040), 0.18, aspect),
+                ellipse(uv, vec2(cloudX1 + 0.16 / aspect, 0.682), vec2(0.19, 0.052), 0.18, aspect)),
+            ellipse(uv, vec2(cloudX1 - 0.16 / aspect, 0.657), vec2(0.17, 0.033), 0.18, aspect)
+          );
+          float cloudTwo = max(
+            max(ellipse(uv, vec2(cloudX2, 0.50), vec2(0.24, 0.030), 0.18, aspect),
+                ellipse(uv, vec2(cloudX2 - 0.15 / aspect, 0.519), vec2(0.16, 0.041), 0.18, aspect)),
+            ellipse(uv, vec2(cloudX2 + 0.16 / aspect, 0.499), vec2(0.16, 0.027), 0.18, aspect)
+          );
+          vec3 dayCloud = mix(vec3(0.25, 0.36, 0.47), vec3(0.94, 0.96, 0.97), day * 0.86 + 0.08);
+          vec3 nightCloud = vec3(0.025, 0.050, 0.093);
+          vec3 duskCloud = mix(vec3(0.21, 0.11, 0.20), vec3(0.98, 0.51, 0.34), twilight * 0.85);
           vec3 cloudColor = mix(nightCloud, dayCloud, day);
-          cloudColor = mix(cloudColor, duskCloud, twilight * 0.96);
-          sky = mix(sky, cloudColor, lowCloud * (0.30 + day * 0.26 + twilight * 0.24 + night * 0.12));
-          sky = mix(sky, mix(nightCloud, dayCloud, day), upperCloud * (0.24 + day * 0.16));
+          cloudColor = mix(cloudColor, duskCloud, twilight * 0.95);
+          sky = mix(sky, cloudColor, cloudOne * (0.21 + day * 0.21 + twilight * 0.15 + night * 0.08));
+          sky = mix(sky, cloudColor * 0.88, cloudTwo * (0.14 + day * 0.12 + twilight * 0.12 + night * 0.07));
 
-          float starNight = max(1.0 - smoothstep(5.0, 6.7, clock), smoothstep(18.0, 19.8, clock));
-          vec2 starGrid = floor(vec2(uv.x * 210.0, uv.y * 112.0));
-          float starSeed = hash(starGrid);
-          float stars = step(0.989, starSeed) * smoothstep(0.20, 0.56, uv.y);
-          float twinkle = 0.78 + 0.22 * sin(u_time * 0.001 + starSeed * 41.0);
-          sky += vec3(0.64, 0.77, 1.00) * stars * twinkle * starNight * 0.74;
+          // Sparse stars gently twinkle only after dusk.
+          vec2 starCell = floor(vec2(uv.x * 160.0, uv.y * 72.0));
+          float starSeed = hash(starCell);
+          float stars = step(0.991, starSeed) * smoothstep(0.22, 0.57, uv.y);
+          float twinkle = 0.82 + 0.18 * sin(u_time * 0.0012 + starSeed * 53.0);
+          sky += vec3(0.66, 0.79, 1.0) * stars * twinkle * moonVisible * 0.76;
 
-          // Distant hill layers create real depth; the closest ground receives a gentle light gradient.
-          float mountainEdge = 0.175 + noise(vec2(uv.x * 4.2 + 2.0, 8.0)) * 0.065 + 0.012 * sin(uv.x * 7.0);
-          float mountainMask = 1.0 - smoothstep(mountainEdge - 0.006, mountainEdge + 0.010, uv.y);
-          vec3 mountainColor = mix(vec3(0.28, 0.36, 0.41), vec3(0.018, 0.031, 0.052), night * 0.90);
-          sky = mix(sky, mountainColor, mountainMask * 0.70);
-          float farHillEdge = 0.092 + noise(vec2(uv.x * 3.1 + 13.0, 4.0)) * 0.034;
-          float farHillMask = 1.0 - smoothstep(farHillEdge - 0.006, farHillEdge + 0.012, uv.y);
-          vec3 farHillColor = mix(vec3(0.12, 0.22, 0.18), vec3(0.010, 0.027, 0.035), night * 0.95);
-          sky = mix(sky, farHillColor, farHillMask * 0.92);
-          float groundEdge = 0.042 + noise(vec2(uv.x * 8.0 + 1.0, 5.0)) * 0.014;
+          // Distant ridges and foreground grass add depth with only a few noise samples.
+          float ridge = 0.177 + noise(vec2(uv.x * 4.6 + 2.0, 5.0)) * 0.043 + 0.008 * sin(uv.x * 8.0);
+          float ridgeMask = 1.0 - smoothstep(ridge - 0.006, ridge + 0.009, uv.y);
+          vec3 ridgeColor = mix(vec3(0.24, 0.32, 0.36), vec3(0.014, 0.025, 0.042), night * 0.92);
+          sky = mix(sky, ridgeColor, ridgeMask * 0.74);
+
+          float farHill = 0.096 + noise(vec2(uv.x * 3.4 + 12.0, 3.0)) * 0.027;
+          float farHillMask = 1.0 - smoothstep(farHill - 0.005, farHill + 0.009, uv.y);
+          vec3 hillColor = mix(vec3(0.11, 0.19, 0.13), vec3(0.010, 0.025, 0.031), night * 0.96);
+          sky = mix(sky, hillColor, farHillMask * 0.93);
+
+          float groundEdge = 0.041 + noise(vec2(uv.x * 8.0 + 1.0, 5.0)) * 0.012;
           float groundMask = 1.0 - smoothstep(groundEdge - 0.004, groundEdge + 0.006, uv.y);
-          float grassTexture = noise(vec2(uv.x * 82.0 + 3.0, uv.y * 20.0 + 8.0));
-          vec3 groundColor = mix(vec3(0.075, 0.15, 0.075), vec3(0.006, 0.016, 0.020), night);
-          groundColor *= 0.82 + grassTexture * 0.28;
+          float grassGrain = noise(vec2(uv.x * 68.0, uv.y * 34.0));
+          vec3 groundColor = mix(vec3(0.060, 0.13, 0.060), vec3(0.006, 0.016, 0.019), night);
+          groundColor *= 0.88 + grassGrain * 0.22;
           sky = mix(sky, groundColor, groundMask * 0.98);
 
-          // Organic, irregular tree crowns with branch structure, dappled light and slow wind.
-          float treeWind = 0.005 * sin(t * 1.15);
-          float leftX = 0.074 + treeWind / aspect;
-          float rightX = 0.805 - treeWind * 0.82 / aspect;
+          // A tiny warm path visually connects the hut to the foreground.
+          float pathHalfWidth = mix(0.008, 0.045, 1.0 - smoothstep(0.022, 0.125, uv.y));
+          float pathCenter = 0.345 - (0.10 - uv.y) * 0.20;
+          float path = (1.0 - smoothstep(pathHalfWidth - 0.004, pathHalfWidth + 0.004, abs((uv.x - pathCenter) * aspect)));
+          path *= 1.0 - smoothstep(0.08, 0.13, uv.y);
+          vec3 pathColor = mix(vec3(0.19, 0.15, 0.095), vec3(0.035, 0.034, 0.032), night);
+          sky = mix(sky, pathColor, path * 0.52);
+
+          // Mature trees frame the scene. Canopies sway by a few pixels in the breeze.
+          float wind = sin(t * 0.86) * 0.0045;
+          float leftX = 0.074 + wind / aspect;
+          float rightX = 0.835 - wind * 0.78 / aspect;
           float leftCrown = max(
-            max(ellipse(uv, vec2(leftX - 0.105 / aspect, 0.397), vec2(0.125, 0.108), 0.13, aspect),
-                ellipse(uv, vec2(leftX + 0.005 / aspect, 0.443), vec2(0.145, 0.132), 0.13, aspect)),
-            max(ellipse(uv, vec2(leftX + 0.110 / aspect, 0.397), vec2(0.125, 0.103), 0.13, aspect),
-                ellipse(uv, vec2(leftX - 0.04 / aspect, 0.335), vec2(0.145, 0.09), 0.13, aspect))
+            max(ellipse(uv, vec2(leftX - 0.20 / aspect, 0.385), vec2(0.25, 0.088), 0.14, aspect),
+                ellipse(uv, vec2(leftX + 0.005 / aspect, 0.430), vec2(0.29, 0.123), 0.14, aspect)),
+            max(ellipse(uv, vec2(leftX + 0.205 / aspect, 0.385), vec2(0.24, 0.083), 0.14, aspect),
+                ellipse(uv, vec2(leftX - 0.055 / aspect, 0.330), vec2(0.23, 0.070), 0.14, aspect))
           );
           float rightCrown = max(
-            max(ellipse(uv, vec2(rightX - 0.10 / aspect, 0.397), vec2(0.12, 0.10), 0.13, aspect),
-                ellipse(uv, vec2(rightX + 0.005 / aspect, 0.437), vec2(0.14, 0.128), 0.13, aspect)),
-            max(ellipse(uv, vec2(rightX + 0.105 / aspect, 0.394), vec2(0.12, 0.10), 0.13, aspect),
-                ellipse(uv, vec2(rightX - 0.035 / aspect, 0.333), vec2(0.14, 0.09), 0.13, aspect))
+            max(ellipse(uv, vec2(rightX - 0.18 / aspect, 0.385), vec2(0.23, 0.082), 0.14, aspect),
+                ellipse(uv, vec2(rightX + 0.005 / aspect, 0.426), vec2(0.27, 0.115), 0.14, aspect)),
+            max(ellipse(uv, vec2(rightX + 0.18 / aspect, 0.386), vec2(0.22, 0.080), 0.14, aspect),
+                ellipse(uv, vec2(rightX - 0.04 / aspect, 0.332), vec2(0.22, 0.067), 0.14, aspect))
           );
-          float leftTrunk = box(uv, vec2(leftX, 0.143), vec2(0.016, 0.112), 0.006, aspect);
-          float rightTrunk = box(uv, vec2(rightX, 0.142), vec2(0.015, 0.108), 0.006, aspect);
-          float leftBranches = max(
-            lineMask(uv, vec2(leftX, 0.222), vec2(leftX - 0.13 / aspect, 0.362), 0.009, aspect),
-            lineMask(uv, vec2(leftX, 0.242), vec2(leftX + 0.13 / aspect, 0.362), 0.009, aspect)
+          float treeTrunks = max(
+            box(uv, vec2(leftX, 0.135), vec2(0.030, 0.112), 0.006, aspect),
+            box(uv, vec2(rightX, 0.137), vec2(0.027, 0.109), 0.006, aspect)
           );
-          float rightBranches = max(
-            lineMask(uv, vec2(rightX, 0.222), vec2(rightX - 0.115 / aspect, 0.355), 0.008, aspect),
-            lineMask(uv, vec2(rightX, 0.240), vec2(rightX + 0.115 / aspect, 0.355), 0.008, aspect)
+          float branches = max(
+            max(lineMask(uv, vec2(leftX, 0.205), vec2(leftX - 0.22 / aspect, 0.345), 0.009, aspect),
+                lineMask(uv, vec2(leftX, 0.228), vec2(leftX + 0.23 / aspect, 0.350), 0.009, aspect)),
+            max(lineMask(uv, vec2(rightX, 0.208), vec2(rightX - 0.19 / aspect, 0.342), 0.008, aspect),
+                lineMask(uv, vec2(rightX, 0.228), vec2(rightX + 0.19 / aspect, 0.346), 0.008, aspect))
           );
-          vec3 bark = mix(vec3(0.19, 0.095, 0.045), vec3(0.010, 0.018, 0.024), night * 0.92);
-          float leafNoise = noise(vec2(uv.x * 96.0 + t * 0.025, uv.y * 108.0 + 6.0));
-          float leafLight = clamp(leafNoise * 0.70 + cloudDetail * 0.30, 0.0, 1.0);
-          vec3 leafBase = mix(vec3(0.018, 0.105, 0.043), vec3(0.006, 0.020, 0.025), night * 0.92);
-          vec3 leafSunlit = mix(vec3(0.095, 0.225, 0.075), vec3(0.025, 0.055, 0.060), night * 0.87);
-          leafSunlit = mix(leafSunlit, vec3(0.29, 0.12, 0.065), twilight * 0.38);
-          vec3 leaves = mix(leafBase * 0.64, leafSunlit, smoothstep(0.25, 0.76, leafLight));
-          sky = mix(sky, bark, max(leftTrunk, rightTrunk) * 0.98);
-          sky = mix(sky, bark * 0.84, max(leftBranches, rightBranches) * 0.72);
+          vec3 bark = mix(vec3(0.20, 0.10, 0.046), vec3(0.012, 0.020, 0.026), night * 0.93);
+          vec3 leavesBase = mix(vec3(0.018, 0.095, 0.038), vec3(0.006, 0.022, 0.026), night * 0.94);
+          leavesBase = mix(leavesBase, vec3(0.20, 0.075, 0.040), twilight * 0.30);
+          float leafGrain = noise(vec2(uv.x * 92.0, uv.y * 86.0));
+          vec3 leafHighlight = mix(vec3(0.095, 0.22, 0.075), vec3(0.020, 0.052, 0.055), night * 0.91);
+          vec3 leaves = mix(leavesBase, leafHighlight, smoothstep(0.26, 0.76, leafGrain) * 0.72);
+          sky = mix(sky, bark, treeTrunks * 0.99);
+          sky = mix(sky, bark * 0.82, branches * 0.80);
           sky = mix(sky, leaves, max(leftCrown, rightCrown) * 0.99);
 
-          // A lived-in thatched hut: textured roof, earthen walls, recessed door and windows.
+          // The thatched hut keeps its detail; windows switch on automatically at night.
           float hutX = 0.345;
-          float hutShadow = ellipse(uv, vec2(hutX, 0.066), vec2(0.135, 0.019), 0.14, aspect);
-          sky = mix(sky, mix(vec3(0.045, 0.058, 0.040), vec3(0.003, 0.009, 0.014), night), hutShadow * 0.60);
-          float hutBody = box(uv, vec2(hutX, 0.141), vec2(0.092, 0.075), 0.005, aspect);
-          vec3 plaster = mix(vec3(0.32, 0.21, 0.125), vec3(0.020, 0.025, 0.032), night * 0.91);
-          plaster = mix(plaster, vec3(0.26, 0.10, 0.058), twilight * 0.42);
-          float plasterGrain = noise(vec2(uv.x * 130.0 + 2.0, uv.y * 90.0 + 12.0));
-          sky = mix(sky, plaster * (0.84 + plasterGrain * 0.24), hutBody * 0.99);
+          float hutShadow = ellipse(uv, vec2(hutX, 0.058), vec2(0.18, 0.014), 0.14, aspect);
+          sky = mix(sky, mix(vec3(0.045, 0.052, 0.035), vec3(0.004, 0.009, 0.012), night), hutShadow * 0.62);
 
-          float hutRoof = thatchedRoof(uv, hutX, 0.207, 0.432, 0.145, aspect);
-          float thatchNoise = noise(vec2(uv.x * 75.0, uv.y * 135.0 + 2.0));
-          float strawLines = 0.5 + 0.5 * sin((uv.x * aspect - uv.y * 0.7) * 210.0 + thatchNoise * 4.0);
-          vec3 thatch = mix(vec3(0.32, 0.19, 0.080), vec3(0.015, 0.018, 0.025), night * 0.92);
-          thatch = mix(thatch, vec3(0.31, 0.095, 0.045), dusk * 0.42);
-          vec3 roofSurface = thatch * (0.72 + strawLines * 0.20 + thatchNoise * 0.23);
-          sky = mix(sky, roofSurface, hutRoof * 0.99);
-          float hutEave = box(uv, vec2(hutX, 0.208), vec2(0.153, 0.005), 0.002, aspect);
-          sky = mix(sky, thatch * 0.70, hutEave * 0.90);
+          float hutBody = box(uv, vec2(hutX, 0.126), vec2(0.108, 0.073), 0.005, aspect);
+          vec3 plaster = mix(vec3(0.32, 0.21, 0.125), vec3(0.021, 0.025, 0.031), night * 0.92);
+          plaster = mix(plaster, vec3(0.27, 0.105, 0.060), twilight * 0.40);
+          sky = mix(sky, plaster, hutBody * 0.99);
 
-          float hutDoor = box(uv, vec2(hutX, 0.112), vec2(0.019, 0.045), 0.003, aspect);
-          sky = mix(sky, mix(vec3(0.065, 0.038, 0.022), vec3(0.004, 0.007, 0.013), night * 0.90), hutDoor * 0.98);
+          float roofRise = clamp((uv.y - 0.190) / 0.215, 0.0, 1.0);
+          float roofHalfWidth = 0.155 * (1.0 - roofRise);
+          float roofAcross = abs((uv.x - hutX) * aspect);
+          float hutRoof = (1.0 - smoothstep(max(roofHalfWidth - 0.007, 0.0), roofHalfWidth + 0.007, roofAcross));
+          hutRoof *= step(0.190, uv.y) * (1.0 - step(0.407, uv.y));
+          float strawTexture = noise(vec2(uv.x * 95.0, uv.y * 110.0));
+          float strawLines = 0.5 + 0.5 * sin((uv.x * aspect - uv.y * 0.65) * 150.0 + strawTexture * 3.0);
+          vec3 thatch = mix(vec3(0.32, 0.19, 0.08), vec3(0.014, 0.018, 0.024), night * 0.92);
+          thatch = mix(thatch, vec3(0.31, 0.092, 0.042), twilight * 0.38);
+          vec3 roofColor = thatch * (0.78 + strawLines * 0.14 + strawTexture * 0.16);
+          sky = mix(sky, roofColor, hutRoof * 0.99);
+          float eave = box(uv, vec2(hutX, 0.190), vec2(0.164, 0.005), 0.002, aspect);
+          sky = mix(sky, thatch * 0.68, eave * 0.92);
 
-          float hutWinL = box(uv, vec2(hutX - 0.054 / aspect, 0.159), vec2(0.016, 0.022), 0.003, aspect);
-          float hutWinR = box(uv, vec2(hutX + 0.054 / aspect, 0.159), vec2(0.016, 0.022), 0.003, aspect);
-          float hutGlassL = box(uv, vec2(hutX - 0.054 / aspect, 0.159), vec2(0.010, 0.016), 0.002, aspect);
-          float hutGlassR = box(uv, vec2(hutX + 0.054 / aspect, 0.159), vec2(0.010, 0.016), 0.002, aspect);
-          float hutWindowGlow = max(
-            exp(-length(vec2((uv.x - (hutX - 0.054 / aspect)) * aspect, uv.y - 0.159)) * 70.0),
-            exp(-length(vec2((uv.x - (hutX + 0.054 / aspect)) * aspect, uv.y - 0.159)) * 70.0)
+          float hutDoor = box(uv, vec2(hutX, 0.105), vec2(0.022, 0.043), 0.003, aspect);
+          sky = mix(sky, mix(vec3(0.060, 0.034, 0.018), vec3(0.004, 0.007, 0.011), night * 0.92), hutDoor * 0.98);
+
+          vec2 windowLeft = vec2(hutX - 0.062 / aspect, 0.143);
+          vec2 windowRight = vec2(hutX + 0.062 / aspect, 0.143);
+          float windowFrames = max(
+            box(uv, windowLeft, vec2(0.021, 0.023), 0.003, aspect),
+            box(uv, windowRight, vec2(0.021, 0.023), 0.003, aspect)
           );
-          vec3 windowFrame = mix(vec3(0.12, 0.080, 0.046), vec3(0.007, 0.014, 0.020), night);
-          sky = mix(sky, windowFrame, max(hutWinL, hutWinR) * 0.98);
-          sky += vec3(1.0, 0.34, 0.065) * hutWindowGlow * night * 0.25;
-          vec3 hutGlass = mix(vec3(0.055, 0.095, 0.10), vec3(1.0, 0.51, 0.13), night);
-          sky = mix(sky, hutGlass, max(hutGlassL, hutGlassR) * (0.66 + night * 0.30));
+          float windowGlass = max(
+            box(uv, windowLeft, vec2(0.015, 0.017), 0.002, aspect),
+            box(uv, windowRight, vec2(0.015, 0.017), 0.002, aspect)
+          );
+          float windowGlow = max(
+            exp(-length(vec2((uv.x - windowLeft.x) * aspect, uv.y - windowLeft.y)) * 65.0),
+            exp(-length(vec2((uv.x - windowRight.x) * aspect, uv.y - windowRight.y)) * 65.0)
+          );
+          vec3 frameColor = mix(vec3(0.11, 0.070, 0.036), vec3(0.008, 0.014, 0.019), night);
+          sky = mix(sky, frameColor, windowFrames * 0.98);
+          sky += vec3(1.0, 0.35, 0.055) * windowGlow * night * 0.23;
+          vec3 glassColor = mix(vec3(0.045, 0.085, 0.10), vec3(1.0, 0.53, 0.16), night);
+          sky = mix(sky, glassColor, windowGlass * (0.72 + night * 0.27));
 
-          // Clock tower with shaded masonry, two narrow windows and a live analog clock face.
-          float towerX = 0.585;
-          float towerShadow = box(uv, vec2(towerX + 0.025 / aspect, 0.215), vec2(0.091, 0.17), 0.006, aspect);
-          float towerBody = box(uv, vec2(towerX, 0.205), vec2(0.081, 0.157), 0.005, aspect);
-          float towerUpper = box(uv, vec2(towerX, 0.426), vec2(0.095, 0.092), 0.005, aspect);
-          float towerRoof = thatchedRoof(uv, towerX, 0.515, 0.65, 0.127, aspect);
-          vec3 stone = mix(vec3(0.34, 0.34, 0.29), vec3(0.018, 0.027, 0.042), night * 0.91);
-          float stoneGrain = noise(vec2(uv.x * 112.0 + 5.0, uv.y * 85.0 + 19.0));
-          vec3 stoneSurface = stone * (0.82 + stoneGrain * 0.27);
-          sky = mix(sky, mix(stone * 0.46, vec3(0.006, 0.012, 0.020), night), towerShadow * 0.65);
-          sky = mix(sky, stoneSurface * 0.82, towerBody * 0.99);
-          sky = mix(sky, stoneSurface * 1.10, towerUpper * 0.99);
-          sky = mix(sky, stone * 0.72, towerRoof * 0.98);
-          float towerWindowL = box(uv, vec2(towerX - 0.028 / aspect, 0.245), vec2(0.013, 0.026), 0.004, aspect);
-          float towerWindowR = box(uv, vec2(towerX + 0.028 / aspect, 0.245), vec2(0.013, 0.026), 0.004, aspect);
-          vec3 towerGlass = mix(vec3(0.025, 0.060, 0.074), vec3(1.0, 0.52, 0.18), night);
-          sky = mix(sky, towerGlass, max(towerWindowL, towerWindowR) * (0.50 + night * 0.45));
+          // Chimney smoke drifts upward at night; three soft puffs are deliberately inexpensive.
+          float chimneyX = hutX + 0.105 / aspect;
+          float chimney = box(uv, vec2(chimneyX, 0.251), vec2(0.015, 0.043), 0.003, aspect);
+          sky = mix(sky, mix(vec3(0.18, 0.10, 0.055), vec3(0.035, 0.040, 0.048), night), chimney);
+          float smokeCycle = fract(t * 0.18);
+          float smokeSway = sin(t * 1.1) * 0.018 / aspect;
+          float smokeOne = ellipse(uv, vec2(chimneyX + smokeSway, 0.309 + smokeCycle * 0.035), vec2(0.024, 0.023), 0.25, aspect);
+          float smokeTwo = ellipse(uv, vec2(chimneyX - smokeSway * 0.55, 0.374 + fract(smokeCycle + 0.34) * 0.032), vec2(0.033, 0.029), 0.25, aspect);
+          float smokeThree = ellipse(uv, vec2(chimneyX + smokeSway, 0.444 + fract(smokeCycle + 0.67) * 0.027), vec2(0.044, 0.034), 0.25, aspect);
+          float smokeMask = max(max(smokeOne * 0.68, smokeTwo * 0.53), smokeThree * 0.38) * night;
+          sky = mix(sky, vec3(0.49, 0.56, 0.64), smokeMask * 0.42);
 
-          float dialY = 0.432;
-          float dialRim = ellipse(uv, vec2(towerX, dialY), vec2(0.078, 0.078), 0.04, aspect);
-          float dialFace = ellipse(uv, vec2(towerX, dialY), vec2(0.066, 0.066), 0.04, aspect);
-          sky = mix(sky, mix(vec3(0.72, 0.61, 0.42), vec3(0.28, 0.30, 0.34), night * 0.70), dialRim);
-          sky = mix(sky, mix(vec3(0.93, 0.87, 0.70), vec3(0.68, 0.74, 0.82), night * 0.45), dialFace);
-          float tickMarks = 0.0;
-          for (int i = 0; i < 12; i++) {
-            float angle = float(i) * 6.2831853 / 12.0;
-            vec2 start = vec2(towerX + sin(angle) * 0.048 / aspect, dialY + cos(angle) * 0.048);
-            vec2 finish = vec2(towerX + sin(angle) * 0.057 / aspect, dialY + cos(angle) * 0.057);
-            tickMarks = max(tickMarks, lineMask(uv, start, finish, 0.0038, aspect));
-          }
-          sky = mix(sky, vec3(0.11, 0.13, 0.15), tickMarks * 0.99);
+          // Clock tower: stone silhouette, copper roof, glowing windows and a readable moving clock face.
+          float towerX = 0.565;
+          vec3 stone = mix(vec3(0.36, 0.35, 0.30), vec3(0.025, 0.036, 0.047), night * 0.92);
+          float towerBody = box(uv, vec2(towerX, 0.137), vec2(0.050, 0.083), 0.004, aspect);
+          sky = mix(sky, stone, towerBody * 0.99);
+          float towerUpper = box(uv, vec2(towerX, 0.242), vec2(0.059, 0.066), 0.004, aspect);
+          sky = mix(sky, stone * 0.90, towerUpper * 0.99);
+          float towerRoofRise = clamp((uv.y - 0.296) / 0.105, 0.0, 1.0);
+          float towerRoofHalfWidth = 0.066 * (1.0 - towerRoofRise);
+          float towerRoof = (1.0 - smoothstep(max(towerRoofHalfWidth - 0.005, 0.0), towerRoofHalfWidth + 0.005, abs((uv.x - towerX) * aspect)));
+          towerRoof *= step(0.296, uv.y) * (1.0 - step(0.403, uv.y));
+          vec3 roofTint = mix(vec3(0.22, 0.095, 0.055), vec3(0.026, 0.030, 0.043), night);
+          sky = mix(sky, roofTint, towerRoof * 0.98);
+
+          float towerWindow = max(
+            box(uv, vec2(towerX, 0.197), vec2(0.014, 0.018), 0.003, aspect),
+            box(uv, vec2(towerX, 0.087), vec2(0.013, 0.016), 0.003, aspect)
+          );
+          sky = mix(sky, mix(vec3(0.055, 0.11, 0.14), vec3(1.0, 0.65, 0.26), night), towerWindow);
+
+          vec2 faceCenter = vec2(towerX, 0.265);
+          float faceOuter = ellipse(uv, faceCenter, vec2(0.050, 0.050), 0.06, aspect);
+          float faceInner = ellipse(uv, faceCenter, vec2(0.043, 0.043), 0.05, aspect);
+          sky = mix(sky, mix(vec3(0.46, 0.34, 0.18), vec3(0.69, 0.59, 0.40), night), faceOuter);
+          sky = mix(sky, vec3(0.94, 0.89, 0.76), faceInner);
+
+          float tickTop = lineMask(uv, faceCenter + vec2(0.0, 0.030), faceCenter + vec2(0.0, 0.037), 0.0020, aspect);
+          float tickBottom = lineMask(uv, faceCenter - vec2(0.0, 0.030), faceCenter - vec2(0.0, 0.037), 0.0020, aspect);
+          float tickLeft = lineMask(uv, faceCenter - vec2(0.030 / aspect, 0.0), faceCenter - vec2(0.037 / aspect, 0.0), 0.0020, aspect);
+          float tickRight = lineMask(uv, faceCenter + vec2(0.030 / aspect, 0.0), faceCenter + vec2(0.037 / aspect, 0.0), 0.0020, aspect);
+          float ticks = max(max(tickTop, tickBottom), max(tickLeft, tickRight));
+          ticks = max(ticks, lineMask(uv, faceCenter + vec2(0.022 / aspect, 0.022), faceCenter + vec2(0.027 / aspect, 0.027), 0.0017, aspect));
+          ticks = max(ticks, lineMask(uv, faceCenter - vec2(0.022 / aspect, 0.022), faceCenter - vec2(0.027 / aspect, 0.027), 0.0017, aspect));
+          ticks = max(ticks, lineMask(uv, faceCenter + vec2(0.022 / aspect, -0.022), faceCenter + vec2(0.027 / aspect, -0.027), 0.0017, aspect));
+          ticks = max(ticks, lineMask(uv, faceCenter + vec2(-0.022 / aspect, 0.022), faceCenter + vec2(-0.027 / aspect, 0.027), 0.0017, aspect));
+
           float minuteAngle = fract(clock) * 6.2831853;
           float hourAngle = mod(clock, 12.0) / 12.0 * 6.2831853;
-          vec2 minuteEnd = vec2(towerX + sin(minuteAngle) * 0.047 / aspect, dialY + cos(minuteAngle) * 0.047);
-          vec2 hourEnd = vec2(towerX + sin(hourAngle) * 0.032 / aspect, dialY + cos(hourAngle) * 0.032);
-          float minuteHand = lineMask(uv, vec2(towerX, dialY), minuteEnd, 0.0035, aspect);
-          float hourHand = lineMask(uv, vec2(towerX, dialY), hourEnd, 0.0055, aspect);
-          sky = mix(sky, vec3(0.055, 0.065, 0.075), max(minuteHand, hourHand) * 0.99);
-          sky = mix(sky, vec3(0.62, 0.19, 0.075), ellipse(uv, vec2(towerX, dialY), vec2(0.008, 0.008), 0.12, aspect));
+          vec2 minuteEnd = faceCenter + vec2(sin(minuteAngle) * 0.028 / aspect, cos(minuteAngle) * 0.028);
+          vec2 hourEnd = faceCenter + vec2(sin(hourAngle) * 0.021 / aspect, cos(hourAngle) * 0.021);
+          float minuteHand = lineMask(uv, faceCenter, minuteEnd, 0.0022, aspect);
+          float hourHand = lineMask(uv, faceCenter, hourEnd, 0.0031, aspect);
+          sky = mix(sky, vec3(0.15, 0.18, 0.19), ticks * 0.96);
+          sky = mix(sky, vec3(0.14, 0.16, 0.17), minuteHand * 0.98);
+          sky = mix(sky, vec3(0.10, 0.12, 0.13), hourHand * 0.98);
+          float handPivot = ellipse(uv, faceCenter, vec2(0.004, 0.004), 0.1, aspect);
+          sky = mix(sky, vec3(0.72, 0.22, 0.10), handPivot);
 
-          // The chimney is part of the roofline. Smoke is intentionally restricted to nighttime.
-          float chimneyX = hutX;
-          float smokeActive = max(smoothstep(17.8, 19.0, clock), 1.0 - smoothstep(5.3, 6.8, clock));
-          float smokeY = smoothstep(0.426, 0.470, uv.y) * (1.0 - smoothstep(0.80, 0.93, uv.y)) * smokeActive;
-          float smokeCenter = chimneyX + (
-            0.020 * sin(uv.y * 10.0 - t * 2.0) +
-            0.012 * sin(uv.y * 25.0 + t * 1.35)
-          ) / aspect;
-          float smokeWidth = 0.007 + max(uv.y - 0.40, 0.0) * 0.055;
-          float smokeDistance = abs(uv.x - smokeCenter) * aspect / smokeWidth;
-          float smokeGrain = noise(vec2(uv.x * 24.0 + t * 0.26, uv.y * 19.0 - t * 1.10));
-          float smokeEdge = noise(vec2(uv.x * 39.0 - t * 0.20, uv.y * 29.0 + t * 0.70));
-          float smokeCore = (1.0 - smoothstep(0.22, 1.18, smokeDistance)) * smoothstep(0.28, 0.72, smokeGrain) * smokeY;
-          float smokeRim = (1.0 - smoothstep(0.55, 1.70, smokeDistance)) * smoothstep(0.35, 0.76, smokeEdge) * smokeY;
-          vec3 smokeColor = mix(vec3(0.50, 0.56, 0.60), vec3(0.16, 0.21, 0.29), night);
-          sky = mix(sky, smokeColor, smokeRim * 0.28);
-          sky = mix(sky, smokeColor * 0.80, smokeCore * 0.40);
-          float chimney = box(uv, vec2(chimneyX, 0.413), vec2(0.011, 0.028), 0.0025, aspect);
-          float chimneyCap = box(uv, vec2(chimneyX, 0.442), vec2(0.016, 0.004), 0.002, aspect);
-          vec3 chimneyStone = mix(vec3(0.13, 0.08, 0.045), vec3(0.015, 0.020, 0.028), night * 0.90);
-          sky = mix(sky, chimneyStone, max(chimney, chimneyCap) * 0.98);
-
-          // Subtle filmic falloff keeps the scenery atmospheric without adding visual clutter.
+          // A subtle vignette adds a finished editorial look without textures or assets.
           vec2 center = uv - 0.5;
-          float vignette = 1.0 - smoothstep(0.30, 0.84, length(vec2(center.x * 0.9, center.y)));
-          sky *= 0.93 + vignette * 0.07;
+          float vignette = 1.0 - smoothstep(0.34, 0.88, length(vec2(center.x * 0.9, center.y)));
+          sky *= 0.94 + vignette * 0.06;
           gl_FragColor = vec4(clamp(sky, 0.0, 1.0), 1.0);
         }
-      `;
 
       const compile = (type: number, source: string) => {
         const shader = gl.createShader(type);
