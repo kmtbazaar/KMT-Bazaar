@@ -436,12 +436,6 @@ export default function StoreProducts() {
             </View>
           )}
         </ScrollView>
-              <Text style={s.emptyText}>
-                No products in this category yet.
-              </Text>
-            </View>
-          }
-        />
       </View>
 
       <CheckoutBar label="View Cart" route="/cart" bottomOffset={16} />
