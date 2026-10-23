@@ -1,19 +1,21 @@
 import { LocalizedText as Text, LocalizedTextInput as TextInput } from "@/src/LocalizedText";
-import React, { useEffect, useMemo, useState, useCallback } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   View,
+  Text as NativeText,
   StyleSheet,
   ActivityIndicator,
   Pressable,
   ScrollView,
-  FlatList,
 } from "react-native";
+import { Image } from "expo-image";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { api } from "@/src/api";
-import ProductCard from "@/src/components/ProductCard";
+import { useCart } from "@/src/CartContext";
+import { useWishlist } from "@/src/WishlistContext";
 import CheckoutBar from "@/src/components/CheckoutBar";
-import { COLORS, SPACING } from "@/src/theme";
+import { COLORS, IMAGE_FALLBACK_URL, RADIUS, SPACING } from "@/src/theme";
 
 function itemCategoryIcon(name: string): any {
   const key = name.toLowerCase();
@@ -36,6 +38,155 @@ function itemCategoryIcon(name: string): any {
   if (key.includes("baby")) return "baby-face-outline";
   if (key.includes("personal")) return "face-woman";
   return "tag-outline";
+}
+
+function StoreProductTile({ p }: { p: any }) {
+  const router = useRouter();
+  const { add, update, cart } = useCart();
+  const { isWishlisted, toggle, ready } = useWishlist();
+  const [imageIndex, setImageIndex] = useState(0);
+
+  const productName = String(
+    p?.name || p?.product_name || p?.productName || p?.title || "Product"
+  ).trim();
+  const productUnit = String(
+    p?.unit || p?.quantity_label || p?.unit_label || p?.unit_name ||
+    p?.pack_size || p?.size || p?.weight || p?.volume || ""
+  ).trim();
+
+  const imageCandidates = useMemo(() => {
+    const raw = [
+      p?.image,
+      ...(Array.isArray(p?.images) ? p.images : []),
+      p?.image_url,
+      p?.imageUrl,
+      p?.photo_url,
+    ];
+    const candidates: string[] = [];
+    for (const value of raw) {
+      const url = typeof value === "string"
+        ? value.trim()
+        : value && typeof value === "object"
+          ? String(value.url || value.uri || value.src || "").trim()
+          : "";
+      if (!url) continue;
+      candidates.push(url);
+      // Legacy images can have a .tech hostname. Try the production host as well.
+      if (/^https?:\/\/kmtbazaar\.tech\/uploads\//i.test(url)) {
+        candidates.push(url.replace(/^https?:\/\/kmtbazaar\.tech/i, "https://kmtbazaar.com"));
+      }
+    }
+    return Array.from(new Set(candidates));
+  }, [p?.image, p?.images, p?.image_url, p?.imageUrl, p?.photo_url]);
+
+  const imageKey = imageCandidates.join("|");
+  useEffect(() => setImageIndex(0), [p?.id, imageKey]);
+  const imageUri = imageCandidates[imageIndex] || IMAGE_FALLBACK_URL;
+
+  const id = String(p?.id ?? p?._id ?? "");
+  const cartItem = cart?.items?.find(
+    (item: any) => String(item.product_id ?? item.id) === id
+  );
+  const quantityInCart = Number(cartItem?.quantity || 0);
+  const stock = Number(p?.stock ?? p?.available_quantity ?? p?.quantity_in_stock ?? 0);
+  const outOfStock = stock <= 0;
+  const wished = isWishlisted(id);
+
+  return (
+    <View style={s.storeTile}>
+      <View style={s.storeTileImageWrap}>
+        <Pressable
+          style={s.storeTileImagePress}
+          onPress={() => router.push(("/product/" + encodeURIComponent(id)) as any)}
+          accessibilityRole="button"
+          accessibilityLabel={"View " + productName}
+        >
+          <Image
+            source={{ uri: imageUri }}
+            style={StyleSheet.absoluteFillObject}
+            contentFit="cover"
+            transition={150}
+            onError={() => setImageIndex((current) =>
+              current < imageCandidates.length ? current + 1 : current
+            )}
+          />
+        </Pressable>
+        <Pressable
+          style={s.storeTileWish}
+          accessibilityRole="button"
+          accessibilityLabel={wished ? "Remove from wishlist" : "Add to wishlist"}
+          disabled={!ready}
+          onPress={() => toggle(p)}
+        >
+          <MaterialCommunityIcons
+            name="heart"
+            size={18}
+            color={wished ? "#E11D48" : "#FFFFFF"}
+          />
+        </Pressable>
+      </View>
+
+      <View style={s.storeTileBody}>
+        <NativeText style={s.storeTileName} numberOfLines={2}>
+          {productName}
+        </NativeText>
+        <NativeText style={s.storeTileUnit} numberOfLines={1}>
+          {productUnit || " "}
+        </NativeText>
+
+        <View style={s.storeTilePriceRow}>
+          <View style={{ flexShrink: 1 }}>
+            <NativeText style={s.storeTilePrice}>
+              {p?.price != null ? ("₹" + p.price) : "Price unavailable"}
+            </NativeText>
+            {Number(p?.mrp) > Number(p?.price) && (
+              <NativeText style={s.storeTileMrp}>{"₹" + p.mrp}</NativeText>
+            )}
+          </View>
+
+          {quantityInCart > 0 ? (
+            <View style={s.storeTileStepper}>
+              <Pressable
+                style={s.storeTileStepButton}
+                accessibilityRole="button"
+                accessibilityLabel={"Remove one " + productName}
+                onPress={() => void update(id, Math.max(0, quantityInCart - 1)).catch(() => {})}
+              >
+                <MaterialCommunityIcons name="minus" size={14} color="#FFFFFF" />
+              </Pressable>
+              <NativeText style={s.storeTileQuantity}>{quantityInCart}</NativeText>
+              <Pressable
+                style={s.storeTileStepButton}
+                accessibilityRole="button"
+                accessibilityLabel={"Add one " + productName}
+                disabled={quantityInCart >= stock}
+                onPress={() => void update(id, quantityInCart + 1).catch(() => {})}
+              >
+                <MaterialCommunityIcons name="plus" size={14} color="#FFFFFF" />
+              </Pressable>
+            </View>
+          ) : (
+            <Pressable
+              style={[s.storeTileAddButton, outOfStock && s.storeTileAddDisabled]}
+              accessibilityRole="button"
+              accessibilityLabel={"Add " + productName + " to cart"}
+              disabled={outOfStock}
+              onPress={() => void add(id, 1).catch(() => {})}
+            >
+              <MaterialCommunityIcons
+                name="plus"
+                size={14}
+                color={outOfStock ? COLORS.textMuted : COLORS.accent}
+              />
+              <NativeText style={[s.storeTileAddText, outOfStock && { color: COLORS.textMuted }]}>
+                {outOfStock ? "OUT OF STOCK" : "ADD"}
+              </NativeText>
+            </Pressable>
+          )}
+        </View>
+      </View>
+    </View>
+  );
 }
 
 export default function StoreProducts() {
@@ -163,15 +314,6 @@ export default function StoreProducts() {
     );
   }, [products, selectedItemCategory, itemCategories]);
 
-  const renderItem = useCallback(
-    ({ item }: { item: any }) => (
-      <View style={s.gridCell}>
-        <ProductCard p={item} compact={true} storeGrid />
-      </View>
-    ),
-    []
-  );
-
   if (loading) {
     return (
       <View style={s.center}>
@@ -255,39 +397,45 @@ export default function StoreProducts() {
           </ScrollView>
         </View>
 
-        <FlatList
+        <ScrollView
           style={s.productList}
-          data={filteredProducts}
-          keyExtractor={(item, index) =>
-            String(item.id ?? item._id ?? index)
-          }
-          renderItem={renderItem}
-          numColumns={2}
           contentContainerStyle={s.listContent}
-          columnWrapperStyle={s.column}
-          initialNumToRender={6}
-          windowSize={4}
-          ListHeaderComponent={
-            <View style={s.productsHeading}>
-              <Text style={s.productsTitle}>
-                {selectedItemCategory === "All"
-                  ? "All Products"
-                  : itemCategories.find(
-                      (category: any) => String(category.id) === String(selectedItemCategory)
-                    )?.name || selectedItemCategory}
-              </Text>
-              <Text style={s.productsCount}>
-                {filteredProducts.length} item{filteredProducts.length === 1 ? "" : "s"}
-              </Text>
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={s.productsHeading}>
+            <NativeText style={s.productsTitle}>
+              {selectedItemCategory === "All"
+                ? "All Products"
+                : itemCategories.find(
+                    (category: any) => String(category.id) === String(selectedItemCategory)
+                  )?.name || selectedItemCategory}
+            </NativeText>
+            <NativeText style={s.productsCount}>
+              {filteredProducts.length} item{filteredProducts.length === 1 ? "" : "s"}
+            </NativeText>
+          </View>
+
+          {filteredProducts.length > 0 ? (
+            <View style={s.productGrid}>
+              {filteredProducts.map((item: any) => (
+                <View key={String(item.id ?? item._id)} style={s.gridCell}>
+                  <StoreProductTile p={item} />
+                </View>
+              ))}
             </View>
-          }
-          ListEmptyComponent={
+          ) : (
             <View style={s.empty}>
               <MaterialCommunityIcons
                 name="package-variant-closed"
                 size={52}
                 color={COLORS.textMuted}
               />
+              <Text style={s.emptyText}>
+                No products in this category yet.
+              </Text>
+            </View>
+          )}
+        </ScrollView>
               <Text style={s.emptyText}>
                 No products in this category yet.
               </Text>
@@ -436,10 +584,13 @@ const s = StyleSheet.create({
   listContent: {
     paddingHorizontal: 2,
     paddingBottom: 100,
+    flexGrow: 1,
   },
 
-  column: {
-    gap: 0,
+  productGrid: {
+    width: "100%",
+    flexDirection: "row",
+    flexWrap: "wrap",
     alignItems: "stretch",
   },
 
@@ -450,6 +601,117 @@ const s = StyleSheet.create({
     flexShrink: 0,
     paddingHorizontal: 3,
     alignSelf: "stretch",
+  },
+
+  storeTile: {
+    width: "100%",
+    backgroundColor: COLORS.surface,
+    borderRadius: RADIUS.md,
+    overflow: "hidden",
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    marginBottom: 2,
+  },
+  storeTileImageWrap: {
+    width: "100%",
+    height: 124,
+    position: "relative",
+    backgroundColor: COLORS.surfaceSecondary,
+    overflow: "hidden",
+  },
+  storeTileImagePress: {
+    width: "100%",
+    height: "100%",
+  },
+  storeTileWish: {
+    position: "absolute",
+    top: 6,
+    right: 6,
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: "rgba(15,23,42,0.44)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  storeTileBody: {
+    paddingHorizontal: 7,
+    paddingTop: 7,
+    paddingBottom: 8,
+  },
+  storeTileName: {
+    color: COLORS.text,
+    fontSize: 13,
+    lineHeight: 17,
+    fontWeight: "800",
+    minHeight: 34,
+  },
+  storeTileUnit: {
+    color: COLORS.textSecondary,
+    fontSize: 11,
+    lineHeight: 15,
+    marginTop: 2,
+    minHeight: 15,
+  },
+  storeTilePriceRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 5,
+    marginTop: 7,
+  },
+  storeTilePrice: {
+    color: COLORS.text,
+    fontSize: 14,
+    fontWeight: "900",
+  },
+  storeTileMrp: {
+    color: COLORS.textMuted,
+    fontSize: 10,
+    textDecorationLine: "line-through",
+  },
+  storeTileAddButton: {
+    height: 29,
+    minWidth: 52,
+    paddingHorizontal: 7,
+    borderRadius: 7,
+    borderWidth: 1,
+    borderColor: COLORS.accent,
+    backgroundColor: COLORS.accentLight,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 2,
+  },
+  storeTileAddDisabled: {
+    borderColor: COLORS.border,
+    backgroundColor: COLORS.surfaceSecondary,
+  },
+  storeTileAddText: {
+    color: COLORS.accentDark,
+    fontSize: 9,
+    fontWeight: "900",
+  },
+  storeTileStepper: {
+    height: 29,
+    borderRadius: 7,
+    backgroundColor: COLORS.accent,
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 2,
+  },
+  storeTileStepButton: {
+    width: 20,
+    height: 27,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  storeTileQuantity: {
+    color: "#FFFFFF",
+    fontSize: 12,
+    fontWeight: "900",
+    minWidth: 16,
+    textAlign: "center",
   },
 
   empty: {
