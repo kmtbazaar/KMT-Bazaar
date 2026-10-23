@@ -199,12 +199,15 @@ function NightSky() {
           vec2 sunDelta = vec2((uv.x - sunX) * aspect, uv.y - sunY);
           float sunDist = length(sunDelta);
           float sunVisible = clamp(day + max(dawn, dusk) * 0.93, 0.0, 1.0);
-          float sunHalo = exp(-sunDist * 7.5);
-          float sunBloom = exp(-sunDist * 24.0);
-          float sunDisk = 1.0 - smoothstep(0.029, 0.039, sunDist);
-          sky += vec3(1.0, 0.53, 0.25) * sunHalo * sunVisible * (0.13 + twilight * 0.28);
-          sky += vec3(1.0, 0.42, 0.18) * sunBloom * dusk * 0.20;
-          sky += vec3(1.0, 0.88, 0.65) * sunDisk * sunVisible * 0.72;
+          float sunHalo = exp(-sunDist * 6.4);
+          float sunBloom = exp(-sunDist * 21.0);
+          float sunDisk = 1.0 - smoothstep(0.046, 0.056, sunDist);
+          float sunRadius = clamp(sunDist / 0.056, 0.0, 1.0);
+          float sunLimbLight = 0.80 + 0.20 * sqrt(max(0.0, 1.0 - sunRadius * sunRadius));
+          sky += vec3(1.0, 0.53, 0.25) * sunHalo * sunVisible * (0.16 + twilight * 0.30);
+          sky += vec3(1.0, 0.42, 0.18) * sunBloom * dusk * 0.24;
+          sky += vec3(1.0, 0.74, 0.45) * (1.0 - smoothstep(0.038, 0.052, sunDist)) * sunVisible * (0.07 + twilight * 0.12);
+          sky += vec3(1.0, 0.91, 0.73) * sunDisk * sunLimbLight * sunVisible * 0.82;
 
           // Stars emerge gradually at twilight and softly twinkle at night.
           float starNight = max(1.0 - smoothstep(5.0, 6.7, clock), smoothstep(18.2, 20.1, clock));
@@ -225,22 +228,32 @@ function NightSky() {
           vec2 moonDelta = vec2((uv.x - moonPos.x) * aspect, uv.y - moonPos.y);
           float moonDist = length(moonDelta);
           float moonVisible = max(1.0 - smoothstep(4.8, 6.5, clock), smoothstep(18.0, 20.0, clock));
-          float moonMask = 1.0 - smoothstep(0.050, 0.059, moonDist);
-          float moonHalo = exp(-moonDist * 8.0);
-          float craterA = exp(-length(moonDelta - vec2(-0.010, 0.008)) * 52.0);
-          float craterB = exp(-length(moonDelta - vec2(0.012, -0.012)) * 62.0);
-          float craterC = exp(-length(moonDelta - vec2(0.004, 0.016)) * 74.0);
-          float moonSurface = 0.95 - craterA * 0.12 - craterB * 0.08 - craterC * 0.045;
-          sky += vec3(0.43, 0.58, 0.90) * moonHalo * moonVisible * 0.22;
-          sky += vec3(0.89, 0.93, 1.0) * moonMask * moonSurface * moonVisible * (0.80 - night * 0.04);
+          vec2 moonLocal = moonDelta / 0.079;
+          float moonRadius = length(moonLocal);
+          float moonSphereZ = sqrt(max(0.0, 1.0 - dot(moonLocal, moonLocal)));
+          float moonMask = 1.0 - smoothstep(0.91, 1.0, moonRadius);
+          float moonHalo = exp(-moonDist * 6.2);
+          float craterA = exp(-length(moonLocal - vec2(-0.25, 0.20)) * 8.0);
+          float craterB = exp(-length(moonLocal - vec2(0.26, -0.23)) * 9.0);
+          float craterC = exp(-length(moonLocal - vec2(0.07, 0.43)) * 10.0);
+          float maria = exp(-length(moonLocal - vec2(0.22, 0.12)) * 3.8);
+          float lunarGrain = fbm(moonLocal * 8.0 + vec2(5.0, 2.0));
+          float moonSurface = (0.98 - craterA * 0.12 - craterB * 0.09 - craterC * 0.055 - maria * 0.055);
+          moonSurface *= 0.69 + 0.31 * moonSphereZ;
+          moonSurface += (lunarGrain - 0.5) * 0.035;
+          sky += vec3(0.34, 0.47, 0.76) * moonHalo * moonVisible * 0.27;
+          sky += vec3(0.84, 0.88, 0.95) * moonMask * moonSurface * moonVisible * (0.83 - night * 0.04);
 
           // Large, layered cloud banks with drifting turbulence and silver lining.
           float warp = fbm(vec2(uv.x * 1.75 + t * 0.42, uv.y * 3.0 + 4.8));
           float lowA = fbm(vec2(uv.x * 3.0 + t * 0.72, uv.y * 8.0 + warp * 1.15));
           float lowB = fbm(vec2(uv.x * 7.2 - t * 0.46, uv.y * 13.5 + warp * 0.85 + 8.0));
-          float cloudField = lowA * 0.65 + lowB * 0.35;
-          float lowCloud = smoothstep(0.46, 0.70, cloudField + (0.40 - uv.y) * 0.12);
+          float cloudDetail = fbm(vec2(uv.x * 16.0 + t * 0.22, uv.y * 22.0 + warp * 1.8 + 23.0));
+          float cloudFine = fbm(vec2(uv.x * 31.0 - t * 0.32, uv.y * 38.0 + warp * 2.5 + 6.0));
+          float cloudField = lowA * 0.56 + lowB * 0.29 + cloudDetail * 0.15;
+          float lowCloud = smoothstep(0.465, 0.715, cloudField + (0.40 - uv.y) * 0.14);
           lowCloud *= smoothstep(0.08, 0.21, uv.y) * (1.0 - smoothstep(0.42, 0.64, uv.y));
+          lowCloud *= 0.90 + cloudFine * 0.10;
 
           float highField = fbm(vec2(uv.x * 2.6 - t * 0.25, uv.y * 5.6 + 15.0));
           float highCloud = smoothstep(0.59, 0.76, highField);
@@ -252,10 +265,17 @@ function NightSky() {
           vec3 duskCloudLight = vec3(1.0, 0.60, 0.40);
           vec3 nightCloudShadow = vec3(0.035, 0.07, 0.13);
           vec3 nightCloudLight = vec3(0.22, 0.30, 0.43);
-          float cloudLight = smoothstep(0.40, 0.75, cloudField + uv.y * 0.32);
+          float cloudLight = clamp(
+            0.18 + smoothstep(0.38, 0.75, cloudField + uv.y * 0.34) * 0.60 + cloudDetail * 0.22,
+            0.0,
+            1.0
+          );
           vec3 dayCloud = mix(dayCloudShadow, dayCloudLight, cloudLight);
           vec3 duskCloud = mix(duskCloudShadow, duskCloudLight, cloudLight);
           vec3 nightCloud = mix(nightCloudShadow, nightCloudLight, cloudLight);
+          dayCloud *= 0.87 + cloudFine * 0.22;
+          duskCloud *= 0.90 + cloudFine * 0.16;
+          nightCloud *= 0.91 + cloudFine * 0.12;
           vec3 cloudColor = mix(nightCloud, dayCloud, day);
           cloudColor = mix(cloudColor, duskCloud, max(dawn, dusk * 0.96));
           sky = mix(sky, cloudColor, lowCloud * (0.36 + day * 0.32 + twilight * 0.30 + night * 0.18));
@@ -280,7 +300,9 @@ function NightSky() {
           float smokeDistance = abs(uv.x - smokeCenter) / max(smokeWidth, 0.006);
           float smokeNoise = fbm(vec2(uv.x * 13.0 + t * 0.28, uv.y * 10.0 - t * 1.18));
           float smokeRimNoise = fbm(vec2(uv.x * 18.0 - t * 0.22, uv.y * 15.0 + t * 0.76));
-          float smokeCore = (1.0 - smoothstep(0.20, 1.17, smokeDistance)) * smoothstep(0.27, 0.70, smokeNoise) * smokeY;
+          float smokeFine = fbm(vec2(uv.x * 38.0 + t * 0.45, uv.y * 32.0 - t * 1.40));
+          float smokeDensity = smoothstep(0.27, 0.70, smokeNoise) * mix(0.68, 1.02, smokeFine);
+          float smokeCore = (1.0 - smoothstep(0.20, 1.17, smokeDistance)) * smokeDensity * smokeY;
           float smokeRim = (1.0 - smoothstep(0.55, 1.62, smokeDistance)) * smoothstep(0.35, 0.74, smokeRimNoise) * smokeY;
           vec3 smokeColor = mix(vec3(0.48, 0.54, 0.60), vec3(0.79, 0.81, 0.83), day);
           smokeColor = mix(smokeColor, vec3(0.83, 0.52, 0.43), twilight * 0.72);
@@ -295,8 +317,16 @@ function NightSky() {
           float farHill = 1.0 - smoothstep(hillLine, hillLine + 0.014, uv.y);
           float nearLine = 0.045 + hillB * 0.024;
           float nearHill = 1.0 - smoothstep(nearLine, nearLine + 0.010, uv.y);
+          float mountainField = fbm(vec2(uv.x * 3.1 + 5.0, 11.0));
+          float mountainLine = 0.155 + mountainField * 0.075 + 0.020 * sin(uv.x * 5.1 + 1.2);
+          float mountainMask = 1.0 - smoothstep(mountainLine, mountainLine + 0.012, uv.y);
+          vec3 distantLand = mix(vec3(0.22, 0.31, 0.39), vec3(0.025, 0.045, 0.071), night * 0.92);
+          float landTexture = fbm(vec2(uv.x * 78.0 + t * 0.03, uv.y * 26.0 + 9.0));
           vec3 farLand = mix(vec3(0.12, 0.22, 0.28), vec3(0.018, 0.034, 0.058), night * 0.92);
           vec3 nearLand = mix(vec3(0.065, 0.15, 0.16), vec3(0.008, 0.017, 0.030), night);
+          farLand *= 0.88 + landTexture * 0.20;
+          nearLand *= 0.84 + landTexture * 0.23;
+          sky = mix(sky, distantLand, mountainMask * 0.54);
           sky = mix(sky, farLand, farHill * 0.92);
           sky = mix(sky, nearLand, nearHill * 0.96);
 
@@ -336,8 +366,10 @@ function NightSky() {
           vec3 foliageLight = mix(vec3(0.10, 0.31, 0.105), vec3(0.022, 0.055, 0.065), night * 0.88);
           foliageLight = mix(foliageLight, vec3(0.34, 0.15, 0.10), twilight * 0.42);
 
+          float leafTexture = fbm(vec2(uv.x * 83.0 + t * 0.06, uv.y * 91.0 + 7.0));
+          vec3 foliageSurface = mix(foliageBase * 0.72, foliageLight * 0.84, smoothstep(0.24, 0.81, leafTexture));
           sky = mix(sky, treeBark, max(leftTreeTrunk, rightTreeTrunk) * 0.98);
-          sky = mix(sky, foliageBase, max(leftTreeCrown, rightTreeCrown) * 0.99);
+          sky = mix(sky, foliageSurface, max(leftTreeCrown, rightTreeCrown) * 0.99);
 
           float leafGlints = max(
             max(
@@ -362,7 +394,9 @@ function NightSky() {
 
           vec3 hutWallColor = mix(vec3(0.31, 0.19, 0.105), vec3(0.018, 0.025, 0.035), night * 0.92);
           hutWallColor = mix(hutWallColor, vec3(0.24, 0.095, 0.065), dusk * 0.42);
-          sky = mix(sky, hutWallColor, houseMainBody * 0.98);
+          float wallTexture = fbm(vec2(uv.x * 155.0 + 1.5, uv.y * 120.0 + 4.0));
+          vec3 texturedWall = hutWallColor * (0.86 + wallTexture * 0.24);
+          sky = mix(sky, texturedWall, houseMainBody * 0.98);
 
           float roofLeft = roofMask(uv, 0.12, 0.131, 0.207, 0.039);
           float roofMain = roofMask(uv, 0.335, 0.241, 0.402, 0.058);
@@ -375,7 +409,11 @@ function NightSky() {
 
           vec3 thatchColor = mix(vec3(0.47, 0.30, 0.13), vec3(0.026, 0.018, 0.025), night * 0.92);
           thatchColor = mix(thatchColor, vec3(0.30, 0.085, 0.052), dusk * 0.48);
-          sky = mix(sky, thatchColor, roofMain * 0.98);
+          float thatchGrain = 0.5 + 0.5 * sin((uv.x - uv.y * 0.60) * 340.0 + fbm(vec2(uv.x * 45.0, uv.y * 50.0)) * 4.0);
+          float thatchVariation = fbm(vec2(uv.x * 90.0, uv.y * 130.0 + t * 0.03));
+          float thatchLuma = clamp(thatchGrain * 0.25 + thatchVariation * 0.75, 0.0, 1.0);
+          vec3 thatchSurface = mix(thatchColor * 0.74, thatchColor * 1.18, thatchLuma);
+          sky = mix(sky, thatchSurface, roofMain * 0.98);
 
           float eave = boxMask(uv, vec2(0.335, 0.241), vec2(0.061, 0.004), 0.0018);
           sky = mix(sky, mix(vec3(0.25, 0.14, 0.075), vec3(0.018, 0.018, 0.026), night * 0.88), eave * 0.92);
@@ -619,13 +657,15 @@ function NightSky() {
               left: `${sunLeft}%`,
               right: undefined,
               top: isSunset || isDawn ? 106 : 14,
-              transform: [{ translateX: -45 }],
+              transform: [{ translateX: -52 }],
             },
           ]}
         >
           <View style={s.sunHaloOuter} />
           <View style={s.sunHalo} />
-          <View style={s.sunCore} />
+          <View style={s.sunCore}>
+            <View style={s.sunCoreInner} />
+          </View>
         </Animated.View>
       ) : (
         <View
@@ -635,13 +675,16 @@ function NightSky() {
               left: `${moonLeft}%`,
               right: undefined,
               top: moonTop,
-              transform: [{ translateX: -39 }],
+              transform: [{ translateX: -47 }],
             },
           ]}
         >
           <View style={s.moonHalo} />
           <View style={s.moonBody}>
-            <View style={s.moonCut} />
+            <View style={s.moonCraterOne} />
+            <View style={s.moonCraterTwo} />
+            <View style={s.moonCraterThree} />
+            <View style={s.moonCraterFour} />
           </View>
         </View>
       )}
@@ -1620,16 +1663,20 @@ const s = StyleSheet.create({
   heroTreeCanopyLower: { left: 9, top: 39, width: 45, height: 31 },
   starLayer: { position: "absolute", top: 0, left: 0, right: 0, height: 92 },
   star: { position: "absolute", backgroundColor: "#FFFFFF", shadowColor: "#FFFFFF", shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.95, shadowRadius: 5, elevation: 3 },
-  sunGlow: { position: "absolute", top: 10, right: "12%", width: 90, height: 90, alignItems: "center", justifyContent: "center" },
-  sunHaloOuter: { position: "absolute", width: 90, height: 90, borderRadius: 45, backgroundColor: "rgba(255,255,255,0.14)" },
-  sunHalo: { position: "absolute", width: 72, height: 72, borderRadius: 36, backgroundColor: "rgba(255,248,220,0.25)" },
-  sunCore: { width: 50, height: 50, borderRadius: 25, backgroundColor: "#FFF7CC", shadowColor: "#FFFFFF", shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.8, shadowRadius: 20, elevation: 6 },
+  sunGlow: { position: "absolute", top: 10, right: "12%", width: 104, height: 104, alignItems: "center", justifyContent: "center" },
+  sunHaloOuter: { position: "absolute", width: 104, height: 104, borderRadius: 52, backgroundColor: "rgba(255,183,95,0.12)" },
+  sunHalo: { position: "absolute", width: 84, height: 84, borderRadius: 42, backgroundColor: "rgba(255,222,155,0.19)" },
+  sunCore: { width: 62, height: 62, borderRadius: 31, backgroundColor: "#F4C16B", shadowColor: "#FFCB80", shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.85, shadowRadius: 22, elevation: 6, alignItems: "center", justifyContent: "center" },
+  sunCoreInner: { width: 50, height: 50, borderRadius: 25, backgroundColor: "#FFF4C4", opacity: 0.92 },
   sunsetGlow: { position: "absolute", left: "28%", right: "28%", bottom: 0, height: 78, alignItems: "center", justifyContent: "flex-end" },
   sunsetHalo: { width: "100%", height: 78, borderTopLeftRadius: 140, borderTopRightRadius: 140, backgroundColor: "rgba(255,190,120,0.16)" },
-  moon: { position: "absolute", top: 12, right: "15%", width: 78, height: 78, alignItems: "center", justifyContent: "center" },
-  moonHalo: { position: "absolute", width: 78, height: 78, borderRadius: 39, backgroundColor: "rgba(226,232,240,0.10)" },
-  moonBody: { width: 46, height: 46, borderRadius: 23, backgroundColor: "#F8FAFC", shadowColor: "#FFFFFF", shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.75, shadowRadius: 18, elevation: 5, overflow: "hidden" },
-  moonCut: { position: "absolute", top: -3, left: 13, width: 40, height: 40, borderRadius: 20, backgroundColor: "#0B1120" },
+  moon: { position: "absolute", top: 12, right: "15%", width: 94, height: 94, alignItems: "center", justifyContent: "center" },
+  moonHalo: { position: "absolute", width: 94, height: 94, borderRadius: 47, backgroundColor: "rgba(204,220,246,0.13)" },
+  moonBody: { width: 58, height: 58, borderRadius: 29, backgroundColor: "#DCE4EF", shadowColor: "#DDE7F6", shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.82, shadowRadius: 20, elevation: 5, overflow: "hidden" },
+  moonCraterOne: { position: "absolute", top: 13, left: 12, width: 13, height: 10, borderRadius: 7, backgroundColor: "rgba(105,121,145,0.22)" },
+  moonCraterTwo: { position: "absolute", top: 28, left: 30, width: 8, height: 7, borderRadius: 5, backgroundColor: "rgba(105,121,145,0.24)" },
+  moonCraterThree: { position: "absolute", top: 12, right: 11, width: 6, height: 6, borderRadius: 4, backgroundColor: "rgba(105,121,145,0.20)" },
+  moonCraterFour: { position: "absolute", bottom: 11, left: 23, width: 5, height: 5, borderRadius: 3, backgroundColor: "rgba(105,121,145,0.18)" },
   airplane: { position: "absolute", top: 0, left: -20, width: 46, height: 24, alignItems: "center", justifyContent: "center" },
   airplaneTrail: { position: "absolute", width: 26, height: 2, left: -23, top: 13, borderRadius: 2, backgroundColor: "rgba(255,255,255,0.3)" },
   cloud: { position: "absolute", width: 164, height: 70, opacity: 0.58 },
