@@ -823,12 +823,31 @@ export default function Home() {
 
     try {
       const [b, c, s, vs, t, u] = await Promise.all([
-        api.banners(),
-        api.categories(),
-        api.stores(),
-        api.vendorServices(),
-        api.products({ trending: true }),
-        api.unreadCount(),
+        api.banners().catch((error) => {
+          console.warn("Home banners unavailable:", error);
+          return [];
+        }),
+        api.categories().catch((error) => {
+          console.warn("Shop by Category unavailable:", error);
+          return [];
+        }),
+        api.stores().catch((error) => {
+          console.warn("Nearby Stores unavailable:", error);
+          return [];
+        }),
+        api.vendorServices().catch((error) => {
+          console.warn("Vendor services unavailable:", error);
+          return [];
+        }),
+        api.products({ trending: true }).catch((error) => {
+          console.warn("Trending products unavailable:", error);
+          return [];
+        }),
+        api.unreadCount().catch((error) => {
+          // A notification/session issue must not block public catalog data.
+          console.warn("Unread count unavailable:", error);
+          return null;
+        }),
       ]);
       setBanners(b || []);
       setCats(c || []);

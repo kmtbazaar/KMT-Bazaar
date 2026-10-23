@@ -83,14 +83,42 @@ export default function Categories() {
   };
 
   useEffect(() => {
-    (async () => {
+    let cancelled = false;
+    const requestedId = Array.isArray(categoryId) ? categoryId[0] : categoryId;
+
+    const loadCategories = async () => {
       try {
-        const c = await api.categories();
-        setCats(c);
-        if (c.length) setActive(c[0].id);
-      } catch {}
-    })();
-  }, []);
+        const result = await api.categories();
+        if (cancelled) return;
+
+        const availableCategories = Array.isArray(result) ? result : [];
+        setCats(availableCategories);
+
+        const requestedCategory = requestedId
+          ? availableCategories.find(
+              (category) => String(category.id) === String(requestedId)
+            )
+          : null;
+
+        if (requestedCategory) {
+          setActive(String(requestedCategory.id));
+        } else if (availableCategories.length) {
+          setActive(String(availableCategories[0].id));
+        } else if (requestedId) {
+          // The page was opened from Home; still try fetching that category's products.
+          setActive(String(requestedId));
+        }
+      } catch (error) {
+        console.warn("Category list unavailable; loading selected category by ID:", error);
+        if (!cancelled && requestedId) setActive(String(requestedId));
+      }
+    };
+
+    void loadCategories();
+    return () => {
+      cancelled = true;
+    };
+  }, [categoryId]);
 
   useEffect(() => {
     if (!active) return;
@@ -110,17 +138,6 @@ export default function Categories() {
       cancelled = true;
     };
   }, [active]);
-
-  useEffect(() => {
-    const requestedId = Array.isArray(categoryId) ? categoryId[0] : categoryId;
-    if (!requestedId || !cats.length) return;
-    const selectedCategory = cats.find((category) => String(category.id) === String(requestedId));
-    if (selectedCategory) {
-      setActive((current) =>
-        String(current) === String(selectedCategory.id) ? current : String(selectedCategory.id)
-      );
-    }
-  }, [categoryId, cats]);
 
   const activeCat = cats.find((c) => String(c.id) === String(active));
   const bottomPad = itemCount > 0 ? 140 : 24;
@@ -193,6 +210,7 @@ export default function Categories() {
             </View>
           ) : (
             <FlatList
+              style={{ flex: 1, minWidth: 0 }}
               data={products}
               keyExtractor={(i) => i.id}
               numColumns={2}

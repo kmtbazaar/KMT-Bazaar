@@ -17,9 +17,15 @@ assert.match(
   /pathname:\s*"\/(?:\(tabs\))\/categories",\s*params:\s*\{\s*categoryId:\s*String\(c\.id\)\s*\}/,
   "Home category tiles must open the split category browser with the chosen category."
 );
+assert.match(home, /api\.categories\(\)\.catch/);
+assert.match(home, /api\.stores\(\)\.catch/);
+assert.match(home, /api\.products\(\{ trending: true \}\)\.catch/);
+assert.match(home, /api\.unreadCount\(\)\.catch/, "Unread count failure must not block catalog rendering.");
 assert.match(categories, /useLocalSearchParams/);
 assert.match(categories, /const \{ categoryId \} = useLocalSearchParams/);
-assert.match(categories, /selectedCategory/);
+assert.match(categories, /requestedCategory/);
+assert.match(categories, /if \(requestedId\) setActive\(String\(requestedId\)\)/);
+assert.match(categories, /style=\{\{ flex: 1, minWidth: 0 \}\}/);
 assert.match(categories, /productCell:\s*\{\s*width:\s*"50%"/);
 assert.match(categories, /<View style=\{s\.productCell\}>\s*<ProductCard p=\{item\} compact \/>/);
 
@@ -30,6 +36,8 @@ assert.match(search, /<View style=\{s\.productCell\}>\s*<ProductCard p=\{item\} 
 assert.match(store, /gridCell:\s*\{\s*width:\s*"50%"/);
 assert.match(store, /flexGrow:\s*0/);
 assert.match(store, /flexShrink:\s*0/);
+assert.match(store, /api\.products\(\{ store_id: id \}\)\.catch/);
+assert.doesNotMatch(store, /removeClippedSubviews=\{true\}/);
 
 assert.match(
   productCard,

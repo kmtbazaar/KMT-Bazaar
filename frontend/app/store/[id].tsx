@@ -72,9 +72,18 @@ export default function StoreProducts() {
 
       try {
         const [storeList, categoryList, productList] = await Promise.all([
-          api.stores(),
-          api.categories(),
-          api.products({ store_id: id }),
+          api.stores().catch((error) => {
+            console.warn("Store list unavailable; continuing to load store products:", error);
+            return [];
+          }),
+          api.categories().catch((error) => {
+            console.warn("Global categories unavailable; continuing to load store products:", error);
+            return [];
+          }),
+          api.products({ store_id: id }).catch((error) => {
+            console.error("Store products request failed:", error);
+            return [];
+          }),
         ]);
 
         const selectedStore = (storeList || []).find(
@@ -88,7 +97,10 @@ export default function StoreProducts() {
           : [];
 
         const configuredItemCategories = selectedStore
-          ? await api.itemCategories(undefined, id)
+          ? await api.itemCategories(undefined, id).catch((error) => {
+              console.warn("Store item categories unavailable; deriving categories from products:", error);
+              return [];
+            })
           : [];
 
         if (!mounted) return;
@@ -255,7 +267,6 @@ export default function StoreProducts() {
           columnWrapperStyle={s.column}
           initialNumToRender={6}
           windowSize={4}
-          removeClippedSubviews={true}
           ListHeaderComponent={
             <View style={s.productsHeading}>
               <Text style={s.productsTitle}>
