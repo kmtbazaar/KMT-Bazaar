@@ -337,7 +337,7 @@ function NightSky() {
           foliageLight = mix(foliageLight, vec3(0.34, 0.15, 0.10), twilight * 0.42);
 
           sky = mix(sky, treeBark, max(leftTreeTrunk, rightTreeTrunk) * 0.98);
-          sky = mix(sky, foliageBase, max(leftTree, rightTree) * 0.99);
+          sky = mix(sky, foliageBase, max(leftTreeCrown, rightTreeCrown) * 0.99);
 
           float leafGlints = max(
             max(
