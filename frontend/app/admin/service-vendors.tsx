@@ -41,7 +41,15 @@ export default function AdminServiceVendors() {
     setModal(true);
   };
   const save=async()=>{
-    try{await adminApi.updateServiceVendor(selected.id,form);setModal(false);await load();window.alert?.("Vendor profile saved");}catch(e:any){Platform.OS==="web"?window.alert(e?.message||"Update failed"):Alert.alert("Update failed",e?.message||"Update failed")}
+    try{
+      const payload={...form,email:String(form.email||"").trim()||null};
+      await adminApi.updateServiceVendor(selected.id,payload);
+      setModal(false);
+      await load();
+      window.alert?.(selected.service_type==="car_rental"?"Vendor profile and banner saved":"Vendor profile saved");
+    }catch(e:any){
+      Platform.OS==="web"?window.alert(e?.message||"Update failed"):Alert.alert("Update failed",e?.message||"Update failed");
+    }
   };
 
   const vendorServices=selected?services.filter((x:any)=>x.vendor_id===selected.id || x.service_type===selected.service_type && x.vendor_id===selected.id):[];

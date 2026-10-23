@@ -817,18 +817,36 @@ export default function Home() {
     router.push("/addresses" as any);
   }, [router]);
 
-  // Marketplace content loads only after a delivery location is ready.
+  // Public catalog data can load before a delivery location is selected.
   const load = useCallback(async () => {
-    if (!locationReady) return;
 
     try {
       const [b, c, s, vs, t, u] = await Promise.all([
-        api.banners(),
-        api.categories(),
-        api.stores(),
-        api.vendorServices(),
-        api.products({ trending: true }),
-        api.unreadCount(),
+        api.banners().catch((error) => {
+          console.warn("Home banners unavailable:", error);
+          return [];
+        }),
+        api.categories().catch((error) => {
+          console.warn("Shop by Category unavailable:", error);
+          return [];
+        }),
+        api.stores().catch((error) => {
+          console.warn("Nearby Stores unavailable:", error);
+          return [];
+        }),
+        api.vendorServices().catch((error) => {
+          console.warn("Vendor services unavailable:", error);
+          return [];
+        }),
+        api.products({ trending: true }).catch((error) => {
+          console.warn("Trending products unavailable:", error);
+          return [];
+        }),
+        api.unreadCount().catch((error) => {
+          // A notification/session issue must not block public catalog data.
+          console.warn("Unread count unavailable:", error);
+          return null;
+        }),
       ]);
       setBanners(b || []);
       setCats(c || []);
@@ -839,11 +857,11 @@ export default function Home() {
     } catch (e) {
       console.log("load err", e);
     }
-  }, [locationReady]);
+  }, []);
 
   useEffect(() => {
-    if (locationReady) load();
-  }, [locationReady, load]);
+    void load();
+  }, [load]);
 
   // Animated Search Bar Placeholder Index
   const [placeholderIdx, setPlaceholderIdx] = useState(0);
@@ -1090,40 +1108,7 @@ export default function Home() {
       </SafeAreaView>
 
 
-      {!locationReady ? (
-        <View style={s.locationGate}>
-          <View style={s.locationGateCard}>
-            <View style={s.locationGateIcon}>
-              <MaterialCommunityIcons name="map-marker-radius" size={34} color={THEME.orange} />
-            </View>
-            <Text style={s.locationGateTitle}>Set your delivery location</Text>
-            <Text style={s.locationGateText}>
-              Choose your delivery point on the map. You can use live GPS to find yourself automatically, or move the map pin to your home.
-            </Text>
-            <Pressable
-              onPress={captureInitialLocation}
-              disabled={initialLocationLoading}
-              style={[s.locationGateButton, initialLocationLoading && { opacity: 0.7 }]}
-            >
-              {initialLocationLoading ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
-                <MaterialCommunityIcons name="map-marker-radius" size={19} color="#fff" />
-              )}
-              <Text style={s.locationGateButtonText}>
-                {initialLocationLoading ? "DETECTING LOCATION..." : "CHOOSE LOCATION ON MAP"}
-              </Text>
-            </Pressable>
-            {!!initialLocationError && (
-              <Text style={s.locationGateError}>{initialLocationError}</Text>
-            )}
-            <Text style={s.locationGatePrivacy}>
-              Your exact delivery GPS is used for delivery and is not shown to other customers.
-            </Text>
-          </View>
-        </View>
-      ) : (
-        <ScrollView
+      <ScrollView
           contentContainerStyle={{ paddingBottom: 120, flexGrow: 1 }}
           refreshControl={
             Platform.OS === 'web' ? undefined : (
@@ -1136,6 +1121,40 @@ export default function Home() {
           scrollEventThrottle={16}
           style={Platform.OS === 'web' ? ({ flex: 1, minHeight: 0, overflowY: 'auto', touchAction: 'pan-y' } as any) : { flex: 1 }}
         >
+          {!locationReady && (
+            <View style={{ paddingHorizontal: SPACING.lg, paddingTop: SPACING.md }}>
+              <View style={[s.locationGateCard, { width: "100%", maxWidth: 600, padding: SPACING.md, alignSelf: "center" }]}>
+                <View style={[s.locationGateIcon, { width: 54, height: 54, borderRadius: 27, marginBottom: 8 }]}>
+                  <MaterialCommunityIcons name="map-marker-radius" size={26} color={THEME.orange} />
+                </View>
+                <Text style={[s.locationGateTitle, { fontSize: 18 }]}>Set your delivery location</Text>
+                <Text style={[s.locationGateText, { fontSize: 12, lineHeight: 18 }]}>
+                  Browse products and stores now. Choose a delivery location to continue with the delivery flow.
+                </Text>
+                <Pressable
+                  onPress={captureInitialLocation}
+                  disabled={initialLocationLoading}
+                  style={[s.locationGateButton, { marginTop: 12, paddingVertical: 11 }, initialLocationLoading && { opacity: 0.7 }]}
+                >
+                  {initialLocationLoading ? (
+                    <ActivityIndicator color="#fff" />
+                  ) : (
+                    <MaterialCommunityIcons name="map-marker-radius" size={19} color="#fff" />
+                  )}
+                  <Text style={s.locationGateButtonText}>
+                    {initialLocationLoading ? "DETECTING LOCATION..." : "CHOOSE LOCATION ON MAP"}
+                  </Text>
+                </Pressable>
+                {!!initialLocationError && (
+                  <Text style={s.locationGateError}>{initialLocationError}</Text>
+                )}
+                <Text style={s.locationGatePrivacy}>
+                  Your exact delivery GPS is used for delivery and is not shown to other customers.
+                </Text>
+              </View>
+            </View>
+          )}
+
 
         {/* Smooth banner carousel; dots are overlaid inside the banner bottom edge */}
         <View style={s.bannerCarouselShell}>
@@ -1345,7 +1364,6 @@ export default function Home() {
           </LinearGradient>
         </View>
       </ScrollView>
-      )}
 
       {/* Floating Checkout Bar */}
       <CheckoutBar />

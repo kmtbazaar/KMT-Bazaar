@@ -1,6 +1,6 @@
 import { LocalizedText as Text } from "@/src/LocalizedText";
 import React, { useEffect, useState, useRef } from "react";
-import { View, ScrollView, StyleSheet, Pressable, FlatList, ActivityIndicator, Animated } from "react-native";
+import { View, ScrollView, StyleSheet, Pressable, ActivityIndicator, Animated } from "react-native";
 import { Image } from "expo-image";
 import { useRouter, useNavigation, useLocalSearchParams } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -83,14 +83,59 @@ export default function Categories() {
   };
 
   useEffect(() => {
-    (async () => {
+    let cancelled = false;
+    const requestedId = Array.isArray(categoryId) ? categoryId[0] : categoryId;
+
+    const loadCategories = async () => {
       try {
-        const c = await api.categories();
-        setCats(c);
-        if (c.length) setActive(c[0].id);
-      } catch {}
-    })();
-  }, []);
+        const result = await api.categories();
+        if (cancelled) return;
+
+        const availableCategories = Array.isArray(result) ? result : [];
+        setCats(availableCategories);
+
+        const requestedCategory = requestedId
+          ? availableCategories.find(
+              (category) => String(category.id) === String(requestedId)
+            )
+          : null;
+
+        if (requestedCategory) {
+          setActive(String(requestedCategory.id));
+        } else if (availableCategories.length) {
+          let availableProductCategories = new Set<string>();
+          if (!requestedId) {
+            try {
+              const allProducts = await api.products();
+              if (cancelled) return;
+              availableProductCategories = new Set(
+                (Array.isArray(allProducts) ? allProducts : [])
+                  .map((product: any) => String(product.category_id || ""))
+                  .filter(Boolean)
+              );
+            } catch (error) {
+              console.warn("Catalog products unavailable while selecting a default category:", error);
+            }
+          }
+          const firstCategoryWithProducts = availableCategories.find(
+            (category) => availableProductCategories.has(String(category.id))
+          );
+          setActive(String((firstCategoryWithProducts || availableCategories[0]).id));
+        } else if (requestedId) {
+          // The page was opened from Home; still try fetching that category's products.
+          setActive(String(requestedId));
+        }
+      } catch (error) {
+        console.warn("Category list unavailable; loading selected category by ID:", error);
+        if (!cancelled && requestedId) setActive(String(requestedId));
+      }
+    };
+
+    void loadCategories();
+    return () => {
+      cancelled = true;
+    };
+  }, [categoryId]);
 
   useEffect(() => {
     if (!active) return;
@@ -110,17 +155,6 @@ export default function Categories() {
       cancelled = true;
     };
   }, [active]);
-
-  useEffect(() => {
-    const requestedId = Array.isArray(categoryId) ? categoryId[0] : categoryId;
-    if (!requestedId || !cats.length) return;
-    const selectedCategory = cats.find((category) => String(category.id) === String(requestedId));
-    if (selectedCategory) {
-      setActive((current) =>
-        String(current) === String(selectedCategory.id) ? current : String(selectedCategory.id)
-      );
-    }
-  }, [categoryId, cats]);
 
   const activeCat = cats.find((c) => String(c.id) === String(active));
   const bottomPad = itemCount > 0 ? 140 : 24;
@@ -192,26 +226,28 @@ export default function Categories() {
               <ActivityIndicator color={COLORS.brand} />
             </View>
           ) : (
-            <FlatList
-              data={products}
-              keyExtractor={(i) => i.id}
-              numColumns={2}
-              contentContainerStyle={{ paddingHorizontal: 4, paddingBottom: bottomPad }}
-              renderItem={({ item }) => (
-                <View style={s.productCell}>
-                  <ProductCard p={item} compact />
+            <ScrollView
+              style={{ flex: 1, minWidth: 0 }}
+              contentContainerStyle={{ paddingHorizontal: 4, paddingBottom: bottomPad, flexGrow: 1 }}
+              showsVerticalScrollIndicator={false}
+              onScroll={handleScroll}
+              scrollEventThrottle={16}
+            >
+              {products.length > 0 ? (
+                <View style={s.productGrid}>
+                  {products.map((item) => (
+                    <View key={String(item.id)} style={s.productCell}>
+                      <ProductCard p={item} compact />
+                    </View>
+                  ))}
                 </View>
-              )}
-              ListEmptyComponent={
+              ) : (
                 <View style={s.emptyWrap}>
                   <MaterialCommunityIcons name="package-variant" size={48} color={COLORS.textMuted} />
                   <Text style={s.empty}>No products in this category</Text>
                 </View>
-              }
-              showsVerticalScrollIndicator={false}
-              onScroll={handleScroll}
-              scrollEventThrottle={16}
-            />
+              )}
+            </ScrollView>
           )}
         </View>
       </View>
@@ -292,8 +328,15 @@ const s = StyleSheet.create({
     lineHeight: 13,
     paddingHorizontal: 2,
   },
+  productGrid: {
+    width: "100%",
+    flexDirection: "row",
+    flexWrap: "wrap",
+    alignItems: "stretch",
+  },
   productCell: {
     width: "50%",
+    minWidth: 0,
     paddingHorizontal: 4,
     paddingBottom: 8,
     flexGrow: 0,
