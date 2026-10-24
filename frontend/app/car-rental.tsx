@@ -25,14 +25,14 @@ import { api } from "@/src/api";
 
 const { width } = Dimensions.get("window");
 
-const RED = "#18d6ff";
-const RED_DARK = "#0da9cc";
-const BLACK = "#06101b";
-const BLACK_2 = "#0b1a2a";
-const WHITE = "#f7fbff";
-const MUTED = "#9fb5c7";
-const LINE = "#19344a";
-const AMBER = "#ffb547";
+const RED = "#ef233c";
+const RED_DARK = "#c91832";
+const BLACK = "#08090b";
+const BLACK_2 = "#111318";
+const WHITE = "#ffffff";
+const MUTED = "#a6abb4";
+const LINE = "#242833";
+const AMBER = "#ef233c";
 
 const MOCK_FLEET = [
   {
@@ -429,7 +429,7 @@ export default function CarRentalPage() {
   return (
     <SafeAreaView style={styles.root}>
       <ScrollView style={styles.scrollSurface} contentContainerStyle={styles.page} showsVerticalScrollIndicator={false}>
-        <LinearGradient colors={["#04101e", "#08344a", "#06202f"]} style={styles.hero}>
+        <LinearGradient colors={["#050608", "#17090d", "#08090b"]} style={styles.hero}>
           <View style={styles.glow} />
           <View style={styles.heroTop}>
             <View style={styles.badge}>
@@ -452,7 +452,7 @@ export default function CarRentalPage() {
               onError={() => setBannerImageBroken(true)}
             />
             <LinearGradient
-              colors={["rgba(2, 10, 20, 0.02)", "rgba(2, 10, 20, 0.78)"]}
+              colors={["rgba(0, 0, 0, 0.05)", "rgba(0, 0, 0, 0.84)"]}
               style={styles.heroBannerShade}
             />
             <View style={styles.heroBannerText}>
@@ -685,26 +685,26 @@ const styles = StyleSheet.create({
   scrollSurface: { flex: 1, backgroundColor: BLACK },
   page: { paddingBottom: 0 },
   hero: { paddingHorizontal: 18, paddingTop: 20, paddingBottom: 22, overflow: "hidden", borderBottomLeftRadius: 30, borderBottomRightRadius: 30 },
-  glow: { position: "absolute", width: 260, height: 260, borderRadius: 130, backgroundColor: "rgba(24,214,255,.16)", right: -80, top: 35 },
-  heroBanner: { width: "100%", maxWidth: 980, height: 190, alignSelf: "center", marginTop: 16, borderRadius: 22, overflow: "hidden", position: "relative", backgroundColor: "#102033", borderWidth: 1, borderColor: "rgba(255,255,255,.16)" },
+  glow: { position: "absolute", width: 260, height: 260, borderRadius: 130, backgroundColor: "rgba(239,35,60,.16)", right: -80, top: 35 },
+  heroBanner: { width: "100%", maxWidth: 980, height: 190, alignSelf: "center", marginTop: 16, borderRadius: 22, overflow: "hidden", position: "relative", backgroundColor: "#111318", borderWidth: 1, borderColor: "rgba(255,255,255,.16)" },
   heroBannerImage: { ...StyleSheet.absoluteFillObject, width: "100%", height: "100%" },
   heroBannerShade: { ...StyleSheet.absoluteFillObject },
   heroBannerText: { position: "absolute", left: 17, right: 76, bottom: 17 },
-  bannerKicker: { color: "#A5F3FC", fontSize: 10, fontWeight: "900", letterSpacing: 1.5 },
+  bannerKicker: { color: "#ffd7dc", fontSize: 10, fontWeight: "900", letterSpacing: 1.5 },
   bannerTitle: { color: WHITE, fontSize: 24, lineHeight: 29, fontWeight: "900", marginTop: 5, textShadowColor: "rgba(0,0,0,.55)", textShadowRadius: 8 },
   bannerSubtitle: { color: "rgba(255,255,255,.90)", fontSize: 11, fontWeight: "700", marginTop: 5 },
-  bannerPosition: { position: "absolute", right: 12, bottom: 12, paddingHorizontal: 9, paddingVertical: 6, borderRadius: 999, backgroundColor: "rgba(4,16,30,.78)", borderWidth: 1, borderColor: "rgba(255,255,255,.20)" },
+  bannerPosition: { position: "absolute", right: 12, bottom: 12, paddingHorizontal: 9, paddingVertical: 6, borderRadius: 999, backgroundColor: "rgba(8,9,11,.82)", borderWidth: 1, borderColor: "rgba(255,255,255,.20)" },
   bannerPositionText: { color: WHITE, fontSize: 10, fontWeight: "900" },
   heroTop: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", zIndex: 4 },
   badge: { flexDirection: "row", gap: 7, alignItems: "center", paddingHorizontal: 11, paddingVertical: 8, backgroundColor: "rgba(255,255,255,.06)", borderWidth: 1, borderColor: "rgba(255,255,255,.09)", borderRadius: 999 },
   badgeText: { color: "#e8e9ec", fontSize: 10, fontWeight: "900", letterSpacing: 1.2 },
-  livePill: { flexDirection: "row", gap: 6, alignItems: "center", paddingHorizontal: 10, paddingVertical: 8, borderRadius: 999, backgroundColor: "rgba(24,214,255,.12)", borderWidth: 1, borderColor: "rgba(24,214,255,.34)" },
+  livePill: { flexDirection: "row", gap: 6, alignItems: "center", paddingHorizontal: 10, paddingVertical: 8, borderRadius: 999, backgroundColor: "rgba(239,35,60,.12)", borderWidth: 1, borderColor: "rgba(239,35,60,.34)" },
   liveDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: RED },
-  liveText: { color: "#d8f9ff", fontSize: 10, fontWeight: "900" },
+  liveText: { color: "#ffd7dc", fontSize: 10, fontWeight: "900" },
   searchBox: { marginTop: 14, width: "100%", maxWidth: 840, alignSelf: "center", backgroundColor: WHITE, borderWidth: 1, borderColor: "rgba(255,255,255,.25)", borderRadius: 17, padding: 7, flexDirection: "row", alignItems: "center", shadowColor: RED, shadowOpacity: .22, shadowRadius: 28 },
   searchInput: { flex: 1, paddingHorizontal: 10, paddingVertical: 13, fontSize: 15, color: BLACK },
   searchBtn: { width: 48, height: 48, borderRadius: 13, backgroundColor: RED, alignItems: "center", justifyContent: "center" },
-  sectionTitle: { color: "#22C55E", fontSize: 22, fontWeight: "900", marginBottom: 4 },
+  sectionTitle: { color: "#ef233c", fontSize: 22, fontWeight: "900", marginBottom: 4 },
   sectionSub: { color: MUTED, fontSize: 12, lineHeight: 18 },
   filterRow: { paddingHorizontal: 18, gap: 9, paddingBottom: 4 },
   filterChip: { flexDirection: "row", gap: 7, alignItems: "center", paddingVertical: 11, paddingHorizontal: 14, borderRadius: 999, borderWidth: 1, borderColor: LINE, backgroundColor: BLACK_2 },
@@ -712,13 +712,13 @@ const styles = StyleSheet.create({
   filterText: { color: MUTED, fontWeight: "800", fontSize: 12 },
   filterTextActive: { color: WHITE },
   locationRow: { paddingHorizontal: 18, paddingTop: 10, gap: 7 },
-  locationChip: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 999, borderWidth: 1, borderColor: "#30343d", backgroundColor: "#0f1115" },
+  locationChip: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 999, borderWidth: 1, borderColor: "#30343d", backgroundColor: "#111318" },
   locationActive: { borderColor: RED, backgroundColor: "#2a0b10" },
-  locationText: { color: "#9ba0a9", fontSize: 11, fontWeight: "800" },
+  locationText: { color: "#a6abb4", fontSize: 11, fontWeight: "800" },
   locationTextActive: { color: "#ffdce0" },
   sectionHeader: { maxWidth: 980, width: "calc(100% - 36px)" as any, alignSelf: "center", marginTop: 12, marginBottom: 12, flexDirection: "row", alignItems: "flex-end", justifyContent: "space-between" },
-  countPill: { borderRadius: 999, paddingHorizontal: 12, paddingVertical: 6, backgroundColor: "#102337", borderWidth: 1, borderColor: LINE },
-  countText: { color: "#e8f6fb", fontSize: 11, fontWeight: "900" },
+  countPill: { borderRadius: 999, paddingHorizontal: 12, paddingVertical: 6, backgroundColor: "#111318", borderWidth: 1, borderColor: LINE },
+  countText: { color: "#ffffff", fontSize: 11, fontWeight: "900" },
   loader: { alignItems: "center", paddingVertical: 80 },
   loaderText: { color: MUTED, marginTop: 10 },
   empty: { alignItems: "center", paddingVertical: 75, paddingHorizontal: 25 },
@@ -728,29 +728,29 @@ const styles = StyleSheet.create({
   primaryBtnText: { color: WHITE, fontWeight: "900" },
   grid: { width: "100%", maxWidth: 1010, alignSelf: "center", paddingHorizontal: 12, flexDirection: "row", flexWrap: "wrap", justifyContent: "center" },
   card: { width: Platform.OS === "web" && width > 1000 ? 314 : "100%", margin: 6, borderRadius: 21, overflow: "hidden", backgroundColor: BLACK_2, borderWidth: 1, borderColor: LINE },
-  imageWrap: { height: 204, backgroundColor: "#102033", overflow: "hidden" },
+  imageWrap: { height: 204, backgroundColor: "#111318", overflow: "hidden" },
   cardImage: { width: "100%", height: "100%" },
   imageShade: { ...StyleSheet.absoluteFillObject, justifyContent: "flex-end" },
-  tag: { position: "absolute", top: 10, left: 10, paddingHorizontal: 10, paddingVertical: 7, borderRadius: 999, backgroundColor: "rgba(4,16,30,.78)", borderWidth: 1, borderColor: "rgba(255,255,255,.12)" },
+  tag: { position: "absolute", top: 10, left: 10, paddingHorizontal: 10, paddingVertical: 7, borderRadius: 999, backgroundColor: "rgba(8,9,11,.82)", borderWidth: 1, borderColor: "rgba(255,255,255,.12)" },
   tagText: { color: WHITE, fontSize: 10, fontWeight: "900" },
   pricePill: { position: "absolute", right: 10, bottom: 10, flexDirection: "row", gap: 3, alignItems: "baseline", paddingHorizontal: 10, paddingVertical: 7, borderRadius: 10, backgroundColor: AMBER },
   price: { color: "#06101b", fontSize: 15, fontWeight: "900" },
-  priceMeta: { color: "#173449", fontSize: 10, fontWeight: "800" },
+  priceMeta: { color: "#08090b", fontSize: 10, fontWeight: "800" },
   cardBody: { padding: 15 },
   cardGlow: { position: "absolute", left: 0, right: 0, bottom: 0, height: 2, backgroundColor: RED, opacity: .9 },
   titleLine: { flexDirection: "row", alignItems: "center", gap: 8 },
   cardTitle: { flex: 1, color: WHITE, fontSize: 17, fontWeight: "900" },
   rating: { flexDirection: "row", alignItems: "center", gap: 3 },
-  ratingText: { color: "#d8eaf2", fontSize: 11, fontWeight: "900" },
+  ratingText: { color: "#a6abb4", fontSize: 11, fontWeight: "900" },
   cardLocation: { color: MUTED, fontSize: 11, marginTop: 7 },
   specRow: { flexDirection: "row", flexWrap: "wrap", gap: 7, marginTop: 12 },
-  spec: { flexDirection: "row", alignItems: "center", gap: 5, paddingHorizontal: 8, paddingVertical: 6, borderRadius: 8, backgroundColor: "#102033" },
-  specText: { color: "#b5cad7", fontSize: 10, fontWeight: "800" },
+  spec: { flexDirection: "row", alignItems: "center", gap: 5, paddingHorizontal: 8, paddingVertical: 6, borderRadius: 8, backgroundColor: "#111318" },
+  specText: { color: "#a6abb4", fontSize: 10, fontWeight: "800" },
   bookBtn: { marginTop: 13, padding: 12, borderRadius: 12, backgroundColor: RED, flexDirection: "row", justifyContent: "center", alignItems: "center", gap: 8 },
   bookBtnText: { color: WHITE, fontSize: 13, fontWeight: "900" },
   workflow: { maxWidth: 980, width: "calc(100% - 36px)" as any, alignSelf: "center", marginTop: 44, padding: 20, borderRadius: 24, backgroundColor: "#0e1014", borderWidth: 1, borderColor: LINE },
   workflowRow: { flexDirection: "row", flexWrap: "wrap", gap: 11, marginTop: 14 },
-  workflowItem: { flex: 1, minWidth: 210, padding: 15, borderRadius: 16, backgroundColor: "#13161b", borderWidth: 1, borderColor: "#1a3449" },
+  workflowItem: { flex: 1, minWidth: 210, padding: 15, borderRadius: 16, backgroundColor: "#13161b", borderWidth: 1, borderColor: "#242833" },
   workflowNum: { width: 31, height: 31, borderRadius: 16, backgroundColor: "#2a0b10", borderWidth: 1, borderColor: "rgba(239,35,60,.35)", alignItems: "center", justifyContent: "center" },
   workflowNumText: { color: RED, fontWeight: "900" },
   workflowTitle: { color: WHITE, fontSize: 14, fontWeight: "900", marginTop: 11 },
@@ -760,10 +760,10 @@ const styles = StyleSheet.create({
   trustTitle: { color: BLACK, fontWeight: "900", marginTop: 8 },
   trustText: { color: "#666b74", fontSize: 11, lineHeight: 17, marginTop: 3 },
   modalBackdrop: { flex: 1, backgroundColor: "rgba(2,10,20,.88)", justifyContent: "center", padding: 14 },
-  modalCard: { width: "100%", maxWidth: 780, maxHeight: "92%", alignSelf: "center", backgroundColor: "#091724", borderRadius: 24, overflow: "hidden", borderWidth: 1, borderColor: "#21415a" },
+  modalCard: { width: "100%", maxWidth: 780, maxHeight: "92%", alignSelf: "center", backgroundColor: "#111318", borderRadius: 24, overflow: "hidden", borderWidth: 1, borderColor: "#21415a" },
   modalHero: { height: 250, backgroundColor: "#171920" },
   modalImage: { width: "100%", height: "100%" },
-  closeBtn: { position: "absolute", top: 12, right: 12, width: 38, height: 38, borderRadius: 19, backgroundColor: "rgba(4,16,30,.82)", alignItems: "center", justifyContent: "center" },
+  closeBtn: { position: "absolute", top: 12, right: 12, width: 38, height: 38, borderRadius: 19, backgroundColor: "rgba(8,9,11,.86)", alignItems: "center", justifyContent: "center" },
   modalPhotoCount: { position: "absolute", left: 12, bottom: 12, borderRadius: 999, paddingHorizontal: 9, paddingVertical: 6, backgroundColor: "rgba(0,0,0,.62)" },
   modalPhotoText: { color: WHITE, fontSize: 11, fontWeight: "900" },
   modalScroll: { padding: 16 },
@@ -772,16 +772,16 @@ const styles = StyleSheet.create({
   thumbActive: { opacity: 1, borderWidth: 2, borderColor: RED },
   modalKicker: { color: RED, fontSize: 10, fontWeight: "900", letterSpacing: 1.6, marginTop: 3 },
   modalTitle: { color: WHITE, fontSize: 23, fontWeight: "900", marginTop: 5 },
-  modalDesc: { color: "#b7cbd8", lineHeight: 19, marginTop: 7 },
+  modalDesc: { color: "#a6abb4", lineHeight: 19, marginTop: 7 },
   modalSpecGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 14 },
-  specBox: { width: "48%", backgroundColor: "#0e1d2d", borderRadius: 14, padding: 12, borderWidth: 1, borderColor: "#262a33" },
-  specBoxLabel: { color: "#7d98ab", fontSize: 10, marginTop: 6 },
+  specBox: { width: "48%", backgroundColor: "#111318", borderRadius: 14, padding: 12, borderWidth: 1, borderColor: "#262a33" },
+  specBoxLabel: { color: "#a6abb4", fontSize: 10, marginTop: 6 },
   specBoxValue: { color: WHITE, fontWeight: "900", marginTop: 2 },
   includeBox: { marginTop: 13, padding: 14, borderRadius: 15, backgroundColor: "#14171c", borderWidth: 1, borderColor: "#262a33" },
   includeTitle: { color: WHITE, fontWeight: "900" },
   includeRow: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 9 },
-  includePill: { flexDirection: "row", alignItems: "center", gap: 5, paddingHorizontal: 9, paddingVertical: 7, backgroundColor: "#091725", borderRadius: 999 },
-  includeText: { color: "#c4d6df", fontSize: 10, fontWeight: "800" },
+  includePill: { flexDirection: "row", alignItems: "center", gap: 5, paddingHorizontal: 9, paddingVertical: 7, backgroundColor: "#111318", borderRadius: 999 },
+  includeText: { color: "#a6abb4", fontSize: 10, fontWeight: "800" },
   modalBottom: { marginTop: 16, paddingTop: 13, borderTopWidth: 1, borderTopColor: "#242833", flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 12 },
   fromText: { color: "#7f858f", fontSize: 10 },
   modalPrice: { color: WHITE, fontSize: 22, fontWeight: "900", marginTop: 2 },
@@ -790,24 +790,24 @@ const styles = StyleSheet.create({
   modalBookText: { color: WHITE, fontWeight: "900" },
   bookingWrap: { minHeight: 520 },
   bookingHeader: { padding: 16, flexDirection: "row", justifyContent: "space-between", alignItems: "center", borderBottomWidth: 1, borderBottomColor: "#242833" },
-  darkClose: { width: 38, height: 38, borderRadius: 19, backgroundColor: "#1a1d23", alignItems: "center", justifyContent: "center" },
+  darkClose: { width: 38, height: 38, borderRadius: 19, backgroundColor: "#242833", alignItems: "center", justifyContent: "center" },
   formScroll: { padding: 16, paddingBottom: 24 },
   summaryBanner: { flexDirection: "row", gap: 11, padding: 11, borderRadius: 15, backgroundColor: "#14171c", borderWidth: 1, borderColor: "#262a33", marginBottom: 15 },
   summaryImage: { width: 84, height: 64, borderRadius: 10 },
   summaryTitle: { color: WHITE, fontWeight: "900", fontSize: 15 },
   summaryMeta: { color: MUTED, fontSize: 11, marginTop: 4 },
-  summaryPrice: { color: "#dff9ff", fontWeight: "900", fontSize: 13, marginTop: 6 },
-  formLabel: { color: "#9bb3c4", fontSize: 10, fontWeight: "900", letterSpacing: 1.1, marginBottom: 7, marginTop: 8 },
+  summaryPrice: { color: "#ffd7dc", fontWeight: "900", fontSize: 13, marginTop: 6 },
+  formLabel: { color: "#a6abb4", fontSize: 10, fontWeight: "900", letterSpacing: 1.1, marginBottom: 7, marginTop: 8 },
   formInput: { backgroundColor: "#14171c", borderWidth: 1, borderColor: "#21415a", borderRadius: 12, paddingHorizontal: 13, paddingVertical: 12, color: WHITE, fontSize: 14 },
   noteInput: { minHeight: 80, textAlignVertical: "top" as any },
   counterRow: { flexDirection: "row", gap: 9, marginTop: 7 },
   counterBox: { flex: 1 },
   counter: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", backgroundColor: "#14171c", borderRadius: 12, borderWidth: 1, borderColor: "#2a2f39", padding: 6 },
-  counterBtn: { width: 34, height: 34, borderRadius: 10, backgroundColor: "#183047", alignItems: "center", justifyContent: "center" },
+  counterBtn: { width: 34, height: 34, borderRadius: 10, backgroundColor: "#282d36", alignItems: "center", justifyContent: "center" },
   counterBtnText: { color: WHITE, fontSize: 20, lineHeight: 22 },
   counterValue: { color: WHITE, fontSize: 16, fontWeight: "900" },
-  totalBox: { marginTop: 17, padding: 14, borderRadius: 14, backgroundColor: "#08263a", borderWidth: 1, borderColor: "rgba(24,214,255,.32)", flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
-  totalSmall: { color: "#b9f3ff", fontSize: 11, fontWeight: "800" },
+  totalBox: { marginTop: 17, padding: 14, borderRadius: 14, backgroundColor: "#28090e", borderWidth: 1, borderColor: "rgba(239,35,60,.35)", flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
+  totalSmall: { color: "#ffb9c1", fontSize: 11, fontWeight: "800" },
   totalLabel: { color: WHITE, fontWeight: "900", marginTop: 4 },
   totalValue: { color: WHITE, fontSize: 20, fontWeight: "900" },
   confirmBtn: { marginTop: 11, borderRadius: 14, backgroundColor: RED, padding: 15, flexDirection: "row", justifyContent: "center", alignItems: "center", gap: 8 },
