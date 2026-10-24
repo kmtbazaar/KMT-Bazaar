@@ -734,7 +734,7 @@ const styles = StyleSheet.create({
   tag: { position: "absolute", top: 10, left: 10, paddingHorizontal: 10, paddingVertical: 7, borderRadius: 999, backgroundColor: "rgba(8,9,11,.82)", borderWidth: 1, borderColor: "rgba(255,255,255,.12)" },
   tagText: { color: WHITE, fontSize: 10, fontWeight: "900" },
   pricePill: { position: "absolute", right: 10, bottom: 10, flexDirection: "row", gap: 3, alignItems: "baseline", paddingHorizontal: 10, paddingVertical: 7, borderRadius: 10, backgroundColor: AMBER },
-  price: { color: "#06101b", fontSize: 15, fontWeight: "900" },
+  price: { color: "#08090b", fontSize: 15, fontWeight: "900" },
   priceMeta: { color: "#08090b", fontSize: 10, fontWeight: "800" },
   cardBody: { padding: 15 },
   cardGlow: { position: "absolute", left: 0, right: 0, bottom: 0, height: 2, backgroundColor: RED, opacity: .9 },
