@@ -13,7 +13,7 @@ import ImageUploader from "@/src/components/ImageUploader";
 const EMPTY = {
   name: "", vendor_name: "", description: "", image: "", gallery: [],
   location: "", category: "", type: "", phone: "", order: "99", active: true,
-  price: "", adult_price: "", child_price: "", unit: "day", duration: "", nights: "4", days: "5", seats: "", bags: "",
+  price: "", hourly_price: "", adult_price: "", child_price: "", unit: "day", duration: "", nights: "4", days: "5", seats: "", bags: "",
   transmission: "Automatic", fuel: "Petrol", tag: "", includesText: ""
 };
 
@@ -44,6 +44,7 @@ export default function VendorServices() {
     gallery: Array.isArray(x?.gallery) ? x.gallery : [],
     order: String(x?.order ?? 99),
     price: String(x?.price ?? ""),
+    hourly_price: String(x?.hourly_price ?? ""),
     adult_price: String(x?.adult_price ?? x?.price ?? ""),
     child_price: String(x?.child_price ?? ((Number(x?.adult_price ?? x?.price) || 0) * 0.5 || "")),
     duration: String(x?.duration ?? ""),
@@ -89,6 +90,7 @@ export default function VendorServices() {
       order: Number(f.order) || 99,
       active: f.active !== false,
       price: Number(f.adult_price || f.price) || 0,
+      hourly_price: isCar ? (Number(f.hourly_price) || 0) : 0,
       adult_price: Number(f.adult_price || f.price) || 0,
       child_price: isCar ? 0 : (Number(f.child_price) || ((Number(f.adult_price || f.price) || 0) * 0.5)),
       unit: isCar ? "day" : "per person",
@@ -158,6 +160,11 @@ export default function VendorServices() {
                   {!!item.type && <Text style={s.meta} numberOfLines={1}>{item.type}{item.transmission ? " · " + item.transmission : ""}</Text>}
                   <Text style={s.meta}>{Number(item.seats || 0)} seats · {Number(item.bags || 0)} bags</Text>
                   <Text style={s.price}>₹{Number(item.price || 0).toLocaleString("en-IN")} / day</Text>
+                  <Text style={Number(item.hourly_price || 0) > 0 ? s.hourlyPrice : s.hourlyUnset}>
+                    {Number(item.hourly_price || 0) > 0
+                      ? `₹${Number(item.hourly_price).toLocaleString("en-IN")} / hour`
+                      : "Hourly rate not set"}
+                  </Text>
                 </>
               ) : (
                 <>
@@ -197,6 +204,8 @@ export default function VendorServices() {
                   <SelectRow label="Transmission" options={TRANSMISSIONS} value={f.transmission} onChange={(v:any)=>setF({...f,transmission:v})} />
                   <SelectRow label="Fuel" options={FUEL_TYPES} value={f.fuel} onChange={(v:any)=>setF({...f,fuel:v})} />
                   <Field label="Price / Day (₹)" value={f.price} onChange={(v:any)=>setF({...f,price:v})} placeholder="3200" keyboardType="numeric" />
+                  <Field label="Price / Hour (₹)" value={f.hourly_price} onChange={(v:any)=>setF({...f,hourly_price:v})} placeholder="300" keyboardType="numeric" />
+                  <Text style={m.priceHint}>Enter an hourly rate only when hourly rentals are offered.</Text>
                   <Field label="Tag" value={f.tag} onChange={(v:any)=>setF({...f,tag:v})} placeholder="Family favourite" />
                   <Field label="Description" value={f.description} onChange={(v:any)=>setF({...f,description:v})} placeholder="Premium 7-seater..." multiline />
                   <Field label="Phone" value={f.phone} onChange={(v:any)=>setF({...f,phone:v})} placeholder="Vendor contact" keyboardType="phone-pad" />
@@ -285,6 +294,8 @@ const s=StyleSheet.create({
   name:{fontWeight:"900",color:COLORS.text,marginTop:9,fontSize:14},
   meta:{fontSize:11,color:COLORS.textSecondary,marginTop:3},
   price:{fontSize:13,fontWeight:"900",color:COLORS.brand,marginTop:7},
+  hourlyPrice:{fontSize:12,fontWeight:"800",color:COLORS.text,marginTop:3},
+  hourlyUnset:{fontSize:10,fontWeight:"700",color:COLORS.textMuted,marginTop:3},
   actions:{position:"absolute",top:14,right:14,flexDirection:"row",gap:9,backgroundColor:"rgba(255,255,255,.92)",paddingHorizontal:7,paddingVertical:5,borderRadius:10},
   empty:{alignItems:"center",padding:40,flex:1},
   emptyText:{fontWeight:"900",fontSize:16,color:COLORS.text,marginTop:10},
