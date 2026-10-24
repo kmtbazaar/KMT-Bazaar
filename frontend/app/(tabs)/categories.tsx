@@ -15,7 +15,7 @@ import { useWishlist } from "@/src/WishlistContext";
 const RAIL_WIDTH = 88;
 
 
-function CategoryProductTile({ p }: { p: any }) {
+export function CategoryProductTile({ p }: { p: any }) {
   const router = useRouter();
   const { add, update, cart } = useCart();
   const { isWishlisted, toggle: toggleWishlist, ready: wishlistReady } = useWishlist();
