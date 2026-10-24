@@ -203,9 +203,14 @@ export default function Categories() {
   const router = useRouter();
   const navigation = useNavigation();
   const { categoryId } = useLocalSearchParams<{ categoryId?: string | string[] }>();
+  const requestedCategoryId = Array.isArray(categoryId) ? categoryId[0] : categoryId;
+  // Home Shop by Category opens this screen with its parent category ID.
+  const homeCategoryMode = Boolean(requestedCategoryId);
   const [cats, setCats] = useState<any[]>([]);
   const [brokenImages, setBrokenImages] = useState<Record<string, boolean>>({});
   const [active, setActive] = useState<string>("");
+  const [shopItemCategories, setShopItemCategories] = useState<any[]>([]);
+  const [selectedItemCategory, setSelectedItemCategory] = useState<string>("All");
   const [products, setProducts] = useState<any[]>([]);
   const [loadingProducts, setLoadingProducts] = useState(false);
   const { itemCount } = useCart();
@@ -341,13 +346,77 @@ export default function Categories() {
     };
   }, [active]);
 
+  useEffect(() => {
+    if (!homeCategoryMode || !active) {
+      setShopItemCategories([]);
+      setSelectedItemCategory("All");
+      return;
+    }
+
+    let cancelled = false;
+    setSelectedItemCategory("All");
+
+    (async () => {
+      try {
+        const result = await api.itemCategories(active);
+        if (!cancelled) {
+          setShopItemCategories(Array.isArray(result) ? result : []);
+        }
+      } catch (error) {
+        console.warn("Shop item categories unavailable; deriving from this category's products:", error);
+        if (!cancelled) setShopItemCategories([]);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [active, homeCategoryMode]);
+
+  const itemCategoryChoices = React.useMemo(() => {
+    if (shopItemCategories.length) return shopItemCategories;
+
+    const byId = new Map<string, any>();
+    for (const product of products) {
+      const name = String(product?.item_category || "").trim();
+      if (!name) continue;
+      const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+      const id = String(product?.item_category_id || ("legacy-" + slug));
+      if (!byId.has(id)) {
+        byId.set(id, {
+          id,
+          name,
+          icon: String(product?.item_category_icon || "tag-outline"),
+        });
+      }
+    }
+    return Array.from(byId.values());
+  }, [shopItemCategories, products]);
+
+  const visibleProducts = React.useMemo(() => {
+    if (!homeCategoryMode || selectedItemCategory === "All") return products;
+    const selected = itemCategoryChoices.find(
+      (category: any) => String(category.id) === String(selectedItemCategory)
+    );
+    if (!selected) return products;
+
+    const selectedId = String(selected.id);
+    const selectedName = String(selected.name || "").trim().toLowerCase();
+    return products.filter((product: any) => {
+      const productItemId = String(product?.item_category_id || "");
+      const productItemName = String(product?.item_category || "").trim().toLowerCase();
+      return (productItemId && productItemId === selectedId) ||
+        (productItemName && productItemName === selectedName);
+    });
+  }, [products, homeCategoryMode, selectedItemCategory, itemCategoryChoices]);
+
   const activeCat = cats.find((c) => String(c.id) === String(active));
   const bottomPad = itemCount > 0 ? 140 : 24;
 
   return (
     <SafeAreaView style={s.root} edges={["top"]} testID="categories-screen">
       <View style={s.header}>
-        <Text style={s.title}>Categories</Text>
+        <Text style={s.title}>{homeCategoryMode && activeCat ? activeCat.name : "Categories"}</Text>
         <Pressable
           testID="search-btn"
           onPress={() => router.push("/(tabs)/home" as any)}
@@ -363,38 +432,97 @@ export default function Categories() {
         {/* Side rail */}
         <View style={s.railWrap}>
           <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: bottomPad }}>
-            {cats.map((c) => {
-              const isActive = active === c.id;
-              const hasImage = Boolean(c.image) && !brokenImages[String(c.id)];
-              return (
+            {homeCategoryMode ? (
+              <>
                 <Pressable
-                  key={c.id}
-                  testID={`cat-rail-${c.id}`}
-                  onPress={() => setActive(c.id)}
-                  style={[s.railItem, isActive && s.railItemActive]}
+                  testID="item-cat-rail-all"
+                  onPress={() => setSelectedItemCategory("All")}
+                  style={[s.railItem, selectedItemCategory === "All" && s.railItemActive]}
                 >
-                  {isActive && <View style={s.railBar} />}
-                  <View style={[s.railImgWrap, isActive && s.railImgWrapActive]}>
-                    {hasImage ? (
-                      <Image
-                        source={{ uri: c.image }}
-                        style={s.railImg}
-                        contentFit="cover"
-                        onError={() => setBrokenImages(prev => ({ ...prev, [String(c.id)]: true }))}
-                      />
-                    ) : (
-                      <ImagePlaceholder type="category" style={s.railImg} />
-                    )}
+                  {selectedItemCategory === "All" && <View style={s.railBar} />}
+                  <View style={[
+                    s.railImgWrap,
+                    { alignItems: "center", justifyContent: "center", backgroundColor: selectedItemCategory === "All" ? COLORS.accent : COLORS.surfaceSecondary },
+                    selectedItemCategory === "All" && s.railImgWrapActive,
+                  ]}>
+                    <MaterialCommunityIcons
+                      name="view-grid-outline"
+                      size={22}
+                      color={selectedItemCategory === "All" ? "#FFFFFF" : COLORS.textMuted}
+                    />
                   </View>
-                  <Text
-                    style={[s.railLabel, isActive && { color: COLORS.brand, fontWeight: "800" }]}
-                    numberOfLines={2}
-                  >
-                    {c.name}
+                  <Text style={[s.railLabel, selectedItemCategory === "All" && { color: COLORS.brand, fontWeight: "800" }]} numberOfLines={2}>
+                    All
                   </Text>
                 </Pressable>
-              );
-            })}
+
+                {itemCategoryChoices.map((itemCategory: any) => {
+                  const itemId = String(itemCategory.id);
+                  const isActive = selectedItemCategory === itemId;
+                  const iconName = String(itemCategory.icon || "tag-outline") as any;
+                  return (
+                    <Pressable
+                      key={itemId}
+                      testID={`item-cat-rail-${itemId}`}
+                      onPress={() => setSelectedItemCategory(itemId)}
+                      style={[s.railItem, isActive && s.railItemActive]}
+                    >
+                      {isActive && <View style={s.railBar} />}
+                      <View style={[
+                        s.railImgWrap,
+                        { alignItems: "center", justifyContent: "center", backgroundColor: isActive ? COLORS.accent : COLORS.surfaceSecondary },
+                        isActive && s.railImgWrapActive,
+                      ]}>
+                        <MaterialCommunityIcons
+                          name={iconName}
+                          size={22}
+                          color={isActive ? "#FFFFFF" : COLORS.textMuted}
+                        />
+                      </View>
+                      <Text
+                        style={[s.railLabel, isActive && { color: COLORS.brand, fontWeight: "800" }]}
+                        numberOfLines={2}
+                      >
+                        {itemCategory.name}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </>
+            ) : (
+              cats.map((c) => {
+                const isActive = String(active) === String(c.id);
+                const hasImage = Boolean(c.image) && !brokenImages[String(c.id)];
+                return (
+                  <Pressable
+                    key={c.id}
+                    testID={`cat-rail-${c.id}`}
+                    onPress={() => setActive(String(c.id))}
+                    style={[s.railItem, isActive && s.railItemActive]}
+                  >
+                    {isActive && <View style={s.railBar} />}
+                    <View style={[s.railImgWrap, isActive && s.railImgWrapActive]}>
+                      {hasImage ? (
+                        <Image
+                          source={{ uri: c.image }}
+                          style={s.railImg}
+                          contentFit="cover"
+                          onError={() => setBrokenImages(prev => ({ ...prev, [String(c.id)]: true }))}
+                        />
+                      ) : (
+                        <ImagePlaceholder type="category" style={s.railImg} />
+                      )}
+                    </View>
+                    <Text
+                      style={[s.railLabel, isActive && { color: COLORS.brand, fontWeight: "800" }]}
+                      numberOfLines={2}
+                    >
+                      {c.name}
+                    </Text>
+                  </Pressable>
+                );
+              })
+            )}
           </ScrollView>
         </View>
 
@@ -403,7 +531,7 @@ export default function Categories() {
           {activeCat && (
             <View style={s.gridHeader}>
               <Text style={s.gridTitle} numberOfLines={1}>{activeCat.name}</Text>
-              <Text style={s.gridCount}>{products.length} items</Text>
+              <Text style={s.gridCount}>{visibleProducts.length} items</Text>
             </View>
           )}
           {loadingProducts ? (
@@ -418,9 +546,9 @@ export default function Categories() {
               onScroll={handleScroll}
               scrollEventThrottle={16}
             >
-              {products.length > 0 ? (
+              {visibleProducts.length > 0 ? (
                 <View style={s.productGrid}>
-                  {products.map((item) => (
+                  {visibleProducts.map((item) => (
                     <View key={String(item.id ?? item._id)} style={s.productCell}>
                       <CategoryProductTile p={item} />
                     </View>
