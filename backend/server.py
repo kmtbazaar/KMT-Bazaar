@@ -2689,6 +2689,7 @@ class VendorServiceIn(BaseModel):
     order: int = 99
     active: bool = True
     price: float = 0
+    hourly_price: float = 0
     adult_price: float = 0
     child_price: float = 0
     unit: str = "visit"
