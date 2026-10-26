@@ -21,6 +21,13 @@ const CAR_TYPES = ["Sedan", "SUV", "MUV", "Traveller", "Hatchback", "Luxury"];
 const FUEL_TYPES = ["Petrol", "Diesel", "CNG", "Electric"];
 const TRANSMISSIONS = ["Automatic", "Manual"];
 
+function parsePriceAmount(value: unknown): number {
+  const normalized = String(value ?? "").replace(/[₹,\s]/g, "");
+  if (!normalized) return 0;
+  const amount = Number(normalized);
+  return Number.isFinite(amount) && amount >= 0 ? amount : 0;
+}
+
 export default function VendorServices() {
   const router = useRouter();
   const { user } = useAuth();
@@ -77,6 +84,8 @@ export default function VendorServices() {
     const includes = String(f.includesText || "").split(",").map((x: string) => x.trim()).filter(Boolean);
     const nights = Math.max(0, Number(f.nights) || 0);
     const days = Math.max(0, Number(f.days) || 0);
+    const hourlyPrice = isCar ? parsePriceAmount(f.hourly_price) : 0;
+    const dailyPrice = isCar ? parsePriceAmount(f.price) : parsePriceAmount(f.adult_price || f.price);
     const data = {
       name: f.name.trim(),
       vendor_name: String(f.vendor_name || user?.name || "").trim(),
@@ -89,9 +98,9 @@ export default function VendorServices() {
       phone: String(f.phone || "").trim(),
       order: Number(f.order) || 99,
       active: f.active !== false,
-      price: Number(f.adult_price || f.price) || 0,
-      hourly_price: isCar ? (Number(f.hourly_price) || 0) : 0,
-      adult_price: Number(f.adult_price || f.price) || 0,
+      price: dailyPrice,
+      hourly_price: hourlyPrice,
+      adult_price: dailyPrice,
       child_price: isCar ? 0 : (Number(f.child_price) || ((Number(f.adult_price || f.price) || 0) * 0.5)),
       unit: isCar ? "day" : "per person",
       duration: isCar ? String(f.duration || "").trim() : `${nights} ${nights === 1 ? "night" : "nights"} / ${days} ${days === 1 ? "day" : "days"}`,
@@ -106,10 +115,26 @@ export default function VendorServices() {
       service_type: serviceType
     };
     try {
-      if (editing) await vendorApi.updateService(editing, data);
-      else await vendorApi.createService(data);
+      const saved = editing
+        ? await vendorApi.updateService(editing, data)
+        : await vendorApi.createService(data);
+
+      // Refresh the vendor list explicitly; don't silently report success if the
+      // saved hourly rate did not come back from the API/database.
+      const refreshedItems = await vendorApi.services();
+      const savedId = String(saved?.id || editing || "");
+      const savedItem = (refreshedItems || []).find((item: any) => String(item.id) === savedId);
+      if (isCar && savedItem && parsePriceAmount(savedItem.hourly_price) !== hourlyPrice) {
+        setItems(refreshedItems || []);
+        throw new Error("Hourly rate did not persist. Please check your connection and save again.");
+      }
+      if (isCar && !savedItem) {
+        setItems(refreshedItems || []);
+        throw new Error("Car was saved, but did not appear in the refreshed vendor list. Please reopen Rental Fleet and verify it.");
+      }
+
+      setItems(refreshedItems || []);
       setModal(false);
-      await load();
       if (Platform.OS === "web") window.alert(editing ? "Saved and live" : "Service added and live");
       else Alert.alert("Saved", editing ? "Changes are live" : "Service is live");
     } catch (e: any) {
@@ -208,7 +233,6 @@ export default function VendorServices() {
                   <Text style={m.priceHint}>Enter an hourly rate only when hourly rentals are offered.</Text>
                   <Field label="Tag" value={f.tag} onChange={(v:any)=>setF({...f,tag:v})} placeholder="Family favourite" />
                   <Field label="Description" value={f.description} onChange={(v:any)=>setF({...f,description:v})} placeholder="Premium 7-seater..." multiline />
-                  <Field label="Phone" value={f.phone} onChange={(v:any)=>setF({...f,phone:v})} placeholder="Vendor contact" keyboardType="phone-pad" />
                 </>
               ) : (
                 <>
@@ -238,7 +262,11 @@ export default function VendorServices() {
                 <ImageUploader
                   key={i}
                   value={f.gallery?.[i] || ""}
-                  onChange={(uri)=>setF({...f,gallery:Object.assign([],f.gallery || [], {[i]:uri}).slice(isCar ? 2 : 5)})}
+                  onChange={(uri)=>setF((current:any)=>{
+                    const nextGallery = Array.isArray(current.gallery) ? [...current.gallery] : [];
+                    nextGallery[i] = uri;
+                    return {...current, gallery: nextGallery.slice(0, isCar ? 2 : 5)};
+                  })}
                   label={isCar ? (i === 0 ? "Main Car Photo" : "Second Car Photo") : `Photo ${i+1}`}
                   aspect={[4,3]}
                 />
