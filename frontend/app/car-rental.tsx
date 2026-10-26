@@ -20,24 +20,19 @@ import Animated, {
   FadeIn,
   FadeInDown,
   FadeInUp,
-  Extrapolation,
-  interpolate,
-  useAnimatedScrollHandler,
-  useAnimatedStyle,
-  useSharedValue,
 } from "react-native-reanimated";
 import { api } from "@/src/api";
 
 const { width } = Dimensions.get("window");
 
-const RED = "#35e0ff";
-const RED_DARK = "#087ea4";
-const BLACK = "#070b18";
-const BLACK_2 = "#0c1530";
+const RED = "#ef233c";
+const RED_DARK = "#c91832";
+const BLACK = "#08090b";
+const BLACK_2 = "#111318";
 const WHITE = "#ffffff";
-const MUTED = "#9bb2cf";
-const LINE = "#203350";
-const AMBER = "#a78bfa";
+const MUTED = "#a6abb4";
+const LINE = "#242833";
+const AMBER = "#ef233c";
 
 const MOCK_FLEET = [
   {
@@ -264,26 +259,6 @@ function goToTripBuilder(router: any, item: CarItem) {
 
 export default function CarRentalPage() {
   const router = useRouter();
-  const scrollY = useSharedValue(0);
-  const handleScroll = useAnimatedScrollHandler({
-    onScroll: (event) => {
-      scrollY.value = event.contentOffset.y;
-    },
-  });
-  const heroDepthStyle = useAnimatedStyle(() => ({
-    transform: [
-      { perspective: 1000 },
-      { translateY: interpolate(scrollY.value, [0, 420], [0, 20], Extrapolation.CLAMP) },
-      { scale: interpolate(scrollY.value, [0, 420], [1, 1.035], Extrapolation.CLAMP) },
-    ],
-  }));
-  const glowDepthStyle = useAnimatedStyle(() => ({
-    transform: [
-      { translateY: interpolate(scrollY.value, [0, 600], [0, 42], Extrapolation.CLAMP) },
-      { scale: interpolate(scrollY.value, [0, 600], [1, 1.18], Extrapolation.CLAMP) },
-      { rotate: `${interpolate(scrollY.value, [0, 600], [0, 18], Extrapolation.CLAMP)}deg` },
-    ],
-  }));
   const [items, setItems] = useState<CarItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState("");
@@ -455,10 +430,9 @@ export default function CarRentalPage() {
 
   return (
     <SafeAreaView style={styles.root}>
-      <Animated.ScrollView style={styles.scrollSurface} contentContainerStyle={styles.page} showsVerticalScrollIndicator={false} onScroll={handleScroll} scrollEventThrottle={16}>
-        <LinearGradient colors={["#050816", "#0b1d3c", "#070b18"]} style={styles.hero}>
-          <Animated.View pointerEvents="none" style={[styles.glow, glowDepthStyle]} />
-          <View pointerEvents="none" style={styles.glowRing} />
+      <ScrollView style={styles.scrollSurface} contentContainerStyle={styles.page} showsVerticalScrollIndicator={false}>
+        <LinearGradient colors={["#050608", "#17090d", "#08090b"]} style={styles.hero}>
+          <View style={styles.glow} />
           <View style={styles.heroTop}>
             <View style={styles.badge}>
               <MaterialCommunityIcons name="steering" size={15} color={RED} />
@@ -470,7 +444,7 @@ export default function CarRentalPage() {
             </View>
           </View>
 
-          <Animated.View entering={FadeIn.duration(500)} style={[styles.heroBanner, heroDepthStyle]}>
+          <Animated.View entering={FadeIn.duration(500)} style={styles.heroBanner}>
             <Image
               key={activeBanner?.id || activeCar?.id || `car-rental-banner-${bannerIndex}`}
               source={{ uri: bannerImageBroken ? MOCK_FLEET[0].image : (activeBanner?.image || activeCar?.image || MOCK_FLEET[1].image) }}
@@ -505,7 +479,7 @@ export default function CarRentalPage() {
               value={query}
               onChangeText={setQuery}
               placeholder="Search car, city, tour or travel..."
-              placeholderTextColor="#829cbf"
+              placeholderTextColor="#7f858f"
               style={styles.searchInput}
               returnKeyType="search"
               onSubmitEditing={heroSearch}
@@ -531,7 +505,7 @@ export default function CarRentalPage() {
           </View>
         ) : filtered.length === 0 ? (
           <View style={styles.empty}>
-            <MaterialCommunityIcons name="car-off" size={52} color="#6280a8" />
+            <MaterialCommunityIcons name="car-off" size={52} color="#5e6570" />
             <Text style={styles.emptyTitle}>No cars found</Text>
             <Text style={styles.emptyText}>Try a different car name, city or travel keyword.</Text>
             <Pressable onPress={() => setQuery("")} style={styles.primaryBtn}>
@@ -542,7 +516,7 @@ export default function CarRentalPage() {
           <View style={styles.grid}>
             {filtered.map((item, index) => (
               <Animated.View key={item.id} entering={FadeInDown.delay(index * 65).duration(520)} style={styles.card}>
-                <Pressable style={({ pressed }) => [styles.cardPressable, pressed && styles.cardPressed]} onPress={() => goToTripBuilder(router, item)} android_ripple={{ color: "#183653" }}>
+                <Pressable onPress={() => goToTripBuilder(router, item)} android_ripple={{ color: "#272b33" }}>
                   <View style={styles.imageWrap}>
                     <Image source={{ uri: item.image }} style={styles.cardImage} contentFit="cover" transition={350} />
                     <LinearGradient colors={["transparent", "rgba(0,0,0,.75)"]} style={styles.imageShade} />
@@ -571,13 +545,12 @@ export default function CarRentalPage() {
                     </View>
                   </View>
                 </Pressable>
-                <View pointerEvents="none" style={styles.cardDepthEdge} />
               </Animated.View>
             ))}
           </View>
         )}
 
-      </Animated.ScrollView>
+      </ScrollView>
 
       <Modal visible={!!selected} transparent animationType="fade" onRequestClose={() => { setSelected(null); setBookingOpen(false); }}>
         <View style={styles.modalBackdrop}>
@@ -716,28 +689,27 @@ const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: BLACK },
   scrollSurface: { flex: 1, backgroundColor: BLACK },
   page: { paddingBottom: 0 },
-  hero: { paddingHorizontal: 18, paddingTop: 20, paddingBottom: 22, overflow: "hidden", borderBottomLeftRadius: 30, borderBottomRightRadius: 30, borderBottomWidth: 1, borderBottomColor: "rgba(53,224,255,.22)" },
-  glow: { position: "absolute", width: 260, height: 260, borderRadius: 130, backgroundColor: "rgba(53,224,255,.14)", right: -80, top: 35, shadowColor: "#35e0ff", shadowOpacity: 0.45, shadowRadius: 38, elevation: 10 },
-  glowRing: { position: "absolute", width: 330, height: 330, borderRadius: 165, borderWidth: 1, borderColor: "rgba(53,224,255,.18)", right: -115, top: -85, transform: [{ rotate: "24deg" }] },
-  heroBanner: { width: "100%", maxWidth: 980, height: 190, alignSelf: "center", marginTop: 16, borderRadius: 22, overflow: "hidden", position: "relative", backgroundColor: "#0c1530", borderWidth: 1, borderColor: "rgba(53,224,255,.36)", shadowColor: "#35e0ff", shadowOpacity: 0.22, shadowRadius: 24, shadowOffset: { width: 0, height: 12 }, elevation: 8 },
+  hero: { paddingHorizontal: 18, paddingTop: 20, paddingBottom: 22, overflow: "hidden", borderBottomLeftRadius: 30, borderBottomRightRadius: 30 },
+  glow: { position: "absolute", width: 260, height: 260, borderRadius: 130, backgroundColor: "rgba(239,35,60,.16)", right: -80, top: 35 },
+  heroBanner: { width: "100%", maxWidth: 980, height: 190, alignSelf: "center", marginTop: 16, borderRadius: 22, overflow: "hidden", position: "relative", backgroundColor: "#111318", borderWidth: 1, borderColor: "rgba(255,255,255,.16)" },
   heroBannerImage: { ...StyleSheet.absoluteFillObject, width: "100%", height: "100%" },
   heroBannerShade: { ...StyleSheet.absoluteFillObject },
   heroBannerText: { position: "absolute", left: 17, right: 76, bottom: 17 },
-  bannerKicker: { color: "#d3f9ff", fontSize: 10, fontWeight: "900", letterSpacing: 1.5 },
+  bannerKicker: { color: "#ffd7dc", fontSize: 10, fontWeight: "900", letterSpacing: 1.5 },
   bannerTitle: { color: WHITE, fontSize: 24, lineHeight: 29, fontWeight: "900", marginTop: 5, textShadowColor: "rgba(0,0,0,.55)", textShadowRadius: 8 },
   bannerSubtitle: { color: "rgba(255,255,255,.90)", fontSize: 11, fontWeight: "700", marginTop: 5 },
-  bannerPosition: { position: "absolute", right: 12, bottom: 12, paddingHorizontal: 9, paddingVertical: 6, borderRadius: 999, backgroundColor: "rgba(5,11,24,.82)", borderWidth: 1, borderColor: "rgba(255,255,255,.20)" },
+  bannerPosition: { position: "absolute", right: 12, bottom: 12, paddingHorizontal: 9, paddingVertical: 6, borderRadius: 999, backgroundColor: "rgba(8,9,11,.82)", borderWidth: 1, borderColor: "rgba(255,255,255,.20)" },
   bannerPositionText: { color: WHITE, fontSize: 10, fontWeight: "900" },
   heroTop: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", zIndex: 4 },
   badge: { flexDirection: "row", gap: 7, alignItems: "center", paddingHorizontal: 11, paddingVertical: 8, backgroundColor: "rgba(255,255,255,.06)", borderWidth: 1, borderColor: "rgba(255,255,255,.09)", borderRadius: 999 },
-  badgeText: { color: "#e1f7ff", fontSize: 10, fontWeight: "900", letterSpacing: 1.2 },
-  livePill: { flexDirection: "row", gap: 6, alignItems: "center", paddingHorizontal: 10, paddingVertical: 8, borderRadius: 999, backgroundColor: "rgba(53,224,255,.12)", borderWidth: 1, borderColor: "rgba(53,224,255,.34)" },
+  badgeText: { color: "#e8e9ec", fontSize: 10, fontWeight: "900", letterSpacing: 1.2 },
+  livePill: { flexDirection: "row", gap: 6, alignItems: "center", paddingHorizontal: 10, paddingVertical: 8, borderRadius: 999, backgroundColor: "rgba(239,35,60,.12)", borderWidth: 1, borderColor: "rgba(239,35,60,.34)" },
   liveDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: RED },
-  liveText: { color: "#d3f9ff", fontSize: 10, fontWeight: "900" },
+  liveText: { color: "#ffd7dc", fontSize: 10, fontWeight: "900" },
   searchBox: { marginTop: 14, width: "100%", maxWidth: 840, alignSelf: "center", backgroundColor: WHITE, borderWidth: 1, borderColor: "rgba(255,255,255,.25)", borderRadius: 17, padding: 7, flexDirection: "row", alignItems: "center", shadowColor: RED, shadowOpacity: .22, shadowRadius: 28 },
   searchInput: { flex: 1, paddingHorizontal: 10, paddingVertical: 13, fontSize: 15, color: BLACK },
   searchBtn: { width: 48, height: 48, borderRadius: 13, backgroundColor: RED, alignItems: "center", justifyContent: "center" },
-  sectionTitle: { color: "#35e0ff", fontSize: 22, fontWeight: "900", marginBottom: 4 },
+  sectionTitle: { color: "#ef233c", fontSize: 22, fontWeight: "900", marginBottom: 4 },
   sectionSub: { color: MUTED, fontSize: 12, lineHeight: 18 },
   filterRow: { paddingHorizontal: 18, gap: 9, paddingBottom: 4 },
   filterChip: { flexDirection: "row", gap: 7, alignItems: "center", paddingVertical: 11, paddingHorizontal: 14, borderRadius: 999, borderWidth: 1, borderColor: LINE, backgroundColor: BLACK_2 },
@@ -745,12 +717,12 @@ const styles = StyleSheet.create({
   filterText: { color: MUTED, fontWeight: "800", fontSize: 12 },
   filterTextActive: { color: WHITE },
   locationRow: { paddingHorizontal: 18, paddingTop: 10, gap: 7 },
-  locationChip: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 999, borderWidth: 1, borderColor: "#27415d", backgroundColor: "#0c1530" },
-  locationActive: { borderColor: RED, backgroundColor: "#12314a" },
-  locationText: { color: "#9bb2cf", fontSize: 11, fontWeight: "800" },
-  locationTextActive: { color: "#d3f9ff" },
+  locationChip: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 999, borderWidth: 1, borderColor: "#30343d", backgroundColor: "#111318" },
+  locationActive: { borderColor: RED, backgroundColor: "#2a0b10" },
+  locationText: { color: "#a6abb4", fontSize: 11, fontWeight: "800" },
+  locationTextActive: { color: "#ffdce0" },
   sectionHeader: { maxWidth: 980, width: "calc(100% - 36px)" as any, alignSelf: "center", marginTop: 12, marginBottom: 12, flexDirection: "row", alignItems: "flex-end", justifyContent: "space-between" },
-  countPill: { borderRadius: 999, paddingHorizontal: 12, paddingVertical: 6, backgroundColor: "#0c1530", borderWidth: 1, borderColor: LINE },
+  countPill: { borderRadius: 999, paddingHorizontal: 12, paddingVertical: 6, backgroundColor: "#111318", borderWidth: 1, borderColor: LINE },
   countText: { color: "#ffffff", fontSize: 11, fontWeight: "900" },
   loader: { alignItems: "center", paddingVertical: 80 },
   loaderText: { color: MUTED, marginTop: 10 },
@@ -760,34 +732,31 @@ const styles = StyleSheet.create({
   primaryBtn: { marginTop: 16, paddingHorizontal: 18, paddingVertical: 12, borderRadius: 12, backgroundColor: RED },
   primaryBtnText: { color: WHITE, fontWeight: "900" },
   grid: { width: "100%", maxWidth: 1010, alignSelf: "center", paddingHorizontal: 12, flexDirection: "row", flexWrap: "wrap", justifyContent: "center" },
-  card: { width: Platform.OS === "web" && width > 1000 ? 314 : "100%", margin: 6, borderRadius: 21, overflow: "hidden", backgroundColor: BLACK_2, borderWidth: 1, borderColor: "rgba(53,224,255,.25)", shadowColor: "#35e0ff", shadowOpacity: 0.16, shadowRadius: 18, shadowOffset: { width: 0, height: 10 }, elevation: 7 },
-  cardPressable: { width: "100%" },
-  cardPressed: { transform: [{ scale: 0.985 }, { translateY: 2 }] },
-  cardDepthEdge: { position: "absolute", right: 0, top: 14, bottom: 14, width: 3, borderTopLeftRadius: 3, borderBottomLeftRadius: 3, backgroundColor: "#35e0ff", opacity: 0.85 },
-  imageWrap: { height: 204, backgroundColor: "#0c1530", overflow: "hidden" },
+  card: { width: Platform.OS === "web" && width > 1000 ? 314 : "100%", margin: 6, borderRadius: 21, overflow: "hidden", backgroundColor: BLACK_2, borderWidth: 1, borderColor: LINE },
+  imageWrap: { height: 204, backgroundColor: "#111318", overflow: "hidden" },
   cardImage: { width: "100%", height: "100%" },
   imageShade: { ...StyleSheet.absoluteFillObject, justifyContent: "flex-end" },
-  tag: { position: "absolute", top: 10, left: 10, paddingHorizontal: 10, paddingVertical: 7, borderRadius: 999, backgroundColor: "rgba(5,11,24,.82)", borderWidth: 1, borderColor: "rgba(255,255,255,.12)" },
+  tag: { position: "absolute", top: 10, left: 10, paddingHorizontal: 10, paddingVertical: 7, borderRadius: 999, backgroundColor: "rgba(8,9,11,.82)", borderWidth: 1, borderColor: "rgba(255,255,255,.12)" },
   tagText: { color: WHITE, fontSize: 10, fontWeight: "900" },
   pricePill: { position: "absolute", right: 10, bottom: 10, flexDirection: "row", gap: 3, alignItems: "baseline", paddingHorizontal: 10, paddingVertical: 7, borderRadius: 10, backgroundColor: AMBER },
-  price: { color: "#070b18", fontSize: 15, fontWeight: "900" },
-  priceMeta: { color: "#070b18", fontSize: 10, fontWeight: "800" },
+  price: { color: "#08090b", fontSize: 15, fontWeight: "900" },
+  priceMeta: { color: "#08090b", fontSize: 10, fontWeight: "800" },
   cardBody: { padding: 15 },
   cardGlow: { position: "absolute", left: 0, right: 0, bottom: 0, height: 2, backgroundColor: RED, opacity: .9 },
   titleLine: { flexDirection: "row", alignItems: "center", gap: 8 },
   cardTitle: { flex: 1, color: WHITE, fontSize: 17, fontWeight: "900" },
   rating: { flexDirection: "row", alignItems: "center", gap: 3 },
-  ratingText: { color: "#9bb2cf", fontSize: 11, fontWeight: "900" },
+  ratingText: { color: "#a6abb4", fontSize: 11, fontWeight: "900" },
   cardLocation: { color: MUTED, fontSize: 11, marginTop: 7 },
   specRow: { flexDirection: "row", flexWrap: "wrap", gap: 7, marginTop: 12 },
-  spec: { flexDirection: "row", alignItems: "center", gap: 5, paddingHorizontal: 8, paddingVertical: 6, borderRadius: 8, backgroundColor: "#0c1530" },
-  specText: { color: "#9bb2cf", fontSize: 10, fontWeight: "800" },
-  bookBtn: { marginTop: 13, padding: 12, borderRadius: 12, backgroundColor: RED, borderWidth: 1, borderColor: "rgba(255,255,255,.20)", shadowColor: "#35e0ff", shadowOpacity: 0.24, shadowRadius: 12, shadowOffset: { width: 0, height: 5 }, elevation: 4, flexDirection: "row", justifyContent: "center", alignItems: "center", gap: 8 },
+  spec: { flexDirection: "row", alignItems: "center", gap: 5, paddingHorizontal: 8, paddingVertical: 6, borderRadius: 8, backgroundColor: "#111318" },
+  specText: { color: "#a6abb4", fontSize: 10, fontWeight: "800" },
+  bookBtn: { marginTop: 13, padding: 12, borderRadius: 12, backgroundColor: RED, flexDirection: "row", justifyContent: "center", alignItems: "center", gap: 8 },
   bookBtnText: { color: WHITE, fontSize: 13, fontWeight: "900" },
   workflow: { maxWidth: 980, width: "calc(100% - 36px)" as any, alignSelf: "center", marginTop: 44, padding: 20, borderRadius: 24, backgroundColor: "#0e1014", borderWidth: 1, borderColor: LINE },
   workflowRow: { flexDirection: "row", flexWrap: "wrap", gap: 11, marginTop: 14 },
-  workflowItem: { flex: 1, minWidth: 210, padding: 15, borderRadius: 16, backgroundColor: "#10213b", borderWidth: 1, borderColor: "#203350" },
-  workflowNum: { width: 31, height: 31, borderRadius: 16, backgroundColor: "#12314a", borderWidth: 1, borderColor: "rgba(53,224,255,.35)", alignItems: "center", justifyContent: "center" },
+  workflowItem: { flex: 1, minWidth: 210, padding: 15, borderRadius: 16, backgroundColor: "#13161b", borderWidth: 1, borderColor: "#242833" },
+  workflowNum: { width: 31, height: 31, borderRadius: 16, backgroundColor: "#2a0b10", borderWidth: 1, borderColor: "rgba(239,35,60,.35)", alignItems: "center", justifyContent: "center" },
   workflowNumText: { color: RED, fontWeight: "900" },
   workflowTitle: { color: WHITE, fontSize: 14, fontWeight: "900", marginTop: 11 },
   workflowDesc: { color: MUTED, fontSize: 11, lineHeight: 17, marginTop: 4 },
@@ -796,10 +765,10 @@ const styles = StyleSheet.create({
   trustTitle: { color: BLACK, fontWeight: "900", marginTop: 8 },
   trustText: { color: "#666b74", fontSize: 11, lineHeight: 17, marginTop: 3 },
   modalBackdrop: { flex: 1, backgroundColor: "rgba(0,0,0,.88)", justifyContent: "center", padding: 14 },
-  modalCard: { width: "100%", maxWidth: 780, maxHeight: "92%", alignSelf: "center", backgroundColor: "#0c1530", borderRadius: 24, overflow: "hidden", borderWidth: 1, borderColor: "#203350" },
+  modalCard: { width: "100%", maxWidth: 780, maxHeight: "92%", alignSelf: "center", backgroundColor: "#111318", borderRadius: 24, overflow: "hidden", borderWidth: 1, borderColor: "#242833" },
   modalHero: { height: 250, backgroundColor: "#171920" },
   modalImage: { width: "100%", height: "100%" },
-  closeBtn: { position: "absolute", top: 12, right: 12, width: 38, height: 38, borderRadius: 19, backgroundColor: "rgba(5,11,24,.86)", alignItems: "center", justifyContent: "center" },
+  closeBtn: { position: "absolute", top: 12, right: 12, width: 38, height: 38, borderRadius: 19, backgroundColor: "rgba(8,9,11,.86)", alignItems: "center", justifyContent: "center" },
   modalPhotoCount: { position: "absolute", left: 12, bottom: 12, borderRadius: 999, paddingHorizontal: 9, paddingVertical: 6, backgroundColor: "rgba(0,0,0,.62)" },
   modalPhotoText: { color: WHITE, fontSize: 11, fontWeight: "900" },
   modalScroll: { padding: 16 },
@@ -808,45 +777,45 @@ const styles = StyleSheet.create({
   thumbActive: { opacity: 1, borderWidth: 2, borderColor: RED },
   modalKicker: { color: RED, fontSize: 10, fontWeight: "900", letterSpacing: 1.6, marginTop: 3 },
   modalTitle: { color: WHITE, fontSize: 23, fontWeight: "900", marginTop: 5 },
-  modalDesc: { color: "#9bb2cf", lineHeight: 19, marginTop: 7 },
+  modalDesc: { color: "#a6abb4", lineHeight: 19, marginTop: 7 },
   modalSpecGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 14 },
-  specBox: { width: "48%", backgroundColor: "#0c1530", borderRadius: 14, padding: 12, borderWidth: 1, borderColor: "#203650" },
-  specBoxLabel: { color: "#9bb2cf", fontSize: 10, marginTop: 6 },
+  specBox: { width: "48%", backgroundColor: "#111318", borderRadius: 14, padding: 12, borderWidth: 1, borderColor: "#262a33" },
+  specBoxLabel: { color: "#a6abb4", fontSize: 10, marginTop: 6 },
   specBoxValue: { color: WHITE, fontWeight: "900", marginTop: 2 },
-  includeBox: { marginTop: 13, padding: 14, borderRadius: 15, backgroundColor: "#0f1c35", borderWidth: 1, borderColor: "#203650" },
+  includeBox: { marginTop: 13, padding: 14, borderRadius: 15, backgroundColor: "#14171c", borderWidth: 1, borderColor: "#262a33" },
   includeTitle: { color: WHITE, fontWeight: "900" },
   includeRow: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 9 },
-  includePill: { flexDirection: "row", alignItems: "center", gap: 5, paddingHorizontal: 9, paddingVertical: 7, backgroundColor: "#0c1530", borderRadius: 999 },
-  includeText: { color: "#9bb2cf", fontSize: 10, fontWeight: "800" },
-  modalBottom: { marginTop: 16, paddingTop: 13, borderTopWidth: 1, borderTopColor: "#203350", flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 12 },
-  fromText: { color: "#829cbf", fontSize: 10 },
+  includePill: { flexDirection: "row", alignItems: "center", gap: 5, paddingHorizontal: 9, paddingVertical: 7, backgroundColor: "#111318", borderRadius: 999 },
+  includeText: { color: "#a6abb4", fontSize: 10, fontWeight: "800" },
+  modalBottom: { marginTop: 16, paddingTop: 13, borderTopWidth: 1, borderTopColor: "#242833", flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 12 },
+  fromText: { color: "#7f858f", fontSize: 10 },
   modalPrice: { color: WHITE, fontSize: 22, fontWeight: "900", marginTop: 2 },
   per: { color: MUTED, fontSize: 11, fontWeight: "700" },
   modalBook: { backgroundColor: RED, borderRadius: 13, paddingHorizontal: 16, paddingVertical: 13, flexDirection: "row", gap: 7, alignItems: "center" },
   modalBookText: { color: WHITE, fontWeight: "900" },
   bookingWrap: { minHeight: 520 },
-  bookingHeader: { padding: 16, flexDirection: "row", justifyContent: "space-between", alignItems: "center", borderBottomWidth: 1, borderBottomColor: "#203350" },
-  darkClose: { width: 38, height: 38, borderRadius: 19, backgroundColor: "#203350", alignItems: "center", justifyContent: "center" },
+  bookingHeader: { padding: 16, flexDirection: "row", justifyContent: "space-between", alignItems: "center", borderBottomWidth: 1, borderBottomColor: "#242833" },
+  darkClose: { width: 38, height: 38, borderRadius: 19, backgroundColor: "#242833", alignItems: "center", justifyContent: "center" },
   formScroll: { padding: 16, paddingBottom: 24 },
-  summaryBanner: { flexDirection: "row", gap: 11, padding: 11, borderRadius: 15, backgroundColor: "#0f1c35", borderWidth: 1, borderColor: "#203650", marginBottom: 15 },
+  summaryBanner: { flexDirection: "row", gap: 11, padding: 11, borderRadius: 15, backgroundColor: "#14171c", borderWidth: 1, borderColor: "#262a33", marginBottom: 15 },
   summaryImage: { width: 84, height: 64, borderRadius: 10 },
   summaryTitle: { color: WHITE, fontWeight: "900", fontSize: 15 },
   summaryMeta: { color: MUTED, fontSize: 11, marginTop: 4 },
-  summaryPrice: { color: "#d3f9ff", fontWeight: "900", fontSize: 13, marginTop: 6 },
-  formLabel: { color: "#9bb2cf", fontSize: 10, fontWeight: "900", letterSpacing: 1.1, marginBottom: 7, marginTop: 8 },
-  formInput: { backgroundColor: "#0f1c35", borderWidth: 1, borderColor: "#203350", borderRadius: 12, paddingHorizontal: 13, paddingVertical: 12, color: WHITE, fontSize: 14 },
+  summaryPrice: { color: "#ffd7dc", fontWeight: "900", fontSize: 13, marginTop: 6 },
+  formLabel: { color: "#a6abb4", fontSize: 10, fontWeight: "900", letterSpacing: 1.1, marginBottom: 7, marginTop: 8 },
+  formInput: { backgroundColor: "#14171c", borderWidth: 1, borderColor: "#242833", borderRadius: 12, paddingHorizontal: 13, paddingVertical: 12, color: WHITE, fontSize: 14 },
   noteInput: { minHeight: 80, textAlignVertical: "top" as any },
   counterRow: { flexDirection: "row", gap: 9, marginTop: 7 },
   counterBox: { flex: 1 },
-  counter: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", backgroundColor: "#0f1c35", borderRadius: 12, borderWidth: 1, borderColor: "#27415d", padding: 6 },
+  counter: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", backgroundColor: "#14171c", borderRadius: 12, borderWidth: 1, borderColor: "#2a2f39", padding: 6 },
   counterBtn: { width: 34, height: 34, borderRadius: 10, backgroundColor: "#282d36", alignItems: "center", justifyContent: "center" },
   counterBtnText: { color: WHITE, fontSize: 20, lineHeight: 22 },
   counterValue: { color: WHITE, fontSize: 16, fontWeight: "900" },
-  totalBox: { marginTop: 17, padding: 14, borderRadius: 14, backgroundColor: "#102c49", borderWidth: 1, borderColor: "rgba(53,224,255,.35)", flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
-  totalSmall: { color: "#bcf6ff", fontSize: 11, fontWeight: "800" },
+  totalBox: { marginTop: 17, padding: 14, borderRadius: 14, backgroundColor: "#28090e", borderWidth: 1, borderColor: "rgba(239,35,60,.35)", flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
+  totalSmall: { color: "#ffb9c1", fontSize: 11, fontWeight: "800" },
   totalLabel: { color: WHITE, fontWeight: "900", marginTop: 4 },
   totalValue: { color: WHITE, fontSize: 20, fontWeight: "900" },
   confirmBtn: { marginTop: 11, borderRadius: 14, backgroundColor: RED, padding: 15, flexDirection: "row", justifyContent: "center", alignItems: "center", gap: 8 },
   confirmText: { color: WHITE, fontSize: 15, fontWeight: "900" },
-  testNote: { color: "#7792b5", fontSize: 10, lineHeight: 16, textAlign: "center", marginTop: 10 },
+  testNote: { color: "#6f7580", fontSize: 10, lineHeight: 16, textAlign: "center", marginTop: 10 },
 });
