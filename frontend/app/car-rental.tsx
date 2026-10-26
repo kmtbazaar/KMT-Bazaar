@@ -211,6 +211,7 @@ type CarItem = {
   image?: string;
   gallery?: string[];
   price?: number;
+  hourly_price?: number;
   unit?: string;
   seats?: number;
   bags?: number;
@@ -229,6 +230,7 @@ function enrich(item: CarItem, index: number) {
     image: item.image || mock.image,
     gallery: Array.isArray(item.gallery) && item.gallery.length ? item.gallery : mock.gallery,
     price: Number(item.price) || mock.price,
+    hourly_price: Number(item.hourly_price) || 0,
     unit: item.unit || mock.unit,
     seats: Number(item.seats) || mock.seats,
     bags: Number(item.bags) || mock.bags,
@@ -529,6 +531,12 @@ export default function CarRentalPage() {
                     <Text style={styles.cardLocation}>
                       <MaterialCommunityIcons name="map-marker-outline" size={14} color={RED} /> {item.location} · {item.type}
                     </Text>
+                    {Number(item.hourly_price || 0) > 0 && (
+                      <View style={styles.hourlyRate}>
+                        <MaterialCommunityIcons name="clock-outline" size={13} color={RED} />
+                        <Text style={styles.hourlyRateText}>{money(Number(item.hourly_price))} / hour</Text>
+                      </View>
+                    )}
                     <View style={styles.specRow}>
                       <Spec icon="seat-outline" text={String(item.seats || 4) + " seats"} />
                       <Spec icon="bag-suitcase-outline" text={String(item.bags || 2) + " bags"} />
@@ -743,6 +751,8 @@ const styles = StyleSheet.create({
   rating: { flexDirection: "row", alignItems: "center", gap: 3 },
   ratingText: { color: "#a6abb4", fontSize: 11, fontWeight: "900" },
   cardLocation: { color: MUTED, fontSize: 11, marginTop: 7 },
+  hourlyRate: { flexDirection: "row", alignItems: "center", gap: 5, alignSelf: "flex-start", marginTop: 8, paddingHorizontal: 9, paddingVertical: 6, borderRadius: 8, backgroundColor: "#2a0b10", borderWidth: 1, borderColor: "rgba(239,35,60,.32)" },
+  hourlyRateText: { color: "#ffd7dc", fontSize: 11, fontWeight: "900" },
   specRow: { flexDirection: "row", flexWrap: "wrap", gap: 7, marginTop: 12 },
   spec: { flexDirection: "row", alignItems: "center", gap: 5, paddingHorizontal: 8, paddingVertical: 6, borderRadius: 8, backgroundColor: "#111318" },
   specText: { color: "#a6abb4", fontSize: 10, fontWeight: "800" },
