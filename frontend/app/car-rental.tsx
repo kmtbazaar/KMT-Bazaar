@@ -761,7 +761,7 @@ const styles = StyleSheet.create({
   primaryBtnText: { color: WHITE, fontWeight: "900" },
   grid: { width: "100%", maxWidth: 1010, alignSelf: "center", paddingHorizontal: 12, flexDirection: "row", flexWrap: "wrap", justifyContent: "center" },
   card: { width: Platform.OS === "web" && width > 1000 ? 314 : "100%", margin: 6, borderRadius: 21, overflow: "hidden", backgroundColor: BLACK_2, borderWidth: 1, borderColor: "rgba(53,224,255,.25)", shadowColor: "#35e0ff", shadowOpacity: 0.16, shadowRadius: 18, shadowOffset: { width: 0, height: 10 }, elevation: 7 },
-  cardPressable: { flex: 1 },
+  cardPressable: { width: "100%" },
   cardPressed: { transform: [{ scale: 0.985 }, { translateY: 2 }] },
   cardDepthEdge: { position: "absolute", right: 0, top: 14, bottom: 14, width: 3, borderTopLeftRadius: 3, borderBottomLeftRadius: 3, backgroundColor: "#35e0ff", opacity: 0.85 },
   imageWrap: { height: 204, backgroundColor: "#0c1530", overflow: "hidden" },
