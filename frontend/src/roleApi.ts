@@ -257,7 +257,7 @@ export const vendorApi = {
     }),
   updateServiceBooking: (id: string, status: string) => apiFetch<any>(`/vendor/service-bookings/${encodeURIComponent(id)}/status`, { method: "POST", body: JSON.stringify({ status }) }),
   services: () =>
-    apiFetch<any[]>("/vendor/services"),
+    apiFetch<any[]>("/vendor/services", { cache: "no-store" }),
 
   createService: (data: any) =>
     apiFetch("/vendor/services", {
