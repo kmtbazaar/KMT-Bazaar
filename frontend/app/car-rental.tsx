@@ -521,7 +521,10 @@ export default function CarRentalPage() {
                     <Image source={{ uri: item.image }} style={styles.cardImage} contentFit="cover" transition={350} />
                     <LinearGradient colors={["transparent", "rgba(0,0,0,.75)"]} style={styles.imageShade} />
                     <View style={styles.tag}><Text style={styles.tagText}>{item.tag || item.category}</Text></View>
-                    <View style={styles.pricePill}><Text style={styles.price}>{money(Number(item.price || 0))}</Text><Text style={styles.priceMeta}>/day</Text></View>
+                    <View style={styles.pricePill}>
+                      <Text style={styles.price}>{money(Number(item.hourly_price || 0) > 0 ? Number(item.hourly_price) : Number(item.price || 0))}</Text>
+                      <Text style={styles.priceMeta}>{Number(item.hourly_price || 0) > 0 ? "/hour" : "/day"}</Text>
+                    </View>
                   </View>
                   <View style={styles.cardBody}>
                     <View style={styles.titleLine}>
@@ -531,12 +534,6 @@ export default function CarRentalPage() {
                     <Text style={styles.cardLocation}>
                       <MaterialCommunityIcons name="map-marker-outline" size={14} color={RED} /> {item.location} · {item.type}
                     </Text>
-                    {Number(item.hourly_price || 0) > 0 && (
-                      <View style={styles.hourlyRate}>
-                        <MaterialCommunityIcons name="clock-outline" size={13} color={RED} />
-                        <Text style={styles.hourlyRateText}>{money(Number(item.hourly_price))} / hour</Text>
-                      </View>
-                    )}
                     <View style={styles.specRow}>
                       <Spec icon="seat-outline" text={String(item.seats || 4) + " seats"} />
                       <Spec icon="bag-suitcase-outline" text={String(item.bags || 2) + " bags"} />
@@ -751,8 +748,6 @@ const styles = StyleSheet.create({
   rating: { flexDirection: "row", alignItems: "center", gap: 3 },
   ratingText: { color: "#a6abb4", fontSize: 11, fontWeight: "900" },
   cardLocation: { color: MUTED, fontSize: 11, marginTop: 7 },
-  hourlyRate: { flexDirection: "row", alignItems: "center", gap: 5, alignSelf: "flex-start", marginTop: 8, paddingHorizontal: 9, paddingVertical: 6, borderRadius: 8, backgroundColor: "#2a0b10", borderWidth: 1, borderColor: "rgba(239,35,60,.32)" },
-  hourlyRateText: { color: "#ffd7dc", fontSize: 11, fontWeight: "900" },
   specRow: { flexDirection: "row", flexWrap: "wrap", gap: 7, marginTop: 12 },
   spec: { flexDirection: "row", alignItems: "center", gap: 5, paddingHorizontal: 8, paddingVertical: 6, borderRadius: 8, backgroundColor: "#111318" },
   specText: { color: "#a6abb4", fontSize: 10, fontWeight: "800" },
