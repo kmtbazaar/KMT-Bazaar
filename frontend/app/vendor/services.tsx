@@ -119,21 +119,22 @@ export default function VendorServices() {
         ? await vendorApi.updateService(editing, data)
         : await vendorApi.createService(data);
 
-      // Refresh the vendor list explicitly; don't silently report success if the
-      // saved hourly rate did not come back from the API/database.
-      const refreshedItems = await vendorApi.services();
+      // The mutation response is the authoritative saved record; checking a
+      // separate GET first can falsely fail if an old list response is cached.
       const savedId = String(saved?.id || editing || "");
-      const savedItem = (refreshedItems || []).find((item: any) => String(item.id) === savedId);
-      if (isCar && savedItem && parsePriceAmount(savedItem.hourly_price) !== hourlyPrice) {
-        setItems(refreshedItems || []);
-        throw new Error("Hourly rate did not persist. Please check your connection and save again.");
-      }
-      if (isCar && !savedItem) {
-        setItems(refreshedItems || []);
-        throw new Error("Car was saved, but did not appear in the refreshed vendor list. Please reopen Rental Fleet and verify it.");
+      if (isCar && parsePriceAmount(saved?.hourly_price) !== hourlyPrice) {
+        throw new Error(
+          `Hourly rate was submitted as ₹${hourlyPrice}, but the server returned ₹${parsePriceAmount(saved?.hourly_price)}. The server may need its latest code loaded.`
+        );
       }
 
-      setItems(refreshedItems || []);
+      const refreshedItems = await vendorApi.services();
+      const freshList = Array.isArray(refreshedItems) ? refreshedItems : [];
+      const hasSavedItem = freshList.some((item: any) => String(item.id) === savedId);
+      const nextItems = hasSavedItem
+        ? freshList.map((item: any) => String(item.id) === savedId ? { ...item, ...saved } : item)
+        : [saved, ...freshList].filter((item: any) => item && item.id);
+      setItems(nextItems);
       setModal(false);
       if (Platform.OS === "web") window.alert(editing ? "Saved and live" : "Service added and live");
       else Alert.alert("Saved", editing ? "Changes are live" : "Service is live");
