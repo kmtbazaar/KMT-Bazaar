@@ -10,6 +10,7 @@ import {
   Platform,
   Modal,
   Dimensions,
+  PanResponder,
 } from "react-native";
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
@@ -22,6 +23,7 @@ import Animated, {
   FadeInUp,
 } from "react-native-reanimated";
 import { api } from "@/src/api";
+import Car3DModel from "@/components/Car3DModel";
 
 const { width } = Dimensions.get("window");
 
@@ -33,6 +35,7 @@ const WHITE = "#ffffff";
 const MUTED = "#a6abb4";
 const LINE = "#242833";
 const AMBER = "#ef233c";
+const CAR_MODEL_COLORS = ["#d92741", "#d4dce7", "#1c68bd", "#138c91", "#c6a16b", "#69778b"];
 
 const MOCK_FLEET = [
   {
@@ -272,6 +275,7 @@ export default function CarRentalPage() {
   const [passengers, setPassengers] = useState(2);
   const [tripNote, setTripNote] = useState("");
   const [bannerIndex, setBannerIndex] = useState(0);
+  const [showcaseIndex, setShowcaseIndex] = useState(0);
   const [bannerImageBroken, setBannerImageBroken] = useState(false);
   const [bannerConfigs, setBannerConfigs] = useState<any[]>([]);
   const bannerSlideCount = bannerConfigs.length || items.length;
@@ -361,6 +365,30 @@ export default function CarRentalPage() {
       return text.includes(needle);
     });
   }, [items, query]);
+
+  useEffect(() => {
+    setShowcaseIndex(0);
+  }, [query, items.length]);
+
+  const showcaseIndexSafe = filtered.length ? showcaseIndex % filtered.length : 0;
+  const featuredCar = filtered.length ? filtered[showcaseIndexSafe] : null;
+
+  const changeShowcase = useCallback((delta: number) => {
+    setShowcaseIndex((current) => {
+      const total = filtered.length;
+      if (!total) return 0;
+      return (current + delta + total) % total;
+    });
+  }, [filtered.length]);
+
+  const showcasePanResponder = useMemo(() => PanResponder.create({
+    onMoveShouldSetPanResponder: (_event, gesture) =>
+      Math.abs(gesture.dx) > 18 && Math.abs(gesture.dx) > Math.abs(gesture.dy) * 1.15,
+    onPanResponderRelease: (_event, gesture) => {
+      if (gesture.dx < -45) changeShowcase(1);
+      else if (gesture.dx > 45) changeShowcase(-1);
+    },
+  }), [changeShowcase]);
 
   const heroSearch = () => {
     setQuery(query.trim());
@@ -473,6 +501,89 @@ export default function CarRentalPage() {
             ) : null}
           </Animated.View>
 
+          {featuredCar ? (
+            <Animated.View entering={FadeInUp.delay(100).duration(500)} style={styles.showcase}>
+              <View style={styles.showcaseTopline}>
+                <View>
+                  <Text style={styles.showcaseEyebrow}>KMT 3D CAR SHOWROOM</Text>
+                  <Text style={styles.showcaseHeading}>Explore your next ride</Text>
+                </View>
+                <View style={styles.showcaseCount}>
+                  <Text style={styles.showcaseCountText}>{showcaseIndexSafe + 1} / {filtered.length}</Text>
+                </View>
+              </View>
+
+              <View style={styles.showcaseStage} {...showcasePanResponder.panHandlers}>
+                <LinearGradient
+                  colors={["#191d27", "#080a0f", "#211017"]}
+                  style={StyleSheet.absoluteFillObject}
+                />
+                <View pointerEvents="none" style={styles.showcaseGlowLeft} />
+                <View pointerEvents="none" style={styles.showcaseGlowRight} />
+                <Car3DModel
+                  kind={featuredCar.type || featuredCar.category || featuredCar.name}
+                  color={CAR_MODEL_COLORS[showcaseIndexSafe % CAR_MODEL_COLORS.length]}
+                  fallbackImage={featuredCar.image}
+                />
+                <View pointerEvents="none" style={styles.showcaseModelTag}>
+                  <MaterialCommunityIcons name="rotate-3d-variant" size={13} color={WHITE} />
+                  <Text style={styles.showcaseModelTagText}>INTERACTIVE 3D</Text>
+                </View>
+                {filtered.length > 1 ? (
+                  <>
+                    <Pressable accessibilityLabel="Previous car" onPress={() => changeShowcase(-1)} style={[styles.showcaseArrow, styles.showcaseArrowLeft]}>
+                      <MaterialCommunityIcons name="chevron-left" size={25} color={WHITE} />
+                    </Pressable>
+                    <Pressable accessibilityLabel="Next car" onPress={() => changeShowcase(1)} style={[styles.showcaseArrow, styles.showcaseArrowRight]}>
+                      <MaterialCommunityIcons name="chevron-right" size={25} color={WHITE} />
+                    </Pressable>
+                  </>
+                ) : null}
+                <View pointerEvents="none" style={styles.showcaseFloorLine} />
+              </View>
+
+              <View style={styles.showcaseDetails}>
+                <View style={styles.showcaseTitleRow}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.showcaseCarName} numberOfLines={1}>{featuredCar.name}</Text>
+                    <Text style={styles.showcaseCarMeta}>
+                      <MaterialCommunityIcons name="map-marker-outline" size={13} color={RED} /> {featuredCar.location || "India"} · {featuredCar.type || featuredCar.category || "Car"}
+                    </Text>
+                  </View>
+                  <View style={styles.showcaseRating}>
+                    <MaterialCommunityIcons name="star" size={14} color={AMBER} />
+                    <Text style={styles.showcaseRatingText}>{featuredCar.rating || "—"}</Text>
+                  </View>
+                </View>
+                <Text style={styles.showcaseDescription} numberOfLines={2}>
+                  {featuredCar.description || "A comfortable ride for your next city trip or outstation journey."}
+                </Text>
+                <View style={styles.specRow}>
+                  <Spec icon="seat-outline" text={String(featuredCar.seats || 4) + " seats"} />
+                  <Spec icon="car-shift-pattern" text={featuredCar.transmission || "Manual"} />
+                  <Spec icon="gas-station-outline" text={featuredCar.fuel || "Fuel"} />
+                </View>
+                <View style={styles.showcaseBottomRow}>
+                  <View style={styles.showcasePriceBlock}>
+                    <Text style={styles.showcasePriceLabel}>STARTING FROM</Text>
+                    <View style={styles.showcasePriceLine}>
+                      <Text style={styles.showcasePrice}>{money(Number(featuredCar.hourly_price || 0) > 0 ? Number(featuredCar.hourly_price) : Number(featuredCar.price || 0))}</Text>
+                      <Text style={styles.showcasePriceUnit}>{Number(featuredCar.hourly_price || 0) > 0 ? "/hour" : "/day"}</Text>
+                    </View>
+                  </View>
+                  <Pressable onPress={() => goToTripBuilder(router, featuredCar)} style={styles.showcaseBookButton}>
+                    <Text style={styles.showcaseBookButtonText}>Build this trip</Text>
+                    <MaterialCommunityIcons name="arrow-right" size={17} color={WHITE} />
+                  </Pressable>
+                </View>
+              </View>
+              <View style={styles.showcaseSwipeHint}>
+                <MaterialCommunityIcons name="gesture-swipe-horizontal" size={16} color={RED} />
+                <Text style={styles.showcaseSwipeText}>Swipe right to left to explore cars</Text>
+              </View>
+            </Animated.View>
+          ) : null}
+
           <Animated.View entering={FadeInUp.delay(160).duration(650)} style={styles.searchBox}>
             <MaterialCommunityIcons name="magnify" size={24} color={MUTED} />
             <TextInput
@@ -490,14 +601,6 @@ export default function CarRentalPage() {
           </Animated.View>
         </LinearGradient>
 
-        <View style={styles.sectionHeader}>
-          <View>
-            <Text style={styles.sectionTitle}>Available Cars</Text>
-            <Text style={styles.sectionSub}>Choose any car to open its Trip Builder</Text>
-          </View>
-          <View style={styles.countPill}><Text style={styles.countText}>{filtered.length} cars</Text></View>
-        </View>
-
         {loading ? (
           <View style={styles.loader}>
             <ActivityIndicator size="large" color={RED} />
@@ -512,43 +615,7 @@ export default function CarRentalPage() {
               <Text style={styles.primaryBtnText}>Show all cars</Text>
             </Pressable>
           </View>
-        ) : (
-          <View style={styles.grid}>
-            {filtered.map((item, index) => (
-              <Animated.View key={item.id} entering={FadeInDown.delay(index * 65).duration(520)} style={styles.card}>
-                <Pressable onPress={() => goToTripBuilder(router, item)} android_ripple={{ color: "#272b33" }}>
-                  <View style={styles.imageWrap}>
-                    <Image source={{ uri: item.image }} style={styles.cardImage} contentFit="cover" transition={350} />
-                    <LinearGradient colors={["transparent", "rgba(0,0,0,.75)"]} style={styles.imageShade} />
-                    <View style={styles.tag}><Text style={styles.tagText}>{item.tag || item.category}</Text></View>
-                    <View style={styles.pricePill}>
-                      <Text style={styles.price}>{money(Number(item.hourly_price || 0) > 0 ? Number(item.hourly_price) : Number(item.price || 0))}</Text>
-                      <Text style={styles.priceMeta}>{Number(item.hourly_price || 0) > 0 ? "/hour" : "/day"}</Text>
-                    </View>
-                  </View>
-                  <View style={styles.cardBody}>
-                    <View style={styles.titleLine}>
-                      <Text style={styles.cardTitle} numberOfLines={1}>{item.name}</Text>
-                      <View style={styles.rating}><MaterialCommunityIcons name="star" size={13} color={AMBER} /><Text style={styles.ratingText}>{item.rating}</Text></View>
-                    </View>
-                    <Text style={styles.cardLocation}>
-                      <MaterialCommunityIcons name="map-marker-outline" size={14} color={RED} /> {item.location} · {item.type}
-                    </Text>
-                    <View style={styles.specRow}>
-                      <Spec icon="seat-outline" text={String(item.seats || 4) + " seats"} />
-                      <Spec icon="bag-suitcase-outline" text={String(item.bags || 2) + " bags"} />
-                      <Spec icon="car-shift-pattern" text={item.transmission || "Manual"} />
-                    </View>
-                    <View style={styles.bookBtn}>
-                      <Text style={styles.bookBtnText}>Tap to build trip</Text>
-                      <MaterialCommunityIcons name="arrow-right" size={18} color={WHITE} />
-                    </View>
-                  </View>
-                </Pressable>
-              </Animated.View>
-            ))}
-          </View>
-        )}
+        ) : null}
 
       </ScrollView>
 
@@ -700,6 +767,38 @@ const styles = StyleSheet.create({
   bannerSubtitle: { color: "rgba(255,255,255,.90)", fontSize: 11, fontWeight: "700", marginTop: 5 },
   bannerPosition: { position: "absolute", right: 12, bottom: 12, paddingHorizontal: 9, paddingVertical: 6, borderRadius: 999, backgroundColor: "rgba(8,9,11,.82)", borderWidth: 1, borderColor: "rgba(255,255,255,.20)" },
   bannerPositionText: { color: WHITE, fontSize: 10, fontWeight: "900" },
+  showcase: { width: "100%", maxWidth: 980, alignSelf: "center", marginTop: 15, borderRadius: 22, overflow: "hidden", backgroundColor: "#0e1016", borderWidth: 1, borderColor: "rgba(255,255,255,.12)" },
+  showcaseTopline: { paddingHorizontal: 15, paddingTop: 14, paddingBottom: 11, flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  showcaseEyebrow: { color: RED, fontSize: 9, fontWeight: "900", letterSpacing: 1.8 },
+  showcaseHeading: { color: WHITE, fontSize: 17, fontWeight: "900", marginTop: 3 },
+  showcaseCount: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: 999, backgroundColor: "#1a1015", borderWidth: 1, borderColor: "rgba(239,35,60,.30)" },
+  showcaseCountText: { color: WHITE, fontSize: 10, fontWeight: "900" },
+  showcaseStage: { width: "100%", height: 242, position: "relative", overflow: "hidden", backgroundColor: "#08090d" },
+  showcaseGlowLeft: { position: "absolute", left: -62, top: 45, width: 170, height: 170, borderRadius: 90, backgroundColor: "rgba(239,35,60,.13)" },
+  showcaseGlowRight: { position: "absolute", right: -70, top: 0, width: 190, height: 190, borderRadius: 100, backgroundColor: "rgba(80,120,200,.10)" },
+  showcaseModelTag: { position: "absolute", left: 13, top: 12, flexDirection: "row", alignItems: "center", gap: 5, paddingHorizontal: 9, paddingVertical: 6, borderRadius: 999, backgroundColor: "rgba(8,9,11,.74)", borderWidth: 1, borderColor: "rgba(255,255,255,.14)" },
+  showcaseModelTagText: { color: "#eceef4", fontSize: 9, fontWeight: "900", letterSpacing: 1 },
+  showcaseArrow: { position: "absolute", top: 98, width: 38, height: 38, borderRadius: 19, alignItems: "center", justifyContent: "center", backgroundColor: "rgba(12,14,19,.82)", borderWidth: 1, borderColor: "rgba(255,255,255,.18)" },
+  showcaseArrowLeft: { left: 10 },
+  showcaseArrowRight: { right: 10 },
+  showcaseFloorLine: { position: "absolute", left: "13%", right: "13%", bottom: 14, height: 1, backgroundColor: "rgba(255,255,255,.12)" },
+  showcaseDetails: { backgroundColor: "#111318", borderTopWidth: 1, borderTopColor: "rgba(255,255,255,.08)", paddingHorizontal: 15, paddingTop: 15, paddingBottom: 14 },
+  showcaseTitleRow: { flexDirection: "row", gap: 10, alignItems: "center" },
+  showcaseCarName: { color: WHITE, fontSize: 20, fontWeight: "900" },
+  showcaseCarMeta: { color: MUTED, fontSize: 11, marginTop: 4 },
+  showcaseRating: { flexDirection: "row", alignItems: "center", gap: 3, paddingHorizontal: 9, paddingVertical: 6, borderRadius: 999, backgroundColor: "#211820" },
+  showcaseRatingText: { color: WHITE, fontSize: 11, fontWeight: "900" },
+  showcaseDescription: { color: MUTED, fontSize: 11, lineHeight: 17, marginTop: 10 },
+  showcaseBottomRow: { marginTop: 14, paddingTop: 12, borderTopWidth: 1, borderTopColor: LINE, flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12 },
+  showcasePriceBlock: { flex: 1 },
+  showcasePriceLabel: { color: "#858b96", fontSize: 8, fontWeight: "900", letterSpacing: 1.25 },
+  showcasePriceLine: { flexDirection: "row", alignItems: "baseline", gap: 5, marginTop: 2 },
+  showcasePrice: { color: WHITE, fontSize: 22, fontWeight: "900" },
+  showcasePriceUnit: { color: MUTED, fontSize: 10, fontWeight: "800" },
+  showcaseBookButton: { minHeight: 43, paddingHorizontal: 13, borderRadius: 12, backgroundColor: RED, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 7 },
+  showcaseBookButtonText: { color: WHITE, fontSize: 11, fontWeight: "900" },
+  showcaseSwipeHint: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 7, paddingVertical: 11, paddingHorizontal: 10, backgroundColor: "#0a0c10" },
+  showcaseSwipeText: { color: "#8f96a2", fontSize: 10, fontWeight: "800" },
   heroTop: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", zIndex: 4 },
   badge: { flexDirection: "row", gap: 7, alignItems: "center", paddingHorizontal: 11, paddingVertical: 8, backgroundColor: "rgba(255,255,255,.06)", borderWidth: 1, borderColor: "rgba(255,255,255,.09)", borderRadius: 999 },
   badgeText: { color: "#e8e9ec", fontSize: 10, fontWeight: "900", letterSpacing: 1.2 },
