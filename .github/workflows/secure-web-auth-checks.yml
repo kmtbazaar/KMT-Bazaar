@@ -38,6 +38,9 @@ jobs:
       - name: Validate product grid sizing and category navigation
         working-directory: frontend
         run: node scripts/validate-product-grid-layout.js
+      - name: Validate admin product customer visibility
+        working-directory: frontend
+        run: node scripts/validate-admin-product-visibility.js
       - name: Export web app
         working-directory: frontend
         run: npm run build:web

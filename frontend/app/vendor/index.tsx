@@ -645,7 +645,7 @@ function StoreVendorDashboard() {
             </Pressable>
 
             <TextInput
-              placeholder="Store Name (e.g. CyberDham Mart)"
+              placeholder="Store Name (e.g. Wahal Gupta Store)"
               value={storeForm.name}
               onChangeText={(t) => setStoreForm({ ...storeForm, name: t })}
               style={s.input}
