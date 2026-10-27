@@ -520,7 +520,7 @@ export default function VendorStoreDetail() {
               </Text>
               <Text style={[
                 s.meta,
-                Number(item.stock ?? 0) <= 0 && { color: COLORS.error, fontWeight: "800" },
+                Number(item.stock ?? 0) <= 0 && { color: COLORS.error, fontWeight: "900", fontSize: 14 },
               ]}>
                 {item.unit} · Stock: {Math.max(0, Number(item.stock ?? 0))}
                 {Number(item.stock ?? 0) <= 0 ? " · OUT OF STOCK" : Number(item.stock ?? 0) <= 5 ? " · LOW STOCK" : ""}
@@ -1065,7 +1065,7 @@ const s = StyleSheet.create({
     borderColor: "#E5E7EB",
   },
   img: { width: 50, height: 50, borderRadius: 10, backgroundColor: "#F3F4F6" },
-  cardDetails: { flex: 1, marginLeft: 10 },
+  cardDetails: { flex: 1, minWidth: 0, marginLeft: 10 },
   name: { fontSize: 15, fontWeight: "700", color: "#000" },
   meta: { fontSize: 12, color: "#6B7280", marginTop: 2 },
   cardActions: { flexDirection: "row", alignItems: "center", gap: 2 },
@@ -1152,9 +1152,14 @@ const s = StyleSheet.create({
   modalTitle: { fontSize: 18, fontWeight: "800", color: "#000", marginBottom: 10 },
 
   // Compact Form Inputs (Optimized Heights)
-  rowCompact: { flexDirection: "row", gap: 8, marginBottom: 8 },
-  flex1: { flex: 1 },
+  rowCompact: { width: "100%", minWidth: 0, flexDirection: "row", gap: 8, marginBottom: 8, alignItems: "stretch" },
+  flex1: { flex: 1, minWidth: 0, width: 0, flexShrink: 1 },
   inputCompact: {
+    width: "100%",
+    maxWidth: "100%",
+    minWidth: 0,
+    flexShrink: 1,
+    height: 44,
     backgroundColor: "#F9FAFB",
     borderWidth: 1,
     borderColor: "#E5E7EB",
