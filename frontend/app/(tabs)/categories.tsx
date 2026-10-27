@@ -186,7 +186,7 @@ export function CategoryProductTile({ p }: { p: any }) {
               <NativeText
                 style={[
                   s.categoryProductAddText,
-                  outOfStock && { color: COLORS.textMuted },
+                  outOfStock && s.categoryProductOutOfStockText,
                 ]}
               >
                 {outOfStock ? "OUT OF STOCK" : "ADD"}
@@ -601,6 +601,7 @@ const s = StyleSheet.create({
     backgroundColor: COLORS.surfaceSecondary,
   },
   categoryProductAddText: { color: COLORS.accentDark, fontSize: 9, fontWeight: "900" },
+  categoryProductOutOfStockText: { color: COLORS.error, fontSize: 11, fontWeight: "900", letterSpacing: 0.1, flexShrink: 0 },
   categoryProductStepper: {
     height: 29,
     borderRadius: 7,
