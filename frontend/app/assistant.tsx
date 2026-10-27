@@ -389,27 +389,6 @@ export default function AssistantScreen() {
     }
   };
 
-  return () => {
-      voiceModeRef.current = false;
-      try { recognitionRef.current?.stop(); } catch {}
-      if (Platform.OS === "web" && typeof window !== "undefined") {
-        (window as any).speechSynthesis?.cancel();
-      }
-    };
-  }, []);
-
-  // Send typed text, or start speech recognition when the input is empty.
-  const handleActionPress = () => {
-    if (input.trim().length > 0) {
-      onSend();
-    } else if (listening) {
-      try { recognitionRef.current?.stop(); } catch {}
-      setVoiceStatus("Voice input paused.");
-    } else {
-      startListening();
-    }
-  };
-
   return (
     <SafeAreaView style={[styles.container, { paddingTop: insets.top + 10, paddingBottom: insets.bottom + 10 }]} edges={[]}>
       <Animated.View entering={ZoomIn.duration(320).springify()} style={styles.panel}>
