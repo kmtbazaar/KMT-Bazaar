@@ -8,7 +8,7 @@ export const askAI = async (prompt: string) => {
       : "https://kmtbazaar.com";
 
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 30000);
+  const timeoutId = setTimeout(() => controller.abort(), 45000);
 
   try {
     const response = await fetch(
