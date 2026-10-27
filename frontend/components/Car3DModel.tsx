@@ -141,7 +141,7 @@ function createCar(THREE: ThreeObject, kind: string, color: string) {
   box(1.79, 0.43, 0, 0.025, 0.035, 0.29, rim);
   box(rear - 0.62, 0.48, 0, 0.08, 0.06, 0.70, darkTrim);
 
-  group.scale.setScalar(1.0);
+  group.scale.setScalar(1.12);
   group.rotation.y = -0.18;
   return group;
 }
