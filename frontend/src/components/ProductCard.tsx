@@ -500,9 +500,10 @@ const s = StyleSheet.create({
 
   oosText: {
     color: COLORS.error,
-    fontWeight: "800",
-    fontSize: 9,
-    letterSpacing: 0.3,
+    fontWeight: "900",
+    fontSize: 12,
+    letterSpacing: 0.15,
+    paddingHorizontal: 3,
     textAlign: "center",
   },
 
