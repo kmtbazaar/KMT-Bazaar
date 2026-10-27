@@ -7,6 +7,7 @@ import{MaterialCommunityIcons}from"@expo/vector-icons";
 import{useLocalSearchParams,useRouter}from"expo-router";
 import{SafeAreaView}from"react-native-safe-area-context";
 import{api}from"@/src/api";
+import DateTimePickerField from "@/components/DateTimePickerField";
 
 const RED="#ef233c",BLACK="#08090b",CARD="#111318",MUTED="#a6abb4",WHITE="#fff",LINE="#242833";
 const MOCK=[
@@ -35,7 +36,7 @@ export default function CarTripBuilder(){
  <View style={s.carCard}><Image source={{uri:car.image}} style={s.carImg} contentFit="cover"/><View style={{flex:1,padding:13}}><Text style={s.carName}>{car.name}</Text><Text style={s.carMeta}>{car.location} · {car.category}</Text><Text style={s.vendor}>{car.vendor_name}</Text><Text style={s.carPrice}>₹{Number(car.price||0).toLocaleString("en-IN")} <Text style={s.per}>/ day</Text></Text>{Number(car.hourly_price||0)>0&&<Text style={s.hourlyRate}>₹{Number(car.hourly_price).toLocaleString("en-IN")} / hour</Text>}</View></View>
  <View style={s.card}><Text style={s.label}>YOUR ROUTE</Text><Text style={s.fieldLabel}>PICKUP LOCATION *</Text><TextInput value={pickup} onChangeText={setPickup} placeholder="e.g. Patna Airport" placeholderTextColor="#777d87" style={s.input}/>
  <Text style={s.fieldLabel}>DROP / DESTINATION</Text><TextInput value={dropoff} onChangeText={setDropoff} placeholder="e.g. Bodh Gaya / Varanasi" placeholderTextColor="#777d87" style={s.input}/>
- <View style={s.row}><View style={{flex:1}}><Text style={s.fieldLabel}>TRAVEL DATE *</Text><TextInput value={date} onChangeText={setDate} placeholder="YYYY-MM-DD" placeholderTextColor="#777d87" style={s.input}/></View><View style={{flex:1}}><Text style={s.fieldLabel}>PICKUP TIME</Text><TextInput value={time} onChangeText={setTime} placeholder="09:00" placeholderTextColor="#777d87" style={s.input}/></View></View>
+  <View style={s.row}><View style={{flex:1,minWidth:0}}><Text style={s.fieldLabel}>TRAVEL DATE *</Text><DateTimePickerField mode="date" value={date} onChange={setDate} placeholder="Select date"/></View><View style={{flex:1,minWidth:0}}><Text style={s.fieldLabel}>PICKUP TIME</Text><DateTimePickerField mode="time" value={time} onChange={setTime} placeholder="Select time"/></View></View>
  <View style={s.row}><Counter title="RENTAL DAYS" value={days} min={1} max={30} onChange={setDays}/><Counter title="PASSENGERS" value={passengers} min={1} max={Number(car.seats||7)} onChange={setPassengers}/></View>
  <Text style={s.fieldLabel}>TRIP NOTES</Text><TextInput value={note} onChangeText={setNote} placeholder="Sightseeing, airport timing, special request..." placeholderTextColor="#777d87" multiline style={[s.input,s.note]}/>
  </View>
