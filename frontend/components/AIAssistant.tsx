@@ -63,15 +63,15 @@ export default function AIAssistant() {
 const styles = StyleSheet.create({
   container: {
     position: "absolute",
-    right: 20,
-    bottom: 30,
+    right: 14,
+    bottom: 20,
     zIndex: 9999,
   },
 
   button: {
-    width: 90,
-    height: 90,
-    borderRadius: 45,
+    width: 62,
+    height: 62,
+    borderRadius: 31,
     overflow: "hidden",
     backgroundColor: "transparent",
   },
