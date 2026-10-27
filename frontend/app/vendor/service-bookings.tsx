@@ -32,7 +32,7 @@ export default function VendorBookings(){
    {d.length===0?<Text style={s.e}>No bookings yet.</Text>:d.map(x=>{
     const a=NEXT[x.service_type]||[],i=a.indexOf(x.status),next=i>=0?a[i+1]:a[0];
     const ex=x.extra||{};
-    const title=x.service_type==="car_rental"?"Rental Booking":"Holiday Booking";
+    const title=x.service_type==="car_rental"?"Rental Booking":x.service_type==="daily_service"?"Daily Service Booking":"Holiday Booking";
     return <Pressable key={x.id} onPress={()=>setSelected(x)} style={s.c}>
       <View style={s.row}><View style={{flex:1}}><Text style={s.n}>{x.service_name||title}</Text><Text style={s.customer}>{x.customer_name||ex.customer_name||"Customer"} · {x.customer_phone||ex.customer_phone||"Mobile not provided"}</Text></View><Text style={s.st}>{String(x.status||"pending").toUpperCase()}</Text></View>
       <Text style={s.meta}>{x.booking_date||"Date not set"}{x.booking_time?" · "+x.booking_time:""}</Text>
@@ -49,8 +49,8 @@ export default function VendorBookings(){
    <View style={m.back}><View style={m.sheet}><ScrollView contentContainerStyle={{paddingBottom:26}}>
     {selected&&(()=>{const ex=selected.extra||{},a=NEXT[selected.service_type]||[],i=a.indexOf(selected.status),next=i>=0?a[i+1]:a[0],type=selected.service_type==="car_rental"?"Car Rental":selected.service_type==="holiday"?"Holiday":"Daily Service";return <>
       <View style={m.head}><View><Text style={m.title}>{type} Booking</Text><Text style={m.id}>{selected.id}</Text></View><Pressable onPress={()=>setSelected(null)}><MaterialCommunityIcons name="close" size={24}/></Pressable></View>
-      <Group title="Customer"><Info label="Name" value={selected.customer_name||ex.customer_name}/><Info label="Mobile" value={selected.customer_phone||ex.customer_phone}/><Info label="Email" value={selected.customer_email||ex.customer_email||"Not provided"}/></Group>
-      <Group title="Order"><Info label="Service" value={selected.service_name}/><Info label="Date" value={selected.booking_date}/><Info label="Time" value={selected.booking_time||"Not specified"}/><Info label="Address / Pickup" value={ex.service_address||ex.pickup_location||"Not provided"}/><Info label="Destination" value={ex.destination||ex.location||"Not specified"}/><Info label="Notes" value={selected.notes||"Not provided"}/></Group>
+      <Group title="Customer"><Info label="Name" value={selected.customer_name||ex.customer_name}/><Info label="Mobile" value={selected.customer_phone||ex.customer_phone}/>{selected.service_type!=="daily_service"&&<Info label="Email" value={selected.customer_email||ex.customer_email||"Not provided"}/>}</Group>
+      <Group title="Order"><Info label="Service" value={selected.service_name}/><Info label={type==="Daily Service"?"Service Date":"Date"} value={selected.booking_date}/><Info label={type==="Daily Service"?"Service Time":"Time"} value={selected.booking_time||"Not specified"}/><Info label="Address / Pickup" value={ex.service_address||ex.pickup_location||"Not provided"}/><Info label="Destination" value={ex.destination||ex.location||"Not specified"}/><Info label="Notes" value={selected.notes||"Not provided"}/></Group>
       <Group title="Payment"><Info label="Status" value={selected.payment_status||"Not recorded"}/><Info label="Plan" value={selected.payment_plan||"-"}/><Info label="Paid" value={selected.paid_amount!=null?"₹"+Number(selected.paid_amount).toLocaleString("en-IN"):"-"}/><Info label="Total" value={selected.total_amount!=null?"₹"+Number(selected.total_amount).toLocaleString("en-IN"):"-"}/><Info label="Reference" value={selected.gateway_reference||"-"}/></Group>
       <Text style={m.status}>Current status: {String(selected.status||"pending").toUpperCase()}</Text>
       {next&&<View style={s.actions}>
