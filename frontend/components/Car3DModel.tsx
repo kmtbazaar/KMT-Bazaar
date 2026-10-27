@@ -6,6 +6,8 @@ type Car3DModelProps = {
   kind?: string;
   color?: string;
   fallbackImage?: string;
+  transitionKey?: string;
+  slideDirection?: 1 | -1;
 };
 
 type ThreeObject = any;
@@ -146,11 +148,17 @@ function createCar(THREE: ThreeObject, kind: string, color: string) {
   return group;
 }
 
-export default function Car3DModel({ kind = "sedan", color = "#d92741", fallbackImage }: Car3DModelProps) {
+export default function Car3DModel({
+  kind = "sedan",
+  color = "#d92741",
+  fallbackImage,
+  transitionKey = "",
+  slideDirection = 1,
+}: Car3DModelProps) {
   const hostRef = useRef<any>(null);
-  const configRef = useRef({ kind, color });
+  const configRef = useRef({ kind, color, transitionKey, slideDirection });
   const [ready, setReady] = useState(false);
-  configRef.current = { kind, color };
+  configRef.current = { kind, color, transitionKey, slideDirection };
 
   useEffect(() => {
     if (Platform.OS !== "web" || typeof window === "undefined" || typeof document === "undefined") return;
@@ -166,6 +174,9 @@ export default function Car3DModel({ kind = "sedan", color = "#d92741", fallback
     let lastFrame = 0;
     let currentShape = "";
     let currentColor = "";
+    let currentTransitionKey = configRef.current.transitionKey;
+    let slideStartedAt = 0;
+    let slideFromX = 0;
     const host = hostRef.current as unknown as HTMLElement;
     if (!host) return;
 
@@ -256,7 +267,25 @@ export default function Car3DModel({ kind = "sedan", color = "#d92741", fallback
             currentColor = latest.color;
           }
 
-          if (car) car.rotation.y = -0.18 + Math.sin(now * 0.00032) * 0.12;
+          if (latest.transitionKey !== currentTransitionKey) {
+            currentTransitionKey = latest.transitionKey;
+            slideStartedAt = now;
+            slideFromX = latest.slideDirection >= 0 ? 1.85 : -1.85;
+            if (car) car.position.x = slideFromX;
+          }
+
+          if (car) {
+            if (slideStartedAt > 0) {
+              const progress = Math.min(1, (now - slideStartedAt) / 340);
+              const eased = 1 - Math.pow(1 - progress, 3);
+              car.position.x = slideFromX * (1 - eased);
+              if (progress >= 1) {
+                car.position.x = 0;
+                slideStartedAt = 0;
+              }
+            }
+            car.rotation.y = -0.18 + Math.sin(now * 0.00032) * 0.12;
+          }
           renderer.render(scene, camera);
         };
         frame = window.requestAnimationFrame(animate);
