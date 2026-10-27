@@ -12,10 +12,6 @@ from google import genai
 from google.genai import types
 from google.oauth2 import id_token as google_id_token
 from google.auth.transport import requests as google_requests
-load_dotenv()
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
-if GEMINI_API_KEY:
-   gemini_client = genai.Client(api_key=GEMINI_API_KEY)
 from google.genai import types
 from fastapi import FastAPI, APIRouter, HTTPException, Depends, status
 from google import genai
@@ -69,8 +65,8 @@ COOKIE_AUTH_ORIGINS = frozenset({
     "https://www.kmtbazaar.com",
 })
 
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
-GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
+GEMINI_API_KEY = (os.getenv("GEMINI_API_KEY") or "").strip()
+GEMINI_MODEL = (os.getenv("GEMINI_MODEL") or "gemini-3.8-flash").strip() or "gemini-3.8-flash"
 GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID", "")
 RESEND_API_KEY = os.getenv("RESEND_API_KEY", "").strip()
 EMAIL_FROM = (os.getenv("EMAIL_FROM") or os.getenv("RESEND_FROM_EMAIL") or "KMT Bazaar <noreply@kmtbazaar.com>").strip()
@@ -78,7 +74,7 @@ EMAIL_OTP_EXPIRE_MINUTES = 10
 EMAIL_OTP_RESEND_COOLDOWN_SECONDS = 60
 EMAIL_OTP_MAX_ATTEMPTS = 5
 
-gemini_client = genai.Client(api_key=GEMINI_API_KEY)
+gemini_client = genai.Client(api_key=GEMINI_API_KEY) if GEMINI_API_KEY else None
 
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -5957,10 +5953,42 @@ async def ai_chat(req: AIChatRequest):
         raise
     except Exception as e:
         logging.exception("AI chat failed")
-        raise HTTPException(
-            status_code=500,
-            detail=f"AI service error: {str(e)}",
-        )
+
+        # Translate provider failures into safe, actionable messages without
+        # returning raw SDK internals to customers.
+        raw_error = str(e).lower()
+        provider_code = getattr(e, "code", None)
+        if not isinstance(provider_code, int):
+            provider_response = getattr(e, "response", None)
+            provider_code = getattr(provider_response, "status_code", None)
+        try:
+            provider_code = int(provider_code) if provider_code is not None else None
+        except (TypeError, ValueError):
+            provider_code = None
+
+        if any(token in raw_error for token in ("api_key_invalid", "api key not valid", "invalid api key")):
+            detail = "Gemini API key is invalid or blocked. Check GEMINI_API_KEY in the backend environment."
+            http_status = 502
+        elif provider_code in (401, 403) or ("api key" in raw_error and provider_code == 400):
+            detail = "Gemini rejected this API key or its project permissions. Check the key, API access, and project billing in Google AI Studio."
+            http_status = 502
+        elif provider_code == 402 or any(token in raw_error for token in ("billing", "payment required", "prepay credit")):
+            detail = "Gemini billing is required or the account has no available credit. Check the Google AI Studio billing status."
+            http_status = 402
+        elif provider_code == 429 or any(token in raw_error for token in ("resource_exhausted", "quota exceeded", "rate limit")):
+            detail = "Gemini API quota or rate limit reached. Check the project's quota and try again later."
+            http_status = 429
+        elif provider_code == 404 or ("model" in raw_error and ("not found" in raw_error or "not supported" in raw_error)):
+            detail = f"Gemini model '{GEMINI_MODEL}' is unavailable to this project. Check GEMINI_MODEL or use a model enabled for this API key."
+            http_status = 502
+        elif provider_code in (500, 502, 503, 504):
+            detail = "Gemini is temporarily unavailable. Please try again shortly."
+            http_status = 503
+        else:
+            detail = f"Gemini request failed (provider code {provider_code}). Check the backend logs for the exact cause."
+            http_status = 502
+
+        raise HTTPException(status_code=http_status, detail=detail)
 @api.get("/test-db")
 async def test_db(_=Depends(require_roles("admin"))):
     return {"users": await db.users.count_documents({}), "orders": await db.orders.count_documents({})}
