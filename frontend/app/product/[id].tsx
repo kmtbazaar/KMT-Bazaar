@@ -241,7 +241,7 @@ export default function Product() {
         </View>
       </SafeAreaView>
       
-      <ScrollView contentContainerStyle={{ paddingBottom: 190 }} showsVerticalScrollIndicator={false}>
+      <ScrollView style={{ flex: 1, minHeight: 0 }} contentContainerStyle={{ paddingBottom: 190 }} showsVerticalScrollIndicator={false}>
         <View
           style={s.imageCarousel}
           onLayout={(event) => {
@@ -430,7 +430,7 @@ export default function Product() {
 }
 
 const s = StyleSheet.create({
-  root: { flex: 1, backgroundColor: COLORS.surface },
+  root: { flex: 1, minHeight: 0, position: "relative", backgroundColor: COLORS.surface },
   center: { flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: COLORS.surface },
   header: { flexDirection: "row", justifyContent: "space-between", paddingHorizontal: SPACING.lg, position: "absolute", top: 0, left: 0, right: 0, zIndex: 10 },
   headerActions: { flexDirection: "row", alignItems: "center", gap: 8 },
@@ -446,7 +446,7 @@ const s = StyleSheet.create({
   card: { padding: SPACING.lg },
   name: { fontSize: 22, fontWeight: "800", color: COLORS.text },
   unit: { color: COLORS.textMuted, marginTop: 4, fontSize: 13 },
-  outOfStockText: { color: COLORS.error, fontWeight: "900" },
+  outOfStockText: { color: COLORS.error, fontWeight: "900", fontSize: 16, letterSpacing: 0.4, marginTop: 6 },
   priceRow: { flexDirection: "row", alignItems: "center", gap: 10, marginTop: 12 },
   price: { fontSize: 28, fontWeight: "800", color: COLORS.text },
   mrp: { fontSize: 16, color: COLORS.textMuted, textDecorationLine: "line-through" },
@@ -460,7 +460,7 @@ const s = StyleSheet.create({
   delSub: { color: COLORS.brandDark, fontSize: 12, marginTop: 2 },
   toast: { position: "absolute", top: 80, left: 20, right: 20, backgroundColor: COLORS.success, padding: 12, borderRadius: RADIUS.md, flexDirection: "row", alignItems: "center", gap: 10, ...shadow.card, zIndex: 20 },
   toastText: { color: "#fff", fontWeight: "700" },
-  bottomBar: { position: "absolute", left: 0, right: 0, bottom: 0, padding: SPACING.md, paddingBottom: 24, backgroundColor: "#fff", borderTopWidth: 1, borderColor: COLORS.border },
+  bottomBar: { position: "absolute", left: 0, right: 0, bottom: 0, zIndex: 15, elevation: 14, padding: SPACING.md, paddingBottom: 24, backgroundColor: "#fff", borderTopWidth: 1, borderColor: COLORS.border },
   actionRow: { flexDirection: "row", alignItems: "center", gap: 10, width: "100%" },
   qtyBox: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", minWidth: 132, borderWidth: 1.5, borderColor: COLORS.border, paddingHorizontal: 12, paddingVertical: 10, borderRadius: RADIUS.pill, gap: 12 },
   suggestionsSection: { marginTop: SPACING.sm, marginBottom: SPACING.lg },
