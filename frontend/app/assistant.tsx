@@ -17,7 +17,7 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import BotHeader from "../components/BotHeader";
 import ChatBubble from "../components/ChatBubble";
 import TypingIndicator from "../components/TypingIndicator";
-import { askAI } from "../services/ai";
+import { askAI, transcribeVoice } from "../services/ai";
 
 type Message = {
   id: number;
@@ -33,10 +33,21 @@ export default function AssistantScreen() {
   const [voiceMode, setVoiceMode] = useState(false);
   const [listening, setListening] = useState(false);
   const [speaking, setSpeaking] = useState(false);
-  const [voiceLanguage, setVoiceLanguage] = useState<"en-IN" | "hi-IN">("en-IN");
   const [voiceStatus, setVoiceStatus] = useState("");
-  const recognitionRef = useRef<any>(null);
   const voiceModeRef = useRef(false);
+  const mediaRecorderRef = useRef<any>(null);
+  const mediaStreamRef = useRef<any>(null);
+  const audioContextRef = useRef<any>(null);
+  const analyserRef = useRef<any>(null);
+  const sourceNodeRef = useRef<any>(null);
+  const silenceTimerRef = useRef<any>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
+  const discardRecordingRef = useRef(false);
+  const speechDetectedRef = useRef(false);
+  const noSpeechTimeoutRef = useRef(false);
+  const captureStartedAtRef = useRef(0);
+  const lastSpeechAtRef = useRef(0);
+  const replyLocaleRef = useRef<"hi-IN" | "en-IN">("en-IN");
 
   const [messages, setMessages] = useState<Message[]>([
     {
@@ -65,14 +76,20 @@ export default function AssistantScreen() {
         ...prev,
         { id: Date.now() + 1, text: response.message, isUser: false },
       ]);
-      if (voiceModeRef.current) speakText(response.message);
+      if (voiceModeRef.current) speakText(response.message, replyLocaleRef.current);
     } catch (error) {
       setTyping(false);
       const message =
         error instanceof Error
           ? error.message
           : "AI request failed. Please try again.";
-      setVoiceStatus(voiceModeRef.current ? "AI response failed." : "");
+      if (voiceModeRef.current) {
+        voiceModeRef.current = false;
+        setVoiceMode(false);
+        setVoiceStatus(message);
+      } else {
+        setVoiceStatus("");
+      }
       setMessages((prev) => [
         ...prev,
         {
@@ -84,9 +101,30 @@ export default function AssistantScreen() {
     }
   };
 
-  const speakText = (text: string) => {
+  const inferVoiceLocale = (text: string, fallback: "hi-IN" | "en-IN") => {
+    const devanagariCount = (text.match(/[\u0900-\u097F]/g) || []).length;
+    return devanagariCount >= 3 ? "hi-IN" : fallback;
+  };
+
+  const releaseVoiceResources = () => {
+    if (silenceTimerRef.current && typeof window !== "undefined") {
+      window.clearInterval(silenceTimerRef.current);
+    }
+    silenceTimerRef.current = null;
+    try { sourceNodeRef.current?.disconnect(); } catch {}
+    sourceNodeRef.current = null;
+    analyserRef.current = null;
+    try { void audioContextRef.current?.close(); } catch {}
+    audioContextRef.current = null;
+    try {
+      mediaStreamRef.current?.getTracks?.().forEach((track: any) => track.stop());
+    } catch {}
+    mediaStreamRef.current = null;
+  };
+
+  const speakText = (text: string, fallbackLocale: "hi-IN" | "en-IN") => {
     if (Platform.OS !== "web" || typeof window === "undefined") {
-      setVoiceStatus("Voice playback is currently available in the website browser.");
+      setVoiceStatus("Spoken replies are available in the website browser.");
       return;
     }
     const browserWindow = window as any;
@@ -94,106 +132,208 @@ export default function AssistantScreen() {
     const Utterance = browserWindow.SpeechSynthesisUtterance ||
       (globalThis as any).SpeechSynthesisUtterance;
     if (!synthesis || !Utterance) {
-      setVoiceStatus("Voice playback is not supported by this browser.");
+      setVoiceStatus("Your browser does not support spoken replies.");
+      if (voiceModeRef.current) void startVoiceCapture();
       return;
     }
 
     synthesis.cancel();
     const utterance = new Utterance(text);
-    utterance.lang = voiceLanguage;
+    utterance.lang = inferVoiceLocale(text, fallbackLocale);
     utterance.rate = 0.96;
     utterance.pitch = 1.04;
     utterance.onstart = () => {
       setSpeaking(true);
-      setVoiceStatus("KMT AI is speaking…");
+      setVoiceStatus("KMT AI is replying aloud…");
     };
     utterance.onend = () => {
       setSpeaking(false);
       if (voiceModeRef.current) {
-        setVoiceStatus("Voice mode on — speak when ready.");
-        startListening();
+        setVoiceStatus("Mic active · Hindi/English auto-detect");
+        void startVoiceCapture();
       }
     };
     utterance.onerror = () => {
       setSpeaking(false);
-      if (voiceModeRef.current) setVoiceStatus("Voice playback failed. Check browser sound settings.");
+      if (voiceModeRef.current) {
+        setVoiceStatus("Spoken reply unavailable; listening again.");
+        void startVoiceCapture();
+      }
     };
     synthesis.speak(utterance);
   };
 
-  const startListening = () => {
-    if (Platform.OS !== "web" || typeof window === "undefined") {
-      setVoiceStatus("Voice input currently works in supported website browsers.");
-      if (voiceModeRef.current) {
-        voiceModeRef.current = false;
-        setVoiceMode(false);
-      }
-      return;
-    }
+  const startVoiceCapture = async () => {
+    if (!voiceModeRef.current || Platform.OS !== "web" || typeof window === "undefined") return;
 
     const browserWindow = window as any;
-    const SpeechRecognition = browserWindow.SpeechRecognition ||
-      browserWindow.webkitSpeechRecognition;
-    if (!SpeechRecognition) {
-      setVoiceStatus("Voice input needs a browser with speech recognition, such as Chrome or Edge. You can still type to chat.");
-      if (voiceModeRef.current) {
-        voiceModeRef.current = false;
-        setVoiceMode(false);
-      }
+    const MediaRecorderCtor = browserWindow.MediaRecorder;
+    const mediaDevices = browserWindow.navigator?.mediaDevices;
+    if (!MediaRecorderCtor || !mediaDevices?.getUserMedia) {
+      setVoiceStatus("This browser does not support microphone recording. Please use a current browser over HTTPS.");
+      voiceModeRef.current = false;
+      setVoiceMode(false);
       return;
     }
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") return;
 
     try {
-      recognitionRef.current?.stop();
-    } catch {}
+      setVoiceStatus("Requesting microphone access…");
+      const stream = await mediaDevices.getUserMedia({
+        audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+      });
+      if (!voiceModeRef.current) {
+        stream.getTracks().forEach((track: any) => track.stop());
+        return;
+      }
+      mediaStreamRef.current = stream;
 
-    try {
-      const recognition = new SpeechRecognition();
-      recognition.lang = voiceLanguage;
-      recognition.continuous = false;
-      recognition.interimResults = false;
-      recognition.maxAlternatives = 1;
-      recognition.onstart = () => {
-        setListening(true);
-        setVoiceStatus(voiceModeRef.current ? "Voice mode on — speak now." : "Listening… speak now.");
+      const AudioContextCtor = browserWindow.AudioContext || browserWindow.webkitAudioContext;
+      if (AudioContextCtor) {
+        try {
+          const audioContext = new AudioContextCtor();
+          await audioContext.resume();
+          const analyser = audioContext.createAnalyser();
+          analyser.fftSize = 1024;
+          const source = audioContext.createMediaStreamSource(stream);
+          source.connect(analyser);
+          audioContextRef.current = audioContext;
+          analyserRef.current = analyser;
+          sourceNodeRef.current = source;
+        } catch {
+          // A fixed maximum recording duration still protects browsers without an analyser.
+        }
+      }
+
+      const mimeCandidates = [
+        "audio/webm;codecs=opus",
+        "audio/webm",
+        "audio/mp4",
+        "audio/ogg;codecs=opus",
+        "audio/ogg",
+      ];
+      const mimeType = mimeCandidates.find((type) =>
+        typeof MediaRecorderCtor.isTypeSupported === "function" &&
+        MediaRecorderCtor.isTypeSupported(type)
+      );
+      const recorder = mimeType
+        ? new MediaRecorderCtor(stream, { mimeType })
+        : new MediaRecorderCtor(stream);
+      mediaRecorderRef.current = recorder;
+      audioChunksRef.current = [];
+      discardRecordingRef.current = false;
+      speechDetectedRef.current = false;
+      noSpeechTimeoutRef.current = false;
+      captureStartedAtRef.current = Date.now();
+      lastSpeechAtRef.current = Date.now();
+
+      recorder.ondataavailable = (event: any) => {
+        if (event?.data?.size > 0) audioChunksRef.current.push(event.data);
       };
-      recognition.onresult = (event: any) => {
-        const spoken = String(event?.results?.[0]?.[0]?.transcript || "").trim();
-        if (!spoken) {
-          setVoiceStatus("No speech detected. Tap the mic and try again.");
+
+      recorder.onstop = async () => {
+        if (silenceTimerRef.current) window.clearInterval(silenceTimerRef.current);
+        silenceTimerRef.current = null;
+        const shouldDiscard = discardRecordingRef.current || !voiceModeRef.current;
+        const recordedParts = audioChunksRef.current;
+        audioChunksRef.current = [];
+        const blob = new Blob(recordedParts, {
+          type: recorder.mimeType || mimeType || "audio/webm",
+        });
+        if (mediaRecorderRef.current === recorder) mediaRecorderRef.current = null;
+        releaseVoiceResources();
+        setListening(false);
+        discardRecordingRef.current = false;
+        if (shouldDiscard) return;
+
+        if (noSpeechTimeoutRef.current || blob.size < 1000) {
+          setVoiceStatus("No speech detected · listening again");
+          window.setTimeout(() => {
+            if (voiceModeRef.current) void startVoiceCapture();
+          }, 700);
           return;
         }
-        if (voiceModeRef.current) {
-          setInput("");
-          setVoiceStatus("You spoke — KMT AI is thinking…");
-          void processMessage(spoken);
-        } else {
-          setInput(spoken);
-          setVoiceStatus("Voice captured. Press send to ask.");
-        }
-      };
-      recognition.onerror = (event: any) => {
-        setListening(false);
-        const code = String(event?.error || "");
-        if (code === "not-allowed" || code === "service-not-allowed") {
-          setVoiceStatus("Microphone permission is blocked. Allow microphone access for kmtbazaar.com in browser site settings.");
-        } else if (code === "no-speech") {
-          setVoiceStatus("No speech detected. Tap the mic and try again.");
-        } else {
-          setVoiceStatus("Voice input failed. Check microphone permission and try again.");
-        }
-        if (voiceModeRef.current && code !== "no-speech") {
+
+        try {
+          setVoiceStatus("Detecting language and understanding speech…");
+          const dataUrl = await new Promise<string>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(String(reader.result || ""));
+            reader.onerror = () => reject(new Error("Could not read microphone recording."));
+            reader.readAsDataURL(blob);
+          });
+          const comma = dataUrl.indexOf(",");
+          const audioBase64 = comma >= 0 ? dataUrl.slice(comma + 1) : dataUrl;
+          const safeMimeType = String(blob.type || mimeType || "audio/webm").split(";")[0];
+          const result = await transcribeVoice(audioBase64, safeMimeType);
+          const spoken = result.transcript.trim();
+          if (!voiceModeRef.current) return;
+          if (!spoken) throw new Error("No speech detected. Please try again.");
+
+          replyLocaleRef.current = inferVoiceLocale(spoken, "en-IN");
+          setVoiceStatus("Speech detected · KMT AI is thinking…");
+          await processMessage(spoken);
+        } catch (error) {
+          const message = error instanceof Error ? error.message : "Voice input failed. Please try again.";
+          setVoiceStatus(message);
           voiceModeRef.current = false;
           setVoiceMode(false);
         }
       };
-      recognition.onend = () => setListening(false);
-      recognitionRef.current = recognition;
-      setVoiceStatus("Requesting microphone permission…");
-      recognition.start();
-    } catch {
+
+      recorder.onerror = () => {
+        setVoiceStatus("Microphone recording failed. Check the site microphone permission.");
+        voiceModeRef.current = false;
+        setVoiceMode(false);
+        releaseVoiceResources();
+        setListening(false);
+      };
+
+      recorder.start(250);
+      setListening(true);
+      setVoiceStatus("Mic active · Hindi/English auto-detect");
+
+      silenceTimerRef.current = window.setInterval(() => {
+        if (recorder.state !== "recording") return;
+        const now = Date.now();
+        const analyser = analyserRef.current;
+        let rms = 0;
+        if (analyser) {
+          const samples = new Uint8Array(analyser.fftSize);
+          analyser.getByteTimeDomainData(samples);
+          let total = 0;
+          for (let i = 0; i < samples.length; i += 1) {
+            const value = (samples[i] - 128) / 128;
+            total += value * value;
+          }
+          rms = Math.sqrt(total / samples.length);
+        }
+        if (rms > 0.025) {
+          speechDetectedRef.current = true;
+          lastSpeechAtRef.current = now;
+        }
+        const elapsed = now - captureStartedAtRef.current;
+        if (!speechDetectedRef.current && elapsed >= 9000) {
+          noSpeechTimeoutRef.current = true;
+          recorder.stop();
+        } else if (
+          (speechDetectedRef.current && now - lastSpeechAtRef.current >= 1350) ||
+          elapsed >= 20000
+        ) {
+          recorder.stop();
+        }
+      }, 150);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "";
       setListening(false);
-      setVoiceStatus("Could not start microphone. Check site permissions and try again.");
+      releaseVoiceResources();
+      voiceModeRef.current = false;
+      setVoiceMode(false);
+      setVoiceStatus(
+        message.toLowerCase().includes("permission") || message.toLowerCase().includes("denied")
+          ? "Microphone permission blocked. Allow microphone access for kmtbazaar.com."
+          : "Could not start microphone. Check browser permission and try again."
+      );
     }
   };
 
@@ -203,22 +343,53 @@ export default function AssistantScreen() {
       setVoiceMode(false);
       setListening(false);
       setSpeaking(false);
-      try { recognitionRef.current?.stop(); } catch {}
+      discardRecordingRef.current = true;
+      try {
+        const recorder = mediaRecorderRef.current;
+        if (recorder && recorder.state === "recording") recorder.stop();
+      } catch {}
+      releaseVoiceResources();
       if (Platform.OS === "web" && typeof window !== "undefined") {
         (window as any).speechSynthesis?.cancel();
       }
-      setVoiceStatus("Voice mode is off.");
+      setVoiceStatus("Voice conversation stopped.");
       return;
     }
 
+    if (Platform.OS !== "web") {
+      setVoiceStatus("Voice conversation is currently available on the website.");
+      return;
+    }
     voiceModeRef.current = true;
     setVoiceMode(true);
-    setVoiceStatus("Starting voice mode…");
-    startListening();
+    setVoiceStatus("Starting microphone…");
+    void startVoiceCapture();
   };
 
   useEffect(() => {
     return () => {
+      voiceModeRef.current = false;
+      discardRecordingRef.current = true;
+      try {
+        const recorder = mediaRecorderRef.current;
+        if (recorder && recorder.state === "recording") recorder.stop();
+      } catch {}
+      releaseVoiceResources();
+      if (Platform.OS === "web" && typeof window !== "undefined") {
+        (window as any).speechSynthesis?.cancel();
+      }
+    };
+  }, []);
+
+  const handleActionPress = () => {
+    if (input.trim().length > 0) {
+      void onSend();
+    } else {
+      toggleVoiceMode();
+    }
+  };
+
+  return () => {
       voiceModeRef.current = false;
       try { recognitionRef.current?.stop(); } catch {}
       if (Platform.OS === "web" && typeof window !== "undefined") {
@@ -279,43 +450,13 @@ export default function AssistantScreen() {
 
         {/* ROOJGAR BUTTON */}
         <View style={styles.quickActionsContainer}>
-          <View style={styles.quickActionsRow}>
-            <TouchableOpacity
-              style={styles.roojgarButton}
-              onPress={() => router.push("/RoojgarForm")}
-              activeOpacity={0.8}
-            >
-              <Text style={styles.roojgarButtonText}>💼 Roojgar / Jobs</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.voiceModeButton, voiceMode && styles.voiceModeButtonActive]}
-              onPress={toggleVoiceMode}
-              activeOpacity={0.8}
-              accessibilityRole="button"
-              accessibilityLabel={voiceMode ? "Turn voice mode off" : "Turn voice mode on"}
-            >
-              <MaterialCommunityIcons
-                name={voiceMode ? "waveform" : "microphone"}
-                size={16}
-                color={voiceMode ? "#67E8F9" : "#CBD5E1"}
-              />
-              <Text style={[styles.voiceModeButtonText, voiceMode && styles.voiceModeButtonTextActive]}>
-                {voiceMode ? "Voice ON" : "Voice Mode"}
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.voiceLanguageButton}
-              onPress={() => {
-                setVoiceLanguage((current) => current === "en-IN" ? "hi-IN" : "en-IN");
-                setVoiceStatus("Voice language: " + (voiceLanguage === "en-IN" ? "Hindi" : "English") + ". Tap the mic to use it.");
-              }}
-              activeOpacity={0.8}
-              accessibilityRole="button"
-              accessibilityLabel="Switch voice language"
-            >
-              <Text style={styles.voiceLanguageButtonText}>{voiceLanguage === "en-IN" ? "EN" : "हिं"}</Text>
-            </TouchableOpacity>
-          </View>
+          <TouchableOpacity
+            style={styles.roojgarButton}
+            onPress={() => router.push("/RoojgarForm")}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.roojgarButtonText}>💼 Roojgar / Jobs</Text>
+          </TouchableOpacity>
           {!!voiceStatus && (
             <Text style={styles.voiceStatus} numberOfLines={2}>
               {listening ? "Listening… " + voiceStatus : speaking ? "Speaking… " + voiceStatus : voiceStatus}
@@ -343,13 +484,15 @@ export default function AssistantScreen() {
                 styles.actionBtn,
                 input.trim().length > 0
                   ? styles.sendBtnBg
-                  : listening ? styles.listeningBtnBg : styles.voiceBtnBg,
+                  : voiceMode ? styles.voiceModeActiveBtn : styles.voiceBtnBg,
               ]}
               onPress={handleActionPress}
               activeOpacity={0.7}
+              accessibilityRole="button"
+              accessibilityLabel={input.trim().length > 0 ? "Send message" : voiceMode ? "Stop voice conversation" : "Start voice conversation"}
             >
               <MaterialCommunityIcons
-                name={input.trim().length > 0 ? "send" : listening ? "stop-circle" : "microphone"}
+                name={input.trim().length > 0 ? "send" : voiceMode ? "stop-circle" : "microphone"}
                 size={20}
                 color="#FFFFFF"
               />
@@ -413,12 +556,6 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     backgroundColor: "#0F172A",
   },
-  quickActionsRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    flexWrap: "wrap",
-    gap: 8,
-  },
   roojgarButton: {
     backgroundColor: "#1E293B",
     paddingVertical: 6,
@@ -426,47 +563,6 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     borderWidth: 1,
     borderColor: "#334155",
-  },
-  voiceModeButton: {
-    minHeight: 30,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 5,
-    paddingVertical: 6,
-    paddingHorizontal: 10,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: "#475569",
-    backgroundColor: "#172033",
-  },
-  voiceModeButtonActive: {
-    borderColor: "#0891B2",
-    backgroundColor: "#083344",
-  },
-  voiceModeButtonText: {
-    color: "#CBD5E1",
-    fontSize: 11,
-    fontWeight: "700",
-  },
-  voiceModeButtonTextActive: {
-    color: "#A5F3FC",
-  },
-  voiceLanguageButton: {
-    minWidth: 34,
-    minHeight: 30,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: 8,
-    borderRadius: 15,
-    borderWidth: 1,
-    borderColor: "#475569",
-    backgroundColor: "#172033",
-  },
-  voiceLanguageButtonText: {
-    color: "#E2E8F0",
-    fontSize: 11,
-    fontWeight: "800",
   },
   voiceStatus: {
     color: "#CBD5E1",
@@ -517,8 +613,8 @@ const styles = StyleSheet.create({
   voiceBtnBg: {
     backgroundColor: "#3B82F6",
   },
-  listeningBtnBg: {
-    backgroundColor: "#DC2626",
+  voiceModeActiveBtn: {
+    backgroundColor: "#0891B2",
   },
   sendBtnBg: {
     backgroundColor: "#10B981", // Green for Send
