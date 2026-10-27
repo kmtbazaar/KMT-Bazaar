@@ -17,7 +17,7 @@ const EMPTY = {
   transmission: "Automatic", fuel: "Petrol", tag: "", includesText: ""
 };
 
-const CAR_TYPES = ["Sedan", "SUV", "MUV", "Traveller", "Hatchback", "Luxury"];
+const CAR_TYPES = ["Sedan", "SUV", "MUV", "Traveller", "Hatchback", "Luxury", "Commercial"];
 const FUEL_TYPES = ["Petrol", "Diesel", "CNG", "Electric"];
 const TRANSMISSIONS = ["Automatic", "Manual"];
 
