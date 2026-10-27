@@ -104,7 +104,7 @@ function ProductModal({ visible, onClose, onSaved, edit, categories, stores }: a
       stock: String(edit.stock ?? 0), unit: edit.unit || "1 pc", image: edit.image || edit.images?.[0] || "",
       images: Array.isArray(edit.images) && edit.images.length ? edit.images : (edit.image ? [edit.image] : []),
       description: edit.description || "",
-      category_id: initialStore?.category_id || edit.category_id || categories[0]?.id || "",
+      category_id: edit.category_id || initialStore?.category_id || categories[0]?.id || "",
       store_id: String(initialStore?.id || initialStore?._id || ""),
       item_category: edit.item_category || "",
       item_category_id: edit.item_category_id || "",
@@ -155,8 +155,8 @@ function ProductModal({ visible, onClose, onSaved, edit, categories, stores }: a
       Alert.alert("Select a store", "Choose an approved store before adding a customer-visible product.");
       return;
     }
-    if (!String(selectedStore.category_id || "").trim()) {
-      Alert.alert("Shop category missing", "The selected store needs a shop category before products can be added.");
+    if (!String(f.category_id || "").trim() || !categories.some((category: any) => String(category.id) === String(f.category_id))) {
+      Alert.alert("Shop category required", "Select the Shop Category where customers should find this product.");
       return;
     }
     if (!Array.isArray(f.images) || f.images.filter((url: string) => !!url).length < 3) {
@@ -173,7 +173,7 @@ function ProductModal({ visible, onClose, onSaved, edit, categories, stores }: a
       image: f.image || f.images?.[0] || "",
       images: f.images,
       description: f.description,
-      category_id: String(selectedStore.category_id),
+      category_id: String(f.category_id || "").trim(),
       item_category: f.item_category,
       item_category_id: f.item_category_id || null,
       is_available: f.is_available,
@@ -257,12 +257,26 @@ function ProductModal({ visible, onClose, onSaved, edit, categories, stores }: a
               testID="pf-item-category"
             />
             <Text style={ms.hint}>Existing vendor item category is preserved. Change only when needed.</Text>
-            <Text style={ms.label}>Shop Category</Text>
-            <Text style={ms.storeInfo}>
-              {categories.find((category: any) => String(category.id) === String(selectedStore?.category_id))?.name ||
-                selectedStore?.category_id ||
-                "Select a store first"}
-            </Text>
+            <Text style={ms.label}>Shop Category *</Text>
+            <View style={ms.storeChoices}>
+              {categories.map((category: any) => {
+                const categoryId = String(category.id || category._id || "");
+                const active = categoryId === String(f.category_id || "");
+                if (!categoryId) return null;
+                return (
+                  <Pressable
+                    key={categoryId}
+                    testID={`pf-shop-category-${categoryId}`}
+                    onPress={() => setF((current: any) => ({ ...current, category_id: categoryId }))}
+                    style={[ms.catChip, active && { backgroundColor: COLORS.brand, borderColor: COLORS.brand }]}
+                  >
+                    <Text style={[ms.catText, active && { color: "#fff" }]}>{category.name || categoryId}</Text>
+                  </Pressable>
+                );
+              })}
+              {categories.length === 0 && <Text style={ms.hint}>No shop categories found. Add a category first.</Text>}
+            </View>
+            <Text style={ms.hint}>This category controls which Shop by Category section displays the product.</Text>
             <Pressable testID="pf-availability" onPress={() => setF({ ...f, is_available: !f.is_available })} style={ms.checkRow}>
               <MaterialCommunityIcons name={f.is_available ? "checkbox-marked" : "checkbox-blank-outline"} size={20} color={f.is_available ? "#16A34A" : COLORS.textMuted} />
               <Text style={ms.checkText}>{f.is_available ? "Product available to customers" : "Product hidden from customers"}</Text>
