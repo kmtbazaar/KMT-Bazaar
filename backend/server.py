@@ -4837,10 +4837,18 @@ async def vendor_create_product(data: ProductIn, current=Depends(require_roles("
     if not store_category_id:
         raise HTTPException(400, "Shop category is not configured")
 
+    product_images = list(dict.fromkeys(
+        image.strip()
+        for image in (data.images or [])
+        if isinstance(image, str) and image.strip()
+    ))
+    if len(product_images) < 3:
+        raise HTTPException(400, "Please upload at least 3 different product photos")
+
     pid = "p-" + uuid.uuid4().hex[:8]
     doc = data.dict()
-    if doc.get("images") is None:
-        doc["images"] = [doc["image"]] if doc.get("image") else []
+    doc["images"] = product_images
+    doc["image"] = product_images[0]
     doc["store_id"] = sid
     doc["category_id"] = store_category_id
     doc.update(
@@ -4874,7 +4882,17 @@ async def vendor_update_product(pid: str, data: ProductIn, current=Depends(requi
         raise HTTPException(400, "Shop category is not configured")
 
     upd = data.dict()
-    if data.images is None:
+    if data.images is not None:
+        product_images = list(dict.fromkeys(
+            image.strip()
+            for image in data.images
+            if isinstance(image, str) and image.strip()
+        ))
+        if len(product_images) < 3:
+            raise HTTPException(400, "Please upload at least 3 different product photos")
+        upd["images"] = product_images
+        upd["image"] = product_images[0]
+    else:
         upd.pop("images", None)
     upd["store_id"] = p.get("store_id")
     upd["category_id"] = store_category_id

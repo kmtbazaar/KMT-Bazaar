@@ -19,6 +19,7 @@ import { api, uploadImageAsset } from "@/src/api";
 import { COLORS, RADIUS, shadow } from "@/src/theme";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
+import ProductImagesUploader from "@/src/components/ProductImagesUploader";
 
 export default function VendorStoreDetail() {
   const router = useRouter();
@@ -56,6 +57,7 @@ export default function VendorStoreDetail() {
     unit: "1 pc",
     stock: "10",
     image: "",
+    images: [] as string[],
     description: "",
     trending: false,
     item_category: "",
@@ -72,6 +74,7 @@ export default function VendorStoreDetail() {
     unit: "1 pc",
     stock: "10",
     image: "",
+    images: [] as string[],
     description: "",
     trending: false,
     item_category: "",
@@ -209,43 +212,6 @@ export default function VendorStoreDetail() {
     }
   };
 
-  const pickProductImage = async (isEditMode: boolean, useCamera = false) => {
-    let result;
-    const options: ImagePicker.ImagePickerOptions = {
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      aspect: [1, 1],
-      quality: 0.6,
-    };
-
-    if (useCamera) {
-      const permission = await ImagePicker.requestCameraPermissionsAsync();
-      if (!permission.granted) {
-        Alert.alert("Permission Required", "Camera access is needed to take a photo.");
-        return;
-      }
-      result = await ImagePicker.launchCameraAsync(options);
-    } else {
-      result = await ImagePicker.launchImageLibraryAsync(options);
-    }
-
-    if (!result.canceled && result.assets[0]) {
-      try {
-        setLoading(true);
-        const imageUrl = await uploadImageAsset(result.assets[0], "product");
-        if (isEditMode) {
-          setEditProductForm((prev) => ({ ...prev, image: imageUrl }));
-        } else {
-          setForm((prev) => ({ ...prev, image: imageUrl }));
-        }
-      } catch (e: any) {
-        Alert.alert("Upload failed", e?.message || "Could not upload product image.");
-      } finally {
-        setLoading(false);
-      }
-    }
-  };
-
   const handleUpdateStore = async () => {
     if (!editForm.name) return Alert.alert("Error", "Shop name is required");
     setLoading(true);
@@ -309,6 +275,7 @@ export default function VendorStoreDetail() {
       unit: "1 pc",
       stock: "10",
       image: "",
+      images: [],
       description: "",
       trending: false,
       item_category: "",
@@ -317,6 +284,11 @@ export default function VendorStoreDetail() {
   };
 
   const handleAddProduct = async () => {
+    const photoCount = Array.from(new Set((form.images || []).filter((url: string) => typeof url === "string" && url.trim()))).length;
+    if (photoCount < 3) {
+      Alert.alert("Add product photos", "Please upload at least 3 different product photos before creating this product.");
+      return;
+    }
     if (!form.name || !form.price || !store?.category_id) {
       Alert.alert("Error", "Name, Price, and shop category are required.");
       return;
@@ -330,13 +302,14 @@ export default function VendorStoreDetail() {
         price: parseFloat(form.price),
         mrp: form.mrp ? parseFloat(form.mrp) : parseFloat(form.price),
         stock: parseInt(form.stock) || 0,
-        image: form.image || "https://images.unsplash.com/photo-1542838132-92c53300491e?w=400&q=80",
+        image: form.images[0] || form.image || "",
+        images: form.images,
       });
       setShowAddModal(false);
       resetAddForm();
       load();
-    } catch (e) {
-      Alert.alert("Error", "Could not add product.");
+    } catch (e: any) {
+      Alert.alert("Error", e?.message || "Could not add product.");
     } finally {
       setLoading(false);
     }
@@ -352,6 +325,7 @@ export default function VendorStoreDetail() {
       unit: prod.unit || "1 pc",
       stock: String(prod.stock || 0),
       image: prod.image || "",
+      images: Array.from(new Set([...(Array.isArray(prod.images) ? prod.images : []), prod.image].filter((url: any) => typeof url === "string" && url.trim()))),
       description: prod.description || "",
       trending: !!prod.trending,
       item_category: prod.item_category || "",
@@ -368,6 +342,11 @@ export default function VendorStoreDetail() {
   };
 
   const handleUpdateProduct = async () => {
+    const photoCount = Array.from(new Set((editProductForm.images || []).filter((url: string) => typeof url === "string" && url.trim()))).length;
+    if (photoCount < 3) {
+      Alert.alert("Add product photos", "Please upload at least 3 different product photos before saving this product.");
+      return;
+    }
     if (!editProductForm.name || !editProductForm.price) {
       Alert.alert("Error", "Name and Price are required.");
       return;
@@ -383,12 +362,14 @@ export default function VendorStoreDetail() {
           ? parseFloat(editProductForm.mrp)
           : parseFloat(editProductForm.price),
         stock: parseInt(editProductForm.stock) || 0,
+        image: editProductForm.images[0] || editProductForm.image || "",
+        images: editProductForm.images,
       });
       Alert.alert("Success", "Product updated!");
       setShowEditProductModal(false);
       load();
-    } catch (e) {
-      Alert.alert("Error", "Failed to update product.");
+    } catch (e: any) {
+      Alert.alert("Error", e?.message || "Failed to update product.");
     } finally {
       setLoading(false);
     }
@@ -706,29 +687,14 @@ export default function VendorStoreDetail() {
                 />
               </View>
 
-              {/* Product Image Section */}
-              <Text style={s.sectionLabel}>Product Image</Text>
-              <View style={s.imageSectionRow}>
-                <View style={s.imageBox}>
-                  {form.image ? (
-                    <Image source={{ uri: form.image }} style={s.previewImg} contentFit="cover" />
-                  ) : (
-                    <MaterialCommunityIcons name="image-outline" size={28} color="#9CA3AF" />
-                  )}
-                </View>
-
-                <View style={s.imagePickerCol}>
-                  <Pressable style={s.pickBtnCompact} onPress={() => pickProductImage(false, false)}>
-                    <MaterialCommunityIcons name="image-multiple-outline" size={16} color="#EA580C" />
-                    <Text style={s.pickBtnText}>Gallery</Text>
-                  </Pressable>
-
-                  <Pressable style={s.pickBtnCompact} onPress={() => pickProductImage(false, true)}>
-                    <MaterialCommunityIcons name="camera-outline" size={16} color="#EA580C" />
-                    <Text style={s.pickBtnText}>Camera</Text>
-                  </Pressable>
-                </View>
-              </View>
+              <ProductImagesUploader
+                value={form.images}
+                onChange={(images) => setForm((current) => ({ ...current, images, image: images[0] || "" }))}
+                label="Product Photos (minimum 3)"
+                minCount={3}
+                maxCount={6}
+                testID="vendor-store-add-product-images"
+              />
 
               {/* Description Input */}
               <TextInput
@@ -882,33 +848,14 @@ export default function VendorStoreDetail() {
                 />
               </View>
 
-              {/* Product Image Section */}
-              <Text style={s.sectionLabel}>Product Image</Text>
-              <View style={s.imageSectionRow}>
-                <View style={s.imageBox}>
-                  {editProductForm.image ? (
-                    <Image
-                      source={{ uri: editProductForm.image }}
-                      style={s.previewImg}
-                      contentFit="cover"
-                    />
-                  ) : (
-                    <MaterialCommunityIcons name="image-outline" size={28} color="#9CA3AF" />
-                  )}
-                </View>
-
-                <View style={s.imagePickerCol}>
-                  <Pressable style={s.pickBtnCompact} onPress={() => pickProductImage(true, false)}>
-                    <MaterialCommunityIcons name="image-multiple-outline" size={16} color="#EA580C" />
-                    <Text style={s.pickBtnText}>Gallery</Text>
-                  </Pressable>
-
-                  <Pressable style={s.pickBtnCompact} onPress={() => pickProductImage(true, true)}>
-                    <MaterialCommunityIcons name="camera-outline" size={16} color="#EA580C" />
-                    <Text style={s.pickBtnText}>Camera</Text>
-                  </Pressable>
-                </View>
-              </View>
+              <ProductImagesUploader
+                value={editProductForm.images}
+                onChange={(images) => setEditProductForm((current) => ({ ...current, images, image: images[0] || "" }))}
+                label="Product Photos (minimum 3)"
+                minCount={3}
+                maxCount={6}
+                testID="vendor-store-edit-product-images"
+              />
 
               {/* Description Input */}
               <TextInput

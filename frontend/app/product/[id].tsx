@@ -1,5 +1,5 @@
 import { LocalizedText as Text, LocalizedTextInput as TextInput } from "@/src/LocalizedText";
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useState, useMemo, useRef } from "react";
 import { View, StyleSheet, Pressable, ScrollView, ActivityIndicator, Share, Platform } from "react-native";
 import { Image } from "expo-image";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -24,10 +24,14 @@ export default function Product() {
   const [adding, setAdding] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
+  const [carouselWidth, setCarouselWidth] = useState(0);
+  const productCarouselRef = useRef<ScrollView | null>(null);
   const [suggestions, setSuggestions] = useState<any[]>([]);
   const [suggestionsLoading, setSuggestionsLoading] = useState(true);
 
   useEffect(() => { 
+    setSelectedImageIndex(0);
+    productCarouselRef.current?.scrollTo({ x: 0, animated: false });
     (async () => {
       try {
         const data = await api.product(id as string);
@@ -118,6 +122,16 @@ export default function Product() {
 
   // FIX 1: Quantity ko hardcoded 1 rakhne ke bajaye Context wale Cart state se read karenge
   const productImages = useMemo(() => Array.from(new Set([...(Array.isArray(p?.images) ? p.images : []), p?.image].filter((url: any) => typeof url === "string" && url.trim()))), [p?.images, p?.image]);
+
+  useEffect(() => {
+    if (productImages.length < 2 || carouselWidth <= 0) return;
+    const timer = setInterval(() => {
+      const nextIndex = (selectedImageIndex + 1) % productImages.length;
+      productCarouselRef.current?.scrollTo({ x: nextIndex * carouselWidth, animated: true });
+      setSelectedImageIndex(nextIndex);
+    }, 4200);
+    return () => clearInterval(timer);
+  }, [carouselWidth, productImages, selectedImageIndex]);
 
   const shareProduct = async () => {
     if (!p) return;
@@ -224,15 +238,56 @@ export default function Product() {
       </SafeAreaView>
       
       <ScrollView contentContainerStyle={{ paddingBottom: 190 }} showsVerticalScrollIndicator={false}>
-        <Image source={{ uri: productImages[selectedImageIndex] || p.image }} style={s.img} contentFit="cover" />
-        {productImages.length > 1 ? (
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.galleryRow}>
+        <View
+          style={s.imageCarousel}
+          onLayout={(event) => {
+            const nextWidth = event.nativeEvent.layout.width;
+            setCarouselWidth((current) => current === nextWidth ? current : nextWidth);
+          }}
+        >
+          <ScrollView
+            ref={productCarouselRef}
+            horizontal
+            pagingEnabled
+            snapToInterval={carouselWidth || undefined}
+            decelerationRate="fast"
+            disableIntervalMomentum
+            showsHorizontalScrollIndicator={false}
+            scrollEventThrottle={16}
+            onMomentumScrollEnd={(event) => {
+              if (carouselWidth > 0) {
+                const nextIndex = Math.round(event.nativeEvent.contentOffset.x / carouselWidth);
+                setSelectedImageIndex(Math.max(0, Math.min(productImages.length - 1, nextIndex)));
+              }
+            }}
+          >
             {productImages.map((uri: string, index: number) => (
-              <Pressable key={uri + "-" + index} onPress={() => setSelectedImageIndex(index)} style={[s.galleryThumb, selectedImageIndex === index && s.galleryThumbActive]} testID={`product-photo-${index + 1}`}>
-                <Image source={{ uri }} style={s.galleryImage} contentFit="cover" />
-              </Pressable>
+              <View
+                key={uri + "-" + index}
+                style={[s.carouselSlide, carouselWidth > 0 ? { width: carouselWidth } : null]}
+              >
+                <Image source={{ uri }} style={s.img} contentFit="cover" />
+              </View>
             ))}
           </ScrollView>
+        </View>
+        {productImages.length > 1 ? (
+          <View style={s.carouselIndicators} testID="product-image-indicators">
+            {productImages.map((uri: string, index: number) => (
+              <Pressable
+                key={uri + "-indicator-" + index}
+                accessibilityRole="button"
+                accessibilityLabel={`Show product photo ${index + 1}`}
+                onPress={() => {
+                  setSelectedImageIndex(index);
+                  productCarouselRef.current?.scrollTo({ x: index * carouselWidth, animated: true });
+                }}
+                style={[s.carouselDot, selectedImageIndex === index && s.carouselDotActive]}
+                testID={`product-photo-dot-${index + 1}`}
+              />
+            ))}
+            <Text style={s.carouselCount}>{selectedImageIndex + 1} / {productImages.length}</Text>
+          </View>
         ) : null}
         <View style={s.card}>
           <Text style={s.name} testID="product-name">{p.name}</Text>
@@ -370,11 +425,13 @@ const s = StyleSheet.create({
   headerActions: { flexDirection: "row", alignItems: "center", gap: 8 },
   hbtn: { width: 38, height: 38, backgroundColor: "transparent", alignItems: "center", justifyContent: "center" },
   wishIcon: { textShadowColor: "rgba(0,0,0,0.65)", textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 2 },
+  imageCarousel: { width: "100%", overflow: "hidden", backgroundColor: COLORS.surfaceSecondary },
+  carouselSlide: { width: "100%", aspectRatio: 1, backgroundColor: COLORS.surfaceSecondary },
   img: { width: "100%", aspectRatio: 1, backgroundColor: COLORS.surfaceSecondary },
-  galleryRow: { paddingHorizontal: SPACING.md, paddingVertical: SPACING.sm, gap: 8 },
-  galleryThumb: { width: 62, height: 62, borderRadius: RADIUS.sm, overflow: "hidden", borderWidth: 1.5, borderColor: COLORS.border },
-  galleryThumbActive: { borderColor: COLORS.brand, borderWidth: 2.5 },
-  galleryImage: { width: "100%", height: "100%" },
+  carouselIndicators: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 4, paddingVertical: SPACING.sm },
+  carouselDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: COLORS.border, marginHorizontal: 2 },
+  carouselDotActive: { width: 18, backgroundColor: COLORS.brand },
+  carouselCount: { color: COLORS.textMuted, fontSize: 11, fontWeight: "700", marginLeft: 8 },
   card: { padding: SPACING.lg },
   name: { fontSize: 22, fontWeight: "800", color: COLORS.text },
   unit: { color: COLORS.textMuted, marginTop: 4, fontSize: 13 },
