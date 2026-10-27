@@ -275,6 +275,7 @@ export default function CarRentalPage() {
   const [tripNote, setTripNote] = useState("");
   const [bannerIndex, setBannerIndex] = useState(0);
   const [showcaseIndex, setShowcaseIndex] = useState(0);
+  const [showcaseDirection, setShowcaseDirection] = useState<1 | -1>(1);
   const [bannerImageBroken, setBannerImageBroken] = useState(false);
   const [bannerConfigs, setBannerConfigs] = useState<any[]>([]);
   const bannerSlideCount = bannerConfigs.length || items.length;
@@ -373,6 +374,7 @@ export default function CarRentalPage() {
   const featuredCar = filtered.length ? filtered[showcaseIndexSafe] : null;
 
   const changeShowcase = useCallback((delta: number) => {
+    setShowcaseDirection(delta >= 0 ? 1 : -1);
     setShowcaseIndex((current) => {
       const total = filtered.length;
       if (!total) return 0;
@@ -523,6 +525,8 @@ export default function CarRentalPage() {
                   kind={featuredCar.type || featuredCar.category || featuredCar.name}
                   color={CAR_MODEL_COLORS[showcaseIndexSafe % CAR_MODEL_COLORS.length]}
                   fallbackImage={featuredCar.image}
+                  transitionKey={featuredCar.id}
+                  slideDirection={showcaseDirection}
                 />
                 <View pointerEvents="none" style={styles.showcaseModelTag}>
                   <MaterialCommunityIcons name="rotate-3d-variant" size={13} color={WHITE} />
@@ -541,7 +545,7 @@ export default function CarRentalPage() {
                 <View pointerEvents="none" style={styles.showcaseFloorLine} />
               </View>
 
-              <View style={styles.showcaseDetails}>
+              <Animated.View key={featuredCar.id} entering={FadeIn.duration(220)} style={styles.showcaseDetails}>
                 <View style={styles.showcaseTitleRow}>
                   <View style={{ flex: 1 }}>
                     <Text style={styles.showcaseCarName} numberOfLines={1}>{featuredCar.name}</Text>
@@ -575,7 +579,7 @@ export default function CarRentalPage() {
                     <MaterialCommunityIcons name="arrow-right" size={17} color={WHITE} />
                   </Pressable>
                 </View>
-              </View>
+              </Animated.View>
               <View style={styles.showcaseSwipeHint}>
                 <MaterialCommunityIcons name="gesture-swipe-horizontal" size={16} color={RED} />
                 <Text style={styles.showcaseSwipeText}>Swipe right to left to explore cars</Text>
