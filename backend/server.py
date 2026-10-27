@@ -3275,11 +3275,7 @@ async def admin_update_order(order_id: str, data: OrderStatusIn, _=Depends(requi
     if not o:
         raise HTTPException(404, "Order not found")
 
-    if o.get("stock_restored") is True and data.status != "rejected":
-        raise HTTPException(
-            status_code=409,
-            detail="This rejected order's stock has already been returned. Please place a new order to reserve stock again."
-        )
+    needs_re_reserve = o.get("stock_restored") is True and data.status != "rejected"
 
     timeline = o.get("timeline", [])
     timeline.append({"status": data.status, "at": now_iso(), "label": data.status.replace("_", " ").title()})
@@ -3289,7 +3285,59 @@ async def admin_update_order(order_id: str, data: OrderStatusIn, _=Depends(requi
         and o.get("stock_deducted") is True
         and o.get("stock_restored") is not True
     )
-    if should_restore_stock:
+    if needs_re_reserve:
+        quantities_to_reserve: dict[str, int] = {}
+        for item in o.get("items", []):
+            product_id = str(item.get("product_id") or "")
+            quantity = int(item.get("quantity") or 0)
+            if product_id and quantity > 0:
+                quantities_to_reserve[product_id] = quantities_to_reserve.get(product_id, 0) + quantity
+
+        re_reserved: list[tuple[str, int]] = []
+        try:
+            for product_id, quantity in quantities_to_reserve.items():
+                result = await db.products.update_one(
+                    {
+                        "id": product_id,
+                        "stock": {"$gte": quantity},
+                        "is_available": {"$ne": False},
+                    },
+                    {"$inc": {"stock": -quantity}}
+                )
+                if result.matched_count == 0:
+                    latest = await db.products.find_one(
+                        {"id": product_id},
+                        {"_id": 0, "name": 1, "stock": 1}
+                    )
+                    available = max(0, int((latest or {}).get("stock") or 0))
+                    message = (
+                        f"{(latest or {}).get('name') or 'This product'} is out of stock"
+                        if available <= 0
+                        else f"Only {available} left in stock for {(latest or {}).get('name') or 'this product'}"
+                    )
+                    raise HTTPException(status_code=409, detail=message)
+                re_reserved.append((product_id, quantity))
+
+            update_result = await db.orders.update_one(
+                {"id": order_id, "status": "rejected", "stock_restored": True},
+                {"$set": {
+                    "status": data.status,
+                    "timeline": timeline,
+                    "stock_restored": False,
+                    "stock_deducted": True,
+                }}
+            )
+            if update_result.matched_count == 0:
+                raise HTTPException(status_code=409, detail="Order status changed. Refresh and try again.")
+        except Exception:
+            for product_id, quantity in reversed(re_reserved):
+                try:
+                    await db.products.update_one({"id": product_id}, {"$inc": {"stock": quantity}})
+                except Exception:
+                    logging.exception("Unable to roll back re-reserved stock for %s", product_id)
+            raise
+
+    elif should_restore_stock:
         update_result = await db.orders.update_one(
             {
                 "id": order_id,
