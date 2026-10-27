@@ -389,7 +389,7 @@ export default function Product() {
       )}
 
       {/* Split bottom control; floating sack is the cart shortcut */}
-      <View style={s.bottomBar}>
+      <View style={[s.bottomBar, Platform.OS === "web" ? ({ position: "fixed" } as any) : null]}>
         <View style={s.actionRow}>
           <View style={s.qtyBox}>
             <Pressable testID="pdp-qty-dec" onPress={handleDecrement} hitSlop={8} disabled={currentQty === 0}>
