@@ -19,7 +19,6 @@ import { useFocusEffect, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Animated, {
   FadeIn,
-  FadeInDown,
   FadeInUp,
 } from "react-native-reanimated";
 import { api } from "@/src/api";
