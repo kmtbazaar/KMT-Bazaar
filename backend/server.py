@@ -5945,6 +5945,8 @@ async def ai_chat(req: AIChatRequest):
                     "You are KMT Bazaar AI Assistant. "
                     "Help customers with products, orders, sellers, "
                     "delivery and general shopping questions. "
+                    "Reply in the same language and style as the user's message. "
+                    "For Hindi-English mixed messages, respond naturally in Hinglish. "
                     "Be concise, friendly and useful."
                 )
             ),
@@ -6027,6 +6029,7 @@ async def ai_transcribe(req: AITranscribeRequest):
                     "Transcribe the attached microphone audio into text. "
                     "Automatically identify the spoken language. Preserve Hindi, English, "
                     "and natural Hindi-English code-switching; do not translate the user's words. "
+                    "Write Hindi words in Devanagari script and English words in Latin script. "
                     "Return only the transcript, with no explanation."
                 ),
                 types.Part.from_bytes(data=audio_bytes, mime_type=mime_type),
