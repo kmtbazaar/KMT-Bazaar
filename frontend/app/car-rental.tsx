@@ -223,6 +223,12 @@ type CarItem = {
   includes?: string[];
 };
 
+function isCommercialVehicle(item?: Pick<CarItem, "type" | "category"> | null) {
+  return [item?.type, item?.category].some((value) =>
+    String(value || "").trim().toLowerCase().includes("commercial")
+  );
+}
+
 function enrich(item: CarItem, index: number) {
   const mock = MOCK_FLEET[index % MOCK_FLEET.length];
   return {
@@ -534,11 +540,13 @@ export default function CarRentalPage() {
                     <Text style={styles.cardLocation}>
                       <MaterialCommunityIcons name="map-marker-outline" size={14} color={RED} /> {item.location} · {item.type}
                     </Text>
-                    <View style={styles.specRow}>
-                      <Spec icon="seat-outline" text={String(item.seats || 4) + " seats"} />
-                      <Spec icon="bag-suitcase-outline" text={String(item.bags || 2) + " bags"} />
-                      <Spec icon="car-shift-pattern" text={item.transmission || "Manual"} />
-                    </View>
+                    {!isCommercialVehicle(item) ? (
+                      <View style={styles.specRow}>
+                        <Spec icon="seat-outline" text={String(item.seats || 4) + " seats"} />
+                        <Spec icon="bag-suitcase-outline" text={String(item.bags || 2) + " bags"} />
+                        <Spec icon="car-shift-pattern" text={item.transmission || "Manual"} />
+                      </View>
+                    ) : null}
                     <View style={styles.bookBtn}>
                       <Text style={styles.bookBtnText}>Tap to build trip</Text>
                       <MaterialCommunityIcons name="arrow-right" size={18} color={WHITE} />
@@ -576,10 +584,16 @@ export default function CarRentalPage() {
                   <Text style={styles.modalTitle}>{selected?.name}</Text>
                   <Text style={styles.modalDesc}>{selected?.description}</Text>
                   <View style={styles.modalSpecGrid}>
-                    <SpecBox icon="seat-outline" label="Seats" value={String(selected?.seats || 4)} />
+                    {!isCommercialVehicle(selected) ? (
+                      <SpecBox icon="seat-outline" label="Seats" value={String(selected?.seats || 4)} />
+                    ) : null}
                     <SpecBox icon="fuel" label="Fuel" value={selected?.fuel || "Petrol"} />
-                    <SpecBox icon="car-shift-pattern" label="Gearbox" value={selected?.transmission || "Manual"} />
-                    <SpecBox icon="bag-suitcase-outline" label="Bags" value={String(selected?.bags || 2)} />
+                    {!isCommercialVehicle(selected) ? (
+                      <SpecBox icon="car-shift-pattern" label="Gearbox" value={selected?.transmission || "Manual"} />
+                    ) : null}
+                    {!isCommercialVehicle(selected) ? (
+                      <SpecBox icon="bag-suitcase-outline" label="Bags" value={String(selected?.bags || 2)} />
+                    ) : null}
                   </View>
                   <View style={styles.includeBox}>
                     <Text style={styles.includeTitle}>Included with this booking</Text>
