@@ -41,6 +41,9 @@ jobs:
       - name: Validate admin product customer visibility
         working-directory: frontend
         run: node scripts/validate-admin-product-visibility.js
+      - name: Validate AI chat diagnostics and voice mode
+        working-directory: frontend
+        run: node scripts/validate-ai-voice-mode.js
       - name: Export web app
         working-directory: frontend
         run: npm run build:web
