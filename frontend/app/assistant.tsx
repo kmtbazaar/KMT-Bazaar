@@ -536,12 +536,13 @@ const styles = StyleSheet.create({
     backgroundColor: "#0F172A",
   },
   roojgarButton: {
-    backgroundColor: "#1E293B",
-    paddingVertical: 6,
-    paddingHorizontal: 10,
-    borderRadius: 16,
+    alignSelf: "flex-start",
+    backgroundColor: "#15803D",
+    paddingVertical: 3,
+    paddingHorizontal: 8,
+    borderRadius: 12,
     borderWidth: 1,
-    borderColor: "#334155",
+    borderColor: "#22C55E",
   },
   voiceStatus: {
     color: "#CBD5E1",
@@ -552,7 +553,7 @@ const styles = StyleSheet.create({
   },
   roojgarButtonText: {
     color: "#FFFFFF",
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: "600",
   },
   // Mota/Spacious Bottom Input Area Style
