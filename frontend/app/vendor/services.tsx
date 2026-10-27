@@ -19,7 +19,6 @@ const EMPTY = {
 
 const CAR_TYPES = ["Sedan", "SUV", "MUV", "Traveller", "Hatchback", "Luxury", "Commercial"];
 const FUEL_TYPES = ["Petrol", "Diesel", "CNG", "Electric"];
-const TRANSMISSIONS = ["Automatic", "Manual"];
 
 function parsePriceAmount(value: unknown): number {
   const normalized = String(value ?? "").replace(/[₹,\s]/g, "");
@@ -183,7 +182,7 @@ export default function VendorServices() {
               <Text style={s.name} numberOfLines={2}>{item.name}</Text>
               {isCar ? (
                 <>
-                  {!!item.type && <Text style={s.meta} numberOfLines={1}>{item.type}{item.transmission ? " · " + item.transmission : ""}</Text>}
+                  {!!item.type && <Text style={s.meta} numberOfLines={1}>{item.type}</Text>}
                   <Text style={s.meta}>{Number(item.seats || 0)} seats · {Number(item.bags || 0)} bags</Text>
                   <Text style={s.price}>₹{Number(item.price || 0).toLocaleString("en-IN")} / day</Text>
                   <Text style={Number(item.hourly_price || 0) > 0 ? s.hourlyPrice : s.hourlyUnset}>
@@ -227,7 +226,6 @@ export default function VendorServices() {
                     <Field label="Seats" value={f.seats} onChange={(v:any)=>setF({...f,seats:v})} placeholder="7" keyboardType="numeric" />
                     <Field label="Bags" value={f.bags} onChange={(v:any)=>setF({...f,bags:v})} placeholder="4" keyboardType="numeric" />
                   </View>
-                  <SelectRow label="Transmission" options={TRANSMISSIONS} value={f.transmission} onChange={(v:any)=>setF({...f,transmission:v})} />
                   <SelectRow label="Fuel" options={FUEL_TYPES} value={f.fuel} onChange={(v:any)=>setF({...f,fuel:v})} />
                   <Field label="Price / Day (₹)" value={f.price} onChange={(v:any)=>setF({...f,price:v})} placeholder="3200" keyboardType="numeric" />
                   <Field label="Price / Hour (₹)" value={f.hourly_price} onChange={(v:any)=>setF({...f,hourly_price:v})} placeholder="300" keyboardType="numeric" />
