@@ -6021,21 +6021,31 @@ async def ai_transcribe(req: AITranscribeRequest):
         raise HTTPException(status_code=413, detail="Voice recording is too large. Please speak in a shorter turn.")
 
     try:
+        audio_data = base64.b64encode(audio_bytes).decode("ascii")
         response = await asyncio.to_thread(
-            gemini_client.models.generate_content,
+            gemini_client.interactions.create,
             model="gemini-3.5-transcribe",
-            contents=[
-                (
-                    "Transcribe the attached microphone audio into text. "
-                    "Automatically identify the spoken language. Preserve Hindi, English, "
-                    "and natural Hindi-English code-switching; do not translate the user's words. "
-                    "Write Hindi words in Devanagari script and English words in Latin script. "
-                    "Return only the transcript, with no explanation."
-                ),
-                types.Part.from_bytes(data=audio_bytes, mime_type=mime_type),
+            input=[
+                {
+                    "type": "text",
+                    "text": (
+                        "Transcribe the attached microphone audio into text. "
+                        "Automatically identify the spoken language. Preserve Hindi, English, "
+                        "and natural Hindi-English code-switching; do not translate the user's words. "
+                        "Write Hindi words in Devanagari script and English words in Latin script. "
+                        "Return only the transcript, with no explanation."
+                    ),
+                },
+                {
+                    "type": "audio",
+                    "data": audio_data,
+                    "mime_type": mime_type,
+                },
             ],
+            generation_config={"transcription_config": {"language_codes": []}},
+            store=False,
         )
-        transcript = str(response.text or "").strip()
+        transcript = str(getattr(response, "output_text", "") or "").strip()
         if not transcript:
             raise HTTPException(status_code=422, detail="No speech was detected. Please try speaking again.")
         return {"transcript": transcript}
