@@ -550,7 +550,7 @@ export default function CarRentalPage() {
                       </View>
                     ) : null}
                     <View style={styles.bookBtn}>
-                      <Text style={styles.bookBtnText}>Tap to build trip</Text>
+                      <Text style={styles.bookBtnText}>Tap for booking</Text>
                       <MaterialCommunityIcons name="arrow-right" size={18} color={WHITE} />
                     </View>
                   </View>
