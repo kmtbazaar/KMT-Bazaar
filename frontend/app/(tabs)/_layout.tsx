@@ -124,7 +124,7 @@ export default function TabsLayout() {
     tabBarIcon: ({ color }) => (
       <MaterialCommunityIcons
         name="robot-outline"
-        size={30}
+        size={24}
         color={color}
       />
     ),
