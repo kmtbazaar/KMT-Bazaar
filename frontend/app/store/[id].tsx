@@ -178,7 +178,7 @@ function StoreProductTile({ p }: { p: any }) {
                 size={14}
                 color={outOfStock ? COLORS.textMuted : COLORS.accent}
               />
-              <NativeText style={[s.storeTileAddText, outOfStock && { color: COLORS.textMuted }]}>
+              <NativeText style={[s.storeTileAddText, outOfStock && s.storeTileOutOfStockText]}>
                 {outOfStock ? "OUT OF STOCK" : "ADD"}
               </NativeText>
             </Pressable>
@@ -685,6 +685,13 @@ const s = StyleSheet.create({
     color: COLORS.accentDark,
     fontSize: 9,
     fontWeight: "900",
+  },
+  storeTileOutOfStockText: {
+    color: COLORS.error,
+    fontSize: 11,
+    fontWeight: "900",
+    letterSpacing: 0.1,
+    flexShrink: 0,
   },
   storeTileStepper: {
     height: 29,
