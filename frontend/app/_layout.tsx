@@ -1,5 +1,6 @@
 import React, { useEffect } from "react";
 import { Stack, useRouter, useSegments } from "expo-router";
+import { Platform } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
@@ -102,7 +103,16 @@ export default function RootLayout() {
           <WishlistProvider>
             <CartProvider>
               <RoleRouteGuard>
-                <Stack screenOptions={{ headerShown: false }} />
+                <Stack screenOptions={{ headerShown: false }}>
+                  <Stack.Screen
+                    name="assistant"
+                    options={{
+                      presentation: "transparentModal",
+                      animation: Platform.OS === "web" ? "none" : "fade",
+                      contentStyle: { backgroundColor: "transparent" },
+                    }}
+                  />
+                </Stack>
               </RoleRouteGuard>
             </CartProvider>
           </WishlistProvider>
