@@ -154,7 +154,7 @@ export default function ProductCard({
   const productImage = productImageCandidates[imageIndex] || IMAGE_FALLBACK_URL;
 
   const stockValue = p?.stock ?? p?.available_quantity ?? p?.quantity_in_stock ?? 0;
-  const outOfStock = Number(stockValue) <= 0;
+  const outOfStock = Number(stockValue) <= 0 || p?.is_available === false;
 
   const onToggleWishlist = (e: any) => {
     e?.stopPropagation?.();
@@ -288,12 +288,12 @@ export default function ProductCard({
                     s.stepBtn,
                     wishlistGrid && s.wishlistStepBtn,
                     recommendationGrid && s.recommendationStepBtn,
-                    qty >= (p.stock ?? 99) && {
+                    (outOfStock || qty >= Number(stockValue)) && {
                       opacity: 0.4,
                     },
                   ]}
                   disabled={
-                    qty >= (p.stock ?? 99)
+                    outOfStock || qty >= Number(stockValue)
                   }
                 >
                   <MaterialCommunityIcons

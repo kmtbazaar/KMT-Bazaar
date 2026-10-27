@@ -1721,52 +1721,39 @@ async def add_to_cart(
     item: CartItemIn,
     current=Depends(get_current_user)
 ):
-    # Product exist karta hai ya nahi
-    product = await db.products.find_one(
-        {"id": item.product_id},
-        {"_id": 0}
-    )
+    if item.quantity <= 0:
+        raise HTTPException(status_code=400, detail="Quantity must be at least 1")
 
+    product = await db.products.find_one({"id": item.product_id}, {"_id": 0})
     if not product:
-        raise HTTPException(
-            status_code=404,
-            detail="Product not found"
-        )
+        raise HTTPException(status_code=404, detail="Product not found")
 
-    # Product jis store ka hai, wo approved hona chahiye
     store = await db.stores.find_one(
-        {
-            "id": product.get("store_id"),
-            "is_approved": True
-        },
+        {"id": product.get("store_id"), "is_approved": True},
         {"_id": 0, "id": 1}
     )
+    if not store or product.get("is_available", True) is False:
+        raise HTTPException(status_code=400, detail="This product is not available right now")
 
-    if not store:
-        raise HTTPException(
-            status_code=400,
-            detail="This product is not available right now"
-        )
-
-    if product.get("is_available", True) is False:
-        raise HTTPException(
-            status_code=400,
-            detail="This product is not available right now"
-        )
-
+    stock = max(0, int(product.get("stock") or 0))
     cart = await get_cart_doc(current["id"])
+    already_in_cart = sum(
+        max(0, int(existing.get("quantity") or 0))
+        for existing in cart["items"]
+        if existing.get("product_id") == item.product_id
+    )
+    if stock <= 0:
+        raise HTTPException(status_code=409, detail="This product is out of stock")
+    if already_in_cart + item.quantity > stock:
+        remaining = max(0, stock - already_in_cart)
+        raise HTTPException(status_code=409, detail=f"Only {remaining} left in stock")
 
     found = False
-
-    for it in cart["items"]:
-        if (
-            it["product_id"] == item.product_id
-            and it.get("variant") == item.variant
-        ):
-            it["quantity"] += item.quantity
+    for existing in cart["items"]:
+        if existing["product_id"] == item.product_id and existing.get("variant") == item.variant:
+            existing["quantity"] += item.quantity
             found = True
             break
-
     if not found:
         cart["items"].append({
             "product_id": item.product_id,
@@ -1776,31 +1763,55 @@ async def add_to_cart(
 
     await db.carts.update_one(
         {"user_id": current["id"]},
-        {
-            "$set": {
-                "items": cart["items"],
-                "updated_at": now_iso()
-            }
-        }
+        {"$set": {"items": cart["items"], "updated_at": now_iso()}}
     )
-
     return await expand_cart(cart)
 
 @api.post("/cart/update")
 async def update_cart(item: CartUpdateIn, current=Depends(get_current_user)):
+    if item.quantity < 0:
+        raise HTTPException(status_code=400, detail="Quantity cannot be negative")
+
     cart = await get_cart_doc(current["id"])
+    if item.quantity > 0:
+        product = await db.products.find_one({"id": item.product_id}, {"_id": 0})
+        if not product or product.get("is_available", True) is False:
+            raise HTTPException(status_code=409, detail="This product is no longer available")
+        store = await db.stores.find_one(
+            {"id": product.get("store_id"), "is_approved": True},
+            {"_id": 0, "id": 1}
+        )
+        if not store:
+            raise HTTPException(status_code=409, detail="This product is no longer available")
+
+        stock = max(0, int(product.get("stock") or 0))
+        quantity_of_other_lines = sum(
+            max(0, int(existing.get("quantity") or 0))
+            for existing in cart["items"]
+            if existing.get("product_id") == item.product_id
+            and existing.get("variant") != item.variant
+        )
+        if stock <= 0:
+            raise HTTPException(status_code=409, detail="This product is out of stock")
+        if quantity_of_other_lines + item.quantity > stock:
+            remaining = max(0, stock - quantity_of_other_lines)
+            raise HTTPException(status_code=409, detail=f"Only {remaining} left in stock")
+
     new_items = []
-    for it in cart["items"]:
-        if it["product_id"] == item.product_id and it.get("variant") == item.variant:
+    for existing in cart["items"]:
+        if existing["product_id"] == item.product_id and existing.get("variant") == item.variant:
             if item.quantity > 0:
-                it["quantity"] = item.quantity
-                new_items.append(it)
+                existing["quantity"] = item.quantity
+                new_items.append(existing)
         else:
-            new_items.append(it)
-    await db.carts.update_one({"user_id": current["id"]}, {"$set": {"items": new_items, "updated_at": now_iso()}})
+            new_items.append(existing)
+
+    await db.carts.update_one(
+        {"user_id": current["id"]},
+        {"$set": {"items": new_items, "updated_at": now_iso()}}
+    )
     cart["items"] = new_items
     return await expand_cart(cart)
-
 
 @api.delete("/cart/clear")
 async def clear_cart(current=Depends(get_current_user)):
@@ -2066,32 +2077,40 @@ async def checkout(
     if not cart["items"]:
         raise HTTPException(400, "Cart is empty")
 
-    # Checkout se pehle har product ke store approval ko verify karo
+    requested_quantities: dict[str, int] = {}
+    for cart_item in cart["items"]:
+        product_id = str(cart_item.get("product_id") or "")
+        quantity = int(cart_item.get("quantity") or 0)
+        if not product_id or quantity <= 0:
+            raise HTTPException(status_code=400, detail="Cart contains an invalid quantity")
+        requested_quantities[product_id] = requested_quantities.get(product_id, 0) + quantity
+
+    # Verify store approval and stock before proceeding.
     for cart_item in cart["items"]:
         product = await db.products.find_one(
             {"id": cart_item["product_id"]},
-            {"_id": 0, "id": 1, "store_id": 1}
+            {"_id": 0, "id": 1, "store_id": 1, "name": 1, "stock": 1, "is_available": 1}
         )
 
-        if not product:
-            raise HTTPException(
-                400,
-                "One or more products are no longer available"
-            )
+        if not product or product.get("is_available", True) is False:
+            raise HTTPException(status_code=409, detail="One or more products are no longer available")
 
         store = await db.stores.find_one(
-            {
-                "id": product.get("store_id"),
-                "is_approved": True
-            },
+            {"id": product.get("store_id"), "is_approved": True},
             {"_id": 0, "id": 1}
         )
-
         if not store:
-            raise HTTPException(
-                400,
-                "One or more products are no longer available"
+            raise HTTPException(status_code=409, detail="One or more products are no longer available")
+
+        stock = max(0, int(product.get("stock") or 0))
+        needed = requested_quantities.get(product["id"], 0)
+        if stock < needed:
+            detail_message = (
+                f"{product.get('name') or 'This product'} is out of stock"
+                if stock <= 0
+                else f"Only {stock} of {product.get('name') or 'this product'} left in stock"
             )
+            raise HTTPException(status_code=409, detail=detail_message)
 
     expanded = await expand_cart(cart)
 
@@ -2162,7 +2181,42 @@ async def checkout(
         "created_at": now_iso(),
     }
 
-    await db.orders.insert_one(dict(order))
+    # Atomic stock reservations prevent concurrent checkouts from overselling.
+    reserved_stock: list[tuple[str, int]] = []
+    try:
+        for product_id, quantity in requested_quantities.items():
+            result = await db.products.update_one(
+                {
+                    "id": product_id,
+                    "stock": {"$gte": quantity},
+                    "is_available": {"$ne": False},
+                },
+                {"$inc": {"stock": -quantity}}
+            )
+            if result.matched_count == 0:
+                latest = await db.products.find_one(
+                    {"id": product_id},
+                    {"_id": 0, "name": 1, "stock": 1}
+                )
+                available = max(0, int((latest or {}).get("stock") or 0))
+                message = (
+                    f"{(latest or {}).get('name') or 'This product'} is out of stock"
+                    if available <= 0
+                    else f"Only {available} left in stock for {(latest or {}).get('name') or 'this product'}"
+                )
+                raise HTTPException(status_code=409, detail=message)
+            reserved_stock.append((product_id, quantity))
+
+        order["stock_deducted"] = True
+        order["stock_restored"] = False
+        await db.orders.insert_one(dict(order))
+    except Exception:
+        for product_id, quantity in reversed(reserved_stock):
+            try:
+                await db.products.update_one({"id": product_id}, {"$inc": {"stock": quantity}})
+            except Exception:
+                logging.exception("Unable to roll back stock reservation for %s", product_id)
+        raise
 
     # Clear cart
     await db.carts.update_one(
@@ -3220,9 +3274,47 @@ async def admin_update_order(order_id: str, data: OrderStatusIn, _=Depends(requi
     o = await db.orders.find_one({"id": order_id}, {"_id": 0})
     if not o:
         raise HTTPException(404, "Order not found")
+
+    if o.get("stock_restored") is True and data.status != "rejected":
+        raise HTTPException(
+            status_code=409,
+            detail="This rejected order's stock has already been returned. Please place a new order to reserve stock again."
+        )
+
     timeline = o.get("timeline", [])
     timeline.append({"status": data.status, "at": now_iso(), "label": data.status.replace("_", " ").title()})
-    await db.orders.update_one({"id": order_id}, {"$set": {"status": data.status, "timeline": timeline}})
+    should_restore_stock = (
+        data.status == "rejected"
+        and o.get("status") in {"pending", "accepted"}
+        and o.get("stock_deducted") is True
+        and o.get("stock_restored") is not True
+    )
+    if should_restore_stock:
+        update_result = await db.orders.update_one(
+            {
+                "id": order_id,
+                "status": o.get("status"),
+                "stock_deducted": True,
+                "stock_restored": {"$ne": True},
+            },
+            {"$set": {"status": "rejected", "timeline": timeline, "stock_restored": True}}
+        )
+        if update_result.matched_count == 0:
+            raise HTTPException(status_code=409, detail="Order status changed. Refresh and try again.")
+
+        quantities_to_restore: dict[str, int] = {}
+        for item in o.get("items", []):
+            product_id = str(item.get("product_id") or "")
+            quantity = int(item.get("quantity") or 0)
+            if product_id and quantity > 0:
+                quantities_to_restore[product_id] = quantities_to_restore.get(product_id, 0) + quantity
+        for product_id, quantity in quantities_to_restore.items():
+            await db.products.update_one({"id": product_id}, {"$inc": {"stock": quantity}})
+    else:
+        await db.orders.update_one(
+            {"id": order_id},
+            {"$set": {"status": data.status, "timeline": timeline}}
+        )
     # notify customer
     await db.notifications.insert_one({
         "id": str(uuid.uuid4()), "user_id": o["user_id"],

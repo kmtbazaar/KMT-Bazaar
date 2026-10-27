@@ -28,6 +28,8 @@ export default function Product() {
   const productCarouselRef = useRef<ScrollView | null>(null);
   const [suggestions, setSuggestions] = useState<any[]>([]);
   const [suggestionsLoading, setSuggestionsLoading] = useState(true);
+  const availableStock = Math.max(0, Number(p?.stock ?? p?.available_quantity ?? p?.quantity_in_stock ?? 0));
+  const outOfStock = !!p && (p?.is_available === false || availableStock <= 0);
 
   useEffect(() => { 
     setSelectedImageIndex(0);
@@ -176,6 +178,7 @@ export default function Product() {
   }, [cart, p?.id]);
 
   const onAddFirstTime = async () => {
+    if (outOfStock) return;
     setAdding(true);
     try { await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success); } catch {}
     try { 
@@ -188,6 +191,7 @@ export default function Product() {
   };
 
   const handleIncrement = async () => {
+    if (outOfStock || currentQty >= availableStock) return;
     try { await Haptics.selectionAsync(); } catch {}
     try {
       if (currentQty === 0) await add(p.id, 1);
@@ -291,7 +295,9 @@ export default function Product() {
         ) : null}
         <View style={s.card}>
           <Text style={s.name} testID="product-name">{p.name}</Text>
-          <Text style={s.unit}>{p.unit} · In stock</Text>
+          <Text style={[s.unit, outOfStock && s.outOfStockText]}>
+            {outOfStock ? "OUT OF STOCK" : `${availableStock} in stock`}
+          </Text>
           <View style={s.priceRow}>
             <Text style={s.price}>₹{p.price}</Text>
             {discount > 0 && <Text style={s.mrp}>₹{p.mrp}</Text>}
@@ -390,7 +396,12 @@ export default function Product() {
               <MaterialCommunityIcons name="minus" size={20} color={currentQty === 0 ? COLORS.textMuted : COLORS.text} />
             </Pressable>
             <Text style={s.qtyT}>{currentQty}</Text>
-            <Pressable testID="pdp-qty-inc" onPress={handleIncrement} hitSlop={8}>
+            <Pressable
+              testID="pdp-qty-inc"
+              onPress={handleIncrement}
+              hitSlop={8}
+              disabled={outOfStock || currentQty >= availableStock}
+            >
               <MaterialCommunityIcons name="plus" size={20} color={COLORS.text} />
             </Pressable>
           </View>
@@ -399,14 +410,14 @@ export default function Product() {
             testID={currentQty > 0 ? "pdp-my-bag" : "pdp-add-to-cart"}
             onPress={currentQty > 0 ? handleCheckout : onAddFirstTime}
             style={{ flex: 1 }}
-            disabled={adding}
+            disabled={adding || outOfStock}
           >
-            <LinearGradient colors={currentQty > 0 ? [COLORS.success, "#2e7d32"] : [COLORS.accent, COLORS.accentDark]} style={s.checkoutBtn}>
+            <LinearGradient colors={outOfStock ? [COLORS.border, COLORS.border] : currentQty > 0 ? [COLORS.success, "#2e7d32"] : [COLORS.accent, COLORS.accentDark]} style={s.checkoutBtn}>
               {adding ? <ActivityIndicator color="#fff" /> : (
                 <>
-                  <MaterialCommunityIcons name={currentQty > 0 ? "shopping-bag" : "cart-plus"} color="#fff" size={20} />
-                  <Text style={s.checkoutBtnText}>{currentQty > 0 ? "View Cart" : `Add to Cart · ₹${p.price}`}</Text>
-                  <MaterialCommunityIcons name="arrow-right" color="#fff" size={18} />
+                  <MaterialCommunityIcons name={outOfStock ? "close-circle" : currentQty > 0 ? "shopping-bag" : "cart-plus"} color="#fff" size={20} />
+                  <Text style={s.checkoutBtnText}>{outOfStock ? "Out of Stock" : currentQty > 0 ? "View Cart" : `Add to Cart · ₹${p.price}`}</Text>
+                  {!outOfStock && <MaterialCommunityIcons name="arrow-right" color="#fff" size={18} />}
                 </>
               )}
             </LinearGradient>
@@ -435,6 +446,7 @@ const s = StyleSheet.create({
   card: { padding: SPACING.lg },
   name: { fontSize: 22, fontWeight: "800", color: COLORS.text },
   unit: { color: COLORS.textMuted, marginTop: 4, fontSize: 13 },
+  outOfStockText: { color: COLORS.error, fontWeight: "900" },
   priceRow: { flexDirection: "row", alignItems: "center", gap: 10, marginTop: 12 },
   price: { fontSize: 28, fontWeight: "800", color: COLORS.text },
   mrp: { fontSize: 16, color: COLORS.textMuted, textDecorationLine: "line-through" },

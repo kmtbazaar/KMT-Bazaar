@@ -154,7 +154,13 @@ export default function VendorProducts() {
             <Image source={{ uri: item.image }} style={s.img} contentFit="cover" />
             <View style={s.cardDetails}>
               <Text style={s.name} numberOfLines={1}>{item.name}</Text>
-              <Text style={s.meta}>{item.unit} · Stock: {item.stock}</Text>
+              <Text style={[
+                s.meta,
+                Number(item.stock ?? 0) <= 0 && { color: "#DC2626", fontWeight: "800" },
+              ]}>
+                {item.unit} · Stock: {Math.max(0, Number(item.stock ?? 0))}
+                {Number(item.stock ?? 0) <= 0 ? " · OUT OF STOCK" : Number(item.stock ?? 0) <= 5 ? " · LOW STOCK" : ""}
+              </Text>
             </View>
             <Pressable onPress={() => handleDelete(item.id, item.name)} hitSlop={10} style={s.editBtn}>
               <MaterialCommunityIcons name="pencil-outline" size={22} color="#D97706" />

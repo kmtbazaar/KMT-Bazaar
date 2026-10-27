@@ -518,8 +518,12 @@ export default function VendorStoreDetail() {
               <Text style={s.name} numberOfLines={1}>
                 {item.name}
               </Text>
-              <Text style={s.meta}>
-                {item.unit} · Stock: {item.stock}
+              <Text style={[
+                s.meta,
+                Number(item.stock ?? 0) <= 0 && { color: COLORS.error, fontWeight: "800" },
+              ]}>
+                {item.unit} · Stock: {Math.max(0, Number(item.stock ?? 0))}
+                {Number(item.stock ?? 0) <= 0 ? " · OUT OF STOCK" : Number(item.stock ?? 0) <= 5 ? " · LOW STOCK" : ""}
               </Text>
             </View>
             <View style={s.cardActions}>
