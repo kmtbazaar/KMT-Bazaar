@@ -538,16 +538,6 @@ export default function CarRentalPage() {
                       <Text style={styles.priceMeta}>{Number(item.hourly_price || 0) > 0 ? "/hour" : "/day"}</Text>
                     </View>
                   </View>
-                  {carPhotos(item).length > 1 ? (
-                    <View style={styles.cardPhotoStrip}>
-                      {carPhotos(item).slice(1, 3).map((src, photoIndex) => (
-                        <View key={`${item.id}-photo-${photoIndex}`} style={styles.cardPhotoThumb}>
-                          <Image source={{ uri: src }} style={styles.cardPhotoThumbImage} contentFit="cover" />
-                        </View>
-                      ))}
-                      <Text style={styles.cardPhotoCaption}>{carPhotos(item).length} photos</Text>
-                    </View>
-                  ) : null}
                   <View style={styles.cardBody}>
                     <View style={styles.titleLine}>
                       <Text style={styles.cardTitle} numberOfLines={1}>{item.name}</Text>
@@ -770,10 +760,6 @@ const styles = StyleSheet.create({
   imageWrap: { height: 204, backgroundColor: "#111318", overflow: "hidden" },
   cardImage: { width: "100%", height: "100%" },
   imageShade: { ...StyleSheet.absoluteFillObject, justifyContent: "flex-end" },
-  cardPhotoStrip: { minHeight: 55, paddingHorizontal: 10, paddingVertical: 7, flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: "#0c0e12" },
-  cardPhotoThumb: { width: 62, height: 42, borderRadius: 8, overflow: "hidden", borderWidth: 1, borderColor: LINE, backgroundColor: BLACK },
-  cardPhotoThumbImage: { width: "100%", height: "100%" },
-  cardPhotoCaption: { color: MUTED, fontSize: 10, fontWeight: "800" },
   tag: { position: "absolute", top: 10, left: 10, paddingHorizontal: 10, paddingVertical: 7, borderRadius: 999, backgroundColor: "rgba(8,9,11,.82)", borderWidth: 1, borderColor: "rgba(255,255,255,.12)" },
   tagText: { color: WHITE, fontSize: 10, fontWeight: "900" },
   pricePill: { position: "absolute", right: 10, bottom: 10, flexDirection: "row", gap: 3, alignItems: "baseline", paddingHorizontal: 10, paddingVertical: 7, borderRadius: 10, backgroundColor: AMBER },
