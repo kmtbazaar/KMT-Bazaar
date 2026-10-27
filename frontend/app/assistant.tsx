@@ -1,6 +1,7 @@
 import { LocalizedText as Text, LocalizedTextInput as TextInput } from "@/src/LocalizedText";
 import { router } from "expo-router";
 import React, { useRef, useState } from "react";
+import Animated, { ZoomIn } from "react-native-reanimated";
 import {
   View,
   StyleSheet,
@@ -80,7 +81,8 @@ export default function AssistantScreen() {
   };
 
   return (
-    <SafeAreaView style={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom }]} edges={[]}>
+    <SafeAreaView style={[styles.container, { paddingTop: insets.top + 10, paddingBottom: insets.bottom + 10 }]} edges={[]}>
+      <Animated.View entering={ZoomIn.duration(320).springify()} style={styles.panel}>
       {/* 1. PATLA HEADER */}
       <BotHeader />
 
@@ -159,6 +161,7 @@ export default function AssistantScreen() {
           </View>
         </View>
       </KeyboardAvoidingView>
+      </Animated.View>
     </SafeAreaView>
   );
 }
@@ -166,7 +169,26 @@ export default function AssistantScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 14,
+    backgroundColor: "rgba(2, 6, 23, 0.72)",
+  },
+  panel: {
+    width: "100%",
+    maxWidth: 620,
+    height: Platform.OS === "web" ? "82%" : "88%",
+    maxHeight: 740,
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: "#334155",
+    overflow: "hidden",
     backgroundColor: "#0F172A",
+    shadowColor: "#000000",
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.36,
+    shadowRadius: 28,
+    elevation: 18,
   },
   chat: {
     flex: 1,
@@ -178,7 +200,7 @@ const styles = StyleSheet.create({
   bannerContainer: {
     marginHorizontal: 12,
     marginTop: 6,
-    height: 140, // 🔥 Banner ko chota kar diya
+    height: 112, // Compact banner fits the centered AI panel better
     borderRadius: 10,
     overflow: "hidden",
   },
