@@ -3392,14 +3392,15 @@ async def admin_create_product(data: ProductIn, _=Depends(require_roles("admin")
     if not store:
         raise HTTPException(400, "Selected store was not found")
 
-    store_category_id = str(store.get("category_id") or "").strip()
-    if not store_category_id:
-        raise HTTPException(400, "Selected store has no shop category configured")
+    category_id = str(data.category_id or "").strip()
+    category = await db.categories.find_one({"id": category_id}, {"_id": 0, "id": 1})
+    if not category:
+        raise HTTPException(400, "Selected shop category was not found")
 
     pid = "p-" + uuid.uuid4().hex[:8]
     product_data = data.dict()
     product_data["store_id"] = store_id
-    product_data["category_id"] = store_category_id
+    product_data["category_id"] = category_id
     doc = {"id": pid, **product_data, "vendor_id": None}
     if doc.get("images") is None:
         doc["images"] = [doc["image"]] if doc.get("image") else []
@@ -3433,12 +3434,13 @@ async def admin_update_product(pid: str, data: ProductIn, _=Depends(require_role
     if not store:
         raise HTTPException(400, "Selected store was not found")
 
-    store_category_id = str(store.get("category_id") or "").strip()
-    if not store_category_id:
-        raise HTTPException(400, "Selected store has no shop category configured")
+    category_id = str(data.category_id or "").strip()
+    category = await db.categories.find_one({"id": category_id}, {"_id": 0, "id": 1})
+    if not category:
+        raise HTTPException(400, "Selected shop category was not found")
 
     upd["store_id"] = store_id
-    upd["category_id"] = store_category_id
+    upd["category_id"] = category_id
     if upd.get("mrp") is None: upd["mrp"] = upd["price"]
     res = await db.products.update_one({"id": pid}, {"$set": upd})
     if res.matched_count == 0: raise HTTPException(404, "Not found")
