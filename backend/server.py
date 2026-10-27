@@ -5936,21 +5936,54 @@ async def ai_chat(req: AIChatRequest):
                 detail="GEMINI_API_KEY not configured"
             )
 
-        response = await asyncio.to_thread(
-            gemini_client.models.generate_content,
-            model=GEMINI_MODEL,
-            contents=req.message,
-            config=types.GenerateContentConfig(
-                system_instruction=(
-                    "You are KMT Bazaar AI Assistant. "
-                    "Help customers with products, orders, sellers, "
-                    "delivery and general shopping questions. "
-                    "Reply in the same language and style as the user's message. "
-                    "For Hindi-English mixed messages, respond naturally in Hinglish. "
-                    "Be concise, friendly and useful."
-                )
-            ),
+        generation_config = types.GenerateContentConfig(
+            system_instruction=(
+                "You are KMT Bazaar AI Assistant. "
+                "Help customers with products, orders, sellers, "
+                "delivery and general shopping questions. "
+                "Reply in the same language and style as the user's message. "
+                "For Hindi-English mixed messages, respond naturally in Hinglish. "
+                "Be concise, friendly and useful."
+            )
         )
+
+        # Gemini may return transient 5xx errors during service overload.
+        # Retry those failures server-side before showing an unavailable message.
+        for attempt in range(3):
+            try:
+                response = await asyncio.to_thread(
+                    gemini_client.models.generate_content,
+                    model=GEMINI_MODEL,
+                    contents=req.message,
+                    config=generation_config,
+                )
+                break
+            except Exception as retry_error:
+                retry_message = str(retry_error).lower()
+                retry_code = getattr(retry_error, "code", None)
+                if not isinstance(retry_code, int):
+                    retry_response = getattr(retry_error, "response", None)
+                    retry_code = getattr(retry_response, "status_code", None)
+                try:
+                    retry_code = int(retry_code) if retry_code is not None else None
+                except (TypeError, ValueError):
+                    retry_code = None
+
+                transient_5xx = retry_code in (500, 502, 503, 504) or any(
+                    marker in retry_message
+                    for marker in ("500 internal", "502 bad gateway", "503 service unavailable", "504 gateway")
+                )
+                if not transient_5xx or attempt == 2:
+                    raise
+
+                delay = 1.5 * (attempt + 1)
+                logging.warning(
+                    "Transient Gemini chat failure (code=%s); retry %s/2 in %.1fs",
+                    retry_code,
+                    attempt + 1,
+                    delay,
+                )
+                await asyncio.sleep(delay)
 
         return {
             "message": response.text or "Sorry, I could not generate a response."
