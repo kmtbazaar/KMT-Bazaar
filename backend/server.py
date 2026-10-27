@@ -320,6 +320,11 @@ class AIChatRequest(BaseModel):
     message: str
 
 
+class AITranscribeRequest(BaseModel):
+    audio_base64: str = Field(min_length=1, max_length=8_000_000)
+    mime_type: str = "audio/webm"
+
+
 class JobApplicationIn(BaseModel):
     name: str
     mobile: str
@@ -5989,6 +5994,70 @@ async def ai_chat(req: AIChatRequest):
             http_status = 502
 
         raise HTTPException(status_code=http_status, detail=detail)
+@api.post("/ai/transcribe")
+async def ai_transcribe(req: AITranscribeRequest):
+    """Transcribe short microphone clips with automatic language detection."""
+    if not GEMINI_API_KEY or gemini_client is None:
+        raise HTTPException(status_code=503, detail="Gemini AI is not configured on the server")
+
+    mime_type = (req.mime_type or "").split(";", 1)[0].strip().lower()
+    allowed_audio_types = {
+        "audio/webm", "audio/ogg", "audio/mp4", "audio/mpeg",
+        "audio/wav", "audio/x-wav", "audio/aac", "audio/flac",
+    }
+    if mime_type not in allowed_audio_types:
+        raise HTTPException(status_code=415, detail="Unsupported microphone audio format")
+
+    try:
+        audio_bytes = base64.b64decode(req.audio_base64, validate=True)
+    except (ValueError, base64.binascii.Error):
+        raise HTTPException(status_code=400, detail="Invalid audio payload")
+
+    if not audio_bytes:
+        raise HTTPException(status_code=400, detail="Microphone recording is empty")
+    if len(audio_bytes) > 5 * 1024 * 1024:
+        raise HTTPException(status_code=413, detail="Voice recording is too large. Please speak in a shorter turn.")
+
+    try:
+        response = await asyncio.to_thread(
+            gemini_client.models.generate_content,
+            model="gemini-3.5-transcribe",
+            contents=[
+                (
+                    "Transcribe the attached microphone audio into text. "
+                    "Automatically identify the spoken language. Preserve Hindi, English, "
+                    "and natural Hindi-English code-switching; do not translate the user's words. "
+                    "Return only the transcript, with no explanation."
+                ),
+                types.Part.from_bytes(data=audio_bytes, mime_type=mime_type),
+            ],
+        )
+        transcript = str(response.text or "").strip()
+        if not transcript:
+            raise HTTPException(status_code=422, detail="No speech was detected. Please try speaking again.")
+        return {"transcript": transcript}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.exception("AI voice transcription failed")
+        raw_error = str(e).lower()
+        provider_code = getattr(e, "code", None)
+        provider_response = getattr(e, "response", None)
+        if provider_code is None:
+            provider_code = getattr(provider_response, "status_code", None)
+        try:
+            provider_code = int(provider_code) if provider_code is not None else None
+        except (TypeError, ValueError):
+            provider_code = None
+        if provider_code == 429 or any(term in raw_error for term in ("quota", "resource_exhausted", "rate limit")):
+            raise HTTPException(status_code=429, detail="Gemini voice quota/rate limit reached. Check API quota and try again.")
+        if provider_code in (401, 403) or "api key not valid" in raw_error or "invalid api key" in raw_error:
+            raise HTTPException(status_code=502, detail="Gemini rejected the configured API key or project permissions.")
+        if provider_code == 404 or ("model" in raw_error and "not found" in raw_error):
+            raise HTTPException(status_code=502, detail="Gemini transcription model is unavailable to this API project.")
+        raise HTTPException(status_code=502, detail="Gemini voice transcription failed or timed out. Check backend logs and API connectivity.")
+
+
 @api.get("/test-db")
 async def test_db(_=Depends(require_roles("admin"))):
     return {"users": await db.users.count_documents({}), "orders": await db.orders.count_documents({})}
