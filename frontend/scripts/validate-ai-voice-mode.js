@@ -13,7 +13,7 @@ const checks = [
   [assistant.includes("Hindi/English auto-detect") && !assistant.includes("voiceLanguageButton") && !assistant.includes("setVoiceLanguage"), "automatic language status; language picker removed"],
   [!assistant.includes(">Voice Mode<") && !assistant.includes('"Voice Mode"') && !assistant.includes('>"EN"<'), "visible Voice Mode and EN labels removed"],
   [aiClient.includes("/api/ai/transcribe") && aiClient.includes("audio_base64"), "frontend sends audio to transcription API"],
-  [backend.includes("async def ai_transcribe") && backend.includes('model="gemini-3.5-transcribe"'), "Gemini transcription endpoint uses auto-language transcribe model"],
+  [backend.includes("async def ai_transcribe") && backend.includes('model="gemini-3.5-transcribe"') && backend.includes("gemini_client.interactions.create") && backend.includes('"language_codes": []'), "Gemini Interactions API auto-language transcription is configured"],
   [backend.includes("Write Hindi words in Devanagari script") && backend.includes("naturally in Hinglish"), "Hindi/English code-switching preserved in transcript and AI reply"],
   [backend.includes('(os.getenv("GEMINI_API_KEY") or "").strip()'), "Gemini key normalized from backend environment"],
   [backend.includes('"gemini-3.8-flash"'), "current default Gemini chat model configured"],
