@@ -15,6 +15,7 @@ type DateTimePickerFieldProps = {
   value: string;
   onChange: (value: string) => void;
   placeholder?: string;
+  appearance?: "light" | "dark";
 };
 
 const pad = (value: number) => String(value).padStart(2, "0");
@@ -43,6 +44,7 @@ export default function DateTimePickerField({
   value,
   onChange,
   placeholder,
+  appearance = "dark",
 }: DateTimePickerFieldProps) {
   const [open, setOpen] = useState(false);
   const [month, setMonth] = useState(() => {
@@ -90,11 +92,11 @@ export default function DateTimePickerField({
         padding: "0 12px",
         border: "1px solid #2b3039",
         borderRadius: 12,
-        backgroundColor: "#171a20",
-        color: "#ffffff",
+        backgroundColor: appearance === "light" ? "#ffffff" : "#171a20",
+        color: appearance === "light" ? "#0f172a" : "#ffffff",
         fontSize: 14,
         fontFamily: "inherit",
-        colorScheme: "dark",
+        colorScheme: appearance,
         cursor: "pointer",
       },
     });
@@ -106,15 +108,15 @@ export default function DateTimePickerField({
         accessibilityRole="button"
         accessibilityLabel={`Choose ${fieldLabel.toLowerCase()}`}
         onPress={() => setOpen(true)}
-        style={styles.field}
+        style={[styles.field, appearance === "light" && styles.fieldLight]}
       >
-        <Text style={[styles.fieldText, !value && styles.placeholder]} numberOfLines={1}>
+        <Text style={[styles.fieldText, appearance === "light" && styles.fieldTextLight, !value && styles.placeholder, !value && appearance === "light" && styles.placeholderLight]} numberOfLines={1}>
           {value ? (mode === "date" ? dateLabel(value) : value) : placeholder || `Select ${fieldLabel.toLowerCase()}`}
         </Text>
         <MaterialCommunityIcons
           name={mode === "date" ? "calendar-month-outline" : "clock-outline"}
           size={19}
-          color="#a6abb4"
+          color={appearance === "light" ? "#64748b" : "#a6abb4"}
         />
       </Pressable>
 
@@ -245,7 +247,10 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   fieldText: { color: "#ffffff", fontSize: 14, flex: 1 },
+  fieldLight: { backgroundColor: "#ffffff", borderColor: "#dbe4ee" },
+  fieldTextLight: { color: "#0f172a" },
   placeholder: { color: "#777d87" },
+  placeholderLight: { color: "#94a3b8" },
   backdrop: { flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "rgba(0,0,0,.72)", padding: 18 },
   pickerCard: { width: "100%", maxWidth: 390, padding: 16, borderRadius: 20, backgroundColor: "#111318", borderWidth: 1, borderColor: "#2b3039" },
   modalHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 12 },
