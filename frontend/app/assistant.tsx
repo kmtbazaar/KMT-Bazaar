@@ -1,6 +1,6 @@
 import { LocalizedText as Text, LocalizedTextInput as TextInput } from "@/src/LocalizedText";
 import { router } from "expo-router";
-import React, { useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import Animated, { ZoomIn } from "react-native-reanimated";
 import {
   View,
@@ -30,6 +30,13 @@ export default function AssistantScreen() {
   const insets = useSafeAreaInsets();
   const [input, setInput] = useState("");
   const [typing, setTyping] = useState(false);
+  const [voiceMode, setVoiceMode] = useState(false);
+  const [listening, setListening] = useState(false);
+  const [speaking, setSpeaking] = useState(false);
+  const [voiceLanguage, setVoiceLanguage] = useState<"en-IN" | "hi-IN">("en-IN");
+  const [voiceStatus, setVoiceStatus] = useState("");
+  const recognitionRef = useRef<any>(null);
+  const voiceModeRef = useRef(false);
 
   const [messages, setMessages] = useState<Message[]>([
     {
@@ -58,25 +65,177 @@ export default function AssistantScreen() {
         ...prev,
         { id: Date.now() + 1, text: response.message, isUser: false },
       ]);
+      if (voiceModeRef.current) speakText(response.message);
     } catch (error) {
       setTyping(false);
+      const message =
+        error instanceof Error
+          ? error.message
+          : "AI request failed. Please try again.";
+      setVoiceStatus(voiceModeRef.current ? "AI response failed." : "");
       setMessages((prev) => [
         ...prev,
         {
           id: Date.now() + 1,
-          text: "⚠ Network issue. Please try again.",
+          text: `⚠ ${message}`,
           isUser: false,
         },
       ]);
     }
   };
 
-  // Dual button logic (Send vs Voice)
+  const speakText = (text: string) => {
+    if (Platform.OS !== "web" || typeof window === "undefined") {
+      setVoiceStatus("Voice playback is currently available in the website browser.");
+      return;
+    }
+    const browserWindow = window as any;
+    const synthesis = browserWindow.speechSynthesis;
+    const Utterance = browserWindow.SpeechSynthesisUtterance ||
+      (globalThis as any).SpeechSynthesisUtterance;
+    if (!synthesis || !Utterance) {
+      setVoiceStatus("Voice playback is not supported by this browser.");
+      return;
+    }
+
+    synthesis.cancel();
+    const utterance = new Utterance(text);
+    utterance.lang = voiceLanguage;
+    utterance.rate = 0.96;
+    utterance.pitch = 1.04;
+    utterance.onstart = () => {
+      setSpeaking(true);
+      setVoiceStatus("KMT AI is speaking…");
+    };
+    utterance.onend = () => {
+      setSpeaking(false);
+      if (voiceModeRef.current) {
+        setVoiceStatus("Voice mode on — speak when ready.");
+        startListening();
+      }
+    };
+    utterance.onerror = () => {
+      setSpeaking(false);
+      if (voiceModeRef.current) setVoiceStatus("Voice playback failed. Check browser sound settings.");
+    };
+    synthesis.speak(utterance);
+  };
+
+  const startListening = () => {
+    if (Platform.OS !== "web" || typeof window === "undefined") {
+      setVoiceStatus("Voice input currently works in supported website browsers.");
+      if (voiceModeRef.current) {
+        voiceModeRef.current = false;
+        setVoiceMode(false);
+      }
+      return;
+    }
+
+    const browserWindow = window as any;
+    const SpeechRecognition = browserWindow.SpeechRecognition ||
+      browserWindow.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      setVoiceStatus("Voice input needs a browser with speech recognition, such as Chrome or Edge. You can still type to chat.");
+      if (voiceModeRef.current) {
+        voiceModeRef.current = false;
+        setVoiceMode(false);
+      }
+      return;
+    }
+
+    try {
+      recognitionRef.current?.stop();
+    } catch {}
+
+    try {
+      const recognition = new SpeechRecognition();
+      recognition.lang = voiceLanguage;
+      recognition.continuous = false;
+      recognition.interimResults = false;
+      recognition.maxAlternatives = 1;
+      recognition.onstart = () => {
+        setListening(true);
+        setVoiceStatus(voiceModeRef.current ? "Voice mode on — speak now." : "Listening… speak now.");
+      };
+      recognition.onresult = (event: any) => {
+        const spoken = String(event?.results?.[0]?.[0]?.transcript || "").trim();
+        if (!spoken) {
+          setVoiceStatus("No speech detected. Tap the mic and try again.");
+          return;
+        }
+        if (voiceModeRef.current) {
+          setInput("");
+          setVoiceStatus("You spoke — KMT AI is thinking…");
+          void processMessage(spoken);
+        } else {
+          setInput(spoken);
+          setVoiceStatus("Voice captured. Press send to ask.");
+        }
+      };
+      recognition.onerror = (event: any) => {
+        setListening(false);
+        const code = String(event?.error || "");
+        if (code === "not-allowed" || code === "service-not-allowed") {
+          setVoiceStatus("Microphone permission is blocked. Allow microphone access for kmtbazaar.com in browser site settings.");
+        } else if (code === "no-speech") {
+          setVoiceStatus("No speech detected. Tap the mic and try again.");
+        } else {
+          setVoiceStatus("Voice input failed. Check microphone permission and try again.");
+        }
+        if (voiceModeRef.current && code !== "no-speech") {
+          voiceModeRef.current = false;
+          setVoiceMode(false);
+        }
+      };
+      recognition.onend = () => setListening(false);
+      recognitionRef.current = recognition;
+      setVoiceStatus("Requesting microphone permission…");
+      recognition.start();
+    } catch {
+      setListening(false);
+      setVoiceStatus("Could not start microphone. Check site permissions and try again.");
+    }
+  };
+
+  const toggleVoiceMode = () => {
+    if (voiceModeRef.current) {
+      voiceModeRef.current = false;
+      setVoiceMode(false);
+      setListening(false);
+      setSpeaking(false);
+      try { recognitionRef.current?.stop(); } catch {}
+      if (Platform.OS === "web" && typeof window !== "undefined") {
+        (window as any).speechSynthesis?.cancel();
+      }
+      setVoiceStatus("Voice mode is off.");
+      return;
+    }
+
+    voiceModeRef.current = true;
+    setVoiceMode(true);
+    setVoiceStatus("Starting voice mode…");
+    startListening();
+  };
+
+  useEffect(() => {
+    return () => {
+      voiceModeRef.current = false;
+      try { recognitionRef.current?.stop(); } catch {}
+      if (Platform.OS === "web" && typeof window !== "undefined") {
+        (window as any).speechSynthesis?.cancel();
+      }
+    };
+  }, []);
+
+  // Send typed text, or start speech recognition when the input is empty.
   const handleActionPress = () => {
     if (input.trim().length > 0) {
       onSend();
+    } else if (listening) {
+      try { recognitionRef.current?.stop(); } catch {}
+      setVoiceStatus("Voice input paused.");
     } else {
-      console.log("Voice Recording Triggered");
+      startListening();
     }
   };
 
@@ -120,13 +279,48 @@ export default function AssistantScreen() {
 
         {/* ROOJGAR BUTTON */}
         <View style={styles.quickActionsContainer}>
-          <TouchableOpacity
-            style={styles.roojgarButton}
-            onPress={() => router.push("/RoojgarForm")}
-            activeOpacity={0.8}
-          >
-            <Text style={styles.roojgarButtonText}>💼 Roojgar / Jobs</Text>
-          </TouchableOpacity>
+          <View style={styles.quickActionsRow}>
+            <TouchableOpacity
+              style={styles.roojgarButton}
+              onPress={() => router.push("/RoojgarForm")}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.roojgarButtonText}>💼 Roojgar / Jobs</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.voiceModeButton, voiceMode && styles.voiceModeButtonActive]}
+              onPress={toggleVoiceMode}
+              activeOpacity={0.8}
+              accessibilityRole="button"
+              accessibilityLabel={voiceMode ? "Turn voice mode off" : "Turn voice mode on"}
+            >
+              <MaterialCommunityIcons
+                name={voiceMode ? "waveform" : "microphone"}
+                size={16}
+                color={voiceMode ? "#67E8F9" : "#CBD5E1"}
+              />
+              <Text style={[styles.voiceModeButtonText, voiceMode && styles.voiceModeButtonTextActive]}>
+                {voiceMode ? "Voice ON" : "Voice Mode"}
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.voiceLanguageButton}
+              onPress={() => {
+                setVoiceLanguage((current) => current === "en-IN" ? "hi-IN" : "en-IN");
+                setVoiceStatus("Voice language: " + (voiceLanguage === "en-IN" ? "Hindi" : "English") + ". Tap the mic to use it.");
+              }}
+              activeOpacity={0.8}
+              accessibilityRole="button"
+              accessibilityLabel="Switch voice language"
+            >
+              <Text style={styles.voiceLanguageButtonText}>{voiceLanguage === "en-IN" ? "EN" : "हिं"}</Text>
+            </TouchableOpacity>
+          </View>
+          {!!voiceStatus && (
+            <Text style={styles.voiceStatus} numberOfLines={2}>
+              {listening ? "Listening… " + voiceStatus : speaking ? "Speaking… " + voiceStatus : voiceStatus}
+            </Text>
+          )}
         </View>
 
         {/* 3. MOTA/SPACIOUS BOTTOM INPUT AREA */}
@@ -147,13 +341,15 @@ export default function AssistantScreen() {
             <TouchableOpacity
               style={[
                 styles.actionBtn,
-                input.trim().length > 0 ? styles.sendBtnBg : styles.voiceBtnBg,
+                input.trim().length > 0
+                  ? styles.sendBtnBg
+                  : listening ? styles.listeningBtnBg : styles.voiceBtnBg,
               ]}
               onPress={handleActionPress}
               activeOpacity={0.7}
             >
               <MaterialCommunityIcons
-                name={input.trim().length > 0 ? "send" : "microphone"}
+                name={input.trim().length > 0 ? "send" : listening ? "stop-circle" : "microphone"}
                 size={20}
                 color="#FFFFFF"
               />
@@ -213,17 +409,71 @@ const styles = StyleSheet.create({
     paddingTop: 8,
   },
   quickActionsContainer: {
-    paddingHorizontal: 16,
+    paddingHorizontal: 12,
     paddingVertical: 4,
-    alignItems: "flex-start",
+    backgroundColor: "#0F172A",
+  },
+  quickActionsRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    flexWrap: "wrap",
+    gap: 8,
   },
   roojgarButton: {
     backgroundColor: "#1E293B",
     paddingVertical: 6,
-    paddingHorizontal: 14,
+    paddingHorizontal: 10,
     borderRadius: 16,
     borderWidth: 1,
     borderColor: "#334155",
+  },
+  voiceModeButton: {
+    minHeight: 30,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 5,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "#475569",
+    backgroundColor: "#172033",
+  },
+  voiceModeButtonActive: {
+    borderColor: "#0891B2",
+    backgroundColor: "#083344",
+  },
+  voiceModeButtonText: {
+    color: "#CBD5E1",
+    fontSize: 11,
+    fontWeight: "700",
+  },
+  voiceModeButtonTextActive: {
+    color: "#A5F3FC",
+  },
+  voiceLanguageButton: {
+    minWidth: 34,
+    minHeight: 30,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 8,
+    borderRadius: 15,
+    borderWidth: 1,
+    borderColor: "#475569",
+    backgroundColor: "#172033",
+  },
+  voiceLanguageButtonText: {
+    color: "#E2E8F0",
+    fontSize: 11,
+    fontWeight: "800",
+  },
+  voiceStatus: {
+    color: "#CBD5E1",
+    fontSize: 10,
+    lineHeight: 14,
+    marginTop: 4,
+    marginHorizontal: 4,
   },
   roojgarButtonText: {
     color: "#FFFFFF",
@@ -265,7 +515,10 @@ const styles = StyleSheet.create({
     marginLeft: 8,
   },
   voiceBtnBg: {
-    backgroundColor: "#3B82F6", // Blue for Mic
+    backgroundColor: "#3B82F6",
+  },
+  listeningBtnBg: {
+    backgroundColor: "#DC2626",
   },
   sendBtnBg: {
     backgroundColor: "#10B981", // Green for Send
