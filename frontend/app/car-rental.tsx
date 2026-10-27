@@ -22,6 +22,7 @@ import Animated, {
   FadeInUp,
 } from "react-native-reanimated";
 import { api } from "@/src/api";
+import DateTimePickerField from "@/components/DateTimePickerField";
 
 const { width } = Dimensions.get("window");
 
@@ -274,6 +275,7 @@ export default function CarRentalPage() {
   const [pickup, setPickup] = useState("");
   const [dropoff, setDropoff] = useState("");
   const [bookingDate, setBookingDate] = useState("");
+  const [bookingTime, setBookingTime] = useState("09:00");
   const [days, setDays] = useState(1);
   const [passengers, setPassengers] = useState(2);
   const [tripNote, setTripNote] = useState("");
@@ -385,6 +387,7 @@ export default function CarRentalPage() {
     setPickup("");
     setDropoff("");
     setBookingDate("");
+    setBookingTime("09:00");
     setDays(1);
     setPassengers(Math.min(2, Number(item.seats || 2)));
     setTripNote("");
@@ -405,7 +408,7 @@ export default function CarRentalPage() {
         service_type: "car_rental",
         service_id: selected.id,
         booking_date: bookingDate.trim(),
-        booking_time: "09:00",
+        booking_time: bookingTime || "09:00",
         quantity: Math.max(1, days),
         notes: tripNote.trim(),
         extra: {
@@ -544,7 +547,6 @@ export default function CarRentalPage() {
                       <View style={styles.specRow}>
                         <Spec icon="seat-outline" text={String(item.seats || 4) + " seats"} />
                         <Spec icon="bag-suitcase-outline" text={String(item.bags || 2) + " bags"} />
-                        <Spec icon="car-shift-pattern" text={item.transmission || "Manual"} />
                       </View>
                     ) : null}
                     <View style={styles.bookBtn}>
@@ -588,9 +590,6 @@ export default function CarRentalPage() {
                       <SpecBox icon="seat-outline" label="Seats" value={String(selected?.seats || 4)} />
                     ) : null}
                     <SpecBox icon="fuel" label="Fuel" value={selected?.fuel || "Petrol"} />
-                    {!isCommercialVehicle(selected) ? (
-                      <SpecBox icon="car-shift-pattern" label="Gearbox" value={selected?.transmission || "Manual"} />
-                    ) : null}
                     {!isCommercialVehicle(selected) ? (
                       <SpecBox icon="bag-suitcase-outline" label="Bags" value={String(selected?.bags || 2)} />
                     ) : null}
@@ -643,8 +642,16 @@ export default function CarRentalPage() {
                   <TextInput value={pickup} onChangeText={setPickup} placeholder="e.g. Patna Airport" placeholderTextColor="#7d828c" style={styles.formInput} />
                   <Text style={styles.formLabel}>DROP / DESTINATION</Text>
                   <TextInput value={dropoff} onChangeText={setDropoff} placeholder="e.g. Bodh Gaya / Patna" placeholderTextColor="#7d828c" style={styles.formInput} />
-                  <Text style={styles.formLabel}>TRAVEL DATE *</Text>
-                  <TextInput value={bookingDate} onChangeText={setBookingDate} placeholder="YYYY-MM-DD" placeholderTextColor="#7d828c" style={styles.formInput} maxLength={10} />
+                  <View style={styles.dateTimeRow}>
+                    <View style={styles.dateTimeField}>
+                      <Text style={styles.formLabel}>TRAVEL DATE *</Text>
+                      <DateTimePickerField mode="date" value={bookingDate} onChange={setBookingDate} placeholder="Select date" />
+                    </View>
+                    <View style={styles.dateTimeField}>
+                      <Text style={styles.formLabel}>PICKUP TIME</Text>
+                      <DateTimePickerField mode="time" value={bookingTime} onChange={setBookingTime} placeholder="Select time" />
+                    </View>
+                  </View>
                   
                   <View style={styles.counterRow}>
                     <View style={styles.counterBox}>
@@ -818,6 +825,8 @@ const styles = StyleSheet.create({
   summaryPrice: { color: "#ffd7dc", fontWeight: "900", fontSize: 13, marginTop: 6 },
   formLabel: { color: "#a6abb4", fontSize: 10, fontWeight: "900", letterSpacing: 1.1, marginBottom: 7, marginTop: 8 },
   formInput: { backgroundColor: "#14171c", borderWidth: 1, borderColor: "#242833", borderRadius: 12, paddingHorizontal: 13, paddingVertical: 12, color: WHITE, fontSize: 14 },
+  dateTimeRow: { flexDirection: "row", gap: 10, marginTop: 1 },
+  dateTimeField: { flex: 1, minWidth: 0 },
   noteInput: { minHeight: 80, textAlignVertical: "top" as any },
   counterRow: { flexDirection: "row", gap: 9, marginTop: 7 },
   counterBox: { flex: 1 },
