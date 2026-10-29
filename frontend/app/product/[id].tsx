@@ -296,7 +296,7 @@ export default function Product() {
         <View style={s.card}>
           <Text style={s.name} testID="product-name">{p.name}</Text>
           <Text style={[s.unit, outOfStock && s.outOfStockText]}>
-            {outOfStock ? "OUT OF STOCK" : `${availableStock} in stock`}
+            {p.unit ? `${p.unit} · ` : ""}{outOfStock ? "OUT OF STOCK" : `${availableStock} in stock`}
           </Text>
           <View style={s.priceRow}>
             <Text style={s.price}>₹{p.price}</Text>
