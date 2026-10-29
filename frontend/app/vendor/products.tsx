@@ -192,6 +192,30 @@ export default function VendorProducts() {
                 style={[s.input, s.inputHighlighted]}
               />
 
+              {/* Keep size and pack choices near the top so they are immediately discoverable. */}
+              <View style={s.unitPickerPanel} testID="vendor-product-size-pack-picker">
+                <Text style={s.sectionLabel}>Choose product size / pack</Text>
+                <Text style={s.unitPickerHint}>Tap one option. It will fill the Unit field below.</Text>
+                <View style={s.unitChipContainer}>
+                  {PRODUCT_UNIT_OPTIONS.map((option) => {
+                    const active = form.unit.trim().toLowerCase() === option.toLowerCase();
+                    return (
+                      <Pressable
+                        key={option}
+                        accessibilityRole="button"
+                        accessibilityLabel={`Select product unit ${option}`}
+                        accessibilityState={{ selected: active }}
+                        testID={`product-unit-${option.toLowerCase().replaceAll(" ", "-")}`}
+                        style={[s.catChip, s.unitChip, active && s.catChipActive]}
+                        onPress={() => setForm((current) => ({ ...current, unit: option }))}
+                      >
+                        <Text style={[s.catChipText, active && s.catChipTextActive]}>{option}</Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              </View>
+
               {/* Price & MRP Row */}
               <View style={s.row}>
                 <TextInput
@@ -231,25 +255,7 @@ export default function VendorProducts() {
                 />
               </View>
 
-              {/* Quick tap choices for common apparel sizes and pack units. Manual unit entry remains available above. */}
-              <Text style={s.sectionLabel}>Size / Pack — tap to select</Text>
-              <View style={s.unitChipContainer}>
-                {PRODUCT_UNIT_OPTIONS.map((option) => {
-                  const active = form.unit.trim().toLowerCase() === option.toLowerCase();
-                  return (
-                    <Pressable
-                      key={option}
-                      accessibilityRole="button"
-                      accessibilityState={{ selected: active }}
-                      testID={`product-unit-${option.toLowerCase().replaceAll(" ", "-")}`}
-                      style={[s.catChip, s.unitChip, active && s.catChipActive]}
-                      onPress={() => setForm((current) => ({ ...current, unit: option }))}
-                    >
-                      <Text style={[s.catChipText, active && s.catChipTextActive]}>{option}</Text>
-                    </Pressable>
-                  );
-                })}
-              </View>
+
 
               <ProductImagesUploader value={form.images} onChange={(images) => setForm((current) => ({ ...current, images, image: images[0] || "" }))} label="Product Photos (minimum 3)" testID="vendor-product-images" />
 
@@ -436,9 +442,25 @@ const s = StyleSheet.create({
   },
   pickBtnText: { color: "#EA580C", fontWeight: "700", fontSize: 15 },
 
-  // Categories and quick unit choices
-  unitChipContainer: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 14 },
-  unitChip: { minHeight: 40, justifyContent: "center", alignItems: "center" },
+  // Prominent, early size/pack selector
+  unitPickerPanel: {
+    backgroundColor: "#FFF7ED",
+    borderWidth: 1,
+    borderColor: "#FDBA74",
+    borderRadius: 16,
+    padding: 12,
+    marginBottom: 14,
+  },
+  unitPickerHint: { fontSize: 12, lineHeight: 16, color: "#7C2D12", marginTop: -4, marginBottom: 10 },
+  unitChipContainer: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  unitChip: {
+    minHeight: 42,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#FFFFFF",
+    borderColor: "#EA580C",
+    borderWidth: 1,
+  },
   catContainer: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 14 },
   catChip: {
     paddingHorizontal: 16,
