@@ -24,6 +24,7 @@ import CheckoutBar from "@/src/components/CheckoutBar";
 
 const { width } = Dimensions.get("window");
 const BANNER_W = width - 32;
+const HERO_BACKDROP_HEIGHT = 182; // Extend animated sky to the banner line without moving page content
 const HERO_COLLAPSE_SCROLL_THRESHOLD = 120; // Collapse when banner CTA reaches the top; keep categories clear
 
 // Custom Theme Palette: Clean Pure White, Sky Blue Header & Vibrant Orange
@@ -451,11 +452,11 @@ function NightSky() {
 
       const resize = () => {
         const widthPx = Math.max(1, Math.floor(window.innerWidth * Math.min(window.devicePixelRatio, 2)));
-        const heightPx = Math.max(1, Math.floor(140 * Math.min(window.devicePixelRatio, 2)));
+        const heightPx = Math.max(1, Math.floor(HERO_BACKDROP_HEIGHT * Math.min(window.devicePixelRatio, 2)));
         canvas.width = widthPx;
         canvas.height = heightPx;
         canvas.style.width = "100%";
-        canvas.style.height = "140px";
+        canvas.style.height = `${HERO_BACKDROP_HEIGHT}px`;
         gl.viewport(0, 0, widthPx, heightPx);
       };
 
@@ -548,7 +549,7 @@ function NightSky() {
   if (Platform.OS === "web") {
     return (
       <View pointerEvents="none" style={s.nightSky}>
-        {React.createElement("canvas" as any, { ref: canvasRef, style: { width: "100%", height: "140px", display: "block" } })}
+        {React.createElement("canvas" as any, { ref: canvasRef, style: { width: "100%", height: `${HERO_BACKDROP_HEIGHT}px`, display: "block" } })}
       </View>
     );
   }
@@ -1241,7 +1242,7 @@ export default function Home() {
       {/* The search bar stays usable while the hero shell slides away after the banner scrolls off. */}
       <SafeAreaView
         edges={heroCollapsed ? ["top"] : []}
-        style={[s.searchBarSafeArea, heroCollapsed && s.searchBarSafeAreaCollapsed]}
+        style={[s.searchBarSafeArea, heroCollapsed && s.searchBarSafeAreaCollapsed, { backgroundColor: heroCollapsed ? THEME.whiteBg : "transparent" }]}
       >
         <View style={[s.searchBarOuter, heroCollapsed && s.searchBarOuterCollapsed]}>
         {/* Search Bar */}
@@ -1587,8 +1588,8 @@ const s = StyleSheet.create({
   locationGatePrivacy: { marginTop: 12, color: THEME.blackMuted, fontSize: 10, lineHeight: 15, textAlign: "center" },
   root: { flex: 1, backgroundColor: THEME.whiteBg },
   /* Realistic 3D-style sky layers stay behind the existing header/search only */
-  heroHeaderShell: { position: "relative", width: "100%", overflow: "hidden" },
-  nightSky: { position: "absolute", top: 0, left: 0, right: 0, height: 140, overflow: "hidden", zIndex: 0, pointerEvents: "none" },
+  heroHeaderShell: { position: "relative", width: "100%", overflow: "visible" },
+  nightSky: { position: "absolute", top: 0, left: 0, right: 0, height: HERO_BACKDROP_HEIGHT, overflow: "hidden", zIndex: 0, pointerEvents: "none" },
   nightGradientLayer: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0 },
   nightGradient: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0 },
   horizonGlow: { position: "absolute", left: "12%", right: "12%", bottom: 4, height: 68, borderTopLeftRadius: 170, borderTopRightRadius: 170, backgroundColor: "rgba(255,190,130,0.10)" },
@@ -1638,7 +1639,7 @@ const s = StyleSheet.create({
   cloudHighlightOne: { position: "absolute", left: 42, top: 8, width: 38, height: 10, borderRadius: 10, backgroundColor: "rgba(255,255,255,0.22)" },
   cloudHighlightTwo: { position: "absolute", left: 38, top: 7, width: 32, height: 9, borderRadius: 10, backgroundColor: "rgba(255,255,255,0.2)" },
   cloudBase: { position: "absolute", left: 2, right: 2, bottom: 4, height: 24, borderRadius: 18, backgroundColor: "rgba(100,116,139,0.12)" },
-  headerBg: { position: "absolute", top: 0, left: 0, right: 0, height: 100, borderBottomLeftRadius: 30, borderBottomRightRadius: 30, backgroundColor: "transparent", shadowColor: "#FFFFFF", shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.14, shadowRadius: 18, elevation: 7 },
+  headerBg: { position: "absolute", top: 0, left: 0, right: 0, height: HERO_BACKDROP_HEIGHT, borderBottomLeftRadius: 30, borderBottomRightRadius: 30, backgroundColor: "transparent", shadowColor: "#FFFFFF", shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.14, shadowRadius: 18, elevation: 7 },
   skyClearSpace: { height: Platform.OS === "web" ? 90 : 56 },
   skyClearSpaceCollapsed: { height: 0 },
   searchBarSafeArea: { backgroundColor: THEME.whiteBg, zIndex: 20, elevation: 8 },
