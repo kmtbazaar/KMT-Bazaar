@@ -27,7 +27,8 @@ assert.ok(adminProducts.includes("adminApi.stores()"), "Admin product page must 
 assert.ok(adminProducts.includes("stores={stores}"), "Product modal must receive store choices.");
 assert.ok(adminProducts.includes('testID={`pf-store-${storeId}`}'), "Admin product modal must expose store choices.");
 assert.ok(adminProducts.includes("store_id: String(selectedStore.id || selectedStore._id)"), "Saved products must include store_id.");
-assert.ok(adminProducts.includes('category_id: String(selectedStore.category_id)'), "Saved products must match their store category.");
+assert.ok(adminProducts.includes('category_id: String(f.category_id || "").trim()'), "Saved products must retain the selected shop category.");
+assert.ok(adminProducts.includes('!String(f.category_id || "").trim() || !categories.some'), "Admin product form must require a valid shop category selection.");
 assert.ok(adminProducts.includes("Could not save product"), "Product save failures must be shown to the admin.");
 assert.ok(adminProducts.includes("Platform, Alert }"), "Alert must be imported for form validation and save errors.");
 
@@ -40,9 +41,11 @@ const updateRoute = backend.slice(updateStart, deleteStart);
 
 assert.ok(createRoute.includes("db.stores.find_one("), "Admin product create must verify the selected store.");
 assert.ok(createRoute.includes('product_data["store_id"] = store_id'), "Admin product create must store the selected store ID.");
-assert.ok(createRoute.includes('product_data["category_id"] = store_category_id'), "Admin product create must use its store category.");
+assert.ok(createRoute.includes('category = await db.categories.find_one({"id": category_id}'), "Admin product create must validate the selected shop category.");
+assert.ok(createRoute.includes('product_data["category_id"] = category_id'), "Admin product create must save the selected shop category.");
 assert.ok(updateRoute.includes('upd["store_id"] = store_id'), "Admin product update must keep a valid store association.");
-assert.ok(updateRoute.includes('upd["category_id"] = store_category_id'), "Admin product update must preserve customer category visibility.");
+assert.ok(updateRoute.includes('category = await db.categories.find_one({"id": category_id}'), "Admin product update must validate the selected shop category.");
+assert.ok(updateRoute.includes('upd["category_id"] = category_id'), "Admin product update must save the selected shop category.");
 
 const publicStart = backend.indexOf('@api.get("/products")');
 const publicEnd = backend.indexOf('@api.get("/products/{product_id}")', publicStart);
