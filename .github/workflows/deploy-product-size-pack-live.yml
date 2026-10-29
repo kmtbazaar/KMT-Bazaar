@@ -86,6 +86,7 @@ jobs:
         run: npm run build:web
 
       - name: Configure SSH
+        id: ssh
         env:
           HOSTINGER_HOST: ${{ secrets.HOSTINGER_HOST }}
           HOSTINGER_SSH_KEY: ${{ secrets.HOSTINGER_SSH_KEY }}
