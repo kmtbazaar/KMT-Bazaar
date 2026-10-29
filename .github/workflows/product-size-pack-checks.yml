@@ -63,11 +63,16 @@ jobs:
           assert.ok(vendor.includes("vendor-store-add-product-shop-category") && vendor.includes("vendor-store-edit-product-shop-category"), "Shop category must remain in the top-right header.");
           assert.ok(vendor.includes('backgroundColor: "#ECFDF5"'), "Item category panel must retain its distinct color.");
 
-          assert.ok(vendor.includes("...form,") && vendor.includes('unit: "1 pc"'), "Product payload must retain the selected unit through the existing form spread.");
-          assert.ok(customer.includes('{p.unit ? `${p.unit} · ` : ""}'), "Customer product detail must display the saved unit.");
+          assert.ok(vendor.includes("...form,") && vendor.includes("variants,"), "Product payload must send the selected size/pack variant list.");
+          assert.ok(vendor.includes("vendor-store-add-product-variants") && vendor.includes("vendor-store-edit-product-variants"), "Vendor Add/Edit forms must support multiple size/pack rows.");
+          assert.ok(vendor.includes("validateVariantDrafts"), "Vendor variant prices, stock, and duplicate labels must be validated.");
+          assert.ok(customer.includes('testID="product-size-pack-selector"'), "Customer product details must render the size/pack selector.");
+          assert.ok(customer.includes("selectedVariant?.price") && customer.includes("selectedVariant?.stock"), "Selected variant price and stock must drive customer detail.");
+          assert.ok(customer.includes("await add(p.id, 1, selectedVariant?.id)"), "Customer Add to Cart must send the selected variant ID.");
+          assert.ok(customer.includes("selectedPrice"), "Customer price and bottom cart CTA must reflect the selected variant.");
 
           console.log("PRODUCT_SIZE_PACK_UI_VALIDATION_PASS");
-          console.log(`Validated ${options.length} selectable size/pack labels and customer unit display.`);
+          console.log(`Validated ${options.length} unit options, variant prices/stock, and customer selector/cart wiring.`);
           NODE
       - name: Lint changed product UI files
         run: npx eslint "app/vendor/store/[id].tsx" "app/vendor/products.tsx" "app/product/[id].tsx" --no-cache

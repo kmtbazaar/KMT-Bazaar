@@ -19,6 +19,15 @@ export default function Product() {
   const { add, update, cart, itemCount } = useCart();
   const { isWishlisted, toggle: toggleWishlist, ready: wishlistReady } = useWishlist();
   const [p, setP] = useState<any>(null);
+  const [selectedVariantId, setSelectedVariantId] = useState<string | null>(null);
+  const selectedVariant = Array.isArray(p?.variants)
+    ? p.variants.find((variant: any) => String(variant.id) === String(selectedVariantId)) || p.variants[0] || null
+    : null;
+  const selectedUnit = String(selectedVariant?.unit || p?.unit || "Standard");
+  const selectedPrice = Number(selectedVariant?.price ?? p?.price ?? 0);
+  const selectedMrp = Number(selectedVariant?.mrp ?? p?.mrp ?? selectedPrice);
+  const availableStock = Math.max(0, Number(selectedVariant?.stock ?? p?.stock ?? p?.available_quantity ?? p?.quantity_in_stock ?? 0));
+  const outOfStock = !!p && (p?.is_available === false || availableStock <= 0);
   const wished = isWishlisted(p?.id ?? id);
   const [loading, setLoading] = useState(true);
   const [adding, setAdding] = useState(false);
@@ -28,8 +37,6 @@ export default function Product() {
   const productCarouselRef = useRef<ScrollView | null>(null);
   const [suggestions, setSuggestions] = useState<any[]>([]);
   const [suggestionsLoading, setSuggestionsLoading] = useState(true);
-  const availableStock = Math.max(0, Number(p?.stock ?? p?.available_quantity ?? p?.quantity_in_stock ?? 0));
-  const outOfStock = !!p && (p?.is_available === false || availableStock <= 0);
 
   useEffect(() => { 
     setSelectedImageIndex(0);
@@ -37,6 +44,7 @@ export default function Product() {
     (async () => {
       try {
         const data = await api.product(id as string);
+        setSelectedVariantId(Array.isArray(data?.variants) && data.variants.length ? String(data.variants[0].id) : null);
         setP(data);
       } catch (e) {
         console.error(e);
@@ -140,12 +148,12 @@ export default function Product() {
     const productUrl = Platform.OS === "web"
       ? `${(globalThis as any).location?.origin || "https://kmtbazaar.com"}/product/${encodeURIComponent(String(p.id || id))}`
       : `https://kmtbazaar.com/product/${encodeURIComponent(String(p.id || id))}`;
-    const message = `Check out ${p.name} on KMT Bazaar for ₹${p.price}. ${productUrl}`;
+    const message = `Check out ${p.name} on KMT Bazaar for ₹${selectedPrice}. ${productUrl}`;
     try {
       if (Platform.OS === "web") {
         const nav = (globalThis as any).navigator;
         if (typeof nav?.share === "function") {
-          await nav.share({ title: p.name, text: `₹${p.price} on KMT Bazaar`, url: productUrl });
+          await nav.share({ title: p.name, text: `₹${selectedPrice} on KMT Bazaar`, url: productUrl });
           return;
         }
         if (typeof nav?.clipboard?.writeText === "function") {
@@ -173,16 +181,21 @@ export default function Product() {
   };
 
   const currentQty = useMemo(() => {
-    const item = cart?.items?.find((i: any) => i.product_id === p?.id || i.id === p?.id);
+    const defaultVariantId = Array.isArray(p?.variants) ? p.variants[0]?.id : null;
+    const item = cart?.items?.find((i: any) =>
+      (i.product_id === p?.id || i.id === p?.id) &&
+      (String(i.variant || "") === String(selectedVariant?.id || "") ||
+        (!i.variant && selectedVariant?.id && String(selectedVariant.id) === String(defaultVariantId)))
+    );
     return item?.quantity || 0;
-  }, [cart, p?.id]);
+  }, [cart, p?.id, selectedVariant?.id, p?.variants]);
 
   const onAddFirstTime = async () => {
     if (outOfStock) return;
     setAdding(true);
     try { await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success); } catch {}
     try { 
-      await add(p.id, 1); 
+      await add(p.id, 1, selectedVariant?.id); 
       setToast("Added to cart!"); 
       setTimeout(() => setToast(null), 1500); 
     } finally { 
@@ -194,14 +207,14 @@ export default function Product() {
     if (outOfStock || currentQty >= availableStock) return;
     try { await Haptics.selectionAsync(); } catch {}
     try {
-      if (currentQty === 0) await add(p.id, 1);
-      else await update(p.id, currentQty + 1);
+      if (currentQty === 0) await add(p.id, 1, selectedVariant?.id);
+      else await update(p.id, currentQty + 1, selectedVariant?.id);
     } catch {}
   };
 
   const handleDecrement = async () => {
     try { await Haptics.selectionAsync(); } catch {}
-    try { await update(p.id, Math.max(0, currentQty - 1)); } catch {}
+    try { await update(p.id, Math.max(0, currentQty - 1), selectedVariant?.id); } catch {}
   };
 
   const onToggleWishlist = () => {
@@ -222,8 +235,13 @@ export default function Product() {
   };
 
   if (loading || !p) return <View style={s.center}><ActivityIndicator color={COLORS.brand} size="large" /></View>;
-  const discount = p.mrp && p.mrp > p.price ? Math.round(((p.mrp - p.price) / p.mrp) * 100) : 0;
-  const checkoutSubtotal = cart?.subtotal || p.price * currentQty;
+  const variantOptions = Array.isArray(p.variants) && p.variants.length
+    ? p.variants
+    : [{ id: null, unit: selectedUnit, price: p.price, mrp: p.mrp, stock: p.stock }];
+  const discount = selectedMrp > selectedPrice && selectedMrp > 0
+    ? Math.round(((selectedMrp - selectedPrice) / selectedMrp) * 100)
+    : 0;
+  const checkoutSubtotal = cart?.subtotal || selectedPrice * currentQty;
 
   return (
     <View style={s.root} testID="product-screen">
@@ -296,13 +314,57 @@ export default function Product() {
         <View style={s.card}>
           <Text style={s.name} testID="product-name">{p.name}</Text>
           <Text style={[s.unit, outOfStock && s.outOfStockText]}>
-            {p.unit ? `${p.unit} · ` : ""}{outOfStock ? "OUT OF STOCK" : `${availableStock} in stock`}
+            {selectedUnit ? `${selectedUnit} · ` : ""}{outOfStock ? "OUT OF STOCK" : `${availableStock} in stock`}
           </Text>
           <View style={s.priceRow}>
-            <Text style={s.price}>₹{p.price}</Text>
-            {discount > 0 && <Text style={s.mrp}>₹{p.mrp}</Text>}
+            <Text style={s.price}>₹{selectedPrice}</Text>
+            {selectedMrp > selectedPrice && <Text style={s.mrp}>₹{selectedMrp}</Text>}
             {discount > 0 && <View style={s.discPill}><Text style={s.discText}>{discount}% OFF</Text></View>}
           </View>
+
+          <View style={s.variantSelector} testID="product-size-pack-selector">
+            <View style={s.variantSelectorHeader}>
+              <View style={{ flex: 1 }}>
+                <Text style={s.variantSelectorTitle}>Choose size / pack</Text>
+                <Text style={s.variantSelectorSubtitle}>Select the option that suits your basket</Text>
+              </View>
+              <MaterialCommunityIcons name="package-variant" size={23} color={COLORS.accent} />
+            </View>
+            <View style={s.variantChoices}>
+              {variantOptions.map((variant: any, index: number) => {
+                const variantId = variant.id ? String(variant.id) : null;
+                const active = String(variantId || "") === String(selectedVariant?.id || "");
+                const variantPrice = Number(variant.price ?? p.price ?? 0);
+                const variantMrp = Number(variant.mrp ?? variantPrice);
+                const variantStock = Math.max(0, Number(variant.stock ?? 0));
+                const unavailable = p?.is_available === false || variantStock <= 0;
+                return (
+                  <Pressable
+                    key={variantId || `legacy-${variant.unit || "standard"}-${index}`}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Select ${variant.unit || "standard"} for ₹${variantPrice}`}
+                    accessibilityState={{ selected: active }}
+                    onPress={() => setSelectedVariantId(variantId)}
+                    style={[s.variantChoice, active && s.variantChoiceActive, unavailable && s.variantChoiceUnavailable]}
+                    testID={`product-size-pack-option-${index + 1}`}
+                  >
+                    <View style={s.variantChoiceTop}>
+                      <Text style={[s.variantChoiceUnit, active && s.variantChoiceUnitActive]}>{variant.unit || "Standard"}</Text>
+                      {active ? <MaterialCommunityIcons name="check-circle" size={16} color={COLORS.accent} /> : null}
+                    </View>
+                    <View style={s.variantChoicePriceRow}>
+                      <Text style={[s.variantChoicePrice, active && s.variantChoicePriceActive]}>₹{variantPrice}</Text>
+                      {variantMrp > variantPrice ? <Text style={s.variantChoiceMrp}>₹{variantMrp}</Text> : null}
+                    </View>
+                    <Text style={[s.variantChoiceStock, unavailable && s.variantChoiceStockUnavailable]}>
+                      {variantStock > 0 ? `${variantStock} available` : "Sold out"}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+          </View>
+
           <View style={s.divider} />
           <Text style={s.sectionTitle}>About this product</Text>
           <Text style={s.desc}>{p.description}</Text>
@@ -416,7 +478,7 @@ export default function Product() {
               {adding ? <ActivityIndicator color="#fff" /> : (
                 <>
                   <MaterialCommunityIcons name={outOfStock ? "close-circle" : currentQty > 0 ? "shopping-bag" : "cart-plus"} color="#fff" size={20} />
-                  <Text style={s.checkoutBtnText}>{outOfStock ? "Out of Stock" : currentQty > 0 ? "View Cart" : `Add to Cart · ₹${p.price}`}</Text>
+                  <Text style={s.checkoutBtnText}>{outOfStock ? "Out of Stock" : currentQty > 0 ? "View Cart" : `Add to Cart · ₹${selectedPrice}`}</Text>
                   {!outOfStock && <MaterialCommunityIcons name="arrow-right" color="#fff" size={18} />}
                 </>
               )}
@@ -452,6 +514,23 @@ const s = StyleSheet.create({
   mrp: { fontSize: 16, color: COLORS.textMuted, textDecorationLine: "line-through" },
   discPill: { backgroundColor: COLORS.success, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 4 },
   discText: { color: "#fff", fontWeight: "800", fontSize: 11 },
+  variantSelector: { marginTop: SPACING.md, padding: SPACING.md, borderRadius: 18, borderWidth: 1, borderColor: "#FED7AA", backgroundColor: "#FFF7ED", gap: 12 },
+  variantSelectorHeader: { flexDirection: "row", alignItems: "center", gap: 10 },
+  variantSelectorTitle: { color: COLORS.text, fontSize: 16, fontWeight: "900" },
+  variantSelectorSubtitle: { color: COLORS.textSecondary, fontSize: 12, marginTop: 3 },
+  variantChoices: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  variantChoice: { minWidth: 98, maxWidth: "48%", flexGrow: 1, flexShrink: 0, paddingHorizontal: 10, paddingVertical: 10, borderRadius: 13, borderWidth: 1.3, borderColor: "#E2E8F0", backgroundColor: "#FFFFFF", gap: 5 },
+  variantChoiceActive: { borderColor: COLORS.accent, backgroundColor: "#FFEDD5", ...shadow.soft },
+  variantChoiceUnavailable: { borderColor: "#FECACA", backgroundColor: "#FFF7F7" },
+  variantChoiceTop: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 4 },
+  variantChoiceUnit: { color: COLORS.text, fontSize: 13, fontWeight: "800", flexShrink: 1 },
+  variantChoiceUnitActive: { color: COLORS.accentDark },
+  variantChoicePriceRow: { flexDirection: "row", alignItems: "baseline", gap: 5, flexWrap: "wrap" },
+  variantChoicePrice: { color: COLORS.text, fontSize: 16, fontWeight: "900" },
+  variantChoicePriceActive: { color: COLORS.accentDark },
+  variantChoiceMrp: { color: COLORS.textMuted, fontSize: 11, textDecorationLine: "line-through" },
+  variantChoiceStock: { color: COLORS.success, fontSize: 10, fontWeight: "700" },
+  variantChoiceStockUnavailable: { color: COLORS.error },
   divider: { height: 1, backgroundColor: COLORS.border, marginVertical: SPACING.lg },
   sectionTitle: { fontWeight: "800", color: COLORS.text, marginBottom: 6 },
   desc: { color: COLORS.textSecondary, lineHeight: 22 },

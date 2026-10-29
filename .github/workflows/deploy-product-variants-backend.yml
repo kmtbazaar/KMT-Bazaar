@@ -1,0 +1,131 @@
+name: Deploy product variants backend to kmtbazaar.com
+
+on:
+  push:
+    branches:
+      - customer-live
+    paths:
+      - "backend/server.py"
+      - ".github/workflows/deploy-product-variants-backend.yml"
+  workflow_dispatch:
+    inputs:
+      confirm_live_deploy:
+        description: "Confirm backend deployment to kmtbazaar.com"
+        required: true
+        type: choice
+        options:
+          - "yes"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: kmt-bazaar-com-backend-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy-backend:
+    if: github.event_name != 'workflow_dispatch' || inputs.confirm_live_deploy == 'yes'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: customer-live
+
+      - name: Validate backend syntax
+        run: python -m py_compile backend/server.py
+
+      - name: Check required Hostinger SSH configuration
+        env:
+          HOSTINGER_HOST: ${{ secrets.HOSTINGER_HOST }}
+          HOSTINGER_USER: ${{ secrets.HOSTINGER_USER }}
+          HOSTINGER_SSH_KEY: ${{ secrets.HOSTINGER_SSH_KEY }}
+        run: |
+          set -euo pipefail
+          missing=()
+          [ -n "$HOSTINGER_HOST" ] || missing+=("HOSTINGER_HOST")
+          [ -n "$HOSTINGER_USER" ] || missing+=("HOSTINGER_USER")
+          [ -n "$HOSTINGER_SSH_KEY" ] || missing+=("HOSTINGER_SSH_KEY")
+          if [ "${#missing[@]}" -gt 0 ]; then
+            echo "::error::Missing repository Actions secrets: ${missing[*]}"
+            exit 1
+          fi
+
+      - name: Configure SSH
+        id: ssh
+        env:
+          HOSTINGER_HOST: ${{ secrets.HOSTINGER_HOST }}
+          HOSTINGER_SSH_KEY: ${{ secrets.HOSTINGER_SSH_KEY }}
+          HOSTINGER_PORT: ${{ secrets.HOSTINGER_PORT }}
+        run: |
+          set -euo pipefail
+          PORT="${HOSTINGER_PORT:-22}"
+          mkdir -p "$HOME/.ssh"
+          chmod 700 "$HOME/.ssh"
+          printf '%s\n' "$HOSTINGER_SSH_KEY" > "$HOME/.ssh/kmt_bazaar_backend_key"
+          chmod 600 "$HOME/.ssh/kmt_bazaar_backend_key"
+          ssh-keyscan -p "$PORT" -H "$HOSTINGER_HOST" >> "$HOME/.ssh/known_hosts" 2>/dev/null
+          printf 'port=%s\n' "$PORT" >> "$GITHUB_OUTPUT"
+
+      - name: Stream backend source to production
+        timeout-minutes: 5
+        env:
+          HOSTINGER_HOST: ${{ secrets.HOSTINGER_HOST }}
+          HOSTINGER_USER: ${{ secrets.HOSTINGER_USER }}
+          HOSTINGER_PORT: ${{ steps.ssh.outputs.port }}
+        run: |
+          set -euo pipefail
+          DEST="${HOSTINGER_USER}@${HOSTINGER_HOST}"
+          INCOMING="/tmp/kmt-bazaar-server-${GITHUB_SHA}.py"
+          timeout 60s ssh -T -o BatchMode=yes -o ConnectTimeout=15 -o ServerAliveInterval=15 -o ServerAliveCountMax=3 -i "$HOME/.ssh/kmt_bazaar_backend_key" -p "$HOSTINGER_PORT" "$DEST" "umask 077; cat > '$INCOMING'" < backend/server.py
+          LOCAL_BYTES=$(stat -c '%s' backend/server.py)
+          REMOTE_BYTES=$(timeout 30s ssh -o BatchMode=yes -o ConnectTimeout=15 -i "$HOME/.ssh/kmt_bazaar_backend_key" -p "$HOSTINGER_PORT" "$DEST" "stat -c '%s' '$INCOMING'")
+          echo "LOCAL_BYTES=$LOCAL_BYTES"
+          echo "REMOTE_BYTES=$REMOTE_BYTES"
+          test "$LOCAL_BYTES" = "$REMOTE_BYTES"
+
+      - name: Backup, restart, and verify backend
+        timeout-minutes: 5
+        env:
+          HOSTINGER_HOST: ${{ secrets.HOSTINGER_HOST }}
+          HOSTINGER_USER: ${{ secrets.HOSTINGER_USER }}
+          HOSTINGER_PORT: ${{ steps.ssh.outputs.port }}
+        run: |
+          set -euo pipefail
+          DEST="${HOSTINGER_USER}@${HOSTINGER_HOST}"
+          ssh -i "$HOME/.ssh/kmt_bazaar_backend_key" -p "$HOSTINGER_PORT" "$DEST" "DEPLOY_SHA='$GITHUB_SHA' bash -s" <<'REMOTE'
+          set -Eeuo pipefail
+          TARGET=/root/KMT-Bazaar-com/backend/server.py
+          INCOMING="/tmp/kmt-bazaar-server-${DEPLOY_SHA}.py"
+          BACKUP="/root/kmt-bazaar-server-backup-${DEPLOY_SHA:0:12}-$(date +%Y%m%d-%H%M%S).py"
+          test -s "$TARGET"
+          test -s "$INCOMING"
+          python3 -m py_compile "$INCOMING"
+          cp -a "$TARGET" "$BACKUP"
+          MODE=$(stat -c '%a' "$TARGET")
+          install -m "$MODE" "$INCOMING" "$TARGET"
+
+          rollback() {
+            echo "BACKEND_ROLLBACK_START"
+            cp -a "$BACKUP" "$TARGET"
+            systemctl restart kmt-bazaar-com.service || true
+            echo "BACKEND_ROLLBACK_BACKUP=$BACKUP"
+          }
+
+          if ! systemctl restart kmt-bazaar-com.service; then
+            rollback
+            exit 1
+          fi
+          if ! systemctl is-active --quiet kmt-bazaar-com.service; then
+            rollback
+            exit 1
+          fi
+          if ! curl -fsS --max-time 25 http://127.0.0.1:8001/api/products >/dev/null; then
+            rollback
+            exit 1
+          fi
+          rm -f "$INCOMING"
+          echo "BACKEND_HEALTH_CHECK_PASS"
+          echo "BACKEND_BACKUP=$BACKUP"
+          echo "DEPLOYED_COMMIT=$DEPLOY_SHA"
+          REMOTE

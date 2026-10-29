@@ -42,10 +42,10 @@ export default function Cart() {
     }
   };
 
-  const onQty = async (pid: string, qty: number) => {
+  const onQty = async (pid: string, qty: number, variant?: string | null) => {
     setBusy(true);
     await Haptics.selectionAsync();
-    try { await update(pid, qty); } finally { setBusy(false); }
+    try { await update(pid, qty, variant); } finally { setBusy(false); }
   };
 
   if (!cart || !cart.items || cart.items.length === 0) {
@@ -97,7 +97,7 @@ export default function Cart() {
 
       <ScrollView contentContainerStyle={{ padding: SPACING.lg, paddingBottom: 200 }} showsVerticalScrollIndicator={false}>
         {cart.items.map((it: any) => (
-          <View key={it.product_id} style={s.itemCard} testID={`cart-item-${it.product_id}`}>
+          <View key={`${it.product_id}:${it.variant || "default"}`} style={s.itemCard} testID={`cart-item-${it.product_id}-${it.variant || "default"}`}>
             <Image source={{ uri: it.image }} style={s.itemImg} contentFit="cover" />
             <View style={{ flex: 1 }}>
               <Text style={s.itemName} numberOfLines={2}>{it.name}</Text>
@@ -105,11 +105,11 @@ export default function Cart() {
               <View style={s.itemRow}>
                 <Text style={s.itemPrice}>₹{it.line_total}</Text>
                 <View style={s.qtyBox}>
-                  <Pressable testID={`qty-dec-${it.product_id}`} onPress={() => onQty(it.product_id, it.quantity - 1)} hitSlop={8}>
+                  <Pressable testID={`qty-dec-${it.product_id}-${it.variant || "default"}`} onPress={() => onQty(it.product_id, it.quantity - 1, it.variant)} hitSlop={8}>
                     <MaterialCommunityIcons name="minus" size={18} color="#fff" />
                   </Pressable>
                   <Text style={s.qtyText}>{it.quantity}</Text>
-                  <Pressable testID={`qty-inc-${it.product_id}`} onPress={() => onQty(it.product_id, it.quantity + 1)} hitSlop={8}>
+                  <Pressable testID={`qty-inc-${it.product_id}-${it.variant || "default"}`} onPress={() => onQty(it.product_id, it.quantity + 1, it.variant)} hitSlop={8}>
                     <MaterialCommunityIcons name="plus" size={18} color="#fff" />
                   </Pressable>
                 </View>

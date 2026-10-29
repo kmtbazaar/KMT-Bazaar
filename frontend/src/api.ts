@@ -617,25 +617,29 @@ export const api = {
 
   cartAdd: (
     product_id: string,
-    quantity = 1
+    quantity = 1,
+    variant?: string | null
   ) =>
     apiFetch("/cart/add", {
       method: "POST",
       body: JSON.stringify({
         product_id,
         quantity,
+        ...(variant ? { variant } : {}),
       }),
     }),
 
   cartUpdate: (
     product_id: string,
-    quantity: number
+    quantity: number,
+    variant?: string | null
   ) =>
     apiFetch("/cart/update", {
       method: "POST",
       body: JSON.stringify({
         product_id,
         quantity,
+        ...(variant ? { variant } : {}),
       }),
     }),
 

@@ -7,8 +7,8 @@ interface CartCtx {
   cart: any | null;
   itemCount: number;
   refresh: () => Promise<void>;
-  add: (productId: string, qty?: number) => Promise<void>;
-  update: (productId: string, qty: number) => Promise<void>;
+  add: (productId: string, qty?: number, variant?: string | null) => Promise<void>;
+  update: (productId: string, qty: number, variant?: string | null) => Promise<void>;
   clear: () => Promise<void>;
   bumpBadge: () => void;
   badgePulse: number;
@@ -123,12 +123,12 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
   }, []);
 
-  const add = async (productId: string, qty = 1) => {
+  const add = async (productId: string, qty = 1, variant?: string | null) => {
     playAddFeedback();
-    const c = await api.cartAdd(productId, qty); setCart(c); setPulse((p) => p + 1);
+    const c = await api.cartAdd(productId, qty, variant); setCart(c); setPulse((p) => p + 1);
   };
-  const update = async (productId: string, qty: number) => {
-    const c = await api.cartUpdate(productId, qty); setCart(c);
+  const update = async (productId: string, qty: number, variant?: string | null) => {
+    const c = await api.cartUpdate(productId, qty, variant); setCart(c);
   };
   const clear = async () => { await api.cartClear(); setCart({ items: [], item_count: 0, subtotal: 0, total: 0, delivery_fee: 0, tax: 0 }); };
   const bumpBadge = () => setPulse((p) => p + 1);

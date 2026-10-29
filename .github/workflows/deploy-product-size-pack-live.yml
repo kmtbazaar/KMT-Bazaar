@@ -73,6 +73,9 @@ jobs:
           assert.ok(vendor.includes("const PRODUCT_UNIT_OPTIONS = ["), "Store vendor quick options are missing");
           assert.ok(vendor.includes("vendor-store-add-product-size-pack-picker"), "Actual store vendor Add Product screen must render size/pack options");
           assert.ok(vendor.includes("vendor-store-edit-product-size-pack-picker"), "Actual store vendor Edit Product screen must render size/pack options");
+          assert.ok(vendor.includes("vendor-store-add-product-variants") && vendor.includes("vendor-store-edit-product-variants"), "Vendor must support multiple variants with separate price and stock.");
+          assert.ok(customer.includes('testID="product-size-pack-selector"') && customer.includes("selectedPrice"), "Customer details must show size/pack options and update the price.");
+          assert.ok(customer.includes("await add(p.id, 1, selectedVariant?.id)"), "Customer cart requests must carry the selected variant.");
           assert.ok(vendor.includes("vendor-store-add-product-item-category-picker"), "Add Product must render a separate item category panel");
           assert.ok(vendor.includes("vendor-store-edit-product-item-category-picker"), "Edit Product must render a separate item category panel");
           assert.ok(vendor.includes("vendor-store-add-new-item-category-name"), "Add Product must include a new item-category name field");

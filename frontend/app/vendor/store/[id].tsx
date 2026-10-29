@@ -26,6 +26,41 @@ const PRODUCT_UNIT_OPTIONS = [
   "1 pc", "250 g", "500 g", "1 kg", "250 ml", "500 ml", "750 ml", "1 L", "2 L",
 ];
 
+type ProductVariantDraft = { id: string; unit: string; price: string; mrp: string; stock: string };
+
+const buildVariantPayload = (base: any, extras: ProductVariantDraft[], baseVariantId = "") => [
+  {
+    ...(baseVariantId ? { id: baseVariantId } : {}),
+    unit: String(base.unit || "").trim(),
+    price: Number.parseFloat(String(base.price)),
+    mrp: base.mrp ? Number.parseFloat(String(base.mrp)) : Number.parseFloat(String(base.price)),
+    stock: Number.parseInt(String(base.stock), 10),
+  },
+  ...extras.map((variant) => ({
+    ...(variant.id ? { id: variant.id } : {}),
+    unit: String(variant.unit || "").trim(),
+    price: Number.parseFloat(String(variant.price)),
+    mrp: variant.mrp ? Number.parseFloat(String(variant.mrp)) : Number.parseFloat(String(variant.price)),
+    stock: Number.parseInt(String(variant.stock), 10),
+  })),
+];
+
+const validateVariantDrafts = (variants: any[]) => {
+  if (variants.some((variant) =>
+    !variant.unit ||
+    !Number.isFinite(variant.price) || variant.price < 0 ||
+    !Number.isFinite(variant.mrp) || variant.mrp < 0 ||
+    !Number.isFinite(variant.stock) || variant.stock < 0
+  )) {
+    return "Every size/pack option needs a label, valid price/MRP, and non-negative stock.";
+  }
+  const labels = variants.map((variant) => variant.unit.toLowerCase());
+  if (new Set(labels).size !== labels.length) {
+    return "Each size/pack option must have a unique label.";
+  }
+  return "";
+};
+
 export default function VendorStoreDetail() {
   const router = useRouter();
   const params = useLocalSearchParams();
@@ -56,6 +91,9 @@ export default function VendorStoreDetail() {
   });
 
   const [showAddModal, setShowAddModal] = useState(false);
+  const [addVariantDrafts, setAddVariantDrafts] = useState<ProductVariantDraft[]>([]);
+  const [editVariantDrafts, setEditVariantDrafts] = useState<ProductVariantDraft[]>([]);
+  const [editBaseVariantId, setEditBaseVariantId] = useState("");
   const [form, setForm] = useState({
     name: "",
     category_id: "",
@@ -335,6 +373,7 @@ export default function VendorStoreDetail() {
       item_category: "",
       item_category_id: "",
     });
+    setAddVariantDrafts([]);
   };
 
   const handleAddProduct = async () => {
@@ -347,10 +386,17 @@ export default function VendorStoreDetail() {
       Alert.alert("Error", "Name, Price, and shop category are required.");
       return;
     }
+    const variants = buildVariantPayload(form, addVariantDrafts);
+    const variantError = validateVariantDrafts(variants);
+    if (variantError) {
+      Alert.alert("Check product sizes", variantError);
+      return;
+    }
     setLoading(true);
     try {
       await vendorApi.createProduct({
         ...form,
+        variants,
         category_id: store.category_id,
         store_id: id,
         price: parseFloat(form.price),
@@ -371,13 +417,23 @@ export default function VendorStoreDetail() {
 
   const openEditProduct = (prod: any) => {
     setSelectedProductId(prod.id);
+    const savedVariants = Array.isArray(prod.variants) ? prod.variants : [];
+    const primaryVariant = savedVariants[0];
+    setEditBaseVariantId(primaryVariant?.id || "");
+    setEditVariantDrafts(savedVariants.slice(1).map((variant: any) => ({
+      id: String(variant.id || ""),
+      unit: String(variant.unit || ""),
+      price: String(variant.price ?? ""),
+      mrp: String(variant.mrp ?? variant.price ?? ""),
+      stock: String(variant.stock ?? 0),
+    })));
     setEditProductForm({
       name: prod.name,
       category_id: prod.category_id || "",
-      price: String(prod.price),
-      mrp: String(prod.mrp || prod.price),
-      unit: prod.unit || "1 pc",
-      stock: String(prod.stock || 0),
+      price: String(primaryVariant?.price ?? prod.price),
+      mrp: String(primaryVariant?.mrp ?? prod.mrp ?? prod.price),
+      unit: primaryVariant?.unit || prod.unit || "1 pc",
+      stock: String(primaryVariant?.stock ?? prod.stock ?? 0),
       image: prod.image || "",
       images: Array.from(new Set([...(Array.isArray(prod.images) ? prod.images : []), prod.image].filter((url: any) => typeof url === "string" && url.trim()))),
       description: prod.description || "",
@@ -405,10 +461,17 @@ export default function VendorStoreDetail() {
       Alert.alert("Error", "Name and Price are required.");
       return;
     }
+    const variants = buildVariantPayload(editProductForm, editVariantDrafts, editBaseVariantId);
+    const variantError = validateVariantDrafts(variants);
+    if (variantError) {
+      Alert.alert("Check product sizes", variantError);
+      return;
+    }
     setLoading(true);
     try {
       await vendorApi.updateProduct(selectedProductId, {
         ...editProductForm,
+        variants,
         category_id: store?.category_id || editProductForm.category_id,
         store_id: id,
         price: parseFloat(editProductForm.price),
@@ -804,6 +867,48 @@ export default function VendorStoreDetail() {
                 />
               </View>
 
+              <View style={s.variantManagerPanel} testID="vendor-store-add-product-variants">
+                <View style={s.variantManagerHeader}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={s.variantManagerTitle}>Sell in more sizes</Text>
+                    <Text style={s.variantManagerHint}>Each option gets its own price and stock.</Text>
+                  </View>
+                  <Pressable testID="vendor-store-add-variant" accessibilityRole="button"
+                    onPress={() => setAddVariantDrafts((current) => [...current, { id: "", unit: "", price: "", mrp: "", stock: "10" }])}
+                    style={s.addVariantButton}>
+                    <MaterialCommunityIcons name="plus" size={17} color="#FFFFFF" />
+                    <Text style={s.addVariantButtonText}>Add size</Text>
+                  </Pressable>
+                </View>
+                {addVariantDrafts.map((variant, index) => (
+                  <View key={`${variant.id || "new"}-${index}`} style={s.variantDraftCard}>
+                    <View style={s.variantDraftTopRow}>
+                      <Text style={s.variantDraftLabel}>Option {index + 2}</Text>
+                      <Pressable accessibilityRole="button" accessibilityLabel={`Remove size option ${index + 2}`}
+                        onPress={() => setAddVariantDrafts((current) => current.filter((_, itemIndex) => itemIndex !== index))}
+                        style={s.removeVariantButton}>
+                        <MaterialCommunityIcons name="trash-can-outline" size={17} color="#B91C1C" />
+                      </Pressable>
+                    </View>
+                    <TextInput placeholder="Size / pack (e.g. 500 g)" placeholderTextColor="#64748B"
+                      value={variant.unit}
+                      onChangeText={(value) => setAddVariantDrafts((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, unit: value } : item))}
+                      style={s.inputCompact} />
+                    <View style={s.rowCompact}>
+                      <TextInput placeholder="Price" placeholderTextColor="#64748B" value={variant.price}
+                        onChangeText={(value) => setAddVariantDrafts((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, price: value } : item))}
+                        style={[s.inputCompact, s.flex1]} keyboardType="numeric" />
+                      <TextInput placeholder="MRP" placeholderTextColor="#64748B" value={variant.mrp}
+                        onChangeText={(value) => setAddVariantDrafts((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, mrp: value } : item))}
+                        style={[s.inputCompact, s.flex1]} keyboardType="numeric" />
+                      <TextInput placeholder="Stock" placeholderTextColor="#64748B" value={variant.stock}
+                        onChangeText={(value) => setAddVariantDrafts((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, stock: value } : item))}
+                        style={[s.inputCompact, s.flex1]} keyboardType="numeric" />
+                    </View>
+                  </View>
+                ))}
+              </View>
+
               <ProductImagesUploader
                 value={form.images}
                 onChange={(images) => setForm((current) => ({ ...current, images, image: images[0] || "" }))}
@@ -1013,6 +1118,48 @@ export default function VendorStoreDetail() {
                   onChangeText={(t) => setEditProductForm({ ...editProductForm, unit: t })}
                   style={[s.inputCompact, s.flex1]}
                 />
+              </View>
+
+              <View style={s.variantManagerPanel} testID="vendor-store-edit-product-variants">
+                <View style={s.variantManagerHeader}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={s.variantManagerTitle}>Sell in more sizes</Text>
+                    <Text style={s.variantManagerHint}>Each option gets its own price and stock.</Text>
+                  </View>
+                  <Pressable testID="vendor-store-edit-variant" accessibilityRole="button"
+                    onPress={() => setEditVariantDrafts((current) => [...current, { id: "", unit: "", price: "", mrp: "", stock: "10" }])}
+                    style={s.addVariantButton}>
+                    <MaterialCommunityIcons name="plus" size={17} color="#FFFFFF" />
+                    <Text style={s.addVariantButtonText}>Add size</Text>
+                  </Pressable>
+                </View>
+                {editVariantDrafts.map((variant, index) => (
+                  <View key={`${variant.id || "new"}-${index}`} style={s.variantDraftCard}>
+                    <View style={s.variantDraftTopRow}>
+                      <Text style={s.variantDraftLabel}>Option {index + 2}</Text>
+                      <Pressable accessibilityRole="button" accessibilityLabel={`Remove size option ${index + 2}`}
+                        onPress={() => setEditVariantDrafts((current) => current.filter((_, itemIndex) => itemIndex !== index))}
+                        style={s.removeVariantButton}>
+                        <MaterialCommunityIcons name="trash-can-outline" size={17} color="#B91C1C" />
+                      </Pressable>
+                    </View>
+                    <TextInput placeholder="Size / pack (e.g. 500 g)" placeholderTextColor="#64748B"
+                      value={variant.unit}
+                      onChangeText={(value) => setEditVariantDrafts((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, unit: value } : item))}
+                      style={s.inputCompact} />
+                    <View style={s.rowCompact}>
+                      <TextInput placeholder="Price" placeholderTextColor="#64748B" value={variant.price}
+                        onChangeText={(value) => setEditVariantDrafts((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, price: value } : item))}
+                        style={[s.inputCompact, s.flex1]} keyboardType="numeric" />
+                      <TextInput placeholder="MRP" placeholderTextColor="#64748B" value={variant.mrp}
+                        onChangeText={(value) => setEditVariantDrafts((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, mrp: value } : item))}
+                        style={[s.inputCompact, s.flex1]} keyboardType="numeric" />
+                      <TextInput placeholder="Stock" placeholderTextColor="#64748B" value={variant.stock}
+                        onChangeText={(value) => setEditVariantDrafts((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, stock: value } : item))}
+                        style={[s.inputCompact, s.flex1]} keyboardType="numeric" />
+                    </View>
+                  </View>
+                ))}
               </View>
 
               <ProductImagesUploader
@@ -1365,6 +1512,16 @@ const s = StyleSheet.create({
     borderColor: "#000",
     borderWidth: 1.2,
   },
+  variantManagerPanel: { borderWidth: 1, borderColor: "#FDBA74", backgroundColor: "#FFF7ED", borderRadius: 14, padding: 12, marginTop: 10, marginBottom: 12, gap: 9 },
+  variantManagerHeader: { flexDirection: "row", alignItems: "center", gap: 10 },
+  variantManagerTitle: { color: "#7C2D12", fontSize: 14, fontWeight: "900" },
+  variantManagerHint: { color: "#9A3412", fontSize: 11, lineHeight: 15, marginTop: 3 },
+  addVariantButton: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 4, backgroundColor: "#EA580C", borderRadius: 10, paddingHorizontal: 10, paddingVertical: 8 },
+  addVariantButtonText: { color: "#FFFFFF", fontSize: 11, fontWeight: "900" },
+  variantDraftCard: { borderWidth: 1, borderColor: "#FED7AA", backgroundColor: "#FFFFFF", borderRadius: 10, padding: 9, gap: 7 },
+  variantDraftTopRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  variantDraftLabel: { color: "#7C2D12", fontSize: 12, fontWeight: "900" },
+  removeVariantButton: { width: 30, height: 28, alignItems: "center", justifyContent: "center", borderRadius: 8, backgroundColor: "#FEF2F2" },
   productNameInput: {
     minHeight: 58,
     height: 64,

@@ -1656,51 +1656,105 @@ async def get_cart_doc(user_id: str):
     return cart
 
 
+def _resolve_product_variant(product, variant_id=None, unit_fallback=None):
+    variants = (product or {}).get("variants")
+    if not isinstance(variants, list) or not variants:
+        return None
+    requested_id = str(variant_id or "").strip()
+    if requested_id:
+        found = next((variant for variant in variants if str(variant.get("id") or "") == requested_id), None)
+        if found:
+            return found
+        found = next((variant for variant in variants if str(variant.get("unit") or "").strip().casefold() == requested_id.casefold()), None)
+        return found
+    requested_unit = str(unit_fallback or "").strip()
+    if requested_unit:
+        found = next((variant for variant in variants if str(variant.get("unit") or "").strip().casefold() == requested_unit.casefold()), None)
+        if found:
+            return found
+    return variants[0]
+
+
+def _cart_item_variant_id(product, item):
+    variants = (product or {}).get("variants")
+    if isinstance(variants, list) and variants:
+        variant = _resolve_product_variant(
+            product, item.get("variant"), item.get("variant_label") or item.get("unit")
+        )
+        return str(variant.get("id")) if variant and variant.get("id") else None
+    raw = item.get("variant")
+    return str(raw) if raw is not None and str(raw).strip() else None
+
+
+async def _adjust_product_stock(product_id: str, quantity: int, variant_id=None, reserve=False):
+    quantity = int(quantity)
+    if quantity <= 0:
+        return False
+    delta = -quantity if reserve else quantity
+    if variant_id:
+        variant_filter = {"id": str(variant_id)}
+        if reserve:
+            variant_filter["stock"] = {"$gte": quantity}
+        query = {
+            "id": product_id,
+            "variants": {"$elemMatch": variant_filter},
+            "is_available": {"$ne": False},
+        }
+        update = {"$inc": {"variants.$.stock": delta, "stock": delta}}
+    else:
+        query = {"id": product_id, "is_available": {"$ne": False}}
+        if reserve:
+            query["stock"] = {"$gte": quantity}
+        update = {"$inc": {"stock": delta}}
+    result = await db.products.update_one(query, update)
+    return result.matched_count > 0
+
+
 async def expand_cart(cart):
     items = []
     subtotal = 0.0
-
     for item in cart.get("items", []):
-        p = await db.products.find_one(
-            {"id": item["product_id"]},
-            {"_id": 0}
-        )
-
+        p = await db.products.find_one({"id": item["product_id"]}, {"_id": 0})
         if not p:
             continue
-
-        # Product ka store approved hona zaroori hai
         store = await db.stores.find_one(
-            {
-                "id": p.get("store_id"),
-                "is_approved": True
-            },
-            {"_id": 0, "id": 1}
+            {"id": p.get("store_id"), "is_approved": True}, {"_id": 0, "id": 1}
         )
-
-        # Store pending/rejected ya product unavailable ho toh cart me nahi dikhega
         if not store or p.get("is_available", True) is False:
             continue
 
-        line_total = p["price"] * item["quantity"]
-        subtotal += line_total
+        product_variants = p.get("variants") if isinstance(p.get("variants"), list) else []
+        selected_variant = _resolve_product_variant(
+            p, item.get("variant"), item.get("variant_label") or item.get("unit")
+        )
+        if product_variants and not selected_variant:
+            continue
 
+        unit_price = float(selected_variant.get("price", p.get("price", 0)) if selected_variant else p.get("price", 0))
+        unit_mrp = float(selected_variant.get("mrp", unit_price) if selected_variant else p.get("mrp", p.get("price", 0)))
+        unit_label = str(selected_variant.get("unit") or p.get("unit") or "") if selected_variant else str(p.get("unit") or "")
+        variant_id = str(selected_variant.get("id")) if selected_variant and selected_variant.get("id") else None
+        available_stock = max(0, int(selected_variant.get("stock") or 0)) if selected_variant else max(0, int(p.get("stock") or 0))
+        quantity = max(0, int(item.get("quantity") or 0))
+        line_total = unit_price * quantity
+        subtotal += line_total
         items.append({
             "product_id": p["id"],
             "name": p["name"],
             "image": sanitize_order_image(p.get("image")),
-            "price": p["price"],
-            "mrp": p.get("mrp", p["price"]),
-            "quantity": item["quantity"],
-            "variant": item.get("variant"),
-            "unit": p.get("unit", ""),
+            "price": unit_price,
+            "mrp": unit_mrp,
+            "quantity": quantity,
+            "variant": variant_id if product_variants else item.get("variant"),
+            "variant_label": unit_label if product_variants else None,
+            "unit": unit_label,
+            "stock": available_stock,
             "line_total": round(line_total, 2),
         })
 
     delivery_fee = 0 if subtotal >= 199 or subtotal == 0 else 25
     tax = round(subtotal * 0.05, 2)
     total = round(subtotal + delivery_fee + tax, 2)
-
     return {
         "items": items,
         "subtotal": round(subtotal, 2),
@@ -1718,101 +1772,125 @@ async def get_cart(current=Depends(get_current_user)):
 
 
 @api.post("/cart/add")
-async def add_to_cart(
-    item: CartItemIn,
-    current=Depends(get_current_user)
-):
+async def add_to_cart(item: CartItemIn, current=Depends(get_current_user)):
     if item.quantity <= 0:
         raise HTTPException(status_code=400, detail="Quantity must be at least 1")
-
     product = await db.products.find_one({"id": item.product_id}, {"_id": 0})
     if not product:
         raise HTTPException(status_code=404, detail="Product not found")
-
     store = await db.stores.find_one(
-        {"id": product.get("store_id"), "is_approved": True},
-        {"_id": 0, "id": 1}
+        {"id": product.get("store_id"), "is_approved": True}, {"_id": 0, "id": 1}
     )
     if not store or product.get("is_available", True) is False:
         raise HTTPException(status_code=400, detail="This product is not available right now")
 
-    stock = max(0, int(product.get("stock") or 0))
+    product_variants = product.get("variants") if isinstance(product.get("variants"), list) else []
+    selected_variant = _resolve_product_variant(product, item.variant)
+    if product_variants and item.variant and not selected_variant:
+        raise HTTPException(status_code=400, detail="Please select a valid size/pack option")
+    canonical_variant_id = str(selected_variant.get("id")) if selected_variant and selected_variant.get("id") else None
+    stock = max(0, int(selected_variant.get("stock") or 0)) if selected_variant else max(0, int(product.get("stock") or 0))
+
     cart = await get_cart_doc(current["id"])
-    already_in_cart = sum(
-        max(0, int(existing.get("quantity") or 0))
-        for existing in cart["items"]
-        if existing.get("product_id") == item.product_id
-    )
+    matching_quantity = 0
+    for existing in cart["items"]:
+        if existing.get("product_id") != item.product_id:
+            continue
+        existing_variant_id = _cart_item_variant_id(product, existing)
+        if product_variants:
+            same_variant = existing_variant_id == canonical_variant_id
+        else:
+            same_variant = True
+        if same_variant:
+            matching_quantity += max(0, int(existing.get("quantity") or 0))
     if stock <= 0:
-        raise HTTPException(status_code=409, detail="This product is out of stock")
-    if already_in_cart + item.quantity > stock:
-        remaining = max(0, stock - already_in_cart)
-        raise HTTPException(status_code=409, detail=f"Only {remaining} left in stock")
+        raise HTTPException(status_code=409, detail="This size/pack is out of stock")
+    if matching_quantity + item.quantity > stock:
+        remaining = max(0, stock - matching_quantity)
+        raise HTTPException(status_code=409, detail=f"Only {remaining} left for this size/pack")
 
     found = False
     for existing in cart["items"]:
-        if existing["product_id"] == item.product_id and existing.get("variant") == item.variant:
-            existing["quantity"] += item.quantity
+        if existing.get("product_id") != item.product_id:
+            continue
+        existing_variant_id = _cart_item_variant_id(product, existing)
+        same_variant = existing_variant_id == canonical_variant_id if product_variants else existing.get("variant") == (item.variant or None)
+        if same_variant:
+            existing["quantity"] = max(0, int(existing.get("quantity") or 0)) + item.quantity
+            if product_variants:
+                existing["variant"] = canonical_variant_id
             found = True
             break
     if not found:
         cart["items"].append({
             "product_id": item.product_id,
             "quantity": item.quantity,
-            "variant": item.variant
+            "variant": canonical_variant_id if product_variants else (item.variant or None),
         })
-
     await db.carts.update_one(
         {"user_id": current["id"]},
         {"$set": {"items": cart["items"], "updated_at": now_iso()}}
     )
     return await expand_cart(cart)
 
+
 @api.post("/cart/update")
 async def update_cart(item: CartUpdateIn, current=Depends(get_current_user)):
     if item.quantity < 0:
         raise HTTPException(status_code=400, detail="Quantity cannot be negative")
-
     cart = await get_cart_doc(current["id"])
+    product = await db.products.find_one({"id": item.product_id}, {"_id": 0})
+    product_variants = product.get("variants") if product and isinstance(product.get("variants"), list) else []
+    selected_variant = _resolve_product_variant(product, item.variant) if product else None
+    if product_variants and item.variant and not selected_variant and item.quantity > 0:
+        raise HTTPException(status_code=400, detail="Please select a valid size/pack option")
+    canonical_variant_id = str(selected_variant.get("id")) if selected_variant and selected_variant.get("id") else None
+
     if item.quantity > 0:
-        product = await db.products.find_one({"id": item.product_id}, {"_id": 0})
         if not product or product.get("is_available", True) is False:
             raise HTTPException(status_code=409, detail="This product is no longer available")
         store = await db.stores.find_one(
-            {"id": product.get("store_id"), "is_approved": True},
-            {"_id": 0, "id": 1}
+            {"id": product.get("store_id"), "is_approved": True}, {"_id": 0, "id": 1}
         )
         if not store:
             raise HTTPException(status_code=409, detail="This product is no longer available")
-
-        stock = max(0, int(product.get("stock") or 0))
-        quantity_of_other_lines = sum(
-            max(0, int(existing.get("quantity") or 0))
-            for existing in cart["items"]
-            if existing.get("product_id") == item.product_id
-            and existing.get("variant") != item.variant
-        )
+        stock = max(0, int(selected_variant.get("stock") or 0)) if selected_variant else max(0, int(product.get("stock") or 0))
+        quantity_of_other_lines = 0
+        for existing in cart["items"]:
+            if existing.get("product_id") != item.product_id:
+                continue
+            existing_variant_id = _cart_item_variant_id(product, existing)
+            if product_variants:
+                if existing_variant_id != canonical_variant_id:
+                    continue
+            elif existing.get("variant") != (item.variant or None):
+                quantity_of_other_lines += max(0, int(existing.get("quantity") or 0))
         if stock <= 0:
-            raise HTTPException(status_code=409, detail="This product is out of stock")
+            raise HTTPException(status_code=409, detail="This size/pack is out of stock")
         if quantity_of_other_lines + item.quantity > stock:
             remaining = max(0, stock - quantity_of_other_lines)
-            raise HTTPException(status_code=409, detail=f"Only {remaining} left in stock")
+            raise HTTPException(status_code=409, detail=f"Only {remaining} left for this size/pack")
 
     new_items = []
     for existing in cart["items"]:
-        if existing["product_id"] == item.product_id and existing.get("variant") == item.variant:
-            if item.quantity > 0:
-                existing["quantity"] = item.quantity
-                new_items.append(existing)
-        else:
-            new_items.append(existing)
-
+        if existing.get("product_id") == item.product_id:
+            existing_variant_id = _cart_item_variant_id(product, existing) if product else existing.get("variant")
+            same_variant = existing_variant_id == canonical_variant_id if product_variants else existing.get("variant") == (item.variant or None)
+            if same_variant:
+                if item.quantity > 0:
+                    existing["quantity"] = item.quantity
+                    if product_variants:
+                        existing["variant"] = canonical_variant_id
+                    new_items.append(existing)
+                continue
+        new_items.append(existing)
     await db.carts.update_one(
         {"user_id": current["id"]},
         {"$set": {"items": new_items, "updated_at": now_iso()}}
     )
     cart["items"] = new_items
     return await expand_cart(cart)
+
 
 @api.delete("/cart/clear")
 async def clear_cart(current=Depends(get_current_user)):
@@ -2078,38 +2156,44 @@ async def checkout(
     if not cart["items"]:
         raise HTTPException(400, "Cart is empty")
 
-    requested_quantities: dict[str, int] = {}
+    requested_quantities: dict[tuple[str, Optional[str]], int] = {}
     for cart_item in cart["items"]:
         product_id = str(cart_item.get("product_id") or "")
         quantity = int(cart_item.get("quantity") or 0)
         if not product_id or quantity <= 0:
             raise HTTPException(status_code=400, detail="Cart contains an invalid quantity")
-        requested_quantities[product_id] = requested_quantities.get(product_id, 0) + quantity
-
-    # Verify store approval and stock before proceeding.
-    for cart_item in cart["items"]:
-        product = await db.products.find_one(
-            {"id": cart_item["product_id"]},
-            {"_id": 0, "id": 1, "store_id": 1, "name": 1, "stock": 1, "is_available": 1}
-        )
-
+        product = await db.products.find_one({"id": product_id}, {"_id": 0})
         if not product or product.get("is_available", True) is False:
             raise HTTPException(status_code=409, detail="One or more products are no longer available")
+        product_variants = product.get("variants") if isinstance(product.get("variants"), list) else []
+        selected_variant = _resolve_product_variant(
+            product, cart_item.get("variant"), cart_item.get("variant_label") or cart_item.get("unit")
+        )
+        if product_variants and not selected_variant:
+            raise HTTPException(status_code=409, detail="A selected size/pack is no longer available")
+        variant_id = str(selected_variant.get("id")) if selected_variant and selected_variant.get("id") else None
+        key = (product_id, variant_id if product_variants else None)
+        requested_quantities[key] = requested_quantities.get(key, 0) + quantity
 
+    for (product_id, variant_id), needed in requested_quantities.items():
+        product = await db.products.find_one({"id": product_id}, {"_id": 0})
+        if not product or product.get("is_available", True) is False:
+            raise HTTPException(status_code=409, detail="One or more products are no longer available")
         store = await db.stores.find_one(
-            {"id": product.get("store_id"), "is_approved": True},
-            {"_id": 0, "id": 1}
+            {"id": product.get("store_id"), "is_approved": True}, {"_id": 0, "id": 1}
         )
         if not store:
             raise HTTPException(status_code=409, detail="One or more products are no longer available")
-
-        stock = max(0, int(product.get("stock") or 0))
-        needed = requested_quantities.get(product["id"], 0)
+        selected_variant = _resolve_product_variant(product, variant_id) if variant_id else None
+        if variant_id and not selected_variant:
+            raise HTTPException(status_code=409, detail="A selected size/pack is no longer available")
+        stock = max(0, int(selected_variant.get("stock") or 0)) if selected_variant else max(0, int(product.get("stock") or 0))
         if stock < needed:
+            label = f" ({selected_variant.get('unit')})" if selected_variant else ""
             detail_message = (
-                f"{product.get('name') or 'This product'} is out of stock"
+                f"{product.get('name') or 'This product'}{label} is out of stock"
                 if stock <= 0
-                else f"Only {stock} of {product.get('name') or 'this product'} left in stock"
+                else f"Only {stock} of {product.get('name') or 'this product'}{label} left in stock"
             )
             raise HTTPException(status_code=409, detail=detail_message)
 
@@ -2182,39 +2266,27 @@ async def checkout(
         "created_at": now_iso(),
     }
 
-    # Atomic stock reservations prevent concurrent checkouts from overselling.
-    reserved_stock: list[tuple[str, int]] = []
+    # Reserve inventory at the selected variant level and keep the legacy total stock field in sync.
+    reserved_stock: list[tuple[str, Optional[str], int]] = []
     try:
-        for product_id, quantity in requested_quantities.items():
-            result = await db.products.update_one(
-                {
-                    "id": product_id,
-                    "stock": {"$gte": quantity},
-                    "is_available": {"$ne": False},
-                },
-                {"$inc": {"stock": -quantity}}
-            )
-            if result.matched_count == 0:
-                latest = await db.products.find_one(
-                    {"id": product_id},
-                    {"_id": 0, "name": 1, "stock": 1}
-                )
-                available = max(0, int((latest or {}).get("stock") or 0))
-                message = (
-                    f"{(latest or {}).get('name') or 'This product'} is out of stock"
-                    if available <= 0
-                    else f"Only {available} left in stock for {(latest or {}).get('name') or 'this product'}"
-                )
+        for (product_id, variant_id), quantity in requested_quantities.items():
+            if not await _adjust_product_stock(product_id, quantity, variant_id, reserve=True):
+                latest = await db.products.find_one({"id": product_id}, {"_id": 0})
+                latest_variant = _resolve_product_variant(latest, variant_id) if variant_id and latest else None
+                available = max(0, int(latest_variant.get("stock") or 0)) if latest_variant else max(0, int((latest or {}).get("stock") or 0))
+                name = (latest or {}).get("name") or "This product"
+                label = f" ({latest_variant.get('unit')})" if latest_variant else ""
+                message = f"{name}{label} is out of stock" if available <= 0 else f"Only {available} left for {name}{label}"
                 raise HTTPException(status_code=409, detail=message)
-            reserved_stock.append((product_id, quantity))
+            reserved_stock.append((product_id, variant_id, quantity))
 
         order["stock_deducted"] = True
         order["stock_restored"] = False
         await db.orders.insert_one(dict(order))
     except Exception:
-        for product_id, quantity in reversed(reserved_stock):
+        for product_id, variant_id, quantity in reversed(reserved_stock):
             try:
-                await db.products.update_one({"id": product_id}, {"$inc": {"stock": quantity}})
+                await _adjust_product_stock(product_id, quantity, variant_id, reserve=False)
             except Exception:
                 logging.exception("Unable to roll back stock reservation for %s", product_id)
         raise
@@ -2662,6 +2734,14 @@ class StoreUpdateIn(BaseModel):
     image: Optional[str] = None
 
 
+class ProductVariantIn(BaseModel):
+    id: Optional[str] = None
+    unit: str
+    price: float
+    mrp: Optional[float] = None
+    stock: int = 0
+
+
 class ProductIn(BaseModel):
     name: str
     category_id: str
@@ -2672,11 +2752,69 @@ class ProductIn(BaseModel):
     mrp: Optional[float] = None
     unit: str = ""
     stock: int = 0
+    variants: Optional[List[ProductVariantIn]] = None
     image: str = ""
     images: Optional[List[str]] = None
     description: str = ""
     is_available: bool = True
     trending: bool = False
+
+
+def _normalize_product_variants(raw_variants):
+    if raw_variants is None:
+        return None
+    if not raw_variants:
+        raise HTTPException(status_code=400, detail="Add at least one size/pack option")
+
+    normalized = []
+    seen_units = set()
+    seen_ids = set()
+    for raw in raw_variants:
+        row = raw.model_dump() if hasattr(raw, "model_dump") else raw.dict() if hasattr(raw, "dict") else dict(raw)
+        unit = str(row.get("unit") or "").strip()
+        if not unit:
+            raise HTTPException(status_code=400, detail="Every size/pack option needs a label")
+        unit_key = unit.casefold()
+        if unit_key in seen_units:
+            raise HTTPException(status_code=400, detail=f"Duplicate size/pack option: {unit}")
+        seen_units.add(unit_key)
+
+        try:
+            price = float(row.get("price"))
+            mrp = float(row.get("mrp")) if row.get("mrp") is not None else price
+            stock = int(row.get("stock") or 0)
+        except (TypeError, ValueError):
+            raise HTTPException(status_code=400, detail=f"Enter a valid price and stock for {unit}")
+        if price < 0 or price != price or mrp < 0 or mrp != mrp:
+            raise HTTPException(status_code=400, detail=f"Invalid price for {unit}")
+        if stock < 0:
+            raise HTTPException(status_code=400, detail=f"Stock cannot be negative for {unit}")
+
+        variant_id = str(row.get("id") or "").strip() or ("v-" + uuid.uuid4().hex[:12])
+        if variant_id in seen_ids:
+            raise HTTPException(status_code=400, detail="Each size/pack option must have a unique ID")
+        seen_ids.add(variant_id)
+        normalized.append({
+            "id": variant_id,
+            "unit": unit,
+            "price": round(price, 2),
+            "mrp": round(mrp, 2),
+            "stock": stock,
+        })
+    return normalized
+
+
+def _apply_product_variants(product_doc, variants):
+    if variants is None:
+        return
+    if not variants:
+        raise HTTPException(status_code=400, detail="Add at least one size/pack option")
+    first = variants[0]
+    product_doc["variants"] = variants
+    product_doc["unit"] = first["unit"]
+    product_doc["price"] = first["price"]
+    product_doc["mrp"] = first["mrp"]
+    product_doc["stock"] = sum(max(0, int(item.get("stock") or 0)) for item in variants)
 
 
 class CategoryIn(BaseModel):
@@ -3287,37 +3425,30 @@ async def admin_update_order(order_id: str, data: OrderStatusIn, _=Depends(requi
         and o.get("stock_restored") is not True
     )
     if needs_re_reserve:
-        quantities_to_reserve: dict[str, int] = {}
+        quantities_to_reserve: dict[tuple[str, Optional[str]], int] = {}
         for item in o.get("items", []):
             product_id = str(item.get("product_id") or "")
             quantity = int(item.get("quantity") or 0)
-            if product_id and quantity > 0:
-                quantities_to_reserve[product_id] = quantities_to_reserve.get(product_id, 0) + quantity
+            if not product_id or quantity <= 0:
+                continue
+            product = await db.products.find_one({"id": product_id}, {"_id": 0})
+            selected_variant = _resolve_product_variant(product, item.get("variant"), item.get("unit")) if product else None
+            variant_id = str(selected_variant.get("id")) if selected_variant and selected_variant.get("id") else None
+            key = (product_id, variant_id)
+            quantities_to_reserve[key] = quantities_to_reserve.get(key, 0) + quantity
 
-        re_reserved: list[tuple[str, int]] = []
+        re_reserved: list[tuple[str, Optional[str], int]] = []
         try:
-            for product_id, quantity in quantities_to_reserve.items():
-                result = await db.products.update_one(
-                    {
-                        "id": product_id,
-                        "stock": {"$gte": quantity},
-                        "is_available": {"$ne": False},
-                    },
-                    {"$inc": {"stock": -quantity}}
-                )
-                if result.matched_count == 0:
-                    latest = await db.products.find_one(
-                        {"id": product_id},
-                        {"_id": 0, "name": 1, "stock": 1}
-                    )
-                    available = max(0, int((latest or {}).get("stock") or 0))
-                    message = (
-                        f"{(latest or {}).get('name') or 'This product'} is out of stock"
-                        if available <= 0
-                        else f"Only {available} left in stock for {(latest or {}).get('name') or 'this product'}"
-                    )
+            for (product_id, variant_id), quantity in quantities_to_reserve.items():
+                if not await _adjust_product_stock(product_id, quantity, variant_id, reserve=True):
+                    latest = await db.products.find_one({"id": product_id}, {"_id": 0})
+                    latest_variant = _resolve_product_variant(latest, variant_id) if variant_id and latest else None
+                    available = max(0, int(latest_variant.get("stock") or 0)) if latest_variant else max(0, int((latest or {}).get("stock") or 0))
+                    name = (latest or {}).get("name") or "This product"
+                    label = f" ({latest_variant.get('unit')})" if latest_variant else ""
+                    message = f"{name}{label} is out of stock" if available <= 0 else f"Only {available} left for {name}{label}"
                     raise HTTPException(status_code=409, detail=message)
-                re_reserved.append((product_id, quantity))
+                re_reserved.append((product_id, variant_id, quantity))
 
             update_result = await db.orders.update_one(
                 {"id": order_id, "status": "rejected", "stock_restored": True},
@@ -3331,9 +3462,9 @@ async def admin_update_order(order_id: str, data: OrderStatusIn, _=Depends(requi
             if update_result.matched_count == 0:
                 raise HTTPException(status_code=409, detail="Order status changed. Refresh and try again.")
         except Exception:
-            for product_id, quantity in reversed(re_reserved):
+            for product_id, variant_id, quantity in reversed(re_reserved):
                 try:
-                    await db.products.update_one({"id": product_id}, {"$inc": {"stock": quantity}})
+                    await _adjust_product_stock(product_id, quantity, variant_id, reserve=False)
                 except Exception:
                     logging.exception("Unable to roll back re-reserved stock for %s", product_id)
             raise
@@ -3351,14 +3482,22 @@ async def admin_update_order(order_id: str, data: OrderStatusIn, _=Depends(requi
         if update_result.matched_count == 0:
             raise HTTPException(status_code=409, detail="Order status changed. Refresh and try again.")
 
-        quantities_to_restore: dict[str, int] = {}
+        quantities_to_restore: dict[tuple[str, Optional[str]], int] = {}
         for item in o.get("items", []):
             product_id = str(item.get("product_id") or "")
             quantity = int(item.get("quantity") or 0)
-            if product_id and quantity > 0:
-                quantities_to_restore[product_id] = quantities_to_restore.get(product_id, 0) + quantity
-        for product_id, quantity in quantities_to_restore.items():
-            await db.products.update_one({"id": product_id}, {"$inc": {"stock": quantity}})
+            if not product_id or quantity <= 0:
+                continue
+            product = await db.products.find_one({"id": product_id}, {"_id": 0})
+            selected_variant = _resolve_product_variant(product, item.get("variant"), item.get("unit")) if product else None
+            variant_id = str(selected_variant.get("id")) if selected_variant and selected_variant.get("id") else None
+            key = (product_id, variant_id)
+            quantities_to_restore[key] = quantities_to_restore.get(key, 0) + quantity
+        for (product_id, variant_id), quantity in quantities_to_restore.items():
+            try:
+                await _adjust_product_stock(product_id, quantity, variant_id, reserve=False)
+            except Exception:
+                logging.exception("Unable to restore stock for %s", product_id)
     else:
         await db.orders.update_one(
             {"id": order_id},
@@ -3399,6 +3538,10 @@ async def admin_create_product(data: ProductIn, _=Depends(require_roles("admin")
 
     pid = "p-" + uuid.uuid4().hex[:8]
     product_data = data.dict()
+    if data.variants is not None:
+        _apply_product_variants(product_data, _normalize_product_variants(data.variants))
+    else:
+        product_data.pop("variants", None)
     product_data["store_id"] = store_id
     product_data["category_id"] = category_id
     doc = {"id": pid, **product_data, "vendor_id": None}
@@ -3418,10 +3561,17 @@ async def admin_update_product(pid: str, data: ProductIn, _=Depends(require_role
 
     existing = await db.products.find_one(
         {"id": pid},
-        {"_id": 0, "id": 1, "store_id": 1}
+        {"_id": 0, "id": 1, "store_id": 1, "variants": 1, "price": 1, "mrp": 1, "unit": 1, "stock": 1}
     )
     if not existing:
         raise HTTPException(404, "Not found")
+    if data.variants is None:
+        upd.pop("variants", None)
+        if existing.get("variants"):
+            for field in ("price", "mrp", "unit", "stock"):
+                upd.pop(field, None)
+    else:
+        _apply_product_variants(upd, _normalize_product_variants(data.variants))
 
     store_id = str(upd.get("store_id") or existing.get("store_id") or "").strip()
     if not store_id:
@@ -5033,6 +5183,10 @@ async def vendor_create_product(data: ProductIn, current=Depends(require_roles("
 
     pid = "p-" + uuid.uuid4().hex[:8]
     doc = data.dict()
+    if data.variants is not None:
+        _apply_product_variants(doc, _normalize_product_variants(data.variants))
+    else:
+        doc.pop("variants", None)
     doc["images"] = product_images
     doc["image"] = product_images[0]
     doc["store_id"] = sid
@@ -5068,6 +5222,13 @@ async def vendor_update_product(pid: str, data: ProductIn, current=Depends(requi
         raise HTTPException(400, "Shop category is not configured")
 
     upd = data.dict()
+    if data.variants is None:
+        upd.pop("variants", None)
+        if p.get("variants"):
+            for field in ("price", "mrp", "unit", "stock"):
+                upd.pop(field, None)
+    else:
+        _apply_product_variants(upd, _normalize_product_variants(data.variants))
     if data.images is not None:
         product_images = list(dict.fromkeys(
             image.strip()
