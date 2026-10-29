@@ -6,6 +6,7 @@ on:
       - customer-live
     paths:
       - "frontend/app/vendor/products.tsx"
+      - "frontend/app/vendor/store/[id].tsx"
       - "frontend/app/product/[id].tsx"
       - ".github/workflows/deploy-product-size-pack-live.yml"
   workflow_dispatch:
@@ -66,12 +67,15 @@ jobs:
           node <<'NODE'
           const assert = require("node:assert/strict");
           const fs = require("node:fs");
-          const vendor = fs.readFileSync("app/vendor/products.tsx", "utf8");
+          const vendor = fs.readFileSync("app/vendor/store/[id].tsx", "utf8");
           const customer = fs.readFileSync("app/product/[id].tsx", "utf8");
           const options = ["XS", "S", "M", "L", "XL", "XXL", "1 pc", "250 g", "500 g", "1 kg", "250 ml", "500 ml", "750 ml", "1 L", "2 L"];
-          assert.ok(vendor.includes("const PRODUCT_UNIT_OPTIONS = ["), "Vendor quick options are missing");
+          assert.ok(vendor.includes("const PRODUCT_UNIT_OPTIONS = ["), "Store vendor quick options are missing");
+          assert.ok(vendor.includes("vendor-store-add-product-size-pack-picker"), "Actual store vendor Add Product screen must render size/pack options");
+          assert.ok(vendor.includes("vendor-store-edit-product-size-pack-picker"), "Actual store vendor Edit Product screen must render size/pack options");
           for (const option of options) assert.ok(vendor.includes(JSON.stringify(option)), `Missing option: ${option}`);
-          assert.ok(vendor.includes("onPress={() => setForm((current) => ({ ...current, unit: option }))}"), "Chip selection must update form state");
+          assert.ok(vendor.includes("onPress={() => setForm((current) => ({ ...current, unit: option }))}"), "Add Product chip selection must update form state");
+          assert.ok(vendor.includes("onPress={() => setEditProductForm((current) => ({ ...current, unit: option }))}"), "Edit Product chip selection must update form state");
           assert.ok(vendor.includes("...form,"), "Product request must spread saved form fields");
           assert.ok(customer.includes('{p.unit ? `${p.unit} · ` : ""}'), "Customer detail must display unit");
           console.log("PRODUCT_SIZE_PACK_UI_VALIDATION_PASS");
@@ -79,7 +83,7 @@ jobs:
 
       - name: Lint changed product screens
         working-directory: frontend
-        run: npx eslint "app/vendor/products.tsx" "app/product/[id].tsx" --no-cache
+        run: npx eslint "app/vendor/store/[id].tsx" "app/vendor/products.tsx" "app/product/[id].tsx" --no-cache
 
       - name: Build web app
         working-directory: frontend
