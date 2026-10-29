@@ -19,6 +19,11 @@ import { api } from "@/src/api";
 import ProductImagesUploader from "@/src/components/ProductImagesUploader";
 import { COLORS, RADIUS, SPACING, shadow } from "@/src/theme";
 
+const PRODUCT_UNIT_OPTIONS = [
+  "XS", "S", "M", "L", "XL", "XXL",
+  "1 pc", "250 g", "500 g", "1 kg", "250 ml", "500 ml", "750 ml", "1 L", "2 L",
+];
+
 export default function VendorProducts() {
   const router = useRouter();
   const [products, setProducts] = useState<any[]>([]);
@@ -226,6 +231,26 @@ export default function VendorProducts() {
                 />
               </View>
 
+              {/* Quick tap choices for common apparel sizes and pack units. Manual unit entry remains available above. */}
+              <Text style={s.sectionLabel}>Size / Pack — tap to select</Text>
+              <View style={s.unitChipContainer}>
+                {PRODUCT_UNIT_OPTIONS.map((option) => {
+                  const active = form.unit.trim().toLowerCase() === option.toLowerCase();
+                  return (
+                    <Pressable
+                      key={option}
+                      accessibilityRole="button"
+                      accessibilityState={{ selected: active }}
+                      testID={`product-unit-${option.replace(/\\s+/g, "-").toLowerCase()}`}
+                      style={[s.catChip, s.unitChip, active && s.catChipActive]}
+                      onPress={() => setForm((current) => ({ ...current, unit: option }))}
+                    >
+                      <Text style={[s.catChipText, active && s.catChipTextActive]}>{option}</Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+
               <ProductImagesUploader value={form.images} onChange={(images) => setForm((current) => ({ ...current, images, image: images[0] || "" }))} label="Product Photos (minimum 3)" testID="vendor-product-images" />
 
               {/* Description Input */}
@@ -411,7 +436,9 @@ const s = StyleSheet.create({
   },
   pickBtnText: { color: "#EA580C", fontWeight: "700", fontSize: 15 },
 
-  // Categories
+  // Categories and quick unit choices
+  unitChipContainer: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 14 },
+  unitChip: { minHeight: 40, justifyContent: "center", alignItems: "center" },
   catContainer: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 14 },
   catChip: {
     paddingHorizontal: 16,
