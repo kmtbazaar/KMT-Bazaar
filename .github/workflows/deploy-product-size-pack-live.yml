@@ -8,7 +8,6 @@ on:
       - "frontend/app/vendor/products.tsx"
       - "frontend/app/vendor/store/**"
       - "frontend/app/product/[id].tsx"
-      - ".github/workflows/deploy-product-size-pack-live.yml"
   workflow_dispatch:
     inputs:
       confirm_live_deploy:
@@ -23,8 +22,8 @@ permissions:
 
 concurrency:
   group: kmtbazaar-production-frontend
-  # Temporarily cancel the stalled upload so the latest deploy can take over.
-  cancel-in-progress: true
+  # Keep deployments serialized; the VPS-side flock is a second safety guard.
+  cancel-in-progress: false
 
 jobs:
   build-and-deploy:
