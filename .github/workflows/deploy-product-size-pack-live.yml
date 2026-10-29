@@ -23,7 +23,8 @@ permissions:
 
 concurrency:
   group: kmtbazaar-production-frontend
-  cancel-in-progress: false
+  # Cancel only the known-stalled upload run during this one recovery push.
+  cancel-in-progress: ${{ github.event_name == 'push' && github.event.head_commit.message == 'Recover stalled product UI deploy' }}
 
 jobs:
   build-and-deploy:
@@ -126,6 +127,7 @@ jobs:
         run: tar -czf "$RUNNER_TEMP/kmt-bazaar-dist.tar.gz" -C dist .
 
       - name: Upload web build to production server
+        timeout-minutes: 15
         env:
           HOSTINGER_HOST: ${{ secrets.HOSTINGER_HOST }}
           HOSTINGER_USER: ${{ secrets.HOSTINGER_USER }}
@@ -134,8 +136,14 @@ jobs:
           set -euo pipefail
           DEST="${HOSTINGER_USER}@${HOSTINGER_HOST}"
           ARCHIVE="/tmp/kmt-bazaar-size-pack-${GITHUB_SHA}.tar.gz"
-          ssh -i "$HOME/.ssh/kmt_bazaar_deploy_key" -p "$HOSTINGER_PORT" "$DEST" "test -d /var/www/kmt-bazaar-com"
-          scp -i "$HOME/.ssh/kmt_bazaar_deploy_key" -P "$HOSTINGER_PORT" "$RUNNER_TEMP/kmt-bazaar-dist.tar.gz" "$DEST:$ARCHIVE"
+          LOCAL_ARCHIVE="$RUNNER_TEMP/kmt-bazaar-dist.tar.gz"
+          echo "ARCHIVE_BYTES=$(stat -c '%s' "$LOCAL_ARCHIVE")"
+          echo "REMOTE_CHECK_START"
+          timeout 45s ssh -o BatchMode=yes -o ConnectTimeout=15 -o ServerAliveInterval=15 -o ServerAliveCountMax=3 -i "$HOME/.ssh/kmt_bazaar_deploy_key" -p "$HOSTINGER_PORT" "$DEST" "test -d /var/www/kmt-bazaar-com"
+          echo "REMOTE_CHECK_PASS"
+          echo "UPLOAD_START"
+          timeout 720s scp -v -o BatchMode=yes -o ConnectTimeout=15 -o ServerAliveInterval=15 -o ServerAliveCountMax=3 -i "$HOME/.ssh/kmt_bazaar_deploy_key" -P "$HOSTINGER_PORT" "$LOCAL_ARCHIVE" "$DEST:$ARCHIVE"
+          echo "UPLOAD_COMPLETE"
 
       - name: Backup, deploy, and verify production
         env:
