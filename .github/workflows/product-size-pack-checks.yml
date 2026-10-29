@@ -47,7 +47,7 @@ jobs:
             assert.ok(vendor.includes(JSON.stringify(option)), `Missing vendor option: ${option}`);
           }
           assert.ok(vendor.includes("onPress={() => setForm((current) => ({ ...current, unit: option }))}"), "Selecting a chip must update the saved unit.");
-          assert.ok(vendor.includes("unit: form.unit"), "Product payload must retain the selected unit.");
+          assert.ok(vendor.includes("...form,") && vendor.includes('unit: "1 pc"'), "Product payload must retain the selected unit through the existing form spread.");
           assert.ok(customer.includes('{p.unit ? `${p.unit} · ` : ""}'), "Customer product detail must display the saved unit.");
 
           console.log("PRODUCT_SIZE_PACK_UI_VALIDATION_PASS");
