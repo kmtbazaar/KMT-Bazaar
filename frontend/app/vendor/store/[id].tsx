@@ -443,7 +443,7 @@ export default function VendorStoreDetail() {
               <View style={s.itemCategoryManagerHeader}>
                 <View style={{ flex: 1 }}>
                   <Text style={s.listTitle}>Store Item Categories</Text>
-                  <Text style={s.itemCategoryHint}>Write categories like Jeans, T-Shirts, Shirts. They appear on the customer's left side.</Text>
+                  <Text style={s.itemCategoryHint}>Write categories like Jeans, T-Shirts, Shirts. They appear on the customer&apos;s left side.</Text>
                 </View>
               </View>
               <View style={s.itemCategoryInputRow}>
