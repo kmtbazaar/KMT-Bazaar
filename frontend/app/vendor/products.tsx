@@ -153,7 +153,7 @@ export default function VendorProducts() {
         refreshing={refreshing}
         onRefresh={onRefresh}
         ItemSeparatorComponent={() => <View style={{ height: 12 }} />}
-        ListEmptyComponent={<Text style={s.empty}>No products yet. Click '+' to add.</Text>}
+        ListEmptyComponent={<Text style={s.empty}>No products yet. Use the + button to add.</Text>}
         renderItem={({ item }) => (
           <View style={s.card} testID={`vp-${item.id}`}>
             <Image source={{ uri: item.image }} style={s.img} contentFit="cover" />
