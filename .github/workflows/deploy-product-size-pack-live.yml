@@ -8,6 +8,7 @@ on:
       - "frontend/app/vendor/products.tsx"
       - "frontend/app/vendor/store/**"
       - "frontend/app/product/[id].tsx"
+      - ".github/workflows/deploy-product-size-pack-live.yml"
   workflow_dispatch:
     inputs:
       confirm_live_deploy:
@@ -22,8 +23,8 @@ permissions:
 
 concurrency:
   group: kmtbazaar-production-frontend
-  # Keep deployments serialized; the VPS-side flock is a second safety guard.
-  cancel-in-progress: false
+  # One-time recovery: cancel only the stuck transfer currently occupying this group.
+  cancel-in-progress: true
 
 jobs:
   build-and-deploy:
@@ -136,12 +137,17 @@ jobs:
           DEST="${HOSTINGER_USER}@${HOSTINGER_HOST}"
           ARCHIVE="/tmp/kmt-bazaar-size-pack-${GITHUB_SHA}.tar.gz"
           LOCAL_ARCHIVE="$RUNNER_TEMP/kmt-bazaar-dist.tar.gz"
-          echo "ARCHIVE_BYTES=$(stat -c '%s' "$LOCAL_ARCHIVE")"
+          LOCAL_BYTES=$(stat -c '%s' "$LOCAL_ARCHIVE")
+          echo "ARCHIVE_BYTES=$LOCAL_BYTES"
           echo "REMOTE_CHECK_START"
           timeout 45s ssh -o BatchMode=yes -o ConnectTimeout=15 -o ServerAliveInterval=15 -o ServerAliveCountMax=3 -i "$HOME/.ssh/kmt_bazaar_deploy_key" -p "$HOSTINGER_PORT" "$DEST" "test -d /var/www/kmt-bazaar-com"
           echo "REMOTE_CHECK_PASS"
-          echo "UPLOAD_START"
-          timeout 720s scp -v -o BatchMode=yes -o ConnectTimeout=15 -o ServerAliveInterval=15 -o ServerAliveCountMax=3 -i "$HOME/.ssh/kmt_bazaar_deploy_key" -P "$HOSTINGER_PORT" "$LOCAL_ARCHIVE" "$DEST:$ARCHIVE"
+          echo "STREAM_UPLOAD_START"
+          timeout 720s ssh -T -o BatchMode=yes -o ConnectTimeout=15 -o ServerAliveInterval=15 -o ServerAliveCountMax=3 -i "$HOME/.ssh/kmt_bazaar_deploy_key" -p "$HOSTINGER_PORT" "$DEST" "umask 077; cat > '$ARCHIVE'" < "$LOCAL_ARCHIVE"
+          echo "STREAM_UPLOAD_FINISHED"
+          REMOTE_BYTES=$(timeout 45s ssh -o BatchMode=yes -o ConnectTimeout=15 -o ServerAliveInterval=15 -o ServerAliveCountMax=3 -i "$HOME/.ssh/kmt_bazaar_deploy_key" -p "$HOSTINGER_PORT" "$DEST" "stat -c '%s' '$ARCHIVE'")
+          echo "REMOTE_ARCHIVE_BYTES=$REMOTE_BYTES"
+          test "$LOCAL_BYTES" = "$REMOTE_BYTES"
           echo "UPLOAD_COMPLETE"
 
       - name: Backup, deploy, and verify production
