@@ -75,6 +75,14 @@ jobs:
           assert.ok(vendor.includes("vendor-store-edit-product-size-pack-picker"), "Actual store vendor Edit Product screen must render size/pack options");
           assert.ok(vendor.includes("vendor-store-add-product-item-category-picker"), "Add Product must render a separate item category panel");
           assert.ok(vendor.includes("vendor-store-edit-product-item-category-picker"), "Edit Product must render a separate item category panel");
+          assert.ok(vendor.includes("vendor-store-add-new-item-category-name"), "Add Product must include a new item-category name field");
+          assert.ok(vendor.includes("vendor-store-add-new-item-category"), "Add Product must include a create-category button");
+          assert.ok(vendor.includes("vendor-store-edit-new-item-category-name"), "Edit Product must include a new item-category name field");
+          assert.ok(vendor.includes("vendor-store-edit-new-item-category"), "Edit Product must include a create-category button");
+          assert.ok(vendor.includes("createItemCategoryForProduct"), "Inline item-category creation handler missing");
+          assert.ok(vendor.includes('testID="vendor-store-add-product-name"') && vendor.includes('testID="vendor-store-edit-product-name"'), "Full product name fields missing");
+          assert.ok(vendor.includes("productNameInput") && vendor.includes("multiline"), "Long product names need multiline input");
+
           assert.ok(vendor.includes("vendor-store-add-product-shop-category"), "Add Product must show shop category in the top-right header");
           assert.ok(vendor.includes("vendor-store-edit-product-shop-category"), "Edit Product must show shop category in the top-right header");
           assert.ok(vendor.includes('backgroundColor: "#ECFDF5"') && vendor.includes('borderColor: "#6EE7B7"'), "Item category panel must use its distinct green/teal palette");
