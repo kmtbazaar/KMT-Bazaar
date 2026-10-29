@@ -73,6 +73,14 @@ jobs:
           assert.ok(vendor.includes("const PRODUCT_UNIT_OPTIONS = ["), "Store vendor quick options are missing");
           assert.ok(vendor.includes("vendor-store-add-product-size-pack-picker"), "Actual store vendor Add Product screen must render size/pack options");
           assert.ok(vendor.includes("vendor-store-edit-product-size-pack-picker"), "Actual store vendor Edit Product screen must render size/pack options");
+          assert.ok(vendor.includes("vendor-store-add-product-item-category-picker"), "Add Product must render a separate item category panel");
+          assert.ok(vendor.includes("vendor-store-edit-product-item-category-picker"), "Edit Product must render a separate item category panel");
+          assert.ok(vendor.includes("vendor-store-add-product-shop-category"), "Add Product must show shop category in the top-right header");
+          assert.ok(vendor.includes("vendor-store-edit-product-shop-category"), "Edit Product must show shop category in the top-right header");
+          assert.ok(vendor.includes('backgroundColor: "#ECFDF5"') && vendor.includes('borderColor: "#6EE7B7"'), "Item category panel must use its distinct green/teal palette");
+          assert.ok(vendor.includes('backgroundColor: "#FFF7ED"') && vendor.includes('borderColor: "#FDBA74"'), "Size/pack panel must retain its orange palette");
+          assert.ok(vendor.includes("item_category_id: item.id"), "Item category selection must retain its ID");
+
           for (const option of options) assert.ok(vendor.includes(JSON.stringify(option)), `Missing option: ${option}`);
           assert.ok(vendor.includes("onPress={() => setForm((current) => ({ ...current, unit: option }))}"), "Add Product chip selection must update form state");
           assert.ok(vendor.includes("onPress={() => setEditProductForm((current) => ({ ...current, unit: option }))}"), "Edit Product chip selection must update form state");
