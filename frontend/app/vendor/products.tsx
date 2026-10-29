@@ -241,7 +241,7 @@ export default function VendorProducts() {
                       key={option}
                       accessibilityRole="button"
                       accessibilityState={{ selected: active }}
-                      testID={`product-unit-${option.replace(/\\s+/g, "-").toLowerCase()}`}
+                      testID={`product-unit-${option.toLowerCase().replaceAll(" ", "-")}`}
                       style={[s.catChip, s.unitChip, active && s.catChipActive]}
                       onPress={() => setForm((current) => ({ ...current, unit: option }))}
                     >
