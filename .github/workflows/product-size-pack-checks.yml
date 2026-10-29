@@ -1,0 +1,71 @@
+name: Product size and pack UI checks
+
+on:
+  push:
+    branches:
+      - customer-live
+    paths:
+      - "frontend/app/vendor/products.tsx"
+      - "frontend/app/vendor/store/**"
+      - "frontend/app/product/[id].tsx"
+      - ".github/workflows/product-size-pack-checks.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  size-pack-ui:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install locked frontend dependencies
+        run: npm install --ignore-scripts --no-audit --no-fund
+      - name: Verify size and pack buttons are saved and shown to customers
+        run: |
+          node <<'NODE'
+          const assert = require("node:assert/strict");
+          const fs = require("node:fs");
+
+          const vendor = fs.readFileSync("app/vendor/store/[id].tsx", "utf8");
+          const customer = fs.readFileSync("app/product/[id].tsx", "utf8");
+
+          const options = [
+            "XS", "S", "M", "L", "XL", "XXL",
+            "1 pc", "250 g", "500 g", "1 kg",
+            "250 ml", "500 ml", "750 ml", "1 L", "2 L"
+          ];
+
+          assert.ok(vendor.includes("const PRODUCT_UNIT_OPTIONS = ["), "Vendor size/pack options are missing.");
+          for (const option of options) {
+            assert.ok(vendor.includes(JSON.stringify(option)), `Missing vendor option: ${option}`);
+          }
+          assert.ok(vendor.includes("vendor-store-add-product-size-pack-picker"), "Store vendor Add Product screen must render the size/pack picker.");
+          assert.ok(vendor.includes("onPress={() => setForm((current) => ({ ...current, unit: option }))}"), "Selecting a chip in Add Product must update the unit.");
+          assert.ok(vendor.includes("vendor-store-edit-product-size-pack-picker"), "Store vendor Edit Product screen must render the size/pack picker.");
+          assert.ok(vendor.includes("vendor-store-add-product-item-category-picker"), "Add Product must show item categories in a separate box.");
+          assert.ok(vendor.includes("vendor-store-edit-product-item-category-picker"), "Edit Product must show item categories in a separate box.");
+          assert.ok(vendor.includes("vendor-store-add-product-shop-category"), "Add Product shop category must be placed in the top-right header.");
+          assert.ok(vendor.includes("vendor-store-edit-product-shop-category"), "Edit Product shop category must be placed in the top-right header.");
+          assert.ok(vendor.includes('backgroundColor: "#ECFDF5"') && vendor.includes('borderColor: "#6EE7B7"'), "Item category panel must use its distinct green/teal color.");
+          assert.ok(vendor.includes('backgroundColor: "#FFF7ED"') && vendor.includes('borderColor: "#FDBA74"'), "Size/pack panel must remain orange and visually distinct.");
+          assert.ok(vendor.includes("item_category_id: item.id"), "Selecting item category must preserve its ID.");
+
+          assert.ok(vendor.includes("onPress={() => setEditProductForm((current) => ({ ...current, unit: option }))}"), "Selecting a chip in Edit Product must update the unit.");
+          assert.ok(vendor.includes("...form,") && vendor.includes('unit: "1 pc"'), "Product payload must retain the selected unit through the existing form spread.");
+          assert.ok(customer.includes('{p.unit ? `${p.unit} · ` : ""}'), "Customer product detail must display the saved unit.");
+
+          console.log("PRODUCT_SIZE_PACK_UI_VALIDATION_PASS");
+          console.log(`Validated ${options.length} selectable size/pack labels and customer unit display.`);
+          NODE
+      - name: Lint changed product UI files
+        run: npx eslint "app/vendor/store/[id].tsx" "app/vendor/products.tsx" "app/product/[id].tsx" --no-cache
+      - name: Build web app
+        run: npm run build:web
