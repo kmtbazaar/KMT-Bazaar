@@ -616,7 +616,15 @@ export default function VendorStoreDetail() {
         <View style={s.modalOverlayBottom}>
           <View style={s.modalContentBottom}>
             <View style={s.dragHandle} />
-            <Text style={s.modalTitle}>Add Product</Text>
+            <View style={s.modalHeaderRow}>
+              <Text style={[s.modalTitle, s.modalTitleInHeader]}>Add Product</Text>
+              <View style={s.shopCategoryBadge} testID="vendor-store-add-product-shop-category">
+                <Text style={s.shopCategoryBadgeLabel}>SHOP CATEGORY</Text>
+                <Text style={s.shopCategoryBadgeValue} numberOfLines={1}>
+                  {categories.find((item: any) => item.id === store?.category_id)?.name || store?.category_id || "Not set"}
+                </Text>
+              </View>
+            </View>
 
             <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 10 }}>
               {/* Product Name */}
@@ -652,18 +660,19 @@ export default function VendorStoreDetail() {
               </View>
 
               {store?.category_id ? (
-                <View style={s.itemCategorySection}>
-                  <Text style={s.fieldLabel}>
-                    Shop Category: {categories.find((item: any) => item.id === store.category_id)?.name || store.category_id}
-                  </Text>
-                  <Text style={s.fieldLabel}>Item Category</Text>
+                <View style={s.itemCategoryPanel} testID="vendor-store-add-product-item-category-picker">
+                  <Text style={s.itemCategoryTitle}>Choose item category</Text>
+                  <Text style={s.itemCategoryHint}>Choose the category that best matches this product.</Text>
                   {itemCategories.length ? (
-                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.itemCategoryRow}>
+                    <View style={s.itemCategoryRow}>
                       {itemCategories.map((item: any) => {
                         const active = form.item_category_id === item.id;
                         return (
                           <Pressable
                             key={item.id}
+                            accessibilityRole="button"
+                            accessibilityLabel={`Select item category ${item.name}`}
+                            accessibilityState={{ selected: active }}
                             onPress={() => setForm((prev) => ({ ...prev, item_category: item.name, item_category_id: item.id }))}
                             style={[s.itemCategoryChip, active && s.itemCategoryChipActive]}
                           >
@@ -671,10 +680,10 @@ export default function VendorStoreDetail() {
                           </Pressable>
                         );
                       })}
-                    </ScrollView>
+                    </View>
                   ) : (
-                    <Text style={{ color: COLORS.textMuted, fontSize: 11, marginTop: 2 }}>
-                      Add an item category above first.
+                    <Text style={s.itemCategoryEmpty}>
+                      No item categories are configured for this shop category yet. Add them in Store Item Categories first.
                     </Text>
                   )}
                 </View>
@@ -738,13 +747,6 @@ export default function VendorStoreDetail() {
                 multiline
               />
 
-              <View style={{ marginTop: 3, marginBottom: 5 }}>
-                <Text style={s.sectionLabel}>Store Category</Text>
-                <Text style={{ color: COLORS.text, fontSize: 12, fontWeight: "800" }}>
-                  {categories.find((c: any) => c.id === store?.category_id)?.name || store?.category_id || "Not set"}
-                </Text>
-              </View>
-
               {/* Mark as Trending Checkbox */}
               <Pressable
                 style={s.checkboxRow}
@@ -792,7 +794,15 @@ export default function VendorStoreDetail() {
         <View style={s.modalOverlayBottom}>
           <View style={s.modalContentBottom}>
             <View style={s.dragHandle} />
-            <Text style={s.modalTitle}>Edit Product</Text>
+            <View style={s.modalHeaderRow}>
+              <Text style={[s.modalTitle, s.modalTitleInHeader]}>Edit Product</Text>
+              <View style={s.shopCategoryBadge} testID="vendor-store-edit-product-shop-category">
+                <Text style={s.shopCategoryBadgeLabel}>SHOP CATEGORY</Text>
+                <Text style={s.shopCategoryBadgeValue} numberOfLines={1}>
+                  {categories.find((item: any) => item.id === store?.category_id)?.name || store?.category_id || "Not set"}
+                </Text>
+              </View>
+            </View>
 
             <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 10 }}>
               {/* Product Name */}
@@ -828,25 +838,24 @@ export default function VendorStoreDetail() {
               </View>
 
               {store?.category_id ? (
-                <View style={s.itemCategorySection}>
-                  <Text style={s.fieldLabel}>
-                    Shop Category: {categories.find((item: any) => item.id === store.category_id)?.name || store.category_id}
-                  </Text>
-                  <Text style={s.fieldLabel}>Item Category</Text>
+                <View style={s.itemCategoryPanel} testID="vendor-store-edit-product-item-category-picker">
+                  <Text style={s.itemCategoryTitle}>Choose item category</Text>
+                  <Text style={s.itemCategoryHint}>Choose the category that best matches this product.</Text>
                   {itemCategories.length ? (
-                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.itemCategoryRow}>
+                    <View style={s.itemCategoryRow}>
                       {itemCategories.map((item: any) => {
                         const active = editProductForm.item_category_id === item.id;
                         return (
                           <Pressable
                             key={item.id}
-                            onPress={() =>
-                              setEditProductForm((prev) => ({
-                                ...prev,
-                                item_category: item.name,
-                                item_category_id: item.id,
-                              }))
-                            }
+                            accessibilityRole="button"
+                            accessibilityLabel={`Select item category ${item.name}`}
+                            accessibilityState={{ selected: active }}
+                            onPress={() => setEditProductForm((prev) => ({
+                              ...prev,
+                              item_category: item.name,
+                              item_category_id: item.id,
+                            }))}
                             style={[s.itemCategoryChip, active && s.itemCategoryChipActive]}
                           >
                             <Text style={[s.itemCategoryChipText, active && s.itemCategoryChipTextActive]}>
@@ -855,10 +864,10 @@ export default function VendorStoreDetail() {
                           </Pressable>
                         );
                       })}
-                    </ScrollView>
+                    </View>
                   ) : (
-                    <Text style={{ color: COLORS.textMuted, fontSize: 11, marginTop: 2 }}>
-                      No item categories configured by admin for this shop category.
+                    <Text style={s.itemCategoryEmpty}>
+                      No item categories are configured for this shop category yet. Add them in Store Item Categories first.
                     </Text>
                   )}
                 </View>
@@ -921,13 +930,6 @@ export default function VendorStoreDetail() {
                 style={[s.inputCompact, { height: 50, textAlignVertical: "top" }]}
                 multiline
               />
-
-              <View style={{ marginTop: 3, marginBottom: 5 }}>
-                <Text style={s.sectionLabel}>Store Category</Text>
-                <Text style={{ color: COLORS.text, fontSize: 12, fontWeight: "800" }}>
-                  {categories.find((c: any) => c.id === store?.category_id)?.name || store?.category_id || "Not set"}
-                </Text>
-              </View>
 
               {/* Mark as Trending Checkbox */}
               <Pressable
@@ -1200,6 +1202,41 @@ const s = StyleSheet.create({
     alignSelf: "center",
     marginBottom: 10,
   },
+  modalHeaderRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    justifyContent: "space-between",
+    gap: 8,
+    marginBottom: 10,
+  },
+  modalTitleInHeader: { flex: 1, minWidth: 0, marginBottom: 0, paddingTop: 2 },
+  shopCategoryBadge: {
+    maxWidth: "58%",
+    minWidth: 104,
+    paddingHorizontal: 9,
+    paddingVertical: 6,
+    borderRadius: 10,
+    backgroundColor: "#F3E8FF",
+    borderWidth: 1,
+    borderColor: "#D8B4FE",
+    alignItems: "flex-end",
+  },
+  shopCategoryBadgeLabel: {
+    fontSize: 8,
+    lineHeight: 10,
+    letterSpacing: 0.5,
+    fontWeight: "900",
+    color: "#7E22CE",
+    marginBottom: 2,
+  },
+  shopCategoryBadgeValue: {
+    maxWidth: "100%",
+    fontSize: 12,
+    lineHeight: 15,
+    fontWeight: "800",
+    color: "#581C87",
+    textAlign: "right",
+  },
   modalTitle: { fontSize: 18, fontWeight: "800", color: "#000", marginBottom: 10 },
 
   // Compact Form Inputs (Optimized Heights)
@@ -1292,39 +1329,44 @@ const s = StyleSheet.create({
   catChipText: { fontSize: 12, color: "#374151", fontWeight: "600" },
   catChipTextActive: { color: "#fff", fontWeight: "700" },
 
-  itemCategorySection: {
-    marginBottom: 8,
+  // Green/teal item-category panel differentiates it from orange size/pack controls.
+  itemCategoryPanel: {
+    backgroundColor: "#ECFDF5",
+    borderWidth: 1,
+    borderColor: "#6EE7B7",
+    borderRadius: 14,
+    padding: 10,
+    marginBottom: 10,
   },
-  fieldLabel: {
-    fontSize: 12,
-    fontWeight: "800",
-    color: "#374151",
-    marginBottom: 6,
-  },
+  itemCategoryTitle: { fontSize: 13, fontWeight: "900", color: "#065F46", marginBottom: 4 },
+  itemCategoryHint: { fontSize: 11, lineHeight: 15, color: "#047857", marginBottom: 8 },
+  itemCategoryEmpty: { fontSize: 11, lineHeight: 15, color: "#065F46" },
   itemCategoryRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
     gap: 6,
     paddingBottom: 2,
   },
   itemCategoryChip: {
     paddingHorizontal: 11,
     paddingVertical: 7,
-    borderRadius: 16,
-    backgroundColor: "#F8FAFC",
+    borderRadius: 11,
+    backgroundColor: "#FFFFFF",
     borderWidth: 1,
-    borderColor: "#E2E8F0",
+    borderColor: "#A7F3D0",
   },
   itemCategoryChipActive: {
-    backgroundColor: "#EA580C",
-    borderColor: "#EA580C",
+    backgroundColor: "#047857",
+    borderColor: "#047857",
   },
   itemCategoryChipText: {
     fontSize: 11,
-    color: "#475569",
-    fontWeight: "700",
+    color: "#065F46",
+    fontWeight: "800",
   },
   itemCategoryChipTextActive: {
-    color: "#fff",
-    fontWeight: "800",
+    color: "#FFFFFF",
+    fontWeight: "900",
   },
 
   // Checkbox
