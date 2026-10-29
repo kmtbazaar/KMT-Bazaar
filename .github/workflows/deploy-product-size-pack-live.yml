@@ -1,0 +1,183 @@
+name: Deploy product size and pack UI to kmtbazaar.com
+
+on:
+  push:
+    branches:
+      - customer-live
+    paths:
+      - "frontend/app/vendor/products.tsx"
+      - "frontend/app/product/[id].tsx"
+      - ".github/workflows/deploy-product-size-pack-live.yml"
+  workflow_dispatch:
+    inputs:
+      confirm_live_deploy:
+        description: "Confirm deployment to kmtbazaar.com"
+        required: true
+        type: choice
+        options:
+          - "yes"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: kmtbazaar-production-frontend
+  cancel-in-progress: false
+
+jobs:
+  build-and-deploy:
+    if: github.event_name != 'workflow_dispatch' || inputs.confirm_live_deploy == 'yes'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check required Hostinger SSH configuration
+        env:
+          HOSTINGER_HOST: ${{ secrets.HOSTINGER_HOST }}
+          HOSTINGER_USER: ${{ secrets.HOSTINGER_USER }}
+          HOSTINGER_SSH_KEY: ${{ secrets.HOSTINGER_SSH_KEY }}
+        run: |
+          set -euo pipefail
+          missing=()
+          [ -n "$HOSTINGER_HOST" ] || missing+=("HOSTINGER_HOST")
+          [ -n "$HOSTINGER_USER" ] || missing+=("HOSTINGER_USER")
+          [ -n "$HOSTINGER_SSH_KEY" ] || missing+=("HOSTINGER_SSH_KEY")
+          if [ "${#missing[@]}" -gt 0 ]; then
+            echo "::error::Missing repository Actions secrets: ${missing[*]}"
+            echo "Add these under Settings > Secrets and variables > Actions, then rerun this workflow."
+            exit 1
+          fi
+
+      - uses: actions/checkout@v4
+        with:
+          ref: customer-live
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install locked frontend dependencies
+        working-directory: frontend
+        run: npm install --ignore-scripts --no-audit --no-fund
+
+      - name: Validate size and pack options and customer display
+        working-directory: frontend
+        run: |
+          node <<'NODE'
+          const assert = require("node:assert/strict");
+          const fs = require("node:fs");
+          const vendor = fs.readFileSync("app/vendor/products.tsx", "utf8");
+          const customer = fs.readFileSync("app/product/[id].tsx", "utf8");
+          const options = ["XS", "S", "M", "L", "XL", "XXL", "1 pc", "250 g", "500 g", "1 kg", "250 ml", "500 ml", "750 ml", "1 L", "2 L"];
+          assert.ok(vendor.includes("const PRODUCT_UNIT_OPTIONS = ["), "Vendor quick options are missing");
+          for (const option of options) assert.ok(vendor.includes(JSON.stringify(option)), `Missing option: ${option}`);
+          assert.ok(vendor.includes("onPress={() => setForm((current) => ({ ...current, unit: option }))}"), "Chip selection must update form state");
+          assert.ok(vendor.includes("...form,"), "Product request must spread saved form fields");
+          assert.ok(customer.includes('{p.unit ? `${p.unit} · ` : ""}'), "Customer detail must display unit");
+          console.log("PRODUCT_SIZE_PACK_UI_VALIDATION_PASS");
+          NODE
+
+      - name: Lint changed product screens
+        working-directory: frontend
+        run: npx eslint "app/vendor/products.tsx" "app/product/[id].tsx" --no-cache
+
+      - name: Build web app
+        working-directory: frontend
+        run: npm run build:web
+
+      - name: Configure SSH
+        env:
+          HOSTINGER_HOST: ${{ secrets.HOSTINGER_HOST }}
+          HOSTINGER_SSH_KEY: ${{ secrets.HOSTINGER_SSH_KEY }}
+          HOSTINGER_PORT: ${{ secrets.HOSTINGER_PORT }}
+        run: |
+          set -euo pipefail
+          PORT="${HOSTINGER_PORT:-22}"
+          mkdir -p "$HOME/.ssh"
+          chmod 700 "$HOME/.ssh"
+          printf '%s\n' "$HOSTINGER_SSH_KEY" > "$HOME/.ssh/kmt_bazaar_deploy_key"
+          chmod 600 "$HOME/.ssh/kmt_bazaar_deploy_key"
+          ssh-keyscan -p "$PORT" -H "$HOSTINGER_HOST" >> "$HOME/.ssh/known_hosts" 2>/dev/null
+          printf 'port=%s\n' "$PORT" >> "$GITHUB_OUTPUT"
+
+      - name: Package built website
+        working-directory: frontend
+        run: tar -czf "$RUNNER_TEMP/kmt-bazaar-dist.tar.gz" -C dist .
+
+      - name: Upload web build to production server
+        env:
+          HOSTINGER_HOST: ${{ secrets.HOSTINGER_HOST }}
+          HOSTINGER_USER: ${{ secrets.HOSTINGER_USER }}
+          HOSTINGER_PORT: ${{ steps.ssh.outputs.port }}
+        run: |
+          set -euo pipefail
+          DEST="${HOSTINGER_USER}@${HOSTINGER_HOST}"
+          ARCHIVE="/tmp/kmt-bazaar-size-pack-${GITHUB_SHA}.tar.gz"
+          ssh -i "$HOME/.ssh/kmt_bazaar_deploy_key" -p "$HOSTINGER_PORT" "$DEST" "test -d /var/www/kmt-bazaar-com"
+          scp -i "$HOME/.ssh/kmt_bazaar_deploy_key" -P "$HOSTINGER_PORT" "$RUNNER_TEMP/kmt-bazaar-dist.tar.gz" "$DEST:$ARCHIVE"
+
+      - name: Backup, deploy, and verify production
+        env:
+          HOSTINGER_HOST: ${{ secrets.HOSTINGER_HOST }}
+          HOSTINGER_USER: ${{ secrets.HOSTINGER_USER }}
+          HOSTINGER_PORT: ${{ steps.ssh.outputs.port }}
+        run: |
+          set -euo pipefail
+          DEST="${HOSTINGER_USER}@${HOSTINGER_HOST}"
+          ssh -i "$HOME/.ssh/kmt_bazaar_deploy_key" -p "$HOSTINGER_PORT" "$DEST" "DEPLOY_SHA='$GITHUB_SHA' bash -s" <<'REMOTE'
+          set -Eeuo pipefail
+          exec 9>/run/kmt-bazaar-size-pack-deploy.lock
+          flock -n 9 || { echo "STOP: Another size/pack deployment is running."; exit 1; }
+
+          WEBROOT=/var/www/kmt-bazaar-com
+          ARCHIVE="/tmp/kmt-bazaar-size-pack-${DEPLOY_SHA}.tar.gz"
+          STAGING="/tmp/kmt-bazaar-size-pack-stage-${DEPLOY_SHA}"
+          BACKUP="/var/www/kmt-bazaar-com-backup-size-pack-${DEPLOY_SHA:0:12}-$(date +%Y%m%d-%H%M%S)"
+
+          test -s "$ARCHIVE"
+          test -d "$WEBROOT"
+          mkdir -p "$STAGING"
+          tar -xzf "$ARCHIVE" -C "$STAGING"
+          test -s "$STAGING/index.html"
+          nginx -t
+
+          mkdir -p "$BACKUP"
+          cp -a "$WEBROOT"/. "$BACKUP"/
+
+          rollback() {
+            echo "ROLLBACK_START"
+            find "$WEBROOT" -mindepth 1 -maxdepth 1 -exec rm -rf -- {} +
+            cp -a "$BACKUP"/. "$WEBROOT"/
+            systemctl reload nginx || true
+            echo "ROLLBACK_BACKUP=$BACKUP"
+          }
+
+          if ! cp -a "$STAGING"/. "$WEBROOT"/; then
+            rollback
+            exit 1
+          fi
+
+          if ! systemctl reload nginx; then
+            rollback
+            exit 1
+          fi
+
+          HOME_CODE=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 20 --resolve kmtbazaar.com:443:127.0.0.1 https://kmtbazaar.com/ || true)
+          STORES_CODE=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 20 --resolve kmtbazaar.com:443:127.0.0.1 https://kmtbazaar.com/api/stores || true)
+          PRODUCTS_CODE=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 20 --resolve kmtbazaar.com:443:127.0.0.1 https://kmtbazaar.com/api/products || true)
+
+          echo "HOME=$HOME_CODE"
+          echo "STORES=$STORES_CODE"
+          echo "PRODUCTS=$PRODUCTS_CODE"
+          echo "BACKUP=$BACKUP"
+
+          if [ "$HOME_CODE" != "200" ] || [ "$STORES_CODE" != "200" ] || [ "$PRODUCTS_CODE" != "200" ]; then
+            echo "VERIFICATION_FAIL"
+            rollback
+            exit 1
+          fi
+
+          rm -rf "$STAGING" "$ARCHIVE"
+          echo "DEPLOYMENT_HEALTH_CHECK_PASS"
+          echo "DEPLOYED_COMMIT=$DEPLOY_SHA"
+          REMOTE
