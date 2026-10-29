@@ -6,6 +6,7 @@ on:
       - customer-live
     paths:
       - "frontend/app/vendor/products.tsx"
+      - "frontend/app/vendor/store/[id].tsx"
       - "frontend/app/product/[id].tsx"
       - ".github/workflows/product-size-pack-checks.yml"
 
@@ -33,7 +34,7 @@ jobs:
           const assert = require("node:assert/strict");
           const fs = require("node:fs");
 
-          const vendor = fs.readFileSync("app/vendor/products.tsx", "utf8");
+          const vendor = fs.readFileSync("app/vendor/store/[id].tsx", "utf8");
           const customer = fs.readFileSync("app/product/[id].tsx", "utf8");
 
           const options = [
@@ -46,7 +47,10 @@ jobs:
           for (const option of options) {
             assert.ok(vendor.includes(JSON.stringify(option)), `Missing vendor option: ${option}`);
           }
-          assert.ok(vendor.includes("onPress={() => setForm((current) => ({ ...current, unit: option }))}"), "Selecting a chip must update the saved unit.");
+          assert.ok(vendor.includes("vendor-store-add-product-size-pack-picker"), "Store vendor Add Product screen must render the size/pack picker.");
+          assert.ok(vendor.includes("onPress={() => setForm((current) => ({ ...current, unit: option }))}"), "Selecting a chip in Add Product must update the unit.");
+          assert.ok(vendor.includes("vendor-store-edit-product-size-pack-picker"), "Store vendor Edit Product screen must render the size/pack picker.");
+          assert.ok(vendor.includes("onPress={() => setEditProductForm((current) => ({ ...current, unit: option }))}"), "Selecting a chip in Edit Product must update the unit.");
           assert.ok(vendor.includes("...form,") && vendor.includes('unit: "1 pc"'), "Product payload must retain the selected unit through the existing form spread.");
           assert.ok(customer.includes('{p.unit ? `${p.unit} · ` : ""}'), "Customer product detail must display the saved unit.");
 
@@ -54,6 +58,6 @@ jobs:
           console.log(`Validated ${options.length} selectable size/pack labels and customer unit display.`);
           NODE
       - name: Lint changed product UI files
-        run: npx eslint "app/vendor/products.tsx" "app/product/[id].tsx" --no-cache
+        run: npx eslint "app/vendor/store/[id].tsx" "app/vendor/products.tsx" "app/product/[id].tsx" --no-cache
       - name: Build web app
         run: npm run build:web
