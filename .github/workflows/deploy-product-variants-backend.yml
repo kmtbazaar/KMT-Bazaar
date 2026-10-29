@@ -6,7 +6,7 @@ on:
       - customer-live
     paths:
       - "backend/server.py"
-      - ".github/workflows/deploy-product-variants-backend.yml"
+      # Avoid retriggering the deployment when only this workflow is edited.
   workflow_dispatch:
     inputs:
       confirm_live_deploy:
@@ -116,11 +116,20 @@ jobs:
             rollback
             exit 1
           fi
-          if ! systemctl is-active --quiet kmt-bazaar-com.service; then
-            rollback
-            exit 1
-          fi
-          if ! curl -fsS --max-time 25 http://127.0.0.1:8001/api/products >/dev/null; then
+          READY=0
+          for ATTEMPT in $(seq 1 12); do
+            if systemctl is-active --quiet kmt-bazaar-com.service \
+              && curl -fsS --max-time 10 http://127.0.0.1:8001/api/products >/dev/null 2>&1; then
+              READY=1
+              break
+            fi
+            echo "BACKEND_STARTUP_WAIT attempt=$ATTEMPT"
+            sleep 5
+          done
+          if [ "$READY" -ne 1 ]; then
+            echo "BACKEND_HEALTH_CHECK_FAIL"
+            systemctl status kmt-bazaar-com.service --no-pager || true
+            journalctl -u kmt-bazaar-com.service -n 80 --no-pager || true
             rollback
             exit 1
           fi

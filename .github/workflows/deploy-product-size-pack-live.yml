@@ -96,7 +96,8 @@ jobs:
           assert.ok(vendor.includes("onPress={() => setForm((current) => ({ ...current, unit: option }))}"), "Add Product chip selection must update form state");
           assert.ok(vendor.includes("onPress={() => setEditProductForm((current) => ({ ...current, unit: option }))}"), "Edit Product chip selection must update form state");
           assert.ok(vendor.includes("...form,"), "Product request must spread saved form fields");
-          assert.ok(customer.includes('{p.unit ? `${p.unit} · ` : ""}'), "Customer detail must display unit");
+          assert.ok(customer.includes("selectedUnit"), "Customer detail must display the saved or selected unit.");
+          assert.ok(customer.includes("testID=\"product-size-pack-selector\""), "Customer detail must show selectable size/pack options.");
           console.log("PRODUCT_SIZE_PACK_UI_VALIDATION_PASS");
           NODE
 

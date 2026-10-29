@@ -1698,13 +1698,15 @@ async def _adjust_product_stock(product_id: str, quantity: int, variant_id=None,
         query = {
             "id": product_id,
             "variants": {"$elemMatch": variant_filter},
-            "is_available": {"$ne": False},
         }
+        if reserve:
+            query["is_available"] = {"$ne": False}
         update = {"$inc": {"variants.$.stock": delta, "stock": delta}}
     else:
-        query = {"id": product_id, "is_available": {"$ne": False}}
+        query = {"id": product_id}
         if reserve:
             query["stock"] = {"$gte": quantity}
+            query["is_available"] = {"$ne": False}
         update = {"$inc": {"stock": delta}}
     result = await db.products.update_one(query, update)
     return result.matched_count > 0
