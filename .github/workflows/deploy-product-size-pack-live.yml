@@ -6,7 +6,7 @@ on:
       - customer-live
     paths:
       - "frontend/app/vendor/products.tsx"
-      - "frontend/app/vendor/store/[id].tsx"
+      - "frontend/app/vendor/store/**"
       - "frontend/app/product/[id].tsx"
       - ".github/workflows/deploy-product-size-pack-live.yml"
   workflow_dispatch:
