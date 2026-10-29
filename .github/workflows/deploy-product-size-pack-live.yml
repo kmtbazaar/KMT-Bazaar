@@ -9,6 +9,7 @@ on:
       - "frontend/app/vendor/store/**"
       - "frontend/app/product/**"
       - "frontend/src/components/ProductCard.tsx"
+      - "frontend/app/(tabs)/home.tsx"
   workflow_dispatch:
     inputs:
       confirm_live_deploy:
@@ -100,6 +101,22 @@ jobs:
           assert.ok(customer.includes("selectedUnit"), "Customer detail must display the saved or selected unit.");
           assert.ok(customer.includes("testID=\"product-size-pack-selector\""), "Customer detail must show selectable size/pack options.");
           console.log("PRODUCT_SIZE_PACK_UI_VALIDATION_PASS");
+          NODE
+
+      - name: Validate day-night hut and chimney smoke hero
+        working-directory: frontend
+        run: |
+          node <<'NODE'
+          const assert = require("node:assert/strict");
+          const fs = require("node:fs");
+          const home = fs.readFileSync("app/(tabs)/home.tsx", "utf8");
+          assert.ok(home.includes("float day = smoothstep(5.1, 7.8, clock)"), "Daylight transition is missing");
+          assert.ok(home.includes("float moonVisible = max("), "Night moon transition is missing");
+          assert.ok(home.includes("float houseMainBody = boxMask(uv, vec2(0.335, 0.068)"), "Larger focal hut is missing");
+          assert.ok(home.includes("float stackBody = boxMask(uv, vec2(0.335, 0.227)"), "Visible chimney is missing");
+          assert.ok(home.includes("float smokeY = smoothstep(0.238, 0.278, uv.y)"), "Chimney smoke plume is missing");
+          assert.ok(home.includes("houseMainRoof") && home.includes("smokeStack: { position:"), "Native hut/chimney fallback is missing");
+          console.log("HERO_DAY_NIGHT_HUT_CHIMNEY_SMOKE_VALIDATION_PASS");
           NODE
 
       - name: Lint changed product screens

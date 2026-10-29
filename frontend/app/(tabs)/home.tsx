@@ -270,23 +270,23 @@ function NightSky() {
           mistColor = mix(mistColor, vec3(0.10, 0.16, 0.25), night * 0.60);
           sky = mix(sky, mistColor, mistBand * (0.15 + twilight * 0.16));
 
-          // Wind-torn smoke plume: billows widen, curl, drift, and fade into the upper cloud layer.
-          float smokeY = smoothstep(0.075, 0.145, uv.y) * (1.0 - smoothstep(0.47, 0.66, uv.y));
+          // Visible chimney smoke: starts at the stack, billows outward, drifts in the wind, and fades high into the sky.
+          float smokeY = smoothstep(0.238, 0.278, uv.y) * (1.0 - smoothstep(0.61, 0.75, uv.y));
           float smokeCenter = 0.335
-            + 0.034 * sin(uv.y * 14.0 - t * 2.2)
-            + 0.016 * sin(uv.y * 38.0 + t * 1.55)
-            + 0.008 * sin(uv.y * 72.0 - t * 1.9);
-          float smokeWidth = 0.008 + uv.y * 0.060;
+            + 0.029 * sin(uv.y * 13.0 - t * 2.0)
+            + 0.014 * sin(uv.y * 35.0 + t * 1.45)
+            + 0.007 * sin(uv.y * 69.0 - t * 1.75);
+          float smokeWidth = 0.010 + uv.y * 0.070;
           float smokeDistance = abs(uv.x - smokeCenter) / max(smokeWidth, 0.006);
           float smokeNoise = fbm(vec2(uv.x * 13.0 + t * 0.28, uv.y * 10.0 - t * 1.18));
           float smokeRimNoise = fbm(vec2(uv.x * 18.0 - t * 0.22, uv.y * 15.0 + t * 0.76));
-          float smokeCore = (1.0 - smoothstep(0.20, 1.17, smokeDistance)) * smoothstep(0.27, 0.70, smokeNoise) * smokeY;
-          float smokeRim = (1.0 - smoothstep(0.55, 1.62, smokeDistance)) * smoothstep(0.35, 0.74, smokeRimNoise) * smokeY;
-          vec3 smokeColor = mix(vec3(0.48, 0.54, 0.60), vec3(0.79, 0.81, 0.83), day);
+          float smokeCore = (1.0 - smoothstep(0.16, 1.12, smokeDistance)) * smoothstep(0.24, 0.66, smokeNoise) * smokeY;
+          float smokeRim = (1.0 - smoothstep(0.46, 1.58, smokeDistance)) * smoothstep(0.31, 0.72, smokeRimNoise) * smokeY;
+          vec3 smokeColor = mix(vec3(0.48, 0.54, 0.60), vec3(0.84, 0.87, 0.90), day);
           smokeColor = mix(smokeColor, vec3(0.83, 0.52, 0.43), twilight * 0.72);
-          smokeColor = mix(smokeColor, vec3(0.16, 0.21, 0.30), night * 0.72);
-          sky = mix(sky, smokeColor, smokeRim * 0.25);
-          sky = mix(sky, smokeColor * 0.80, smokeCore * (0.22 + night * 0.10));
+          smokeColor = mix(smokeColor, vec3(0.31, 0.37, 0.47), night * 0.72);
+          sky = mix(sky, smokeColor, smokeRim * 0.36);
+          sky = mix(sky, smokeColor * 0.82, smokeCore * (0.34 + night * 0.12));
 
           // Rolling landscape and a small distant exhaust stack anchor the plume in the scene.
           float hillA = fbm(vec2(uv.x * 2.1 + 3.0, 6.0));
@@ -353,7 +353,7 @@ function NightSky() {
 
           // A small village with a warm, thatched focal hut; its chimney anchors the drifting smoke.
           float houseLeftBody = boxMask(uv, vec2(0.12, 0.050), vec2(0.040, 0.028), 0.002);
-          float houseMainBody = boxMask(uv, vec2(0.335, 0.052), vec2(0.062, 0.031), 0.002);
+          float houseMainBody = boxMask(uv, vec2(0.335, 0.068), vec2(0.078, 0.048), 0.002);
           float houseRightBody = boxMask(uv, vec2(0.66, 0.045), vec2(0.045, 0.027), 0.002);
           float houseFarRightBody = boxMask(uv, vec2(0.855, 0.035), vec2(0.034, 0.019), 0.002);
           float houseBodies = max(max(houseLeftBody, houseMainBody), max(houseRightBody, houseFarRightBody));
@@ -365,7 +365,7 @@ function NightSky() {
           sky = mix(sky, hutWallColor, houseMainBody * 0.98);
 
           float roofLeft = roofMask(uv, 0.12, 0.076, 0.122, 0.052);
-          float roofMain = roofMask(uv, 0.335, 0.081, 0.139, 0.071);
+          float roofMain = roofMask(uv, 0.335, 0.116, 0.220, 0.104);
           float roofRight = roofMask(uv, 0.66, 0.070, 0.119, 0.057);
           float roofFarRight = roofMask(uv, 0.855, 0.052, 0.090, 0.041);
           float houseRoofs = max(max(roofLeft, roofMain), max(roofRight, roofFarRight));
@@ -377,25 +377,28 @@ function NightSky() {
           thatchColor = mix(thatchColor, vec3(0.30, 0.085, 0.052), dusk * 0.48);
           sky = mix(sky, thatchColor, roofMain * 0.98);
 
-          float eave = boxMask(uv, vec2(0.335, 0.081), vec2(0.073, 0.003), 0.0015);
+          float eave = boxMask(uv, vec2(0.335, 0.116), vec2(0.106, 0.004), 0.0015);
           sky = mix(sky, mix(vec3(0.25, 0.14, 0.075), vec3(0.018, 0.018, 0.026), night * 0.88), eave * 0.88);
 
-          float hutDoor = boxMask(uv, vec2(0.335, 0.038), vec2(0.010, 0.018), 0.0015);
+          float hutDoor = boxMask(uv, vec2(0.335, 0.046), vec2(0.012, 0.025), 0.0015);
           sky = mix(sky, mix(vec3(0.075, 0.045, 0.026), vec3(0.006, 0.009, 0.016), night * 0.90), hutDoor * 0.95);
 
           float houseWindows = max(
             max(boxMask(uv, vec2(0.106, 0.046), vec2(0.007, 0.009), 0.001),
-                boxMask(uv, vec2(0.306, 0.048), vec2(0.007, 0.009), 0.001)),
-            max(max(boxMask(uv, vec2(0.365, 0.048), vec2(0.007, 0.009), 0.001),
+                boxMask(uv, vec2(0.287, 0.066), vec2(0.007, 0.010), 0.001)),
+            max(max(boxMask(uv, vec2(0.383, 0.066), vec2(0.007, 0.010), 0.001),
                     boxMask(uv, vec2(0.645, 0.041), vec2(0.007, 0.008), 0.001)),
                 boxMask(uv, vec2(0.672, 0.041), vec2(0.007, 0.008), 0.001))
           );
           vec3 windowColor = mix(vec3(0.84, 0.74, 0.53), vec3(1.0, 0.52, 0.16), night);
           sky = mix(sky, windowColor, houseWindows * (0.10 + night * 0.76));
 
-          float stackBody = boxMask(uv, vec2(0.335, 0.152), vec2(0.008, 0.021), 0.002);
-          float stackCap = boxMask(uv, vec2(0.335, 0.174), vec2(0.012, 0.003), 0.001);
-          sky = mix(sky, vec3(0.028, 0.037, 0.047), max(stackBody, stackCap));
+          float stackBody = boxMask(uv, vec2(0.335, 0.227), vec2(0.010, 0.030), 0.002);
+          float stackCap = boxMask(uv, vec2(0.335, 0.257), vec2(0.014, 0.004), 0.001);
+          vec3 chimneyColor = mix(vec3(0.29, 0.12, 0.075), vec3(0.075, 0.085, 0.11), night * 0.82);
+          sky = mix(sky, chimneyColor, max(stackBody, stackCap));
+          float stackHighlight = boxMask(uv, vec2(0.331, 0.226), vec2(0.0025, 0.020), 0.001);
+          sky = mix(sky, mix(vec3(0.52, 0.25, 0.15), vec3(0.22, 0.25, 0.31), night * 0.82), stackHighlight * 0.85);
 
           // Gentle cinematic vignette; keep the whole scene readable behind the search controls.
           vec2 centered = uv - 0.5;
@@ -761,10 +764,10 @@ function NightSky() {
         <View style={[s.houseWindow, { left: 9, backgroundColor: houseWindowColor }]} />
       </View>
       <View style={[s.house, s.houseCenter]}>
-        <View style={[s.houseRoof, { borderBottomColor: houseRoofColor }]} />
-        <View style={[s.houseBody, { backgroundColor: houseBodyColor }]} />
-        <View style={[s.houseWindow, { left: 11, backgroundColor: houseWindowColor }]} />
-        <View style={[s.houseWindow, { right: 11, backgroundColor: houseWindowColor }]} />
+        <View style={[s.houseRoof, s.houseMainRoof, { borderBottomColor: houseRoofColor }]} />
+        <View style={[s.houseBody, s.houseMainBody, { backgroundColor: houseBodyColor }]} />
+        <View style={[s.houseWindow, s.houseMainWindow, { left: 14, backgroundColor: houseWindowColor }]} />
+        <View style={[s.houseWindow, s.houseMainWindow, { right: 14, backgroundColor: houseWindowColor }]} />
       </View>
       <View style={[s.house, s.houseRight]}>
         <View style={[s.houseRoof, { borderBottomColor: houseRoofColor }]} />
@@ -786,10 +789,10 @@ function NightSky() {
           },
         ]}
       >
-        <View style={[s.smokePuff, { width: 27, height: 25, left: 39, top: 91, opacity: 0.68 }]} />
-        <View style={[s.smokePuff, { width: 37, height: 32, left: 30, top: 68, opacity: 0.56 }]} />
-        <View style={[s.smokePuff, { width: 47, height: 42, left: 23, top: 43, opacity: 0.43 }]} />
-        <View style={[s.smokePuff, { width: 56, height: 49, left: 19, top: 19, opacity: 0.28 }]} />
+        <View style={[s.smokePuff, { width: 27, height: 25, left: 39, top: 91, opacity: 0.80 }]} />
+        <View style={[s.smokePuff, { width: 37, height: 32, left: 30, top: 68, opacity: 0.68 }]} />
+        <View style={[s.smokePuff, { width: 47, height: 42, left: 23, top: 43, opacity: 0.54 }]} />
+        <View style={[s.smokePuff, { width: 56, height: 49, left: 19, top: 19, opacity: 0.40 }]} />
       </Animated.View>
       <View style={s.smokeStack} />
     </View>
@@ -1592,15 +1595,18 @@ const s = StyleSheet.create({
   horizonSilhouette: { position: "absolute", left: 0, right: 0, bottom: 0, height: 18, backgroundColor: "rgba(13,28,38,0.58)" },
   house: { position: "absolute", bottom: 1, height: 22, zIndex: 3 },
   houseLeft: { left: "8%", width: 34, height: 20 },
-  houseCenter: { left: "28%", width: 44, height: 22 },
+  houseCenter: { left: "25%", width: 66, height: 34 },
+  houseMainRoof: { left: 1, bottom: 13, borderLeftWidth: 32, borderRightWidth: 32, borderBottomWidth: 18 },
+  houseMainBody: { left: 5, right: 5, bottom: 0, height: 18 },
+  houseMainWindow: { bottom: 5, width: 6, height: 7 },
   houseRight: { right: "28%", width: 40, height: 19 },
   houseFarRight: { right: "5%", width: 30, height: 17 },
   houseRoof: { position: "absolute", left: 0, bottom: 10, width: 0, height: 0, borderLeftWidth: 17, borderRightWidth: 17, borderBottomWidth: 10, borderLeftColor: "transparent", borderRightColor: "transparent" },
   houseBody: { position: "absolute", left: 4, right: 4, bottom: 0, height: 12, borderTopLeftRadius: 1, borderTopRightRadius: 1 },
   houseWindow: { position: "absolute", bottom: 3, width: 4, height: 5, borderRadius: 1 },
-  smokeColumn: { position: "absolute", left: "21%", bottom: 20, width: 94, height: 118 },
-  smokePuff: { position: "absolute", borderRadius: 50, backgroundColor: "rgba(206,218,226,0.35)", shadowColor: "#CBD5E1", shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.28, shadowRadius: 12, elevation: 1 },
-  smokeStack: { position: "absolute", bottom: 12, left: "32.5%", width: 7, height: 12, backgroundColor: "#263442", borderTopWidth: 2, borderTopColor: "#526170" },
+  smokeColumn: { position: "absolute", left: "20%", bottom: 20, width: 94, height: 118 },
+  smokePuff: { position: "absolute", borderRadius: 50, backgroundColor: "rgba(206,218,226,0.50)", shadowColor: "#CBD5E1", shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.34, shadowRadius: 14, elevation: 1 },
+  smokeStack: { position: "absolute", bottom: 20, left: "32.5%", width: 8, height: 14, backgroundColor: "#263442", borderTopWidth: 2, borderTopColor: "#526170" },
   heroTree: { position: "absolute", bottom: 0, width: 62, height: 82, zIndex: 2, transformOrigin: "bottom" } as any,
   heroTreeLeft: { left: "1%" },
   heroTreeRight: { right: "2%", width: 58, height: 72 },
