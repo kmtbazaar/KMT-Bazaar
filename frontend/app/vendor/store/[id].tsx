@@ -39,6 +39,8 @@ export default function VendorStoreDetail() {
   const [categories, setCategories] = useState<any[]>([]);
   const [itemCategories, setItemCategories] = useState<any[]>([]);
   const [itemCategoryName, setItemCategoryName] = useState("");
+  const [productItemCategoryName, setProductItemCategoryName] = useState("");
+  const [savingProductItemCategory, setSavingProductItemCategory] = useState(false);
   const [editingItemCategoryId, setEditingItemCategoryId] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -142,6 +144,53 @@ export default function VendorStoreDetail() {
       await load();
     } catch (e: any) {
       Alert.alert("Error", e?.message || "Could not save item category.");
+    }
+  };
+
+  const createItemCategoryForProduct = async (target: "add" | "edit") => {
+    const name = productItemCategoryName.trim();
+    if (!name) {
+      Alert.alert("Required", "Enter a new item category name.");
+      return;
+    }
+
+    const existing = itemCategories.find(
+      (item: any) => String(item.name || "").trim().toLowerCase() === name.toLowerCase()
+    );
+    if (existing) {
+      if (target === "add") {
+        setForm((prev) => ({ ...prev, item_category: existing.name, item_category_id: existing.id }));
+      } else {
+        setEditProductForm((prev) => ({ ...prev, item_category: existing.name, item_category_id: existing.id }));
+      }
+      setProductItemCategoryName("");
+      return;
+    }
+
+    setSavingProductItemCategory(true);
+    try {
+      await vendorApi.createStoreItemCategory(id, { name });
+      const refreshed = await vendorApi.storeItemCategories(id);
+      const nextCategories = Array.isArray(refreshed) ? refreshed : [];
+      setItemCategories(nextCategories);
+      const created = nextCategories.find(
+        (item: any) => String(item.name || "").trim().toLowerCase() === name.toLowerCase()
+      );
+      if (!created) {
+        Alert.alert("Saved", "Category was created. Please select it from the category choices.");
+        setProductItemCategoryName("");
+        return;
+      }
+      if (target === "add") {
+        setForm((prev) => ({ ...prev, item_category: created.name, item_category_id: created.id }));
+      } else {
+        setEditProductForm((prev) => ({ ...prev, item_category: created.name, item_category_id: created.id }));
+      }
+      setProductItemCategoryName("");
+    } catch (e: any) {
+      Alert.alert("Error", e?.message || "Could not create item category.");
+    } finally {
+      setSavingProductItemCategory(false);
     }
   };
 
@@ -629,11 +678,14 @@ export default function VendorStoreDetail() {
             <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 10 }}>
               {/* Product Name */}
               <TextInput
-                placeholder="Name"
+                testID="vendor-store-add-product-name"
+                placeholder="Product name (enter full name)"
                 placeholderTextColor="#9CA3AF"
                 value={form.name}
                 onChangeText={(t) => setForm({ ...form, name: t })}
-                style={[s.inputCompact, s.inputHighlighted]}
+                style={[s.inputCompact, s.inputHighlighted, s.productNameInput]}
+                multiline
+                textAlignVertical="top"
               />
 
               <View style={s.unitPickerPanel} testID="vendor-store-add-product-size-pack-picker">
@@ -686,6 +738,32 @@ export default function VendorStoreDetail() {
                       No item categories are configured for this shop category yet. Add them in Store Item Categories first.
                     </Text>
                   )}
+                  <View style={s.createItemCategoryRow}>
+                    <TextInput
+                      testID="vendor-store-add-new-item-category-name"
+                      placeholder="New item category (e.g. Jeans)"
+                      placeholderTextColor="#047857"
+                      value={productItemCategoryName}
+                      onChangeText={setProductItemCategoryName}
+                      style={[s.inputCompact, s.createItemCategoryInput]}
+                      onSubmitEditing={() => createItemCategoryForProduct("add")}
+                      returnKeyType="done"
+                    />
+                    <Pressable
+                      testID="vendor-store-add-new-item-category"
+                      accessibilityRole="button"
+                      accessibilityLabel="Create and select new item category"
+                      style={[s.createItemCategoryButton, savingProductItemCategory && { opacity: 0.65 }]}
+                      onPress={() => createItemCategoryForProduct("add")}
+                      disabled={savingProductItemCategory}
+                    >
+                      {savingProductItemCategory ? (
+                        <ActivityIndicator color="#FFFFFF" size="small" />
+                      ) : (
+                        <MaterialCommunityIcons name="plus" size={20} color="#FFFFFF" />
+                      )}
+                    </Pressable>
+                  </View>
                 </View>
               ) : null}
 
@@ -807,11 +885,14 @@ export default function VendorStoreDetail() {
             <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 10 }}>
               {/* Product Name */}
               <TextInput
-                placeholder="Name"
+                testID="vendor-store-edit-product-name"
+                placeholder="Product name (enter full name)"
                 placeholderTextColor="#9CA3AF"
                 value={editProductForm.name}
                 onChangeText={(t) => setEditProductForm({ ...editProductForm, name: t })}
-                style={[s.inputCompact, s.inputHighlighted]}
+                style={[s.inputCompact, s.inputHighlighted, s.productNameInput]}
+                multiline
+                textAlignVertical="top"
               />
 
               <View style={s.unitPickerPanel} testID="vendor-store-edit-product-size-pack-picker">
@@ -870,6 +951,32 @@ export default function VendorStoreDetail() {
                       No item categories are configured for this shop category yet. Add them in Store Item Categories first.
                     </Text>
                   )}
+                  <View style={s.createItemCategoryRow}>
+                    <TextInput
+                      testID="vendor-store-edit-new-item-category-name"
+                      placeholder="New item category (e.g. Jeans)"
+                      placeholderTextColor="#047857"
+                      value={productItemCategoryName}
+                      onChangeText={setProductItemCategoryName}
+                      style={[s.inputCompact, s.createItemCategoryInput]}
+                      onSubmitEditing={() => createItemCategoryForProduct("edit")}
+                      returnKeyType="done"
+                    />
+                    <Pressable
+                      testID="vendor-store-edit-new-item-category"
+                      accessibilityRole="button"
+                      accessibilityLabel="Create and select new item category"
+                      style={[s.createItemCategoryButton, savingProductItemCategory && { opacity: 0.65 }]}
+                      onPress={() => createItemCategoryForProduct("edit")}
+                      disabled={savingProductItemCategory}
+                    >
+                      {savingProductItemCategory ? (
+                        <ActivityIndicator color="#FFFFFF" size="small" />
+                      ) : (
+                        <MaterialCommunityIcons name="plus" size={20} color="#FFFFFF" />
+                      )}
+                    </Pressable>
+                  </View>
                 </View>
               ) : null}
 
@@ -1262,6 +1369,14 @@ const s = StyleSheet.create({
     borderColor: "#000",
     borderWidth: 1.2,
   },
+  productNameInput: {
+    minHeight: 58,
+    height: 64,
+    paddingTop: 11,
+    paddingBottom: 10,
+    lineHeight: 19,
+    marginBottom: 10,
+  },
   sectionLabel: { fontSize: 13, fontWeight: "700", color: "#000", marginBottom: 6, marginTop: 2 },
 
   // Image Upload Row Compact
@@ -1341,6 +1456,25 @@ const s = StyleSheet.create({
   itemCategoryTitle: { fontSize: 13, fontWeight: "900", color: "#065F46", marginBottom: 4 },
   itemCategoryPickerHint: { fontSize: 11, lineHeight: 15, color: "#047857", marginBottom: 8 },
   itemCategoryPickerEmpty: { fontSize: 11, lineHeight: 15, color: "#065F46" },
+  createItemCategoryRow: { flexDirection: "row", alignItems: "center", gap: 7, marginTop: 9 },
+  createItemCategoryInput: {
+    flex: 1,
+    minWidth: 0,
+    width: 0,
+    height: 40,
+    marginBottom: 0,
+    borderColor: "#6EE7B7",
+    backgroundColor: "#FFFFFF",
+    color: "#064E3B",
+  },
+  createItemCategoryButton: {
+    width: 42,
+    height: 40,
+    borderRadius: 10,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#047857",
+  },
   itemCategoryRow: {
     flexDirection: "row",
     flexWrap: "wrap",
