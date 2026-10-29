@@ -21,6 +21,11 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import ProductImagesUploader from "@/src/components/ProductImagesUploader";
 
+const PRODUCT_UNIT_OPTIONS = [
+  "XS", "S", "M", "L", "XL", "XXL",
+  "1 pc", "250 g", "500 g", "1 kg", "250 ml", "500 ml", "750 ml", "1 L", "2 L",
+];
+
 export default function VendorStoreDetail() {
   const router = useRouter();
   const params = useLocalSearchParams();
@@ -623,6 +628,29 @@ export default function VendorStoreDetail() {
                 style={[s.inputCompact, s.inputHighlighted]}
               />
 
+              <View style={s.unitPickerPanel} testID="vendor-store-add-product-size-pack-picker">
+                <Text style={s.sectionLabel}>Choose product size / pack</Text>
+                <Text style={s.unitPickerHint}>Tap one option. Your selection fills the Unit field.</Text>
+                <View style={s.unitChipContainer}>
+                  {PRODUCT_UNIT_OPTIONS.map((option) => {
+                    const active = form.unit.trim().toLowerCase() === option.toLowerCase();
+                    return (
+                      <Pressable
+                        key={option}
+                        accessibilityRole="button"
+                        accessibilityLabel={`Select product unit ${option}`}
+                        accessibilityState={{ selected: active }}
+                        testID={`vendor-store-add-product-unit-${option.toLowerCase().replaceAll(" ", "-")}`}
+                        style={[s.catChip, s.unitChip, active && s.catChipActive]}
+                        onPress={() => setForm((current) => ({ ...current, unit: option }))}
+                      >
+                        <Text style={[s.catChipText, active && s.catChipTextActive]}>{option}</Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              </View>
+
               {store?.category_id ? (
                 <View style={s.itemCategorySection}>
                   <Text style={s.fieldLabel}>
@@ -775,6 +803,29 @@ export default function VendorStoreDetail() {
                 onChangeText={(t) => setEditProductForm({ ...editProductForm, name: t })}
                 style={[s.inputCompact, s.inputHighlighted]}
               />
+
+              <View style={s.unitPickerPanel} testID="vendor-store-edit-product-size-pack-picker">
+                <Text style={s.sectionLabel}>Choose product size / pack</Text>
+                <Text style={s.unitPickerHint}>Tap one option. Your selection fills the Unit field.</Text>
+                <View style={s.unitChipContainer}>
+                  {PRODUCT_UNIT_OPTIONS.map((option) => {
+                    const active = editProductForm.unit.trim().toLowerCase() === option.toLowerCase();
+                    return (
+                      <Pressable
+                        key={option}
+                        accessibilityRole="button"
+                        accessibilityLabel={`Select product unit ${option}`}
+                        accessibilityState={{ selected: active }}
+                        testID={`vendor-store-edit-product-unit-${option.toLowerCase().replaceAll(" ", "-")}`}
+                        style={[s.catChip, s.unitChip, active && s.catChipActive]}
+                        onPress={() => setEditProductForm((current) => ({ ...current, unit: option }))}
+                      >
+                        <Text style={[s.catChipText, active && s.catChipTextActive]}>{option}</Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              </View>
 
               {store?.category_id ? (
                 <View style={s.itemCategorySection}>
@@ -1204,6 +1255,28 @@ const s = StyleSheet.create({
     borderRadius: 16,
   },
   pickBtnText: { color: "#EA580C", fontWeight: "700", fontSize: 13 },
+
+  // Product size/pack picker shown at the top of both add/edit forms.
+  unitPickerPanel: {
+    backgroundColor: "#FFF7ED",
+    borderWidth: 1,
+    borderColor: "#FDBA74",
+    borderRadius: 14,
+    padding: 10,
+    marginBottom: 10,
+  },
+  unitPickerHint: { fontSize: 11, lineHeight: 15, color: "#7C2D12", marginTop: -3, marginBottom: 8 },
+  unitChipContainer: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
+  unitChip: {
+    minHeight: 36,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#FFFFFF",
+    borderColor: "#EA580C",
+    borderWidth: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+  },
 
   // Categories Chips
   catContainer: { flexDirection: "row", flexWrap: "wrap", gap: 6, marginBottom: 8 },
