@@ -23,7 +23,7 @@ import ProductCard from "@/src/components/ProductCard";
 import CheckoutBar from "@/src/components/CheckoutBar";
 
 const { width } = Dimensions.get("window");
-const BANNER_W = width;
+const BANNER_W = width - 32;
 
 // Custom Theme Palette: Clean Pure White, Sky Blue Header & Vibrant Orange
 const THEME = {
@@ -459,7 +459,7 @@ export default function Home() {
           showsHorizontalScrollIndicator={false}
           snapToInterval={BANNER_W + 12}
           decelerationRate="fast"
-          contentContainerStyle={{ paddingHorizontal: 0, paddingTop: SPACING.md, paddingBottom: SPACING.sm, gap: 12 }}
+          contentContainerStyle={{ paddingHorizontal: SPACING.lg, paddingTop: SPACING.md, paddingBottom: SPACING.sm, gap: 12 }}
           keyExtractor={(it) => String(it.id)}
           ref={(ref) => {
             if (banners.length > 1 && ref && typeof (ref as any).scrollToIndex === "function") {
