@@ -711,7 +711,6 @@ export default function VendorStoreDetail() {
                 </View>
               </View>
 
-              {store?.category_id ? (
                 <View style={s.itemCategoryPanel} testID="vendor-store-add-product-item-category-picker">
                   <Text style={s.itemCategoryTitle}>Choose item category</Text>
                   <Text style={s.itemCategoryPickerHint}>Choose the category that best matches this product.</Text>
@@ -765,7 +764,6 @@ export default function VendorStoreDetail() {
                     </Pressable>
                   </View>
                 </View>
-              ) : null}
 
               {/* Price & MRP Row */}
               <View style={s.rowCompact}>
@@ -918,7 +916,6 @@ export default function VendorStoreDetail() {
                 </View>
               </View>
 
-              {store?.category_id ? (
                 <View style={s.itemCategoryPanel} testID="vendor-store-edit-product-item-category-picker">
                   <Text style={s.itemCategoryTitle}>Choose item category</Text>
                   <Text style={s.itemCategoryPickerHint}>Choose the category that best matches this product.</Text>
@@ -978,7 +975,6 @@ export default function VendorStoreDetail() {
                     </Pressable>
                   </View>
                 </View>
-              ) : null}
 
               {/* Price & MRP Row */}
               <View style={s.rowCompact}>
