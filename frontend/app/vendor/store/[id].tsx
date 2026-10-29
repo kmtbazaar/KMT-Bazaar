@@ -662,7 +662,7 @@ export default function VendorStoreDetail() {
               {store?.category_id ? (
                 <View style={s.itemCategoryPanel} testID="vendor-store-add-product-item-category-picker">
                   <Text style={s.itemCategoryTitle}>Choose item category</Text>
-                  <Text style={s.itemCategoryHint}>Choose the category that best matches this product.</Text>
+                  <Text style={s.itemCategoryPickerHint}>Choose the category that best matches this product.</Text>
                   {itemCategories.length ? (
                     <View style={s.itemCategoryRow}>
                       {itemCategories.map((item: any) => {
@@ -682,7 +682,7 @@ export default function VendorStoreDetail() {
                       })}
                     </View>
                   ) : (
-                    <Text style={s.itemCategoryEmpty}>
+                    <Text style={s.itemCategoryPickerEmpty}>
                       No item categories are configured for this shop category yet. Add them in Store Item Categories first.
                     </Text>
                   )}
@@ -840,7 +840,7 @@ export default function VendorStoreDetail() {
               {store?.category_id ? (
                 <View style={s.itemCategoryPanel} testID="vendor-store-edit-product-item-category-picker">
                   <Text style={s.itemCategoryTitle}>Choose item category</Text>
-                  <Text style={s.itemCategoryHint}>Choose the category that best matches this product.</Text>
+                  <Text style={s.itemCategoryPickerHint}>Choose the category that best matches this product.</Text>
                   {itemCategories.length ? (
                     <View style={s.itemCategoryRow}>
                       {itemCategories.map((item: any) => {
@@ -866,7 +866,7 @@ export default function VendorStoreDetail() {
                       })}
                     </View>
                   ) : (
-                    <Text style={s.itemCategoryEmpty}>
+                    <Text style={s.itemCategoryPickerEmpty}>
                       No item categories are configured for this shop category yet. Add them in Store Item Categories first.
                     </Text>
                   )}
@@ -1339,8 +1339,8 @@ const s = StyleSheet.create({
     marginBottom: 10,
   },
   itemCategoryTitle: { fontSize: 13, fontWeight: "900", color: "#065F46", marginBottom: 4 },
-  itemCategoryHint: { fontSize: 11, lineHeight: 15, color: "#047857", marginBottom: 8 },
-  itemCategoryEmpty: { fontSize: 11, lineHeight: 15, color: "#065F46" },
+  itemCategoryPickerHint: { fontSize: 11, lineHeight: 15, color: "#047857", marginBottom: 8 },
+  itemCategoryPickerEmpty: { fontSize: 11, lineHeight: 15, color: "#065F46" },
   itemCategoryRow: {
     flexDirection: "row",
     flexWrap: "wrap",
