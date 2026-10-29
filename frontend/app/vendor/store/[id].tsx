@@ -871,7 +871,7 @@ export default function VendorStoreDetail() {
                 <View style={s.variantManagerHeader}>
                   <View style={{ flex: 1 }}>
                     <Text style={s.variantManagerTitle}>Sell in more sizes</Text>
-                    <Text style={s.variantManagerHint}>Each option gets its own price and stock.</Text>
+                    <Text style={s.variantManagerHint}>Add each size/pack with its own label, price, MRP and stock.</Text>
                   </View>
                   <Pressable testID="vendor-store-add-variant" accessibilityRole="button"
                     onPress={() => setAddVariantDrafts((current) => [...current, { id: "", unit: "", price: "", mrp: "", stock: "10" }])}
@@ -1124,7 +1124,7 @@ export default function VendorStoreDetail() {
                 <View style={s.variantManagerHeader}>
                   <View style={{ flex: 1 }}>
                     <Text style={s.variantManagerTitle}>Sell in more sizes</Text>
-                    <Text style={s.variantManagerHint}>Each option gets its own price and stock.</Text>
+                    <Text style={s.variantManagerHint}>Add each size/pack with its own label, price, MRP and stock.</Text>
                   </View>
                   <Pressable testID="vendor-store-edit-variant" accessibilityRole="button"
                     onPress={() => setEditVariantDrafts((current) => [...current, { id: "", unit: "", price: "", mrp: "", stock: "10" }])}
