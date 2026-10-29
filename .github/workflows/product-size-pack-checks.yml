@@ -8,6 +8,8 @@ on:
       - "frontend/app/vendor/products.tsx"
       - "frontend/app/vendor/store/**"
       - "frontend/app/product/**"
+      - "frontend/src/components/ProductCard.tsx"
+      - "frontend/scripts/validate-product-grid-layout.js"
       - ".github/workflows/product-size-pack-checks.yml"
 
 permissions:
@@ -36,6 +38,7 @@ jobs:
 
           const vendor = fs.readFileSync("app/vendor/store/[id].tsx", "utf8");
           const customer = fs.readFileSync("app/product/[id].tsx", "utf8");
+          const productCard = fs.readFileSync("src/components/ProductCard.tsx", "utf8");
 
           const options = [
             "XS", "S", "M", "L", "XL", "XXL",
@@ -70,11 +73,14 @@ jobs:
           assert.ok(customer.includes("selectedVariant?.price") && customer.includes("selectedVariant?.stock"), "Selected variant price and stock must drive customer detail.");
           assert.ok(customer.includes("await add(p.id, 1, selectedVariant?.id)"), "Customer Add to Cart must send the selected variant ID.");
           assert.ok(customer.includes("selectedPrice"), "Customer price and bottom cart CTA must reflect the selected variant.");
+          assert.ok(customer.includes('width: "22%"') && customer.includes('maxWidth: "24%"'), "Four size/pack options should fit across without overlap.");
+          assert.ok(productCard.includes('fontSize: 11,\n    fontWeight: "700"'), "Product unit label must be larger and bolder.");
+          assert.ok(productCard.includes("minWidth: 48,\n    height: 34,"), "Add button should be taller with a usable minimum width.");
 
           console.log("PRODUCT_SIZE_PACK_UI_VALIDATION_PASS");
           console.log(`Validated ${options.length} unit options, variant prices/stock, and customer selector/cart wiring.`);
           NODE
       - name: Lint changed product UI files
-        run: npx eslint "app/vendor/store/[id].tsx" "app/vendor/products.tsx" "app/product/[id].tsx" --no-cache
+        run: npx eslint "app/vendor/store/[id].tsx" "app/vendor/products.tsx" "app/product/[id].tsx" "src/components/ProductCard.tsx" --no-cache
       - name: Build web app
         run: npm run build:web

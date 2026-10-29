@@ -522,10 +522,11 @@ const s = StyleSheet.create({
   },
 
   unit: {
-    fontSize: 9,
+    fontSize: 11,
+    fontWeight: "700",
     color: COLORS.textMuted,
     marginTop: 2,
-    height: 11,
+    height: 14,
   },
 
   priceRow: {
@@ -562,12 +563,13 @@ const s = StyleSheet.create({
     justifyContent: "center",
     borderWidth: 1.5,
     borderColor: COLORS.accent,
-    paddingHorizontal: 6,
-    paddingVertical: 4,
+    paddingHorizontal: 7,
+    paddingVertical: 5,
     borderRadius: RADIUS.sm,
     backgroundColor: COLORS.accentLight,
     gap: 2,
-    height: 30,
+    minWidth: 48,
+    height: 34,
   },
 
   addBtnDisabled: {
@@ -578,7 +580,7 @@ const s = StyleSheet.create({
   addText: {
     color: COLORS.accent,
     fontWeight: "800",
-    fontSize: 10.5,
+    fontSize: 11,
   },
 
   stepper: {
@@ -587,12 +589,12 @@ const s = StyleSheet.create({
     backgroundColor: COLORS.accent,
     borderRadius: RADIUS.sm,
     paddingHorizontal: 2,
-    height: 30,
+    height: 34,
   },
 
   stepBtn: {
     width: 21,
-    height: 28,
+    height: 32,
     alignItems: "center",
     justifyContent: "center",
   },

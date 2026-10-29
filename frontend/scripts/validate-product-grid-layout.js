@@ -57,6 +57,13 @@ assert.match(store, /filteredProducts\.map\(\(item: any\) => \([\s\S]*<StoreProd
 assert.match(store, /productGrid:\s*\{[\s\S]*flexDirection:\s*"row"[\s\S]*flexWrap:\s*"wrap"/);
 assert.doesNotMatch(store, /<FlatList|removeClippedSubviews=\{true\}/);
 
+assert.match(productCard, /unit:\s*\{\s*fontSize:\s*11,\s*fontWeight:\s*"700"/,
+  "Product unit labels should be readable and visibly emphasized.");
+assert.match(productCard, /addBtn:\s*\{[\s\S]*?minWidth:\s*48,[\s\S]*?height:\s*34,/,
+  "The main Add button should be taller and keep a minimum tap width.");
+assert.match(productCard, /stepper:\s*\{[\s\S]*?height:\s*34,/,
+  "The quantity stepper should stay vertically aligned with the Add button.");
+
 assert.match(
   productCard,
   /cardCompact:\s*\{\s*width:\s*"100%"[\s\S]*?flex:\s*0[\s\S]*?minWidth:\s*0[\s\S]*?margin:\s*0[\s\S]*?alignSelf:\s*"stretch"/,

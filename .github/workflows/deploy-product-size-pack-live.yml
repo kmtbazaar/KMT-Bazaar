@@ -8,6 +8,7 @@ on:
       - "frontend/app/vendor/products.tsx"
       - "frontend/app/vendor/store/**"
       - "frontend/app/product/**"
+      - "frontend/src/components/ProductCard.tsx"
   workflow_dispatch:
     inputs:
       confirm_live_deploy:
@@ -103,7 +104,7 @@ jobs:
 
       - name: Lint changed product screens
         working-directory: frontend
-        run: npx eslint "app/vendor/store/[id].tsx" "app/vendor/products.tsx" "app/product/[id].tsx" --no-cache
+        run: npx eslint "app/vendor/store/[id].tsx" "app/vendor/products.tsx" "app/product/[id].tsx" "src/components/ProductCard.tsx" --no-cache
 
       - name: Build web app
         working-directory: frontend
