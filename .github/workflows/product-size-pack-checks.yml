@@ -51,6 +51,18 @@ jobs:
           assert.ok(vendor.includes("onPress={() => setForm((current) => ({ ...current, unit: option }))}"), "Selecting a chip in Add Product must update the unit.");
           assert.ok(vendor.includes("vendor-store-edit-product-size-pack-picker"), "Store vendor Edit Product screen must render the size/pack picker.");
           assert.ok(vendor.includes("onPress={() => setEditProductForm((current) => ({ ...current, unit: option }))}"), "Selecting a chip in Edit Product must update the unit.");
+          assert.ok(vendor.includes("vendor-store-add-product-item-category-picker"), "Add Product must render the distinct item-category box.");
+          assert.ok(vendor.includes("vendor-store-edit-product-item-category-picker"), "Edit Product must render the distinct item-category box.");
+          assert.ok(vendor.includes("vendor-store-add-new-item-category-name"), "Add Product must include a new item-category name field.");
+          assert.ok(vendor.includes("vendor-store-add-new-item-category"), "Add Product must include a create-category button.");
+          assert.ok(vendor.includes("vendor-store-edit-new-item-category-name"), "Edit Product must include a new item-category name field.");
+          assert.ok(vendor.includes("vendor-store-edit-new-item-category"), "Edit Product must include a create-category button.");
+          assert.ok(vendor.includes("createItemCategoryForProduct"), "Creating a category from the product form must be supported.");
+          assert.ok(vendor.includes('testID="vendor-store-add-product-name"') && vendor.includes('testID="vendor-store-edit-product-name"'), "Full product name fields must exist in Add/Edit forms.");
+          assert.ok(vendor.includes("productNameInput") && vendor.includes("multiline"), "Long product names must be viewable in the name field.");
+          assert.ok(vendor.includes("vendor-store-add-product-shop-category") && vendor.includes("vendor-store-edit-product-shop-category"), "Shop category must remain in the top-right header.");
+          assert.ok(vendor.includes('backgroundColor: "#ECFDF5"'), "Item category panel must retain its distinct color.");
+
           assert.ok(vendor.includes("...form,") && vendor.includes('unit: "1 pc"'), "Product payload must retain the selected unit through the existing form spread.");
           assert.ok(customer.includes('{p.unit ? `${p.unit} · ` : ""}'), "Customer product detail must display the saved unit.");
 
