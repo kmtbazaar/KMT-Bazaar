@@ -7,7 +7,7 @@ on:
     paths:
       - "frontend/app/vendor/products.tsx"
       - "frontend/app/vendor/store/**"
-      - "frontend/app/product/[id].tsx"
+      - "frontend/app/product/**"
   workflow_dispatch:
     inputs:
       confirm_live_deploy:

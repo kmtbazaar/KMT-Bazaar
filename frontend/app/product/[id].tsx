@@ -326,7 +326,7 @@ export default function Product() {
             <View style={s.variantSelectorHeader}>
               <View style={{ flex: 1 }}>
                 <Text style={s.variantSelectorTitle}>Choose size / pack</Text>
-                <Text style={s.variantSelectorSubtitle}>Tap an option — price and stock update instantly</Text>
+                <Text style={s.variantSelectorSubtitle}>Choose your pack — price and live stock update instantly</Text>
               </View>
               <MaterialCommunityIcons name="package-variant" size={23} color={COLORS.accent} />
             </View>
