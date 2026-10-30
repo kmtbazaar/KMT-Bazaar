@@ -112,7 +112,7 @@ export default function Index() {
         duration: 800,
         useNativeDriver: true,
       }).start();
-    }, 5200);
+    }, 6000);
 
     return () => clearTimeout(timer);
   }, [isLanguageReady]);
@@ -238,11 +238,12 @@ const styles = StyleSheet.create({
   },
   mainContent: {
     flex: 1,
-    justifyContent: "space-between",
+    justifyContent: "center",
     alignItems: "center",
     paddingHorizontal: 20,
     paddingTop: 15,
     paddingBottom: 25,
+    gap: 14,
   },
 
   // Blue Gradient Style Tile for Header Text
@@ -287,13 +288,16 @@ const styles = StyleSheet.create({
   // Character Layout (Bada Assistant)
   characterContainer: {
     width: "100%",
-    height: 340,
+    flex: 1,
+    minHeight: 260,
+    maxHeight: 380,
     justifyContent: "center",
     alignItems: "center",
   },
   characterWrapper: {
     width: width * 0.90,
-    height: 330,
+    height: "100%",
+    maxHeight: 360,
     justifyContent: "center",
     alignItems: "center",
   },
