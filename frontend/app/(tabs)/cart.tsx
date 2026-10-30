@@ -10,7 +10,8 @@ import * as Haptics from "expo-haptics";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useCart } from "@/src/CartContext";
 import { useAuth } from "@/src/AuthContext";
-import { COLORS, LOGO_URL, RADIUS, SPACING, shadow } from "@/src/theme";
+import { COLORS, RADIUS, SPACING, shadow } from "@/src/theme";
+import AnimatedBrandLogo, { BrandingFooter } from "@/src/components/AnimatedBrandLogo";
 
 export default function Cart() {
   const router = useRouter();
@@ -128,9 +129,10 @@ export default function Cart() {
         </View>
 
         <View style={s.promise}>
-          <Image source={{ uri: LOGO_URL }} style={{ width: 36, height: 36 }} contentFit="contain" />
+          <AnimatedBrandLogo size={42} />
           <Text style={s.promiseText}>Delivered by KMT Bazaar in 30–45 mins</Text>
         </View>
+        <BrandingFooter caption="Trusted Shopping · Fast Delivery" />
       </ScrollView>
 
       <View style={s.checkoutBar}>

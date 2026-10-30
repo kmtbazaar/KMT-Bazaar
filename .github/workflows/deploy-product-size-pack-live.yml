@@ -10,6 +10,16 @@ on:
       - "frontend/app/product/**"
       - "frontend/src/components/ProductCard.tsx"
       - "frontend/app/(tabs)/home.tsx"
+      - "frontend/src/components/AnimatedBrandLogo.tsx"
+      - "frontend/app/auth/login.tsx"
+      - "frontend/app/admin/index.tsx"
+      - "frontend/app/vendor/index.tsx"
+      - "frontend/app/delivery/index.tsx"
+      - "frontend/app/vendor/holiday-dashboard.tsx"
+      - "frontend/app/vendor/car-rental-dashboard.tsx"
+      - "frontend/app/role/[role].tsx"
+      - "frontend/app/(tabs)/cart.tsx"
+      - "frontend/app/(tabs)/profile.tsx"
   workflow_dispatch:
     inputs:
       confirm_live_deploy:
@@ -119,9 +129,27 @@ jobs:
           console.log("HERO_DAY_NIGHT_HUT_CHIMNEY_SMOKE_VALIDATION_PASS");
           NODE
 
-      - name: Lint changed product screens
+      - name: Validate animated brand logo across panels
         working-directory: frontend
-        run: npx eslint "app/vendor/store/[id].tsx" "app/vendor/products.tsx" "app/product/[id].tsx" "src/components/ProductCard.tsx" --no-cache
+        run: |
+          node <<'NODE'
+          const assert = require("node:assert/strict");
+          const fs = require("node:fs");
+          const logo = fs.readFileSync("src/components/AnimatedBrandLogo.tsx", "utf8");
+          assert.ok(logo.includes("withRepeat") && logo.includes("useAnimatedStyle"), "Logo must use UI-thread animation");
+          assert.ok(logo.includes("PARTICLE_COLORS") && logo.includes("rotateX") && logo.includes("rotateY"), "3D particles/depth are missing");
+          assert.ok(logo.includes("export function BrandingFooter"), "Shared animated footer is missing");
+          const files = ["app/auth/login.tsx","app/admin/index.tsx","app/vendor/index.tsx","app/delivery/index.tsx","app/vendor/holiday-dashboard.tsx","app/vendor/car-rental-dashboard.tsx","app/(tabs)/home.tsx","app/(tabs)/profile.tsx","app/(tabs)/cart.tsx","app/role/[role].tsx"];
+          for (const file of files) {
+            const source = fs.readFileSync(file, "utf8");
+            assert.ok(source.includes("AnimatedBrandLogo") || source.includes("BrandingFooter"), `Missing animated brand in ${file}`);
+          }
+          console.log("ANIMATED_BRANDING_VALIDATION_PASS");
+          NODE
+
+      - name: Lint changed product and branding screens
+        working-directory: frontend
+        run: npx eslint "app/vendor/store/[id].tsx" "app/vendor/products.tsx" "app/product/[id].tsx" "src/components/ProductCard.tsx" "src/components/AnimatedBrandLogo.tsx" "app/auth/login.tsx" "app/admin/index.tsx" "app/vendor/index.tsx" "app/delivery/index.tsx" "app/vendor/holiday-dashboard.tsx" "app/vendor/car-rental-dashboard.tsx" "app/role/[role].tsx" "app/(tabs)/home.tsx" "app/(tabs)/profile.tsx" "app/(tabs)/cart.tsx" --no-cache
 
       - name: Build web app
         working-directory: frontend

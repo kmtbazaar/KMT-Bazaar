@@ -9,6 +9,7 @@ import { vendorApi } from "@/src/roleApi";
 import { useAuth } from "@/src/AuthContext";
 import { COLORS, RADIUS, SPACING } from "@/src/theme";
 import ImageUploader from "@/src/components/ImageUploader";
+import AnimatedBrandLogo, { BrandingFooter } from "@/src/components/AnimatedBrandLogo";
 
 export default function CarRentalVendorDashboard() {
   const router = useRouter();
@@ -72,7 +73,7 @@ export default function CarRentalVendorDashboard() {
           <View style={s.headerTop}>
             <View style={{ width: 32 }} />
             <View style={{ flex: 1, alignItems: "center" }}>
-              <View style={s.headerIcon}><MaterialCommunityIcons name="car" size={23} color="#111827" /></View>
+              <AnimatedBrandLogo size={48} />
               <Text style={s.headerTitle}>Car Rental Vendor</Text>
               <Text style={s.headerSub}>Manage vehicles, rentals & trip bookings</Text>
               <Text style={s.welcome}>Welcome, {user?.name}</Text>
@@ -157,6 +158,7 @@ export default function CarRentalVendorDashboard() {
         <Action icon="car-multiple" title="Rental Fleet" sub="Add, edit and manage your rental vehicles" onPress={() => router.push("/service-vendor/services" as any)} />
         <Action icon="chart-line" title="Earnings" sub="Revenue, commission and estimated payout" onPress={() => router.push("/service-vendor/earnings" as any)} />
         <Action icon="calendar-check-outline" title="Rental Bookings" sub="View and update customer rental bookings" onPress={() => router.push("/service-vendor/service-bookings" as any)} />
+        <BrandingFooter caption="Car Rental Partner · Powered by KMT Bazaar" />
       </ScrollView>
     </View>
   );

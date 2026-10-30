@@ -10,7 +10,7 @@ import {
   ActivityIndicator,
   Dimensions,
 } from "react-native";
-import { Image } from "expo-image";
+import AnimatedBrandLogo from "@/src/components/AnimatedBrandLogo";
 import { useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
@@ -28,7 +28,7 @@ import Animated, {
 } from "react-native-reanimated";
 import { useAuth } from "@/src/AuthContext";
 import { api } from "@/src/api";
-import { LOGO_URL, RADIUS, SPACING } from "@/src/theme";
+import { RADIUS, SPACING } from "@/src/theme";
 
 const { width } = Dimensions.get("window");
 const GOOGLE_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID || "";
@@ -681,9 +681,7 @@ export default function Login() {
         entering={ZoomIn.duration(700).springify()}
         style={s.bottomLeftLogoContainer}
       >
-        <View style={s.logoGlowContainer}>
-          <Image source={{ uri: LOGO_URL }} style={s.logo} contentFit="contain" />
-        </View>
+        <AnimatedBrandLogo size={88} intensity="hero" testID="login-animated-brand-logo" />
       </Animated.View>
 
       <AIAssistant />
@@ -974,6 +972,8 @@ const s = StyleSheet.create({
     bottom: 12,
     left: 12,
     zIndex: 10,
+    width: 88,
+    height: 88,
   },
 
   logoGlowContainer: {

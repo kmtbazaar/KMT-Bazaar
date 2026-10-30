@@ -1,7 +1,7 @@
 import { LocalizedText as Text, LocalizedTextInput as TextInput } from "@/src/LocalizedText";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Animated, View, StyleSheet, Pressable, Switch, RefreshControl, ScrollView, Platform, Linking } from "react-native";
-import { Image } from "expo-image";
+
 import { useFocusEffect, useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -9,7 +9,8 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { deliveryApi } from "@/src/roleApi";
 import { api } from "@/src/api";
 import { useAuth } from "@/src/AuthContext";
-import { COLORS, LOGO_URL, RADIUS, SPACING } from "@/src/theme";
+import { COLORS, RADIUS, SPACING } from "@/src/theme";
+import AnimatedBrandLogo, { BrandingFooter } from "@/src/components/AnimatedBrandLogo";
 import { WebView } from "react-native-webview";
 import * as Location from "expo-location";
 
@@ -221,7 +222,7 @@ export default function DeliveryDashboard() {
       <SafeAreaView edges={["top"]}>
         <LinearGradient colors={["#16A34A", "#15803D"]} style={s.header}>
           <View style={s.headerTop}>
-            <Image source={{ uri: LOGO_URL }} style={{ width: 36, height: 36 }} contentFit="contain" />
+            <AnimatedBrandLogo size={42} />
             <View style={{ flex: 1, marginLeft: 10 }}>
               <Text style={s.headerTitle}>Delivery Partner</Text>
               <Text style={s.headerSub}>Welcome, {user?.name}</Text>
@@ -414,6 +415,7 @@ export default function DeliveryDashboard() {
             })}
           </View>
         )}
+        <BrandingFooter caption="Delivery Partner · Powered by KMT Bazaar" />
       </ScrollView>
     </View>
   );

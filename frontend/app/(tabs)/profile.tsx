@@ -19,6 +19,7 @@ import * as ImagePicker from "expo-image-picker";
 import { useAuth } from "@/src/AuthContext";
 import { apiFetch } from "@/src/api";
 import { COLORS, LOGO_URL, RADIUS, SPACING, shadow } from "@/src/theme";
+import AnimatedBrandLogo, { BrandingFooter } from "@/src/components/AnimatedBrandLogo";
 
 const ITEMS = [
   { icon: "package-variant", label: "My Orders", path: "/orders" },
@@ -285,6 +286,7 @@ export default function Profile() {
         <Text style={s.version}>
           KMT Bazaar v1.0.0
         </Text>
+        <BrandingFooter caption="Trusted Shopping · Fast Delivery" />
       </ScrollView>
 
       {/* INFO MODAL */}
@@ -496,11 +498,7 @@ export default function Profile() {
 
               {modalType === "about" && (
                 <View style={s.aboutContent}>
-                  <Image
-                    source={{ uri: LOGO_URL }}
-                    style={s.aboutLogo}
-                    contentFit="contain"
-                  />
+                  <AnimatedBrandLogo size={82} intensity="hero" />
 
                   <Text style={s.aboutTitle}>
                     KMT Bazaar

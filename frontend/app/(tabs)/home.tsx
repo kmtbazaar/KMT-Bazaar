@@ -21,6 +21,7 @@ import { useAuth } from "@/src/AuthContext";
 import { IMAGE_FALLBACK_URL, RADIUS, SPACING, shadow } from "@/src/theme";
 import ProductCard from "@/src/components/ProductCard";
 import CheckoutBar from "@/src/components/CheckoutBar";
+import { BrandingFooter } from "@/src/components/AnimatedBrandLogo";
 
 const { width } = Dimensions.get("window");
 const BANNER_W = width - 32;
@@ -1536,6 +1537,7 @@ export default function Home() {
             </View>
           </LinearGradient>
         </View>
+        <BrandingFooter caption="Trusted Shopping · Fast Delivery" />
       </ScrollView>
 
       {/* Floating Checkout Bar */}

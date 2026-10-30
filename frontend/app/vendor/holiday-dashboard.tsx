@@ -12,6 +12,7 @@ import { vendorApi } from "@/src/roleApi";
 import { useAuth } from "@/src/AuthContext";
 import { COLORS, RADIUS, SPACING } from "@/src/theme";
 import { uploadImageAsset } from "@/src/api";
+import AnimatedBrandLogo, { BrandingFooter } from "@/src/components/AnimatedBrandLogo";
 
 export default function HolidayVendorDashboard() {
   const router = useRouter();
@@ -45,7 +46,7 @@ export default function HolidayVendorDashboard() {
           <View style={s.headerTop}>
             <View style={{ width: 32 }} />
             <View style={{ flex: 1, alignItems: "center" }}>
-              <View style={s.headerIcon}><MaterialCommunityIcons name="airplane-takeoff" size={22} color="#2563EB" /></View>
+              <AnimatedBrandLogo size={48} />
               <Text style={s.headerTitle}>Holiday Vendor</Text>
               <Text style={s.headerSub}>Manage holiday packages & customer bookings</Text>
               <Text style={s.welcome}>Welcome, {user?.name}</Text>
@@ -154,6 +155,7 @@ export default function HolidayVendorDashboard() {
         <Action icon="briefcase-outline" title="Holiday Packages" sub="Add, edit and manage your holiday packages" onPress={() => router.push("/service-vendor/services" as any)} />
         <Action icon="chart-line" title="Earnings" sub="Revenue, commission and estimated payout" onPress={() => router.push("/service-vendor/earnings" as any)} />
         <Action icon="calendar-check-outline" title="Bookings" sub="View and update customer holiday bookings" onPress={() => router.push("/service-vendor/service-bookings" as any)} />
+        <BrandingFooter caption="Holiday Partner · Powered by KMT Bazaar" />
       </ScrollView>
     </View>
   );

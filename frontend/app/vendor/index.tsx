@@ -11,6 +11,7 @@ import { vendorApi } from "@/src/roleApi";
 import { api, uploadImageAsset } from "@/src/api"; 
 import { useAuth } from "@/src/AuthContext";
 import { COLORS, LOGO_URL, RADIUS, SPACING, shadow } from "@/src/theme";
+import AnimatedBrandLogo, { BrandingFooter } from "@/src/components/AnimatedBrandLogo";
 
 const ACTIONS = [
   { icon: "clipboard-list-outline", label: "Orders", path: "/vendor/orders", color: "#F97316" },
@@ -291,7 +292,10 @@ function StoreVendorDashboard() {
 
             {/* Middle: Centered Text */}
             <View style={{ flex: 2, alignItems: "center" }}>
-              <Text style={s.headerTitle}>Vendor Dashboard</Text>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 5 }}>
+                <AnimatedBrandLogo size={30} intensity="compact" />
+                <Text style={s.headerTitle}>Vendor Dashboard</Text>
+              </View>
               <Text style={s.headerSub}>Welcome, {user?.name}</Text>
             </View>
 
@@ -411,6 +415,7 @@ function StoreVendorDashboard() {
             </Pressable>
           ))}
         </View>
+        <BrandingFooter caption="Vendor Partner · Grow with KMT Bazaar" />
       </ScrollView>
 
       {/* --- NEW ORDER DECISION POPUP --- */}

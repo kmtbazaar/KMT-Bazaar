@@ -29,6 +29,7 @@ import Animated, {
 import { adminApi } from "@/src/roleApi";
 import { useAuth } from "@/src/AuthContext";
 import { LOGO_URL, SPACING } from "@/src/theme";
+import AnimatedBrandLogo, { BrandingFooter } from "@/src/components/AnimatedBrandLogo";
 import {
   DEFAULT_ADMIN_ACTIONS,
   loadAdminSettings,
@@ -278,11 +279,7 @@ export default function AdminDashboard() {
             style={s.headerTop}
           >
             <View style={s.logoBox}>
-              <Image
-                source={{ uri: LOGO_URL }}
-                style={s.logo}
-                contentFit="contain"
-              />
+              <AnimatedBrandLogo size={52} />
             </View>
 
             <View style={s.headerText}>
@@ -798,17 +795,7 @@ export default function AdminDashboard() {
           </View>
         </Animated.View>
 
-        <View style={s.footer}>
-          <MaterialCommunityIcons
-            name="shield-check-outline"
-            size={16}
-            color={THEME.sky}
-          />
-
-          <Text style={s.footerText}>
-            KMT Bazaar Admin · Secure Management Console
-          </Text>
-        </View>
+        <BrandingFooter caption="Admin Console · Secure Management" />
       </ScrollView>
     </View>
   );

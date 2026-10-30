@@ -1,13 +1,13 @@
 import { LocalizedText as Text, LocalizedTextInput as TextInput } from "@/src/LocalizedText";
 import React from "react";
 import { View, StyleSheet, Pressable, ScrollView } from "react-native";
-import { Image } from "expo-image";
+import AnimatedBrandLogo, { BrandingFooter } from "@/src/components/AnimatedBrandLogo";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useAuth } from "@/src/AuthContext";
-import { COLORS, LOGO_URL, RADIUS, SPACING, shadow } from "@/src/theme";
+import { COLORS, RADIUS, SPACING, shadow } from "@/src/theme";
 
 const FEATURES: Record<string, { title: string; sub: string; items: { icon: string; label: string }[] }> = {
   vendor: {
@@ -60,7 +60,7 @@ export default function RolePanel() {
     <SafeAreaView style={s.root} edges={["top"]} testID={`role-${role}-screen`}>
       <LinearGradient colors={[COLORS.brand, COLORS.brandDark]} style={s.header}>
         <View style={s.headerTop}>
-          <Image source={{ uri: LOGO_URL }} style={{ width: 40, height: 40 }} contentFit="contain" />
+          <AnimatedBrandLogo size={46} />
           <Pressable testID="role-logout" onPress={async () => { await logout(); router.replace("/auth/login"); }} hitSlop={10}>
             <MaterialCommunityIcons name="logout" size={22} color="#fff" />
           </Pressable>
@@ -92,6 +92,7 @@ export default function RolePanel() {
           <MaterialCommunityIcons name="information-outline" size={20} color={COLORS.brand} />
           <Text style={s.noticeText}>Full {role} panel coming in Phase 2. Customer flow is live for end-to-end purchases.</Text>
         </View>
+        <BrandingFooter caption="Powered by KMT Bazaar" />
       </ScrollView>
     </SafeAreaView>
   );
