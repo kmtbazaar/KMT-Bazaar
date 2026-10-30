@@ -17,6 +17,7 @@ import ParticleLogoSplash from "../src/components/ParticleLogoSplash";
 
 // --- GIF IMPORTS ---
 import AssistantGif from "../assets/images/assistant.gif";
+import AssistantChar from "../assets/images/assistant-char.png";
 import VoiceGif from "../assets/images/voice.gif"; 
 
 const { width } = Dimensions.get("window");
@@ -27,6 +28,85 @@ export default function Index() {
 
   // Smooth Fade-In Animation for Screen Load
   const fadeAnim = useRef(new Animated.Value(0)).current;
+  const welcomeAudioRef = useRef<HTMLAudioElement | null>(null);
+  const welcomeAudioFailedRef = useRef(false);
+  const [greetingPlaying, setGreetingPlaying] = useState(false);
+  const [greetingNeedsTap, setGreetingNeedsTap] = useState(false);
+  const [avatarPlaybackKey, setAvatarPlaybackKey] = useState(0);
+
+  const speakFallbackGreeting = () => {
+    if (Platform.OS !== "web" || typeof window === "undefined") return false;
+    const browserWindow = window as any;
+    const synthesis = browserWindow.speechSynthesis;
+    const Utterance = browserWindow.SpeechSynthesisUtterance ||
+      (globalThis as any).SpeechSynthesisUtterance;
+    if (!synthesis || !Utterance) return false;
+
+    synthesis.cancel();
+    const utterance = new Utterance("के एम टी बाज़ार में आपका स्वागत है।");
+    utterance.lang = "hi-IN";
+    utterance.rate = 0.96;
+    utterance.pitch = 1.2;
+    utterance.onstart = () => {
+      setGreetingPlaying(true);
+      setGreetingNeedsTap(false);
+      setAvatarPlaybackKey((key) => key + 1);
+    };
+    utterance.onend = () => setGreetingPlaying(false);
+    utterance.onerror = () => setGreetingPlaying(false);
+    synthesis.speak(utterance);
+    return true;
+  };
+
+  const playWelcomeGreeting = () => {
+    if (Platform.OS !== "web" || typeof window === "undefined") return;
+    const audio = welcomeAudioRef.current;
+    if (!audio || welcomeAudioFailedRef.current) {
+      if (!speakFallbackGreeting()) setGreetingNeedsTap(true);
+      return;
+    }
+    if (!audio.paused && !audio.ended) return;
+    try {
+      audio.currentTime = 0;
+      void audio.play().catch(() => setGreetingNeedsTap(true));
+    } catch {
+      setGreetingNeedsTap(true);
+    }
+  };
+
+  useEffect(() => {
+    if (!showAssistant || Platform.OS !== "web" || typeof document === "undefined") return;
+    const audio = document.createElement("audio");
+    audio.preload = "auto";
+    audio.src = "/api/assistant/welcome-audio?v=2";
+    audio.onplay = () => {
+      setGreetingPlaying(true);
+      setGreetingNeedsTap(false);
+      setAvatarPlaybackKey((key) => key + 1);
+    };
+    audio.onended = () => setGreetingPlaying(false);
+    audio.onerror = () => {
+      welcomeAudioFailedRef.current = true;
+      setGreetingPlaying(false);
+      setGreetingNeedsTap(true);
+    };
+    welcomeAudioRef.current = audio;
+    audio.load();
+
+    // Attempt autoplay; browsers that block sound show a tap-to-play prompt.
+    void audio.play().catch(() => setGreetingNeedsTap(true));
+
+    return () => {
+      audio.pause();
+      audio.onplay = null;
+      audio.onended = null;
+      audio.onerror = null;
+      audio.removeAttribute("src");
+      audio.load();
+      if (welcomeAudioRef.current === audio) welcomeAudioRef.current = null;
+      (window as any).speechSynthesis?.cancel?.();
+    };
+  }, [showAssistant]);
 
   useEffect(() => {
     if (!isLanguageReady) return;
@@ -54,14 +134,17 @@ export default function Index() {
               <Text style={styles.tileTitle}>KMT Bazaar Assistant</Text>
               <Text style={styles.tileSubtitle}>Choose your language / अपनी भाषा चुनें</Text>
             </View>
-            <Image source={AssistantGif} style={{ width: width * 0.72, height: 250 }} resizeMode="contain" />
+            <TouchableOpacity activeOpacity={0.92} onPress={playWelcomeGreeting} accessibilityRole="button" accessibilityLabel="Play KMT Bazaar welcome greeting">
+              <Image key={avatarPlaybackKey} source={greetingPlaying ? AssistantGif : AssistantChar} style={{ width: width * 0.72, height: 250 }} resizeMode="contain" />
+            </TouchableOpacity>
+            {greetingNeedsTap && <Text style={styles.greetingPrompt}>स्वागत सुनने के लिए assistant पर टैप करें</Text>}
             <View style={{ width: "100%", gap: 14 }}>
-              <TouchableOpacity activeOpacity={0.85} style={styles.primaryBtnWrapper} onPress={() => { void selectLanguage("hi"); }}>
+              <TouchableOpacity activeOpacity={0.85} style={styles.primaryBtnWrapper} onPress={() => { playWelcomeGreeting(); void selectLanguage("hi"); }}>
                 <View style={[styles.primaryGradientBtn, { backgroundColor: "#0D9488" }]}>
                   <Text style={styles.primaryBtnText}>हिन्दी में आगे बढ़ें</Text>
                 </View>
               </TouchableOpacity>
-              <TouchableOpacity activeOpacity={0.85} style={styles.primaryBtnWrapper} onPress={() => { void selectLanguage("en"); }}>
+              <TouchableOpacity activeOpacity={0.85} style={styles.primaryBtnWrapper} onPress={() => { playWelcomeGreeting(); void selectLanguage("en"); }}>
                 <View style={styles.primaryGradientBtn}>
                   <Text style={styles.primaryBtnText}>Continue in English</Text>
                 </View>
@@ -93,11 +176,14 @@ export default function Index() {
             {/* Character Section */}
             <View style={styles.characterContainer}>
               <View style={styles.characterWrapper}>
-                <Image
-                  source={AssistantGif}
-                  style={styles.imageSize}
-                  resizeMode="contain"
-                />
+                <TouchableOpacity style={{ width: "100%", height: "100%" }} activeOpacity={0.92} onPress={playWelcomeGreeting} accessibilityRole="button" accessibilityLabel="Replay KMT Bazaar welcome greeting">
+                  <Image
+                    key={avatarPlaybackKey}
+                    source={greetingPlaying ? AssistantGif : AssistantChar}
+                    style={styles.imageSize}
+                    resizeMode="contain"
+                  />
+                </TouchableOpacity>
               </View>
             </View>
 
@@ -105,14 +191,15 @@ export default function Index() {
             <TouchableOpacity
               activeOpacity={0.8}
               style={styles.voiceRectContainer}
-              onPress={() => console.log("Voice Assistant Activated")}
+              onPress={playWelcomeGreeting}
             >
               <Image
                 source={VoiceGif}
-                style={styles.voiceRectGif}
+                style={[styles.voiceRectGif, { opacity: greetingPlaying ? 1 : 0.52 }]}
                 resizeMode="contain"
               />
             </TouchableOpacity>
+            {greetingNeedsTap && <Text style={styles.greetingPrompt}>स्वागत की आवाज़ सुनने के लिए यहाँ टैप करें</Text>}
 
             {/* Navigation Actions */}
             <View style={styles.actionContainer}>
@@ -198,6 +285,13 @@ const styles = StyleSheet.create({
     lineHeight: 18,
   },
   
+  greetingPrompt: {
+    color: "#93C5FD",
+    fontSize: 12,
+    textAlign: "center",
+    marginTop: 4,
+  },
+
   // Character Layout (Bada Assistant)
   characterContainer: {
     width: "100%",

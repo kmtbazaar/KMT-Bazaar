@@ -83,6 +83,174 @@ security = HTTPBearer(auto_error=False)
 app = FastAPI(title="KMT Bazaar API")
 api = APIRouter(prefix="/api")
 
+
+# A single cached welcome recording keeps the public greeting consistent across browsers.
+WELCOME_AUDIO_CACHE_PATH = Path(
+    os.getenv(
+        "KMT_WELCOME_AUDIO_CACHE",
+        str(ROOT_DIR / "generated-assets" / "assistant-welcome-hi-v2.wav"),
+    )
+)
+WELCOME_AUDIO_LOCK = asyncio.Lock()
+WELCOME_GREETING_TEXT = "के एम टी बाज़ार में आपका स्वागत है।"
+WELCOME_TTS_MODEL = "gemini-3.8-flash-tts"
+
+
+@api.get("/assistant/welcome-audio")
+async def get_assistant_welcome_audio():
+    try:
+        if WELCOME_AUDIO_CACHE_PATH.is_file():
+            cached_audio = WELCOME_AUDIO_CACHE_PATH.read_bytes()
+            if cached_audio[:4] == b"RIFF" and cached_audio[8:12] == b"WAVE":
+                return Response(
+                    content=cached_audio,
+                    media_type="audio/wav",
+                    headers={
+                        "Cache-Control": "public, max-age=86400",
+                        "X-Content-Type-Options": "nosniff",
+                    },
+                )
+    except OSError:
+        logging.exception("Could not read cached KMT welcome audio")
+
+    async with WELCOME_AUDIO_LOCK:
+        try:
+            if WELCOME_AUDIO_CACHE_PATH.is_file():
+                cached_audio = WELCOME_AUDIO_CACHE_PATH.read_bytes()
+                if cached_audio[:4] == b"RIFF" and cached_audio[8:12] == b"WAVE":
+                    return Response(
+                        content=cached_audio,
+                        media_type="audio/wav",
+                        headers={
+                            "Cache-Control": "public, max-age=86400",
+                            "X-Content-Type-Options": "nosniff",
+                        },
+                    )
+        except OSError:
+            logging.exception("Could not re-read cached KMT welcome audio")
+
+        if not GEMINI_API_KEY:
+            raise HTTPException(
+                status_code=503,
+                detail="Welcome voice is not configured on the server.",
+            )
+
+        request_payload = {
+            "model": WELCOME_TTS_MODEL,
+            "input": [
+                {
+                    "type": "user_input",
+                    "content": [
+                        {
+                            "type": "text",
+                            "text": WELCOME_GREETING_TEXT,
+                            "annotations": [
+                                {
+                                    "type": "speech_metadata",
+                                    "style": (
+                                        "A fictional, youthful-sounding boyish male voice in natural Indian Hindi. "
+                                        "Light, bright, clear and friendly, with a warm cheerful welcome and a "
+                                        "slightly higher youthful register. Speak at a relaxed conversational pace; "
+                                        "pronounce K, M and T as three separate Hindi letter names. "
+                                        "Do not sound like a formal adult announcer or a cartoon caricature."
+                                    ),
+                                }
+                            ],
+                        }
+                    ],
+                }
+            ],
+            "response_format": {"type": "audio"},
+            "generation_config": {
+                "speech_config": [{"voice": "Puck"}],
+            },
+        }
+
+        try:
+            async with httpx.AsyncClient(
+                timeout=httpx.Timeout(60.0, connect=10.0)
+            ) as http_client:
+                provider_response = await http_client.post(
+                    "https://generativelanguage.googleapis.com/v1beta/interactions",
+                    headers={
+                        "x-goog-api-key": GEMINI_API_KEY,
+                        "Content-Type": "application/json",
+                    },
+                    json=request_payload,
+                )
+                provider_response.raise_for_status()
+                provider_data = provider_response.json()
+
+            encoded_audio = None
+            for step in reversed(provider_data.get("steps") or []):
+                if step.get("type") != "model_output":
+                    continue
+                for item in reversed(step.get("content") or []):
+                    if item.get("type") == "audio" and item.get("data"):
+                        encoded_audio = item["data"]
+                        break
+                if encoded_audio:
+                    break
+
+            if not encoded_audio:
+                output_audio = provider_data.get("output_audio")
+                if isinstance(output_audio, dict):
+                    encoded_audio = output_audio.get("data")
+
+            if not encoded_audio:
+                logging.error("Gemini TTS response contained no audio block")
+                raise HTTPException(
+                    status_code=502,
+                    detail="Welcome voice generation returned no audio.",
+                )
+
+            audio_bytes = base64.b64decode(encoded_audio)
+            if (
+                len(audio_bytes) < 44
+                or audio_bytes[:4] != b"RIFF"
+                or audio_bytes[8:12] != b"WAVE"
+            ):
+                logging.error("Gemini TTS response was not a valid WAV file")
+                raise HTTPException(
+                    status_code=502,
+                    detail="Welcome voice audio format was invalid.",
+                )
+
+            WELCOME_AUDIO_CACHE_PATH.parent.mkdir(parents=True, exist_ok=True)
+            temporary_path = WELCOME_AUDIO_CACHE_PATH.with_suffix(".wav.tmp")
+            temporary_path.write_bytes(audio_bytes)
+            temporary_path.replace(WELCOME_AUDIO_CACHE_PATH)
+
+            return Response(
+                content=audio_bytes,
+                media_type="audio/wav",
+                headers={
+                    "Cache-Control": "public, max-age=86400",
+                    "X-Content-Type-Options": "nosniff",
+                },
+            )
+        except HTTPException:
+            raise
+        except httpx.HTTPStatusError as error:
+            provider_message = (error.response.text or "")[:400]
+            logging.error(
+                "Gemini welcome TTS request failed with HTTP %s: %s",
+                error.response.status_code,
+                provider_message,
+            )
+            raise HTTPException(
+                status_code=502,
+                detail="Welcome voice is temporarily unavailable.",
+            )
+        except (httpx.HTTPError, ValueError, OSError):
+            logging.exception("Gemini welcome TTS generation failed")
+            raise HTTPException(
+                status_code=502,
+                detail="Welcome voice is temporarily unavailable.",
+            )
+
+
+
 ALLOWED_ORIGINS = [
     "https://kmtbazaar.tech",
     "https://www.kmtbazaar.tech",

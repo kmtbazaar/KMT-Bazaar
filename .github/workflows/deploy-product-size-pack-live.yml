@@ -161,6 +161,7 @@ jobs:
           const fs = require("node:fs");
           const splash = fs.readFileSync("src/components/ParticleLogoSplash.tsx", "utf8");
           const entry = fs.readFileSync("app/index.tsx", "utf8");
+          const backend = fs.readFileSync("../backend/server.py", "utf8");
           assert.ok(splash.includes("getImageData"), "Splash must sample the original logo pixels");
           assert.ok(splash.includes("brightest < 26") && splash.includes("luminance < 31"), "Black background pixels must be excluded");
           assert.ok(splash.includes("requestAnimationFrame") && splash.includes("perspective"), "Particle assembly must animate in 3D");
@@ -170,7 +171,14 @@ jobs:
           assert.ok(!entry.includes('source={require("../assets/images/splash-icon.png")}'), "Old static splash image must be removed");
           assert.ok(entry.includes('backgroundColor: "#000000"'), "Web splash must use a pure black background");
           assert.ok(entry.includes("}, 5200);"), "Splash must allow the full particle assembly and final logo reveal");
+          assert.ok(backend.includes('@api.get("/assistant/welcome-audio")'), "Backend must expose the cached welcome TTS route");
+          assert.ok(backend.includes('WELCOME_TTS_MODEL = "gemini-3.8-flash-tts"'), "Welcome voice must use the supported Gemini TTS model");
+          assert.ok(backend.includes("WELCOME_AUDIO_LOCK") && backend.includes("WELCOME_AUDIO_CACHE_PATH"), "Welcome audio generation must be cached and concurrency guarded");
+          assert.ok(entry.includes("/api/assistant/welcome-audio?v=2"), "Assistant screen must play the generated Hindi welcome audio");
+          assert.ok(entry.includes("greetingPlaying ? AssistantGif : AssistantChar"), "Assistant talking animation must start and stop with the greeting audio");
+          assert.ok(entry.includes('utterance.lang = "hi-IN"') && entry.includes("utterance.pitch = 1.2"), "Browser fallback must use a youthful Hindi speech profile");
           console.log("PARTICLE_SPLASH_TRANSPARENT_LOGO_VALIDATION_PASS");
+          console.log("ASSISTANT_WELCOME_TTS_LIPSYNC_VALIDATION_PASS");
           NODE
 
       - name: Build web app
