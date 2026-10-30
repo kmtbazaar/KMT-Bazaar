@@ -176,8 +176,16 @@ jobs:
             exit 1
           fi
 
-          GOOGLE_CONFIG="$(curl -fsS --max-time 10 http://127.0.0.1:8001/api/auth/google/config)"
-          printf '%s' "$GOOGLE_CONFIG" | python3 -c 'import json,sys; d=json.load(sys.stdin); print("GOOGLE_CONFIGURED="+("YES" if d.get("configured") else "NO"))'
+          if ! GOOGLE_CONFIG="$(curl -fsS --max-time 10 http://127.0.0.1:8001/api/auth/google/config)"; then
+            echo "GOOGLE_CONFIG_ENDPOINT_FAIL"
+            rollback
+            exit 1
+          fi
+          if ! printf '%s' "$GOOGLE_CONFIG" | python3 -c 'import json,sys; d=json.load(sys.stdin); ok=bool(d.get("configured") and d.get("client_id")); print("GOOGLE_CONFIGURED="+("YES" if ok else "NO")); sys.exit(0 if ok else 1)'; then
+            echo "GOOGLE_OAUTH_CLIENT_ID_NOT_CONFIGURED"
+            rollback
+            exit 1
+          fi
 
           echo "BACKEND_HEALTH_CHECK_PASS"
           echo "BACKEND_BACKUP=$BACKUP"
