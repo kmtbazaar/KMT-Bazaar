@@ -20,6 +20,8 @@ on:
       - "frontend/app/role/[role].tsx"
       - "frontend/app/(tabs)/cart.tsx"
       - "frontend/app/(tabs)/profile.tsx"
+      - "frontend/app/index.tsx"
+      - "frontend/src/components/ParticleLogoSplash.tsx"
   workflow_dispatch:
     inputs:
       confirm_live_deploy:
@@ -149,7 +151,24 @@ jobs:
 
       - name: Lint changed product and branding screens
         working-directory: frontend
-        run: npx eslint "app/vendor/store/[id].tsx" "app/vendor/products.tsx" "app/product/[id].tsx" "src/components/ProductCard.tsx" "src/components/AnimatedBrandLogo.tsx" "app/auth/login.tsx" "app/admin/index.tsx" "app/delivery/index.tsx" "app/vendor/holiday-dashboard.tsx" "app/vendor/car-rental-dashboard.tsx" "app/role/[role].tsx" "app/(tabs)/profile.tsx" "app/(tabs)/cart.tsx" --no-cache
+        run: npx eslint "app/vendor/store/[id].tsx" "app/vendor/products.tsx" "app/product/[id].tsx" "src/components/ProductCard.tsx" "src/components/AnimatedBrandLogo.tsx" "app/auth/login.tsx" "app/admin/index.tsx" "app/delivery/index.tsx" "app/vendor/holiday-dashboard.tsx" "app/vendor/car-rental-dashboard.tsx" "app/role/[role].tsx" "app/(tabs)/profile.tsx" "app/(tabs)/cart.tsx" "app/index.tsx" "src/components/ParticleLogoSplash.tsx" --no-cache
+
+      - name: Validate particle-forming splash and black-background removal
+        working-directory: frontend
+        run: |
+          node <<'NODE'
+          const assert = require("node:assert/strict");
+          const fs = require("node:fs");
+          const splash = fs.readFileSync("src/components/ParticleLogoSplash.tsx", "utf8");
+          const entry = fs.readFileSync("app/index.tsx", "utf8");
+          assert.ok(splash.includes("getImageData"), "Splash must sample the original logo pixels");
+          assert.ok(splash.includes("brightest < 26") && splash.includes("luminance < 31"), "Black background pixels must be excluded");
+          assert.ok(splash.includes("requestAnimationFrame") && splash.includes("perspective"), "Particle assembly must animate in 3D");
+          assert.ok(entry.includes("<ParticleLogoSplash />"), "Opening splash must use the particle logo");
+          assert.ok(!entry.includes('source={require("../assets/images/splash-icon.png")}'), "Old static splash image must be removed");
+          assert.ok(entry.includes('Platform.OS === "web" ? "#061426"'), "Web splash must use the clean navy canvas background");
+          console.log("PARTICLE_SPLASH_TRANSPARENT_LOGO_VALIDATION_PASS");
+          NODE
 
       - name: Build web app
         working-directory: frontend

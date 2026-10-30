@@ -9,9 +9,11 @@ import {
   SafeAreaView,
   StatusBar,
   Dimensions,
+  Platform,
 } from "react-native";
 import { router } from "expo-router";
 import { useLanguage } from "../src/LanguageContext";
+import ParticleLogoSplash from "../src/components/ParticleLogoSplash";
 
 // --- GIF IMPORTS ---
 import AssistantGif from "../assets/images/assistant.gif";
@@ -131,14 +133,11 @@ export default function Index() {
     );
   }
 
-  // --- VIEW 1: BLACK SPLASH SCREEN ---
+  // --- VIEW 1: PARTICLE-FORMING BRAND SPLASH ---
   return (
     <View style={styles.splashContainer}>
       <StatusBar barStyle="light-content" />
-      <Image
-        source={require("../assets/images/splash-icon.png")}
-        style={{ width: 220, height: 220, resizeMode: "contain" }}
-      />
+      <ParticleLogoSplash />
     </View>
   );
 }
@@ -156,7 +155,7 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "#000000",
+    backgroundColor: Platform.OS === "web" ? "#061426" : "#000000",
   },
   mainContent: {
     flex: 1,
