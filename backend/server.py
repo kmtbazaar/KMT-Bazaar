@@ -160,7 +160,7 @@ async def get_assistant_welcome_audio():
                     ],
                 }
             ],
-            "response_format": {"type": "audio"},
+            "response_format": {"type": "audio", "mime_type": "audio/wav"},
             "generation_config": {
                 "speech_config": [{"voice": "Puck"}],
             },

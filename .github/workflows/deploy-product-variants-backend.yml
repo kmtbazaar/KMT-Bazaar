@@ -133,7 +133,25 @@ jobs:
             rollback
             exit 1
           fi
-          rm -f "$INCOMING"
+          # Generate and cache the fixed Hindi welcome recording during deployment.
+          WELCOME_AUDIO_TMP="/tmp/kmt-bazaar-welcome-${DEPLOY_SHA}.wav"
+          if curl -fsS --max-time 90 http://127.0.0.1:8001/api/assistant/welcome-audio -o "$WELCOME_AUDIO_TMP"; then
+            if python3 - "$WELCOME_AUDIO_TMP" <<'PY'
+          import sys
+          from pathlib import Path
+          data = Path(sys.argv[1]).read_bytes()
+          sys.exit(0 if len(data) > 44 and data[:4] == b"RIFF" and data[8:12] == b"WAVE" else 1)
+          PY
+            then
+              echo "WELCOME_AUDIO_GENERATION_PASS"
+              echo "WELCOME_AUDIO_BYTES=$(stat -c '%s' "$WELCOME_AUDIO_TMP")"
+            else
+              echo "WELCOME_AUDIO_GENERATION_WARNING: response was not a valid WAV file"
+            fi
+          else
+            echo "WELCOME_AUDIO_GENERATION_WARNING: provider response unavailable; browser fallback remains enabled"
+          fi
+          rm -f "$WELCOME_AUDIO_TMP" "$INCOMING"
           echo "BACKEND_HEALTH_CHECK_PASS"
           echo "BACKEND_BACKUP=$BACKUP"
           echo "DEPLOYED_COMMIT=$DEPLOY_SHA"
