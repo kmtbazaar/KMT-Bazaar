@@ -62,10 +62,10 @@ jobs:
           PORT="${HOSTINGER_PORT:-22}"
           mkdir -p "$HOME/.ssh"
           chmod 700 "$HOME/.ssh"
-          printf '%s\\n' "$HOSTINGER_SSH_KEY" > "$HOME/.ssh/kmt_bazaar_backend_key"
+          printf '%s\n' "$HOSTINGER_SSH_KEY" > "$HOME/.ssh/kmt_bazaar_backend_key"
           chmod 600 "$HOME/.ssh/kmt_bazaar_backend_key"
           ssh-keyscan -p "$PORT" -H "$HOSTINGER_HOST" >> "$HOME/.ssh/known_hosts" 2>/dev/null
-          printf 'port=%s\\n' "$PORT" >> "$GITHUB_OUTPUT"
+          printf 'port=%s\n' "$PORT" >> "$GITHUB_OUTPUT"
 
       - name: Apply the targeted Google OAuth patch without replacing local server changes
         timeout-minutes: 5
@@ -105,12 +105,12 @@ jobs:
           source = path.read_text(encoding="utf-8")
           original = source
 
-          if not re.search(r"(?m)^GOOGLE_CLIENT_ID\\s*=", source):
+          if not re.search(r"(?m)^GOOGLE_CLIENT_ID\s*=", source):
               raise SystemExit("STOP: Existing server.py has no GOOGLE_CLIENT_ID setting; no file changes made.")
 
           # Normalize an existing env value without touching any other settings.
           source, count = re.subn(
-              r'(?m)^GOOGLE_CLIENT_ID\\s*=\\s*os\\.getenv\\("GOOGLE_CLIENT_ID",\\s*""\\)\\s*$',
+              r'(?m)^GOOGLE_CLIENT_ID\s*=\s*os\\.getenv\\("GOOGLE_CLIENT_ID",\s*""\\)\s*$',
               'GOOGLE_CLIENT_ID = (os.getenv("GOOGLE_CLIENT_ID") or "").strip()',
               source,
           )
@@ -123,12 +123,12 @@ jobs:
               if source.count(marker) != 1:
                   raise SystemExit("STOP: Could not identify exactly one existing Google login route; no file changes made.")
               config_route = (
-                  '@api.get("/auth/google/config")\\n'
-                  'async def google_auth_config(response: Response):\\n'
-                  '    # Share the public OAuth client ID used by the backend token verifier.\\n'
-                  '    response.headers["Cache-Control"] = "no-store"\\n'
-                  '    return {"configured": bool(GOOGLE_CLIENT_ID), "client_id": GOOGLE_CLIENT_ID or None}\\n'
-                  '\\n\\n'
+                  '@api.get("/auth/google/config")\n'
+                  'async def google_auth_config(response: Response):\n'
+                  '    # Share the public OAuth client ID used by the backend token verifier.\n'
+                  '    response.headers["Cache-Control"] = "no-store"\n'
+                  '    return {"configured": bool(GOOGLE_CLIENT_ID), "client_id": GOOGLE_CLIENT_ID or None}\n'
+                  '\n\n'
               )
               source = source.replace(marker, config_route + marker, 1)
 
@@ -160,7 +160,7 @@ jobs:
 
           READY=0
           for ATTEMPT in $(seq 1 12); do
-            if systemctl is-active --quiet kmt-bazaar-com.service \\
+            if systemctl is-active --quiet kmt-bazaar-com.service \
               && curl -fsS --max-time 10 http://127.0.0.1:8001/api/products >/dev/null 2>&1; then
               READY=1
               break

@@ -169,7 +169,7 @@ jobs:
           assert.ok(splash.includes("brightest < 26") && splash.includes("luminance < 31"), "Black background pixels must be excluded");
           assert.ok(splash.includes("requestAnimationFrame") && splash.includes("perspective"), "Particle assembly must animate in 3D");
           assert.ok(splash.includes("const particleFade = 1;"), "Settled particle logo must remain fully visible");
-          assert.ok(!splash.includes("finalMix") && !splash.includes("context.drawImage(\\n          logoCanvas"), "Static source PNG must not be drawn over the final particle logo");
+          assert.ok(!splash.includes("finalMix") && !splash.includes("context.drawImage(\n          logoCanvas"), "Static source PNG must not be drawn over the final particle logo");
           assert.ok(splash.includes("MAX_PARTICLES = 11000"), "Particle count must remain bounded for mobile performance");
           assert.ok(entry.includes("<ParticleLogoSplash />"), "Opening splash must use the particle logo");
           assert.ok(!entry.includes('source={require("../assets/images/splash-icon.png")}'), "Old static splash image must be removed");
