@@ -108,7 +108,6 @@ export default function AIAssistant() {
           </LinearGradient>
         </Animated.View>
       </Pressable>
-      <Animated.View pointerEvents="none" style={[styles.statusLight, haloStyle]} />
     </View>
   );
 }
