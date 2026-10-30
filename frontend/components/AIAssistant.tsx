@@ -79,6 +79,7 @@ export default function AIAssistant() {
       <Pressable
         accessibilityRole="button"
         accessibilityLabel="Open KMT Bazaar AI assistant"
+        accessibilityHint="Opens the KMT Bazaar AI assistant"
         testID="login-ai-assistant"
         onPressIn={() => {
           pressScale.value = withSpring(0.92);

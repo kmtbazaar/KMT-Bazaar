@@ -1,4 +1,4 @@
-name: Deploy product variants backend to kmtbazaar.com
+name: Safely patch Google sign-in configuration on kmtbazaar.com
 
 on:
   push:
@@ -6,11 +6,11 @@ on:
       - customer-live
     paths:
       - "backend/server.py"
-      # Avoid retriggering the deployment when only this workflow is edited.
+      - ".github/workflows/deploy-product-variants-backend.yml"
   workflow_dispatch:
     inputs:
       confirm_live_deploy:
-        description: "Confirm backend deployment to kmtbazaar.com"
+        description: "Confirm the targeted Google sign-in backend patch"
         required: true
         type: choice
         options:
@@ -32,7 +32,7 @@ jobs:
         with:
           ref: customer-live
 
-      - name: Validate backend syntax
+      - name: Validate repository backend syntax
         run: python -m py_compile backend/server.py
 
       - name: Check required Hostinger SSH configuration
@@ -62,12 +62,12 @@ jobs:
           PORT="${HOSTINGER_PORT:-22}"
           mkdir -p "$HOME/.ssh"
           chmod 700 "$HOME/.ssh"
-          printf '%s\n' "$HOSTINGER_SSH_KEY" > "$HOME/.ssh/kmt_bazaar_backend_key"
+          printf '%s\\n' "$HOSTINGER_SSH_KEY" > "$HOME/.ssh/kmt_bazaar_backend_key"
           chmod 600 "$HOME/.ssh/kmt_bazaar_backend_key"
           ssh-keyscan -p "$PORT" -H "$HOSTINGER_HOST" >> "$HOME/.ssh/known_hosts" 2>/dev/null
-          printf 'port=%s\n' "$PORT" >> "$GITHUB_OUTPUT"
+          printf 'port=%s\\n' "$PORT" >> "$GITHUB_OUTPUT"
 
-      - name: Stream backend source to production
+      - name: Apply the targeted Google OAuth patch without replacing local server changes
         timeout-minutes: 5
         env:
           HOSTINGER_HOST: ${{ secrets.HOSTINGER_HOST }}
@@ -76,49 +76,91 @@ jobs:
         run: |
           set -euo pipefail
           DEST="${HOSTINGER_USER}@${HOSTINGER_HOST}"
-          INCOMING="/tmp/kmt-bazaar-server-${GITHUB_SHA}.py"
-          timeout 60s ssh -T -o BatchMode=yes -o ConnectTimeout=15 -o ServerAliveInterval=15 -o ServerAliveCountMax=3 -i "$HOME/.ssh/kmt_bazaar_backend_key" -p "$HOSTINGER_PORT" "$DEST" "umask 077; cat > '$INCOMING'" < backend/server.py
-          LOCAL_BYTES=$(stat -c '%s' backend/server.py)
-          REMOTE_BYTES=$(timeout 30s ssh -o BatchMode=yes -o ConnectTimeout=15 -i "$HOME/.ssh/kmt_bazaar_backend_key" -p "$HOSTINGER_PORT" "$DEST" "stat -c '%s' '$INCOMING'")
-          echo "LOCAL_BYTES=$LOCAL_BYTES"
-          echo "REMOTE_BYTES=$REMOTE_BYTES"
-          test "$LOCAL_BYTES" = "$REMOTE_BYTES"
-
-      - name: Backup, restart, and verify backend
-        timeout-minutes: 5
-        env:
-          HOSTINGER_HOST: ${{ secrets.HOSTINGER_HOST }}
-          HOSTINGER_USER: ${{ secrets.HOSTINGER_USER }}
-          HOSTINGER_PORT: ${{ steps.ssh.outputs.port }}
-        run: |
-          set -euo pipefail
-          DEST="${HOSTINGER_USER}@${HOSTINGER_HOST}"
-          ssh -i "$HOME/.ssh/kmt_bazaar_backend_key" -p "$HOSTINGER_PORT" "$DEST" "DEPLOY_SHA='$GITHUB_SHA' bash -s" <<'REMOTE'
+          ssh -o BatchMode=yes -o ConnectTimeout=15 -o ServerAliveInterval=15 -o ServerAliveCountMax=3 \
+            -i "$HOME/.ssh/kmt_bazaar_backend_key" -p "$HOSTINGER_PORT" "$DEST" \
+            "DEPLOY_SHA='$GITHUB_SHA' bash -s" <<'REMOTE'
           set -Eeuo pipefail
+          exec 9>/run/kmt-bazaar-google-auth-deploy.lock
+          flock -n 9 || { echo "STOP: Another backend deployment is running."; exit 1; }
+
           TARGET=/root/KMT-Bazaar-com/backend/server.py
-          INCOMING="/tmp/kmt-bazaar-server-${DEPLOY_SHA}.py"
-          BACKUP="/root/kmt-bazaar-server-backup-${DEPLOY_SHA:0:12}-$(date +%Y%m%d-%H%M%S).py"
           test -s "$TARGET"
-          test -s "$INCOMING"
-          python3 -m py_compile "$INCOMING"
+          BACKUP="/root/kmtbazaar-google-auth-backup-${DEPLOY_SHA:0:12}-$(date +%Y%m%d-%H%M%S).py"
           cp -a "$TARGET" "$BACKUP"
-          MODE=$(stat -c '%a' "$TARGET")
-          install -m "$MODE" "$INCOMING" "$TARGET"
 
           rollback() {
             echo "BACKEND_ROLLBACK_START"
             cp -a "$BACKUP" "$TARGET"
             systemctl restart kmt-bazaar-com.service || true
-            echo "BACKEND_ROLLBACK_BACKUP=$BACKUP"
+            echo "BACKEND_BACKUP=$BACKUP"
           }
+
+          if ! python3 - "$TARGET" <<'PY'
+          import os
+          import re
+          import sys
+          from pathlib import Path
+
+          path = Path(sys.argv[1])
+          source = path.read_text(encoding="utf-8")
+          original = source
+
+          if not re.search(r"(?m)^GOOGLE_CLIENT_ID\\s*=", source):
+              raise SystemExit("STOP: Existing server.py has no GOOGLE_CLIENT_ID setting; no file changes made.")
+
+          # Normalize an existing env value without touching any other settings.
+          source, count = re.subn(
+              r'(?m)^GOOGLE_CLIENT_ID\\s*=\\s*os\\.getenv\\("GOOGLE_CLIENT_ID",\\s*""\\)\\s*$',
+              'GOOGLE_CLIENT_ID = (os.getenv("GOOGLE_CLIENT_ID") or "").strip()',
+              source,
+          )
+          if count > 1:
+              raise SystemExit("STOP: Multiple GOOGLE_CLIENT_ID declarations; no file changes made.")
+
+          route = '@api.get("/auth/google/config")'
+          if route not in source:
+              marker = '@api.post("/auth/google")'
+              if source.count(marker) != 1:
+                  raise SystemExit("STOP: Could not identify exactly one existing Google login route; no file changes made.")
+              config_route = (
+                  '@api.get("/auth/google/config")\\n'
+                  'async def google_auth_config(response: Response):\\n'
+                  '    # Share the public OAuth client ID used by the backend token verifier.\\n'
+                  '    response.headers["Cache-Control"] = "no-store"\\n'
+                  '    return {"configured": bool(GOOGLE_CLIENT_ID), "client_id": GOOGLE_CLIENT_ID or None}\\n'
+                  '\\n\\n'
+              )
+              source = source.replace(marker, config_route + marker, 1)
+
+          if source != original:
+              mode = path.stat().st_mode & 0o777
+              temporary = path.with_suffix(path.suffix + ".google-auth.tmp")
+              temporary.write_text(source, encoding="utf-8")
+              os.chmod(temporary, mode)
+              os.replace(temporary, path)
+              print("GOOGLE_AUTH_TARGETED_PATCH_APPLIED")
+          else:
+              print("GOOGLE_AUTH_PATCH_ALREADY_PRESENT")
+          PY
+          then
+            echo "STOP: Backend source did not match the expected Google OAuth structure."
+            exit 1
+          fi
+
+          if ! python3 -m py_compile "$TARGET"; then
+            echo "BACKEND_SYNTAX_FAIL"
+            rollback
+            exit 1
+          fi
 
           if ! systemctl restart kmt-bazaar-com.service; then
             rollback
             exit 1
           fi
+
           READY=0
           for ATTEMPT in $(seq 1 12); do
-            if systemctl is-active --quiet kmt-bazaar-com.service \
+            if systemctl is-active --quiet kmt-bazaar-com.service \\
               && curl -fsS --max-time 10 http://127.0.0.1:8001/api/products >/dev/null 2>&1; then
               READY=1
               break
@@ -126,6 +168,7 @@ jobs:
             echo "BACKEND_STARTUP_WAIT attempt=$ATTEMPT"
             sleep 5
           done
+
           if [ "$READY" -ne 1 ]; then
             echo "BACKEND_HEALTH_CHECK_FAIL"
             systemctl status kmt-bazaar-com.service --no-pager || true
@@ -133,25 +176,10 @@ jobs:
             rollback
             exit 1
           fi
-          # Generate and cache the fixed Hindi welcome recording during deployment.
-          WELCOME_AUDIO_TMP="/tmp/kmt-bazaar-welcome-${DEPLOY_SHA}.wav"
-          if curl -fsS --max-time 90 http://127.0.0.1:8001/api/assistant/welcome-audio -o "$WELCOME_AUDIO_TMP"; then
-            if python3 - "$WELCOME_AUDIO_TMP" <<'PY'
-          import sys
-          from pathlib import Path
-          data = Path(sys.argv[1]).read_bytes()
-          sys.exit(0 if len(data) > 44 and data[:4] == b"RIFF" and data[8:12] == b"WAVE" else 1)
-          PY
-            then
-              echo "WELCOME_AUDIO_GENERATION_PASS"
-              echo "WELCOME_AUDIO_BYTES=$(stat -c '%s' "$WELCOME_AUDIO_TMP")"
-            else
-              echo "WELCOME_AUDIO_GENERATION_WARNING: response was not a valid WAV file"
-            fi
-          else
-            echo "WELCOME_AUDIO_GENERATION_WARNING: provider response unavailable; browser fallback remains enabled"
-          fi
-          rm -f "$WELCOME_AUDIO_TMP" "$INCOMING"
+
+          GOOGLE_CONFIG="$(curl -fsS --max-time 10 http://127.0.0.1:8001/api/auth/google/config)"
+          printf '%s' "$GOOGLE_CONFIG" | python3 -c 'import json,sys; d=json.load(sys.stdin); print("GOOGLE_CONFIGURED="+("YES" if d.get("configured") else "NO"))'
+
           echo "BACKEND_HEALTH_CHECK_PASS"
           echo "BACKEND_BACKUP=$BACKUP"
           echo "DEPLOYED_COMMIT=$DEPLOY_SHA"
