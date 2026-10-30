@@ -97,7 +97,6 @@ jobs:
 
           if ! python3 - "$TARGET" <<'PY'
           import os
-          import re
           import sys
           from pathlib import Path
 
@@ -105,17 +104,17 @@ jobs:
           source = path.read_text(encoding="utf-8")
           original = source
 
-          if not re.search(r"(?m)^GOOGLE_CLIENT_ID\s*=", source):
+          if "GOOGLE_CLIENT_ID =" not in source:
               raise SystemExit("STOP: Existing server.py has no GOOGLE_CLIENT_ID setting; no file changes made.")
 
-          # Normalize an existing env value without touching any other settings.
-          source, count = re.subn(
-              r'(?m)^GOOGLE_CLIENT_ID\s*=\s*os\\.getenv\\("GOOGLE_CLIENT_ID",\s*""\\)\s*$',
-              'GOOGLE_CLIENT_ID = (os.getenv("GOOGLE_CLIENT_ID") or "").strip()',
-              source,
-          )
-          if count > 1:
+          # Normalize this one setting only; all other local server changes stay intact.
+          old_setting = 'GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID", "")'
+          new_setting = 'GOOGLE_CLIENT_ID = (os.getenv("GOOGLE_CLIENT_ID") or "").strip()'
+          setting_count = source.count(old_setting)
+          if setting_count > 1:
               raise SystemExit("STOP: Multiple GOOGLE_CLIENT_ID declarations; no file changes made.")
+          if setting_count == 1:
+              source = source.replace(old_setting, new_setting, 1)
 
           route = '@api.get("/auth/google/config")'
           if route not in source:

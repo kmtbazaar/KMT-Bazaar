@@ -304,12 +304,25 @@ jobs:
           STORES_CODE=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 20 --resolve kmtbazaar.com:443:127.0.0.1 https://kmtbazaar.com/api/stores || true)
           PRODUCTS_CODE=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 20 --resolve kmtbazaar.com:443:127.0.0.1 https://kmtbazaar.com/api/products || true)
 
+          # Wait for the targeted backend patch so the new login screen never ships
+          # without its matching Google OAuth configuration endpoint.
+          GOOGLE_CONFIG_CODE=0
+          for ATTEMPT in $(seq 1 12); do
+            GOOGLE_CONFIG_CODE=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 10 --resolve kmtbazaar.com:443:127.0.0.1 https://kmtbazaar.com/api/auth/google/config || true)
+            if [ "$GOOGLE_CONFIG_CODE" = "200" ]; then
+              break
+            fi
+            echo "GOOGLE_CONFIG_WAIT attempt=$ATTEMPT"
+            sleep 5
+          done
+
           echo "HOME=$HOME_CODE"
           echo "STORES=$STORES_CODE"
           echo "PRODUCTS=$PRODUCTS_CODE"
+          echo "GOOGLE_CONFIG=$GOOGLE_CONFIG_CODE"
           echo "BACKUP=$BACKUP"
 
-          if [ "$HOME_CODE" != "200" ] || [ "$STORES_CODE" != "200" ] || [ "$PRODUCTS_CODE" != "200" ]; then
+          if [ "$HOME_CODE" != "200" ] || [ "$STORES_CODE" != "200" ] || [ "$PRODUCTS_CODE" != "200" ] || [ "$GOOGLE_CONFIG_CODE" != "200" ]; then
             echo "VERIFICATION_FAIL"
             rollback
             exit 1
