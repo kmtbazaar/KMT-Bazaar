@@ -164,9 +164,12 @@ jobs:
           assert.ok(splash.includes("getImageData"), "Splash must sample the original logo pixels");
           assert.ok(splash.includes("brightest < 26") && splash.includes("luminance < 31"), "Black background pixels must be excluded");
           assert.ok(splash.includes("requestAnimationFrame") && splash.includes("perspective"), "Particle assembly must animate in 3D");
+          assert.ok(splash.includes("smoothStep(2.75, 3.75, elapsed)"), "Particle logo must resolve smoothly into the crisp final artwork");
+          assert.ok(splash.includes("MAX_PARTICLES = 11000"), "Particle count must remain bounded for mobile performance");
           assert.ok(entry.includes("<ParticleLogoSplash />"), "Opening splash must use the particle logo");
           assert.ok(!entry.includes('source={require("../assets/images/splash-icon.png")}'), "Old static splash image must be removed");
-          assert.ok(entry.includes('Platform.OS === "web" ? "#061426"'), "Web splash must use the clean navy canvas background");
+          assert.ok(entry.includes('backgroundColor: "#000000"'), "Web splash must use a pure black background");
+          assert.ok(entry.includes("}, 5200);"), "Splash must allow the full particle assembly and final logo reveal");
           console.log("PARTICLE_SPLASH_TRANSPARENT_LOGO_VALIDATION_PASS");
           NODE
 

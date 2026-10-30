@@ -30,7 +30,7 @@ export default function Index() {
 
   useEffect(() => {
     if (!isLanguageReady) return;
-    // 2.5 second Splash Timer
+    // Allow the full smooth particle assembly and final logo reveal.
     const timer = setTimeout(() => {
       setShowAssistant(true);
       Animated.timing(fadeAnim, {
@@ -38,7 +38,7 @@ export default function Index() {
         duration: 800,
         useNativeDriver: true,
       }).start();
-    }, 2500);
+    }, 5200);
 
     return () => clearTimeout(timer);
   }, [isLanguageReady]);
@@ -155,7 +155,7 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: Platform.OS === "web" ? "#061426" : "#000000",
+    backgroundColor: "#000000",
   },
   mainContent: {
     flex: 1,
