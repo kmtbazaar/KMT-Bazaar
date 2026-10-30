@@ -377,6 +377,9 @@ export type GoogleLoginResult =
   | { signup_required: false; token: string | null; user: User };
 
 export const api = {
+  googleConfig: () =>
+    apiFetch<{ configured: boolean; client_id: string | null }>("/auth/google/config"),
+
   googleLogin: (credential: string) =>
     apiFetch<GoogleLoginResult>("/auth/google", {
       method: "POST",

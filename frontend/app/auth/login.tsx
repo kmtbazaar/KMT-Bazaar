@@ -1,6 +1,6 @@
 import { LocalizedText as Text, LocalizedTextInput as TextInput } from "@/src/LocalizedText";
 import AIAssistant from "../../components/AIAssistant";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   View,
   Pressable,
@@ -31,7 +31,6 @@ import { api } from "@/src/api";
 import { RADIUS, SPACING } from "@/src/theme";
 
 const { width } = Dimensions.get("window");
-const GOOGLE_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID || "";
 
 function AnimatedTile({
   delay = 0,
@@ -96,6 +95,10 @@ export default function Login() {
   const [error, setError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
+  const [googleClientId, setGoogleClientId] = useState("");
+  const [googleConfigLoading, setGoogleConfigLoading] = useState(Platform.OS === "web");
+  const [googleButtonReady, setGoogleButtonReady] = useState(false);
+  const [googleConfigError, setGoogleConfigError] = useState<string | null>(null);
   const [emailOtpStep, setEmailOtpStep] = useState(false);
   const [emailOtp, setEmailOtp] = useState("");
   const [otpLoading, setOtpLoading] = useState(false);
@@ -223,8 +226,46 @@ export default function Login() {
     }
   };
 
+  const finishGoogleLoginRef = useRef(finishGoogleLogin);
+
   useEffect(() => {
-    if (Platform.OS !== "web" || !GOOGLE_CLIENT_ID) return;
+    finishGoogleLoginRef.current = finishGoogleLogin;
+  }, [finishGoogleLogin]);
+
+  useEffect(() => {
+    if (Platform.OS !== "web") return;
+
+    let cancelled = false;
+
+    api.googleConfig()
+      .then((config) => {
+        if (cancelled) return;
+        const clientId = String(config?.client_id || "").trim();
+        if (config?.configured && clientId) {
+          setGoogleClientId(clientId);
+          setGoogleConfigError(null);
+        } else {
+          setGoogleConfigError("Google sign-in is not configured on the KMT Bazaar server.");
+        }
+      })
+      .catch((configError: any) => {
+        if (!cancelled) {
+          setGoogleConfigError(
+            configError?.message || "Could not load Google sign-in settings. Please refresh and try again."
+          );
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setGoogleConfigLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (Platform.OS !== "web" || !googleClientId) return;
 
     let cancelled = false;
     let scriptElement: HTMLScriptElement | null = null;
@@ -235,19 +276,18 @@ export default function Login() {
       const google = (globalThis as any).google;
       const container = document.getElementById("google-signin-container");
       if (!google?.accounts?.id || !container) {
-        setError("Google sign-in could not initialize. Please refresh and try again.");
+        setGoogleConfigError("Google sign-in could not initialize. Please refresh and try again.");
         return;
       }
 
       try {
         container.innerHTML = "";
         google.accounts.id.initialize({
-          client_id: GOOGLE_CLIENT_ID,
+          client_id: googleClientId,
           auto_select: false,
           ux_mode: "popup",
-          use_fedcm_for_button: true,
           callback: (response: any) => {
-            finishGoogleLogin(response?.credential || "");
+            void finishGoogleLoginRef.current(response?.credential || "");
           },
         });
         google.accounts.id.renderButton(container, {
@@ -259,13 +299,21 @@ export default function Login() {
           logo_alignment: "left",
           width: Math.min(Math.max(width - 64, 240), 360),
         });
+        setGoogleButtonReady(true);
+        setGoogleConfigError(null);
       } catch {
-        setError("Google sign-in could not initialize. Check the Google Web Client ID and allowed website origin.");
+        setGoogleButtonReady(false);
+        setGoogleConfigError(
+          "Google sign-in could not initialize. Check the Google OAuth authorized website origins."
+        );
       }
     };
 
     const handleScriptError = () => {
-      if (!cancelled) setError("Google sign-in could not load. Check your connection and try again.");
+      if (!cancelled) {
+        setGoogleButtonReady(false);
+        setGoogleConfigError("Google sign-in could not load. Check your connection and try again.");
+      }
     };
 
     if ((globalThis as any).google?.accounts?.id) {
@@ -294,26 +342,10 @@ export default function Login() {
       scriptElement?.removeEventListener("load", initializeGoogle);
       scriptElement?.removeEventListener("error", handleScriptError);
     };
-  }, []);
+  }, [googleClientId]);
 
-  const onGoogleLogin = async () => {
-    if (Platform.OS !== "web") {
-      setError("Google login is currently configured for the KMT Bazaar website. Native app login needs a separate Android/iOS client ID.");
-      return;
-    }
-
-    if (!GOOGLE_CLIENT_ID) {
-      setError("Google sign-in is not configured. Set EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID and use the matching backend GOOGLE_CLIENT_ID.");
-      return;
-    }
-
-    const google = (globalThis as any).google;
-    if (!google?.accounts?.id) {
-      setError("Google sign-in could not load. Refresh the page and try again.");
-      return;
-    }
-
-    setError("Please use the Google sign-in button above.");
+  const onGoogleLogin = () => {
+    setError("Google sign-in is currently available on the KMT Bazaar website. Native Android/iOS sign-in needs separate platform client IDs.");
   };
 
   const onLogin = async () => {
@@ -645,12 +677,25 @@ export default function Login() {
                 <View style={s.googleLine} />
               </View>
 
-{Platform.OS === "web" && GOOGLE_CLIENT_ID ? (
-                <View
-                  nativeID="google-signin-container"
-                  testID="google-login-button"
-                  style={s.googleButtonContainer}
-                />
+{Platform.OS === "web" ? (
+                <>
+                  <View
+                    nativeID="google-signin-container"
+                    testID="google-login-button"
+                    style={s.googleButtonContainer}
+                  />
+                  {(googleConfigLoading || (googleClientId && !googleButtonReady && !googleConfigError)) && (
+                    <View style={s.googleLoadingRow}>
+                      <ActivityIndicator size="small" color="#4285F4" />
+                      <Text style={s.googleLoadingText}>Loading Google sign-in…</Text>
+                    </View>
+                  )}
+                  {!googleConfigLoading && !googleClientId && (
+                    <Text style={s.googleUnavailable} testID="google-login-unavailable">
+                      Google sign-in is temporarily unavailable.
+                    </Text>
+                  )}
+                </>
               ) : (
                 <Pressable
                   testID="google-login-button"
@@ -662,6 +707,8 @@ export default function Login() {
                   <Text style={s.googleText}>{googleLoading ? "Connecting..." : "Continue with Google"}</Text>
                 </Pressable>
               )}
+              {googleConfigError && <Text style={s.err} testID="google-login-error">{googleConfigError}</Text>}
+              {error && <Text style={s.err} testID="login-error">{error}</Text>}
               </>
             )}
           </View>
@@ -895,6 +942,28 @@ const s = StyleSheet.create({
     minHeight: 44,
     alignItems: "center",
     justifyContent: "center",
+  },
+
+  googleLoadingRow: {
+    minHeight: 32,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+  },
+
+  googleLoadingText: {
+    color: "#64748B",
+    fontSize: 12,
+    fontWeight: "600",
+  },
+
+  googleUnavailable: {
+    color: "#B45309",
+    fontSize: 12,
+    fontWeight: "700",
+    textAlign: "center",
+    marginTop: 8,
   },
 
   googleButton: {

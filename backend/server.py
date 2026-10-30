@@ -67,7 +67,7 @@ COOKIE_AUTH_ORIGINS = frozenset({
 
 GEMINI_API_KEY = (os.getenv("GEMINI_API_KEY") or "").strip()
 GEMINI_MODEL = (os.getenv("GEMINI_MODEL") or "gemini-3.8-flash").strip() or "gemini-3.8-flash"
-GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID", "")
+GOOGLE_CLIENT_ID = (os.getenv("GOOGLE_CLIENT_ID") or "").strip()
 RESEND_API_KEY = os.getenv("RESEND_API_KEY", "").strip()
 EMAIL_FROM = (os.getenv("EMAIL_FROM") or os.getenv("RESEND_FROM_EMAIL") or "KMT Bazaar <noreply@kmtbazaar.com>").strip()
 EMAIL_OTP_EXPIRE_MINUTES = 10
@@ -1174,6 +1174,13 @@ async def verify_email_signup_otp(data: EmailOtpVerifyIn, request: Request, resp
     return await build_auth_response(request, response, token, user_doc)
 
 
+
+
+@api.get("/auth/google/config")
+async def google_auth_config(response: Response):
+    # OAuth client IDs are public identifiers; share the same ID the backend verifies.
+    response.headers["Cache-Control"] = "no-store"
+    return {"configured": bool(GOOGLE_CLIENT_ID), "client_id": GOOGLE_CLIENT_ID or None}
 
 
 @api.post("/auth/google")

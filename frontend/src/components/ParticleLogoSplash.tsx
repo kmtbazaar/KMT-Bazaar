@@ -119,8 +119,7 @@ export default function ParticleLogoSplash() {
       const sineY = Math.sin(yaw);
       const cosineX = Math.cos(pitch);
       const sineX = Math.sin(pitch);
-      const finalMix = smoothStep(2.75, 3.75, elapsed);
-      const particleFade = 1 - 0.70 * finalMix;
+      const particleFade = 1;
 
       for (const particle of particles) {
         const progress = smoothStep(0.18, 2.72, elapsed - particle.delay);
@@ -180,30 +179,6 @@ export default function ParticleLogoSplash() {
           context.arc(screenX - radius * 0.28, screenY - radius * 0.32, radius * 0.25, 0, Math.PI * 2);
           context.fill();
         }
-      }
-
-      // A clean alpha-keyed original logo resolves out of the particle silhouette.
-      if (finalMix > 0 && logoDrawWidth > 0 && logoDrawHeight > 0) {
-        context.save();
-        context.globalAlpha = finalMix;
-        context.shadowColor = "rgba(40, 130, 255, 0.32)";
-        context.shadowBlur = 11;
-        context.drawImage(
-          logoCanvas,
-          cropX, cropY, cropWidth, cropHeight,
-          (CANVAS_SIZE - logoDrawWidth) * 0.5,
-          (CANVAS_SIZE - logoDrawHeight) * 0.5,
-          logoDrawWidth, logoDrawHeight
-        );
-        context.shadowBlur = 0;
-        context.drawImage(
-          logoCanvas,
-          cropX, cropY, cropWidth, cropHeight,
-          (CANVAS_SIZE - logoDrawWidth) * 0.5,
-          (CANVAS_SIZE - logoDrawHeight) * 0.5,
-          logoDrawWidth, logoDrawHeight
-        );
-        context.restore();
       }
 
       context.globalAlpha = 1;
