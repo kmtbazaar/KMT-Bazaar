@@ -1,7 +1,7 @@
 import React, { useEffect } from "react";
 import { View, Pressable, StyleSheet } from "react-native";
 import { useRouter } from "expo-router";
-import { LinearGradient } from "expo-linear-gradient";
+import RobotAvatar from "../src/components/RobotAvatar";
 import Animated, {
   cancelAnimation,
   Easing,
@@ -91,22 +91,7 @@ export default function AIAssistant() {
         style={styles.pressable}
       >
         <Animated.View style={[styles.robotFloat, robotStyle]}>
-          <LinearGradient
-            colors={["#164E63", "#0B1E33", "#101827"]}
-            start={{ x: 0.1, y: 0 }}
-            end={{ x: 0.9, y: 1 }}
-            style={styles.robotShell}
-          >
-            <View style={styles.antennaStem} />
-            <View style={styles.antennaLight} />
-            <View style={styles.sidePanelLeft} />
-            <View style={styles.sidePanelRight} />
-            <View style={styles.visor}>
-              <View style={styles.eye} />
-              <View style={styles.eye} />
-            </View>
-            <View style={styles.mouthLight} />
-          </LinearGradient>
+          <RobotAvatar size={62} showOrbit={false} />
         </Animated.View>
       </Pressable>
     </View>
@@ -184,93 +169,12 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  robotShell: {
-    width: 54,
-    height: 54,
-    borderRadius: 19,
-    borderWidth: 1.5,
-    borderColor: "rgba(125, 211, 252, 0.95)",
-    alignItems: "center",
-    justifyContent: "center",
-    shadowColor: "#0EA5E9",
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.82,
-    shadowRadius: 13,
-    elevation: 9,
-  },
-  antennaStem: {
-    position: "absolute",
-    top: -6,
-    width: 2,
-    height: 7,
-    borderRadius: 1,
-    backgroundColor: "#67E8F9",
-  },
-  antennaLight: {
-    position: "absolute",
-    top: -10,
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: "#FDE68A",
-    shadowColor: "#F59E0B",
-    shadowOpacity: 1,
-    shadowRadius: 6,
-    elevation: 5,
-  },
-  sidePanelLeft: {
-    position: "absolute",
-    left: -4,
-    width: 5,
-    height: 18,
-    borderRadius: 3,
-    backgroundColor: "#0891B2",
-    borderWidth: 1,
-    borderColor: "#67E8F9",
-  },
-  sidePanelRight: {
-    position: "absolute",
-    right: -4,
-    width: 5,
-    height: 18,
-    borderRadius: 3,
-    backgroundColor: "#0891B2",
-    borderWidth: 1,
-    borderColor: "#67E8F9",
-  },
-  visor: {
-    width: 37,
-    height: 20,
-    borderRadius: 9,
-    backgroundColor: "#06111F",
-    borderWidth: 1,
-    borderColor: "rgba(103, 232, 249, 0.65)",
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-evenly",
-    shadowColor: "#22D3EE",
-    shadowOpacity: 0.38,
-    shadowRadius: 5,
-  },
-  eye: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: "#67E8F9",
-    shadowColor: "#22D3EE",
-    shadowOpacity: 1,
-    shadowRadius: 5,
-    elevation: 3,
-  },
-  mouthLight: {
-    width: 12,
-    height: 2.5,
-    borderRadius: 2,
-    marginTop: 4,
-    backgroundColor: "#F59E0B",
-    shadowColor: "#F97316",
-    shadowOpacity: 1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
+
+
+
+
+
+
+
+
 });

@@ -1,7 +1,16 @@
 import { Platform } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
+const productionWebOrigin =
+  Platform.OS === "web" &&
+  typeof window !== "undefined" &&
+  window.location.protocol === "https:" &&
+  /^(www\.)?kmtbazaar\.com$/i.test(window.location.hostname)
+    ? window.location.origin
+    : null;
+
 const BASE =
+  productionWebOrigin ||
   process.env.EXPO_PUBLIC_BACKEND_URL ||
   "https://kmtbazaar.com";
 

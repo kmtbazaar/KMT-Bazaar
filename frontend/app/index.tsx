@@ -14,11 +14,8 @@ import {
 import { router } from "expo-router";
 import { useLanguage } from "../src/LanguageContext";
 import ParticleLogoSplash from "../src/components/ParticleLogoSplash";
-
-// --- GIF IMPORTS ---
-import AssistantGif from "../assets/images/assistant.gif";
-import AssistantChar from "../assets/images/assistant-char.png";
-import VoiceGif from "../assets/images/voice.gif"; 
+import RobotAvatar from "../src/components/RobotAvatar";
+import VoiceGif from "../assets/images/voice.gif";
 
 const { width } = Dimensions.get("window");
 
@@ -32,7 +29,6 @@ export default function Index() {
   const welcomeAudioFailedRef = useRef(false);
   const [greetingPlaying, setGreetingPlaying] = useState(false);
   const [greetingNeedsTap, setGreetingNeedsTap] = useState(false);
-  const [avatarPlaybackKey, setAvatarPlaybackKey] = useState(0);
 
   const speakFallbackGreeting = () => {
     if (Platform.OS !== "web" || typeof window === "undefined") return false;
@@ -50,7 +46,6 @@ export default function Index() {
     utterance.onstart = () => {
       setGreetingPlaying(true);
       setGreetingNeedsTap(false);
-      setAvatarPlaybackKey((key) => key + 1);
     };
     utterance.onend = () => setGreetingPlaying(false);
     utterance.onerror = () => setGreetingPlaying(false);
@@ -82,7 +77,6 @@ export default function Index() {
     audio.onplay = () => {
       setGreetingPlaying(true);
       setGreetingNeedsTap(false);
-      setAvatarPlaybackKey((key) => key + 1);
     };
     audio.onended = () => setGreetingPlaying(false);
     audio.onerror = () => {
@@ -135,7 +129,7 @@ export default function Index() {
               <Text style={styles.tileSubtitle}>Choose your language / अपनी भाषा चुनें</Text>
             </View>
             <TouchableOpacity activeOpacity={0.92} onPress={playWelcomeGreeting} accessibilityRole="button" accessibilityLabel="Play KMT Bazaar welcome greeting">
-              <Image key={avatarPlaybackKey} source={greetingPlaying ? AssistantGif : AssistantChar} style={{ width: width * 0.72, height: 250 }} resizeMode="contain" />
+              <RobotAvatar size={Math.min(width * 0.72, 248)} talking={greetingPlaying} />
             </TouchableOpacity>
             {greetingNeedsTap && <Text style={styles.greetingPrompt}>स्वागत सुनने के लिए assistant पर टैप करें</Text>}
             <View style={{ width: "100%", gap: 14 }}>
@@ -177,11 +171,9 @@ export default function Index() {
             <View style={styles.characterContainer}>
               <View style={styles.characterWrapper}>
                 <TouchableOpacity style={{ width: "100%", height: "100%" }} activeOpacity={0.92} onPress={playWelcomeGreeting} accessibilityRole="button" accessibilityLabel="Replay KMT Bazaar welcome greeting">
-                  <Image
-                    key={avatarPlaybackKey}
-                    source={greetingPlaying ? AssistantGif : AssistantChar}
-                    style={styles.imageSize}
-                    resizeMode="contain"
+                  <RobotAvatar
+                    size={Math.min(width * 0.68, 252)}
+                    talking={greetingPlaying}
                   />
                 </TouchableOpacity>
               </View>

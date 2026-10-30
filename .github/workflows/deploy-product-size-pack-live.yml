@@ -23,6 +23,7 @@ on:
       - "frontend/app/index.tsx"
       - "frontend/src/components/ParticleLogoSplash.tsx"
       - "frontend/components/AIAssistant.tsx"
+      - "frontend/src/components/RobotAvatar.tsx"
       - "frontend/src/api.ts"
       - ".github/workflows/deploy-product-size-pack-live.yml"
   workflow_dispatch:
@@ -154,7 +155,7 @@ jobs:
 
       - name: Lint changed product and branding screens
         working-directory: frontend
-        run: npx eslint "app/vendor/store/[id].tsx" "app/vendor/products.tsx" "app/product/[id].tsx" "src/components/ProductCard.tsx" "src/components/AnimatedBrandLogo.tsx" "app/auth/login.tsx" "app/admin/index.tsx" "app/delivery/index.tsx" "app/vendor/holiday-dashboard.tsx" "app/vendor/car-rental-dashboard.tsx" "app/role/[role].tsx" "app/(tabs)/profile.tsx" "app/(tabs)/cart.tsx" "app/index.tsx" "src/components/ParticleLogoSplash.tsx" "components/AIAssistant.tsx" "src/api.ts" --no-cache
+        run: npx eslint "app/vendor/store/[id].tsx" "app/vendor/products.tsx" "app/product/[id].tsx" "src/components/ProductCard.tsx" "src/components/AnimatedBrandLogo.tsx" "app/auth/login.tsx" "app/admin/index.tsx" "app/delivery/index.tsx" "app/vendor/holiday-dashboard.tsx" "app/vendor/car-rental-dashboard.tsx" "app/role/[role].tsx" "app/(tabs)/profile.tsx" "app/(tabs)/cart.tsx" "app/index.tsx" "src/components/ParticleLogoSplash.tsx" "components/AIAssistant.tsx" "src/components/RobotAvatar.tsx" "app/index.tsx" "src/api.ts" --no-cache
 
       - name: Validate particle-forming splash and black-background removal
         working-directory: frontend
@@ -194,13 +195,18 @@ jobs:
           const login = fs.readFileSync("app/auth/login.tsx", "utf8");
           const api = fs.readFileSync("src/api.ts", "utf8");
           const assistant = fs.readFileSync("components/AIAssistant.tsx", "utf8");
+          const robot = fs.readFileSync("src/components/RobotAvatar.tsx", "utf8");
+          const index = fs.readFileSync("app/index.tsx", "utf8");
           const backend = fs.readFileSync("../backend/server.py", "utf8");
           assert.ok(login.includes("api.googleConfig()"), "Login must load the OAuth client ID from backend configuration");
           assert.ok(login.includes("google.accounts.id.initialize") && login.includes("google.accounts.id.renderButton"), "Google Identity Services button must be initialized");
           assert.ok(!login.includes("EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID"), "Login must not rely on a separate build-time OAuth client ID");
           assert.ok(api.includes('"/auth/google/config"'), "Frontend API must expose Google OAuth configuration");
           assert.ok(backend.includes('@api.get("/auth/google/config")'), "Backend must expose Google OAuth configuration");
-          assert.ok(assistant.includes("login-ai-assistant") && assistant.includes("orbitRotation") && assistant.includes("lightPulse"), "Login assistant must be a glowing animated robot");
+          assert.ok(assistant.includes("login-ai-assistant") && assistant.includes("RobotAvatar") && assistant.includes("orbitRotation") && assistant.includes("lightPulse"), "Login assistant must use the glowing animated robot");
+          assert.ok(robot.includes("talking") && robot.includes("orbitRotation") && robot.includes("mouthPulse") && robot.includes("#67E8F9"), "Robot avatar must animate its lights and talking indicator");
+          assert.ok(index.includes("RobotAvatar") && !index.includes("AssistantChar") && !index.includes("assistant-char.png"), "Post-splash welcome screen must not render the old static assistant PNG");
+          assert.ok(login.includes("googleButtonContainerRef") && login.includes("response.credential"), "Google sign-in must initialize against its mounted button container and handle the returned credential");
           assert.ok(!assistant.includes("styles.statusLight"), "Robot must not reference a missing style");
           console.log("GOOGLE_SIGN_IN_BOOTSTRAP_VALIDATION_PASS");
           console.log("LOGIN_ROBOT_ANIMATION_VALIDATION_PASS");

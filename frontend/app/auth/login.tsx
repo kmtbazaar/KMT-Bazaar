@@ -99,6 +99,7 @@ export default function Login() {
   const [googleConfigLoading, setGoogleConfigLoading] = useState(Platform.OS === "web");
   const [googleButtonReady, setGoogleButtonReady] = useState(false);
   const [googleConfigError, setGoogleConfigError] = useState<string | null>(null);
+  const googleButtonContainerRef = useRef<any>(null);
   const [emailOtpStep, setEmailOtpStep] = useState(false);
   const [emailOtp, setEmailOtp] = useState("");
   const [otpLoading, setOtpLoading] = useState(false);
@@ -274,7 +275,9 @@ export default function Login() {
       if (cancelled) return;
 
       const google = (globalThis as any).google;
-      const container = document.getElementById("google-signin-container");
+      const container =
+        googleButtonContainerRef.current ||
+        document.getElementById("google-signin-container");
       if (!google?.accounts?.id || !container) {
         setGoogleConfigError("Google sign-in could not initialize. Please refresh and try again.");
         return;
@@ -287,7 +290,17 @@ export default function Login() {
           auto_select: false,
           ux_mode: "popup",
           callback: (response: any) => {
-            void finishGoogleLoginRef.current(response?.credential || "");
+            if (response?.error) {
+              setGoogleLoading(false);
+              setError("Google sign-in was not completed. Please try again.");
+              return;
+            }
+            if (!response?.credential) {
+              setGoogleLoading(false);
+              setError("Google did not return a sign-in token. Please try again.");
+              return;
+            }
+            void finishGoogleLoginRef.current(response.credential);
           },
         });
         google.accounts.id.renderButton(container, {
@@ -297,7 +310,13 @@ export default function Login() {
           text: "continue_with",
           shape: "pill",
           logo_alignment: "left",
-          width: Math.min(Math.max(width - 64, 240), 360),
+          width: Math.min(
+            Math.max(
+              Math.floor(container.getBoundingClientRect?.().width || width - 64),
+              240
+            ),
+            360
+          ),
         });
         setGoogleButtonReady(true);
         setGoogleConfigError(null);
@@ -680,6 +699,7 @@ export default function Login() {
 {Platform.OS === "web" ? (
                 <>
                   <View
+                    ref={googleButtonContainerRef}
                     nativeID="google-signin-container"
                     testID="google-login-button"
                     style={s.googleButtonContainer}
