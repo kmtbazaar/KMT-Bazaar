@@ -122,7 +122,7 @@ export default function Index() {
                 onPress={() => router.replace("/auth/login")}
               >
                 <View style={styles.primaryGradientBtn}>
-                  <Text style={styles.primaryBtnText}>Let's get started</Text>
+                  <Text style={styles.primaryBtnText}>Let&apos;s get started</Text>
                 </View>
               </TouchableOpacity>
             </View>
