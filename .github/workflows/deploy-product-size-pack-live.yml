@@ -155,7 +155,7 @@ jobs:
 
       - name: Lint changed product and branding screens
         working-directory: frontend
-        run: npx eslint "app/vendor/store/[id].tsx" "app/vendor/products.tsx" "app/product/[id].tsx" "src/components/ProductCard.tsx" "src/components/AnimatedBrandLogo.tsx" "app/auth/login.tsx" "app/admin/index.tsx" "app/delivery/index.tsx" "app/vendor/holiday-dashboard.tsx" "app/vendor/car-rental-dashboard.tsx" "app/role/[role].tsx" "app/(tabs)/profile.tsx" "app/(tabs)/cart.tsx" "app/index.tsx" "src/components/ParticleLogoSplash.tsx" "components/AIAssistant.tsx" "src/components/RobotAvatar.tsx" "app/index.tsx" "src/api.ts" --no-cache
+        run: npx eslint "app/vendor/store/[id].tsx" "app/vendor/products.tsx" "app/product/[id].tsx" "src/components/ProductCard.tsx" "src/components/AnimatedBrandLogo.tsx" "app/auth/login.tsx" "app/admin/index.tsx" "app/delivery/index.tsx" "app/vendor/holiday-dashboard.tsx" "app/vendor/car-rental-dashboard.tsx" "app/role/[role].tsx" "app/(tabs)/profile.tsx" "app/(tabs)/cart.tsx" "app/index.tsx" "src/components/ParticleLogoSplash.tsx" "components/AIAssistant.tsx" "src/components/RobotAvatar.tsx" "src/api.ts" --no-cache
 
       - name: Validate particle-forming splash and black-background removal
         working-directory: frontend
@@ -180,7 +180,7 @@ jobs:
           assert.ok(backend.includes('WELCOME_TTS_MODEL = "gemini-3.8-flash-tts"'), "Welcome voice must use the supported Gemini TTS model");
           assert.ok(backend.includes("WELCOME_AUDIO_LOCK") && backend.includes("WELCOME_AUDIO_CACHE_PATH"), "Welcome audio generation must be cached and concurrency guarded");
           assert.ok(entry.includes("/api/assistant/welcome-audio?v=2"), "Assistant screen must play the generated Hindi welcome audio");
-          assert.ok(entry.includes("greetingPlaying ? AssistantGif : AssistantChar"), "Assistant talking animation must start and stop with the greeting audio");
+          assert.ok(entry.includes("talking={greetingPlaying}") && entry.includes("<RobotAvatar"), "Welcome robot mouth lights must follow the greeting audio");
           assert.ok(entry.includes('utterance.lang = "hi-IN"') && entry.includes("utterance.pitch = 1.2"), "Browser fallback must use a youthful Hindi speech profile");
           console.log("PARTICLE_SPLASH_TRANSPARENT_LOGO_VALIDATION_PASS");
           console.log("ASSISTANT_WELCOME_TTS_LIPSYNC_VALIDATION_PASS");
