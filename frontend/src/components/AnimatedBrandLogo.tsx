@@ -6,7 +6,7 @@ import { LOGO_URL } from "@/src/theme";
 
 type Props = { size?: number; intensity?: "hero" | "normal" | "compact"; testID?: string };
 type ParticleProps = { phase: SharedValue<number>; size: number; index: number; color: string };
-const PARTICLE_COLORS = ["#FDBA74", "#67E8F9", "#FDE68A", "#FB923C", "#FFFFFF", "#7DD3FC", "#F9A8D4", "#FED7AA"];
+const PARTICLE_COLORS = ["#FDBA74", "#67E8F9", "#FDE68A", "#FB923C", "#FFFFFF", "#7DD3FC", "#F9A8D4", "#FED7AA", "#A5B4FC", "#86EFAC"];
 
 function OrbitParticle({ phase, size, index, color }: ParticleProps) {
   const dotSize = Math.max(2.5, size * (index % 3 === 0 ? 0.075 : 0.055));
