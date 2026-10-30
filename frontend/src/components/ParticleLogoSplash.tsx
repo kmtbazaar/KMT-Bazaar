@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from "react";
 import { Image as NativeImage, Platform, StyleSheet, View } from "react-native";
+import { Asset } from "expo-asset";
 
 const logoAsset = require("../../assets/images/splash-icon.png");
 const CANVAS_SIZE = 360;
@@ -38,7 +39,7 @@ export default function ParticleLogoSplash() {
     canvas.height = Math.round(CANVAS_SIZE * pixelRatio);
     context.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
 
-    const source = NativeImage.resolveAssetSource(logoAsset);
+    const source = Asset.fromModule(logoAsset);
     const image = document.createElement("img");
     image.decoding = "async";
 
@@ -163,7 +164,7 @@ export default function ParticleLogoSplash() {
       }
     };
 
-    image.src = source?.uri || "";
+    image.src = source.uri || "";
 
     return () => {
       disposed = true;
