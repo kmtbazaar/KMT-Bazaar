@@ -22,6 +22,7 @@ const { width } = Dimensions.get("window");
 export default function Index() {
   const [showAssistant, setShowAssistant] = useState(false);
   const { hasSelectedLanguage, selectLanguage, isLanguageReady } = useLanguage();
+  const assistantSize = Math.min(width * 0.68, 252);
 
   // Smooth Fade-In Animation for Screen Load
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -169,16 +170,16 @@ export default function Index() {
 
             {/* Character Section */}
             <View style={styles.characterContainer} pointerEvents="box-none">
-              <View style={styles.characterWrapper}>
+              <View style={styles.characterWrapper} pointerEvents="box-none">
                 <TouchableOpacity
-                  style={{ width: "100%", height: "100%", alignItems: "center", justifyContent: "center" }}
+                  style={{ width: assistantSize, height: assistantSize, alignItems: "center", justifyContent: "center" }}
                   activeOpacity={0.92}
                   onPress={playWelcomeGreeting}
                   accessibilityRole="button"
                   accessibilityLabel="Replay KMT Bazaar welcome greeting"
                 >
                   <RobotAvatar
-                    size={Math.min(width * 0.68, 252)}
+                    size={assistantSize}
                     talking={greetingPlaying}
                   />
                 </TouchableOpacity>
