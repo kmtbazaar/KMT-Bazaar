@@ -218,8 +218,10 @@ jobs:
           assert.ok(login.includes("use_fedcm_for_button: true") && login.includes("button_auto_select: false"), "Chrome Google sign-in must use the browser account chooser and require explicit account selection");
           assert.ok(login.includes("Google sign-in is only for existing customer accounts. Please enter your KMT Bazaar login details manually."), "Non-customer Google accounts must be told to use manual login");
           const googleHandler = login.slice(login.indexOf("const finishGoogleLogin ="), login.indexOf("const finishGoogleLoginRef"));
-          assert.ok(googleHandler.includes('result.user.role !== "customer"') && googleHandler.includes("result.signup_required"), "Google login must only route existing customer accounts");
-          assert.ok(!googleHandler.includes('pathname: "/auth/register"'), "Unknown Google emails must not be sent through Google signup");
+          assert.ok(googleHandler.includes("result.signup_required") && googleHandler.includes('pathname: "/auth/register"'), "Existing Google signup flow must remain intact for new email addresses");
+          assert.ok(!googleHandler.includes('result.user.role !== "customer"'), "Customer-only role enforcement must remain in the existing backend authorization path");
+          assert.ok(backend.includes('if user.get("role") != Role.CUSTOMER.value:') && backend.includes("Please use your KMT account login for this account"), "Google login backend must continue to reject non-customer accounts");
+          assert.ok(login.includes("/Please use your KMT account login for this account/i") && login.includes("GOOGLE_CUSTOMER_ONLY_MESSAGE"), "Non-customer Google login must show the manual-login instruction");
           assert.ok(!assistant.includes("styles.statusLight"), "Robot must not reference a missing style");
           console.log("GOOGLE_SIGN_IN_BOOTSTRAP_VALIDATION_PASS");
           console.log("LOGIN_ROBOT_ANIMATION_VALIDATION_PASS");

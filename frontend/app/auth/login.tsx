@@ -210,14 +210,17 @@ export default function Login() {
     try {
       const result = await googleLogin(credential);
       if (result.signup_required) {
-        setError(GOOGLE_CUSTOMER_ONLY_MESSAGE);
+        router.replace({
+          pathname: "/auth/register",
+          params: {
+            email: result.email,
+            name: result.name,
+            source: "google",
+          },
+        } as any);
         return;
       }
       if (!result.user?.role) throw new Error("Google login failed");
-      if (result.user.role !== "customer") {
-        setError(GOOGLE_CUSTOMER_ONLY_MESSAGE);
-        return;
-      }
 
       goToDashboard(result.user);
     } catch (e: any) {
