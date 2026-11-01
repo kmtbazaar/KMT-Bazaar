@@ -1,6 +1,7 @@
 import { LocalizedText as Text } from "@/src/LocalizedText";
-import React, { useEffect, useState, useCallback, useRef } from "react";
-import { View, ScrollView, StyleSheet, Pressable, FlatList, Dimensions, RefreshControl, Platform, ActivityIndicator, Animated as RNAnimated } from "react-native";
+import React, { useEffect, useState, useCallback, useRef, useMemo } from "react";
+import { View, ScrollView, StyleSheet, Pressable, FlatList, Dimensions, RefreshControl, Platform, ActivityIndicator, Animated as RNAnimated, TextInput } from "react-native";
+import { BlurView } from "expo-blur";
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
@@ -820,6 +821,13 @@ export default function Home() {
   const bannerListRef = useRef<FlatList<any>>(null);
   const voiceRecognitionRef = useRef<any>(null);
 
+  const [homeSearchOpen, setHomeSearchOpen] = useState(false);
+  const [homeSearchQuery, setHomeSearchQuery] = useState("");
+  const [homeSearchProducts, setHomeSearchProducts] = useState<any[]>([]);
+  const [homeSearchLoading, setHomeSearchLoading] = useState(false);
+  const [homeSearchError, setHomeSearchError] = useState("");
+  const homeSearchFetchStarted = useRef(false);
+
   const tabBarTranslateY = useRef(new RNAnimated.Value(0)).current;
   const lastHomeOffsetY = useRef(0);
   const homeTabHidden = useRef(false);
@@ -1108,6 +1116,68 @@ export default function Home() {
     opacity: flashOpacity.value
   }));
 
+  const loadHomeSearchProducts = useCallback(async () => {
+    if (homeSearchFetchStarted.current) return;
+    homeSearchFetchStarted.current = true;
+    setHomeSearchLoading(true);
+    setHomeSearchError("");
+
+    try {
+      const data = await api.products({});
+      const products = Array.isArray(data)
+        ? data
+        : Array.isArray((data as any)?.products)
+          ? (data as any).products
+          : [];
+      setHomeSearchProducts(products.filter((item: any) =>
+        item && typeof item === "object" && item.id != null
+      ));
+    } catch (error) {
+      console.warn("Home search products unavailable:", error);
+      setHomeSearchError("Products could not be loaded. Please try again.");
+      homeSearchFetchStarted.current = false;
+    } finally {
+      setHomeSearchLoading(false);
+    }
+  }, []);
+
+  const openHomeSearch = () => {
+    setHomeSearchQuery("");
+    setHomeSearchOpen(true);
+    void loadHomeSearchProducts();
+  };
+
+  const closeHomeSearch = () => {
+    setHomeSearchOpen(false);
+    setHomeSearchQuery("");
+  };
+
+  const retryHomeSearch = () => {
+    homeSearchFetchStarted.current = false;
+    void loadHomeSearchProducts();
+  };
+
+  const homeSearchResults = useMemo(() => {
+    const keyword = homeSearchQuery.trim().normalize("NFKC").toLowerCase();
+    if (!keyword) return homeSearchProducts;
+
+    return homeSearchProducts.filter((item: any) => {
+      const searchableText = [
+        item?.name,
+        item?.product_name,
+        item?.productName,
+        item?.title,
+        item?.description,
+        item?.unit,
+      ]
+        .filter((value) => typeof value === "string" && value.trim())
+        .join(" ")
+        .normalize("NFKC")
+        .toLowerCase();
+      return searchableText.includes(keyword);
+    });
+  }, [homeSearchProducts, homeSearchQuery]);
+
   const heroExpandedHeight = Platform.OS === "web" ? 100 : 106;
   const heroAnimatedHeight = heroCollapseProgress.interpolate({
     inputRange: [0, 1],
@@ -1249,7 +1319,7 @@ export default function Home() {
         {/* Search Bar */}
         <Pressable
           testID="home-search-trigger"
-          onPress={() => router.push("/search" as any)}
+          onPress={openHomeSearch}
           style={[s.searchWrap, !heroCollapsed && { transform: [{ translateY: -24 }] }]}
         >
           <MaterialCommunityIcons name="magnify" size={22} color={THEME.white} />
@@ -1542,6 +1612,100 @@ export default function Home() {
 
       {/* Floating Checkout Bar */}
       <CheckoutBar />
+
+      {homeSearchOpen && (
+        <View style={s.homeSearchOverlay} testID="home-search-overlay">
+          <BlurView
+            intensity={42}
+            tint="dark"
+            pointerEvents="none"
+            style={StyleSheet.absoluteFillObject}
+          />
+          <View pointerEvents="none" style={s.homeSearchScrim} />
+
+          <SafeAreaView edges={["top", "bottom"]} style={s.homeSearchOverlayContent}>
+            <View style={s.homeSearchHeaderRow}>
+              <View style={s.homeSearchInputWrap}>
+                <MaterialCommunityIcons name="magnify" size={21} color={THEME.skyHeader} />
+                <TextInput
+                  testID="home-search-input"
+                  value={homeSearchQuery}
+                  onChangeText={setHomeSearchQuery}
+                  placeholder="Search products..."
+                  placeholderTextColor="#64748B"
+                  autoFocus
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  returnKeyType="search"
+                  style={s.homeSearchInput}
+                />
+                {homeSearchQuery.length > 0 && (
+                  <Pressable
+                    testID="home-search-clear"
+                    onPress={() => setHomeSearchQuery("")}
+                    hitSlop={8}
+                    style={s.homeSearchClear}
+                  >
+                    <MaterialCommunityIcons name="close-circle" size={19} color="#64748B" />
+                  </Pressable>
+                )}
+              </View>
+              <Pressable
+                testID="home-search-close"
+                onPress={closeHomeSearch}
+                hitSlop={8}
+                style={s.homeSearchClose}
+              >
+                <MaterialCommunityIcons name="close" size={23} color={THEME.black} />
+              </Pressable>
+            </View>
+
+            <View style={s.homeSearchSummaryRow}>
+              <Text style={s.homeSearchSummary}>
+                {homeSearchQuery.trim()
+                  ? homeSearchResults.length + " products found"
+                  : "All products"}
+              </Text>
+            </View>
+
+            {homeSearchLoading ? (
+              <View style={s.homeSearchState}>
+                <ActivityIndicator size="large" color={THEME.orange} />
+                <Text style={s.homeSearchStateText}>Loading products...</Text>
+              </View>
+            ) : homeSearchError ? (
+              <View style={s.homeSearchState}>
+                <Text style={s.homeSearchStateText}>{homeSearchError}</Text>
+                <Pressable onPress={retryHomeSearch} style={s.homeSearchRetry}>
+                  <Text style={s.homeSearchRetryText}>Try again</Text>
+                </Pressable>
+              </View>
+            ) : homeSearchResults.length > 0 ? (
+              <ScrollView
+                style={s.homeSearchResultsScroll}
+                contentContainerStyle={s.homeSearchResultsGrid}
+                keyboardShouldPersistTaps="handled"
+                showsVerticalScrollIndicator={false}
+              >
+                {homeSearchResults.map((item) => (
+                  <View key={String(item.id)} style={s.homeSearchProductCell}>
+                    <ProductCard p={item} compact />
+                  </View>
+                ))}
+              </ScrollView>
+            ) : (
+              <View style={s.homeSearchState}>
+                <MaterialCommunityIcons name="magnify-close" size={42} color="#FFFFFF" />
+                <Text style={s.homeSearchStateText}>
+                  {homeSearchQuery.trim()
+                    ? "No matching products found. Try another product name."
+                    : "No products are currently available."}
+                </Text>
+              </View>
+            )}
+          </SafeAreaView>
+        </View>
+      )}
     </View>
   );
 }
@@ -1719,4 +1883,22 @@ const s = StyleSheet.create({
   brandIconCircle: { width: 38, height: 38, borderRadius: 19, backgroundColor: THEME.white, alignItems: "center", justifyContent: "center" },
   brandStripTitle: { color: THEME.white, fontWeight: "900", fontSize: 14 },
   brandStripSub: { color: "#E0F2FE", marginTop: 2, fontSize: 12, fontWeight: "600" },
+
+  homeSearchOverlay: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, zIndex: 100, elevation: 100, backgroundColor: "rgba(2,6,23,0.16)" },
+  homeSearchScrim: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(2,6,23,0.16)" },
+  homeSearchOverlayContent: { flex: 1, paddingHorizontal: SPACING.lg },
+  homeSearchHeaderRow: { flexDirection: "row", alignItems: "center", gap: 10, paddingTop: 6, paddingBottom: 10 },
+  homeSearchInputWrap: { flex: 1, minWidth: 0, height: 50, flexDirection: "row", alignItems: "center", gap: 9, paddingHorizontal: 12, borderRadius: 10, backgroundColor: "rgba(255,255,255,0.97)", borderWidth: 1, borderColor: "rgba(255,255,255,0.95)" },
+  homeSearchInput: { flex: 1, minWidth: 0, height: 46, padding: 0, fontSize: 15, color: THEME.black, backgroundColor: "transparent", ...(Platform.OS === "web" ? ({ outlineStyle: "none" } as any) : {}) },
+  homeSearchClear: { width: 28, height: 34, alignItems: "center", justifyContent: "center" },
+  homeSearchClose: { width: 48, height: 48, alignItems: "center", justifyContent: "center", borderRadius: 10, backgroundColor: "rgba(255,255,255,0.97)" },
+  homeSearchSummaryRow: { paddingBottom: 9 },
+  homeSearchSummary: { color: THEME.white, fontSize: 13, fontWeight: "800", textShadowColor: "rgba(0,0,0,0.45)", textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 3 },
+  homeSearchResultsScroll: { flex: 1, minHeight: 0 },
+  homeSearchResultsGrid: { flexDirection: "row", flexWrap: "wrap", justifyContent: "space-between", paddingBottom: 120 },
+  homeSearchProductCell: { width: width > 768 ? "32%" : "48.5%", flexGrow: 0, flexShrink: 0, marginBottom: 12 },
+  homeSearchState: { flex: 1, minHeight: 180, alignItems: "center", justifyContent: "center", paddingHorizontal: 24, gap: 10 },
+  homeSearchStateText: { color: THEME.white, fontSize: 14, fontWeight: "700", lineHeight: 20, textAlign: "center", textShadowColor: "rgba(0,0,0,0.45)", textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 3 },
+  homeSearchRetry: { marginTop: 4, paddingHorizontal: 18, paddingVertical: 10, borderRadius: 8, backgroundColor: THEME.orange },
+  homeSearchRetryText: { color: THEME.white, fontSize: 12, fontWeight: "900" },
 });

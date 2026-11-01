@@ -136,6 +136,10 @@ jobs:
           assert.ok(home.includes('backgroundColor: "rgba(255,255,255,0.10)"') && home.includes("borderRadius: 8"), "Home search field must be translucent and square-cornered");
           assert.ok(home.includes("translateY: -24") && home.includes("paddingTop: SPACING.lg"), "Home search must move slightly higher and banner spacing slightly lower");
           assert.ok(home.includes('backgroundColor: "transparent", zIndex: 20, elevation: 0'), "Home search area must not paint a white panel over the animated sky");
+          assert.ok(home.includes("onPress={openHomeSearch}") && !home.includes('onPress={() => router.push("/search" as any)}'), "Home search must open in place without pushing a separate screen");
+          assert.ok(home.includes('testID="home-search-overlay"') && home.includes("<BlurView"), "Home search must blur the existing page behind its overlay");
+          assert.ok(home.includes("api.products({})") && home.includes("homeSearchResults.map") && home.includes("<ProductCard p={item} compact />"), "Home search overlay must fetch and visibly render product cards");
+          assert.ok(home.includes('homeSearchProductCell: { width: width > 768 ? "32%" : "48.5%"'), "Home search products must use a stable visible grid cell width");
           const search = fs.readFileSync("app/search.tsx", "utf8");
           assert.ok(search.includes("}, [allProducts, query]);"), "Search results must recalculate when products load or the query changes");
           assert.ok(search.includes("product?.product_name") && search.includes("product?.productName") && search.includes("product?.title"), "Search must match legacy product name fields as well as the current name");
