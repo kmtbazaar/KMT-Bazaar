@@ -1,6 +1,6 @@
 import { LocalizedText as Text } from "@/src/LocalizedText";
 import React, { useEffect, useState, useCallback, useRef, useMemo } from "react";
-import { View, ScrollView, StyleSheet, Pressable, FlatList, Dimensions, RefreshControl, Platform, ActivityIndicator, Animated as RNAnimated, TextInput } from "react-native";
+import { View, ScrollView, StyleSheet, Pressable, FlatList, Dimensions, RefreshControl, Platform, ActivityIndicator, Animated as RNAnimated, TextInput, BackHandler } from "react-native";
 import { BlurView } from "expo-blur";
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
@@ -831,6 +831,38 @@ export default function Home() {
   const [homeSearchError, setHomeSearchError] = useState("");
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
   const homeSearchFetchStarted = useRef(false);
+  const homeSearchHistoryEntry = useRef(false);
+
+  useEffect(() => {
+    if (!homeSearchOpen) return;
+
+    if (Platform.OS === "web" && typeof window !== "undefined") {
+      const currentState = window.history.state && typeof window.history.state === "object"
+        ? window.history.state
+        : {};
+      window.history.pushState(
+        { ...currentState, kmtHomeSearchOverlay: true },
+        "",
+        window.location.href
+      );
+      homeSearchHistoryEntry.current = true;
+
+      const handleBrowserBack = () => {
+        homeSearchHistoryEntry.current = false;
+        setHomeSearchOpen(false);
+        setHomeSearchQuery("");
+      };
+      window.addEventListener("popstate", handleBrowserBack);
+      return () => window.removeEventListener("popstate", handleBrowserBack);
+    }
+
+    const backSubscription = BackHandler.addEventListener("hardwareBackPress", () => {
+      setHomeSearchOpen(false);
+      setHomeSearchQuery("");
+      return true;
+    });
+    return () => backSubscription.remove();
+  }, [homeSearchOpen]);
 
   useEffect(() => {
     (async () => {
@@ -1145,7 +1177,7 @@ export default function Home() {
     setHomeSearchError("");
 
     try {
-      const data = await api.products({});
+      const data = await api.products({ limit: 500 });
       const response = data as any;
       const products = Array.isArray(response)
         ? response
@@ -1182,6 +1214,16 @@ export default function Home() {
   };
 
   const closeHomeSearch = () => {
+    if (
+      Platform.OS === "web" &&
+      typeof window !== "undefined" &&
+      homeSearchHistoryEntry.current &&
+      (window.history.state as any)?.kmtHomeSearchOverlay
+    ) {
+      window.history.back();
+      return;
+    }
+    homeSearchHistoryEntry.current = false;
     setHomeSearchOpen(false);
     setHomeSearchQuery("");
   };
@@ -1723,12 +1765,14 @@ export default function Home() {
                 )}
               </View>
               <Pressable
-                testID="home-search-close"
+                testID="home-search-back"
+                accessibilityRole="button"
+                accessibilityLabel="Back to home"
                 onPress={closeHomeSearch}
                 hitSlop={8}
                 style={s.homeSearchClose}
               >
-                <MaterialCommunityIcons name="close" size={23} color={THEME.black} />
+                <MaterialCommunityIcons name="arrow-left" size={23} color={THEME.black} />
               </Pressable>
             </View>
 

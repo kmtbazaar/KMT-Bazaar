@@ -11,6 +11,7 @@ on:
       - "frontend/src/components/ProductCard.tsx"
       - "frontend/app/(tabs)/home.tsx"
       - "frontend/app/search.tsx"
+      - "frontend/src/api.ts"
       - "frontend/src/components/AnimatedBrandLogo.tsx"
       - "frontend/app/auth/login.tsx"
       - "frontend/app/admin/index.tsx"
@@ -138,7 +139,9 @@ jobs:
           assert.ok(home.includes('backgroundColor: "transparent", zIndex: 20, elevation: 0'), "Home search area must not paint a white panel over the animated sky");
           assert.ok(home.includes("onPress={openHomeSearch}") && !home.includes('onPress={() => router.push("/search" as any)}'), "Home search must open in place without pushing a separate screen");
           assert.ok(home.includes('testID="home-search-overlay"') && home.includes("<BlurView"), "Home search must blur the existing page behind its overlay");
-          assert.ok(home.includes("api.products({})") && home.includes('testID="home-search-product-list"') && home.includes("data={homeSearchResults}") && home.includes("numColumns={2}") && home.includes("<ProductCard p={item} compact />"), "Home search overlay must render product cards in a two-column list");
+          assert.ok(home.includes("api.products({ limit: 500 })") && home.includes('testID="home-search-product-list"') && home.includes("data={homeSearchResults}") && home.includes("numColumns={2}") && home.includes("<ProductCard p={item} compact />"), "Home search overlay must load up to 500 products and render cards in a two-column list");
+          assert.ok(api.includes("limit?: number") && api.includes('qs.set("limit", String(params.limit))'), "Product API must support the requested search-catalogue limit");
+          assert.ok(home.includes('testID="home-search-back"') && home.includes('accessibilityLabel="Back to home"') && home.includes('name="arrow-left"') && home.includes('window.history.pushState') && home.includes('window.addEventListener("popstate", handleBrowserBack)') && home.includes('BackHandler.addEventListener("hardwareBackPress"'), "Search back action must return to home on web and native devices");
           assert.ok(home.includes('const RECENT_SEARCHES_KEY = "kmt_recent_searches"') && home.includes("const MAX_RECENT_SEARCHES = 5") && home.includes("AsyncStorage.getItem(RECENT_SEARCHES_KEY)") && home.includes("AsyncStorage.setItem(RECENT_SEARCHES_KEY") && home.includes('testID="home-search-recent-history"') && home.includes("onSubmitEditing={handleHomeSearchSubmit}"), "Home search must preserve five persistent recent searches");
           assert.ok(home.includes('homeSearchProductCell: { width: "50%"'), "Home search products must use the fixed two-column card layout");
           const search = fs.readFileSync("app/search.tsx", "utf8");

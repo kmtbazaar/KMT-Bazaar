@@ -587,6 +587,7 @@ export const api = {
     store_id?: string;
     item_category?: string;
     item_category_id?: string;
+    limit?: number;
   } = {}
 ) => {
   const qs = new URLSearchParams();
@@ -613,6 +614,10 @@ export const api = {
 
   if (params.item_category_id) {
     qs.set("item_category_id", params.item_category_id);
+  }
+
+  if (params.limit) {
+    qs.set("limit", String(params.limit));
   }
 
   const query = qs.toString();
