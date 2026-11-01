@@ -215,6 +215,11 @@ jobs:
           assert.ok(robot.includes("talking") && robot.includes("orbitRotation") && robot.includes("mouthPulse") && robot.includes("#67E8F9"), "Robot avatar must animate its lights and talking indicator");
           assert.ok(index.includes("RobotAvatar") && !index.includes("AssistantChar") && !index.includes("assistant-char.png"), "Post-splash welcome screen must not render the old static assistant PNG");
           assert.ok(login.includes("googleButtonContainerRef") && login.includes("response.credential"), "Google sign-in must initialize against its mounted button container and handle the returned credential");
+          assert.ok(login.includes("use_fedcm_for_button: true") && login.includes("button_auto_select: false"), "Chrome Google sign-in must use the browser account chooser and require explicit account selection");
+          assert.ok(login.includes("Google sign-in is only for existing customer accounts. Please enter your KMT Bazaar login details manually."), "Non-customer Google accounts must be told to use manual login");
+          const googleHandler = login.slice(login.indexOf("const finishGoogleLogin ="), login.indexOf("const finishGoogleLoginRef"));
+          assert.ok(googleHandler.includes('result.user.role !== "customer"') && googleHandler.includes("result.signup_required"), "Google login must only route existing customer accounts");
+          assert.ok(!googleHandler.includes('pathname: "/auth/register"'), "Unknown Google emails must not be sent through Google signup");
           assert.ok(!assistant.includes("styles.statusLight"), "Robot must not reference a missing style");
           console.log("GOOGLE_SIGN_IN_BOOTSTRAP_VALIDATION_PASS");
           console.log("LOGIN_ROBOT_ANIMATION_VALIDATION_PASS");

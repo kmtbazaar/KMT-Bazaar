@@ -32,6 +32,9 @@ import { RADIUS, SPACING } from "@/src/theme";
 
 const { width } = Dimensions.get("window");
 
+const GOOGLE_CUSTOMER_ONLY_MESSAGE =
+  "Google sign-in is only for existing customer accounts. Please enter your KMT Bazaar login details manually.";
+
 function AnimatedTile({
   delay = 0,
   color = "#00B4D8",
@@ -207,21 +210,23 @@ export default function Login() {
     try {
       const result = await googleLogin(credential);
       if (result.signup_required) {
-        router.replace({
-          pathname: "/auth/register",
-          params: {
-            email: result.email,
-            name: result.name,
-            source: "google",
-          },
-        } as any);
+        setError(GOOGLE_CUSTOMER_ONLY_MESSAGE);
         return;
       }
       if (!result.user?.role) throw new Error("Google login failed");
+      if (result.user.role !== "customer") {
+        setError(GOOGLE_CUSTOMER_ONLY_MESSAGE);
+        return;
+      }
 
       goToDashboard(result.user);
     } catch (e: any) {
-      setError(e?.message || "Google sign-in failed");
+      const detail = String(e?.message || "");
+      setError(
+        /Please use your KMT account login for this account/i.test(detail)
+          ? GOOGLE_CUSTOMER_ONLY_MESSAGE
+          : detail || "Google sign-in failed"
+      );
     } finally {
       setGoogleLoading(false);
     }
@@ -288,6 +293,10 @@ export default function Login() {
         google.accounts.id.initialize({
           client_id: googleClientId,
           auto_select: false,
+          // Use Chrome's browser-mediated account chooser instead of opening a separate tab.
+          // Keep automatic selection disabled so the customer explicitly picks an account.
+          use_fedcm_for_button: true,
+          button_auto_select: false,
           ux_mode: "popup",
           callback: (response: any) => {
             if (response?.error) {
