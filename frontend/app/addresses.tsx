@@ -7,7 +7,7 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Location from "expo-location";
-import { api, isProductDeliveryAvailableAtPincode, PRODUCT_DELIVERY_PINCODE } from "@/src/api";
+import { api, isProductDeliveryAvailableAtPincode, PRODUCT_DELIVERY_PINCODE, PRODUCT_DELIVERY_STATE } from "@/src/api";
 import { useAuth } from "@/src/AuthContext";
 import { COLORS, RADIUS, SPACING, shadow } from "@/src/theme";
 
@@ -51,8 +51,8 @@ export default function Addresses() {
     landmark: "",
     district: "",
     city: "", 
-    state: "", 
-    pincode: "", 
+    state: PRODUCT_DELIVERY_STATE, 
+    pincode: PRODUCT_DELIVERY_PINCODE, 
     phone: "" 
   });
 
@@ -123,7 +123,7 @@ export default function Addresses() {
               line2: geo?.line2 || prev.line2,
               district: geo?.district || prev.district,
               city: geo?.city || prev.city,
-              state: geo?.state || prev.state,
+              state: PRODUCT_DELIVERY_STATE,
                 }));
           } catch (error) {
             console.log("Initial reverse geocode failed:", error);
@@ -231,7 +231,7 @@ export default function Addresses() {
         line2: geo?.line2 || "",
         district: geo?.district || prev.district,
         city: geo?.city || geo?.district || prev.city,
-        state: geo?.state || prev.state,
+        state: PRODUCT_DELIVERY_STATE,
       }));
     } catch {
       setLocationError("Location set hai. Address details manually fill kar sakte hain.");
@@ -256,13 +256,13 @@ export default function Addresses() {
         landmark: address.landmark || "",
         district: address.district || "",
         city: address.city || "",
-        state: address.state || "",
-        pincode: address.pincode ? String(address.pincode) : "",
+        state: PRODUCT_DELIVERY_STATE,
+        pincode: PRODUCT_DELIVERY_PINCODE,
         phone: address.phone ? String(address.phone) : ""
       });
     } else {
       setEditingId(null);
-      setFormData({ label: "Home", full_name: user?.name || "", line1: "", line2: "", landmark: "", district: "", city: "", state: "", pincode: "", phone: normalizeMobile(user?.phone || "") });
+      setFormData({ label: "Home", full_name: user?.name || "", line1: "", line2: "", landmark: "", district: "", city: "", state: PRODUCT_DELIVERY_STATE, pincode: PRODUCT_DELIVERY_PINCODE, phone: normalizeMobile(user?.phone || "") });
     }
     if (!address) {
       setFormVisible(false);
@@ -416,6 +416,8 @@ export default function Addresses() {
     const saveData = {
       ...formData,
       city: formData.city || formData.district,
+      state: PRODUCT_DELIVERY_STATE,
+      pincode: PRODUCT_DELIVERY_PINCODE,
     };
 
     try {
@@ -709,12 +711,12 @@ export default function Addresses() {
               <View style={s.fieldRow}>
                 <View style={s.fieldHalf}>
                   <FieldLabel text="State" required />
-                  <TextInput style={s.input} placeholder="State *" value={formData.state} onChangeText={t => setFormData({ ...formData, state: t })} />
+                  <TextInput style={s.input} placeholder="State *" value={PRODUCT_DELIVERY_STATE} editable={false} />
                 </View>
                 <View style={s.fieldHalf}>
                   <FieldLabel text="Pincode" required />
-                  <TextInput style={s.input} placeholder="Pincode *" keyboardType="number-pad" maxLength={6} value={formData.pincode} onChangeText={t => setFormData({ ...formData, pincode: t.replace(/[^0-9]/g, '') })} />
-                  <Text style={s.pinNote}>Enter the actual 6-digit postal PIN. Product delivery is available only at PIN {PRODUCT_DELIVERY_PINCODE}.</Text>
+                  <TextInput style={s.input} placeholder="Pincode *" keyboardType="number-pad" maxLength={6} value={PRODUCT_DELIVERY_PINCODE} editable={false} />
+                  <Text style={s.pinNote}>State and PIN are fixed for product delivery in this service area.</Text>
                 </View>
               </View>
 

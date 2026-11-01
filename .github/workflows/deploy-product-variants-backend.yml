@@ -38,9 +38,13 @@ jobs:
           python - <<'PY'
           from pathlib import Path
           source = Path("backend/server.py").read_text(encoding="utf-8")
+          assert 'PRODUCT_DELIVERY_STATE = "Jharkhand"' in source
           assert 'PRODUCT_DELIVERY_PINCODE = "815352"' in source
+          assert "force_product_delivery_state" in source
+          assert "return PRODUCT_DELIVERY_PINCODE" in source
           assert "delivery_pincode != PRODUCT_DELIVERY_PINCODE" in source
-          print("BACKEND_SINGLE_PIN_VALIDATION_PASS")
+          assert '"state": PRODUCT_DELIVERY_STATE, "pincode": PRODUCT_DELIVERY_PINCODE' in source
+          print("BACKEND_FIXED_STATE_PIN_VALIDATION_PASS")
           PY
 
       - name: Check required Hostinger SSH configuration

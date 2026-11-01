@@ -133,7 +133,13 @@ export function clearWebSessionExpiredNotice(): void {
   } catch {}
 }
 
+export const PRODUCT_DELIVERY_STATE = "Jharkhand";
 export const PRODUCT_DELIVERY_PINCODE = "815352";
+
+export function normalizeProductDeliveryAddress(address: any) {
+  if (!address || typeof address !== "object") return address;
+  return { ...address, state: PRODUCT_DELIVERY_STATE, pincode: PRODUCT_DELIVERY_PINCODE };
+}
 
 export function isProductDeliveryAvailableAtPincode(pincode: unknown): boolean {
   return String(pincode ?? "").replace(/\D/g, "") === PRODUCT_DELIVERY_PINCODE;
@@ -675,13 +681,13 @@ export const api = {
     apiFetch<any>(`/geo/reverse?latitude=${encodeURIComponent(latitude)}&longitude=${encodeURIComponent(longitude)}`),
 
   addresses: () =>
-    apiFetch<any[]>("/addresses"),
+    apiFetch<any[]>("/addresses").then((items) => (items || []).map(normalizeProductDeliveryAddress)),
 
   createAddress: (data: any) =>
-    apiFetch("/addresses", {
+    apiFetch<any>("/addresses", {
       method: "POST",
-      body: JSON.stringify(data),
-    }),
+      body: JSON.stringify({ ...data, state: PRODUCT_DELIVERY_STATE, pincode: PRODUCT_DELIVERY_PINCODE }),
+    }).then(normalizeProductDeliveryAddress),
 
   updateAddress: (
     id: string,
@@ -691,9 +697,9 @@ export const api = {
       `/addresses/${encodeURIComponent(id)}`,
       {
         method: "PUT",
-        body: JSON.stringify(data),
+        body: JSON.stringify({ ...data, state: PRODUCT_DELIVERY_STATE, pincode: PRODUCT_DELIVERY_PINCODE }),
       }
-    ),
+    ).then(normalizeProductDeliveryAddress),
 
   deleteAddress: (id: string) =>
     apiFetch(

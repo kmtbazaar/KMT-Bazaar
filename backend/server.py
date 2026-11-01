@@ -46,6 +46,7 @@ MAX_IMAGE_SIZE = (1600, 1600)
 PRODUCT_IMAGE_MAX_BYTES = 200 * 1024
 PRODUCT_IMAGE_SIZES = (1000, 800, 640, 512, 448, 384, 320)
 DEFAULT_HOLIDAY_BANNER_URL = "https://images.unsplash.com/photo-1516483638261-f4dbaf036963?w=1800&q=85"
+PRODUCT_DELIVERY_STATE = "Jharkhand"
 PRODUCT_DELIVERY_PINCODE = "815352"
 
 mongo_url = os.environ['MONGO_URL']
@@ -422,13 +423,15 @@ class AddressIn(BaseModel):
             raise ValueError("Mobile Number must be exactly 10 digits")
         return digits
 
+    @field_validator("state")
+    @classmethod
+    def force_product_delivery_state(cls, value):
+        return PRODUCT_DELIVERY_STATE
+
     @field_validator("pincode")
     @classmethod
     def validate_address_pincode(cls, value):
-        value = str(value).strip()
-        if not value.isdigit() or len(value) != 6:
-            raise ValueError("Pincode must be exactly 6 digits")
-        return value
+        return PRODUCT_DELIVERY_PINCODE
 
 
 class CartItemIn(BaseModel):
@@ -2260,6 +2263,16 @@ async def reverse_geocode(latitude: float, longitude: float, current=Depends(get
 
 @api.get("/addresses")
 async def list_addresses(current=Depends(get_current_user)):
+    await db.addresses.update_many(
+        {
+            "user_id": current["id"],
+            "$or": [
+                {"state": {"$ne": PRODUCT_DELIVERY_STATE}},
+                {"pincode": {"$ne": PRODUCT_DELIVERY_PINCODE}},
+            ],
+        },
+        {"$set": {"state": PRODUCT_DELIVERY_STATE, "pincode": PRODUCT_DELIVERY_PINCODE}},
+    )
     addrs = await db.addresses.find({"user_id": current["id"]}, {"_id": 0}).to_list(50)
     for addr in addrs:
         addr["has_location"] = addr.get("latitude") is not None and addr.get("longitude") is not None

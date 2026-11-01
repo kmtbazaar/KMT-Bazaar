@@ -263,10 +263,13 @@ jobs:
           const checkout = fs.readFileSync("app/checkout.tsx", "utf8");
           const addresses = fs.readFileSync("app/addresses.tsx", "utf8");
           const backend = fs.readFileSync("../backend/server.py", "utf8");
-          assert.ok(api.includes('PRODUCT_DELIVERY_PINCODE = "815352"'), "Product delivery PIN must be 815352");
+          assert.ok(api.includes('PRODUCT_DELIVERY_STATE = "Jharkhand"') && api.includes('PRODUCT_DELIVERY_PINCODE = "815352"'), "Product delivery state/PIN must be Jharkhand/815352");
+          assert.ok(api.includes("normalizeProductDeliveryAddress") && cart.includes("normalizeProductDeliveryAddress"), "Cached and fetched addresses must use the canonical state/PIN");
           assert.ok(cart.includes("isProductDeliveryAvailableAtPincode") && cart.includes("disabled={busy || deliveryUnavailable}"), "Cart must block non-serviceable PIN codes");
           assert.ok(checkout.includes("selectedAddressUnavailable") && checkout.includes("delivery-availability"), "Checkout must display and enforce selected PIN serviceability");
           assert.ok(addresses.includes("PRODUCT_DELIVERY_MAP_CENTER") && !addresses.includes("25.5941"), "Address map must not fall back to Patna");
+          assert.ok(addresses.includes('value={PRODUCT_DELIVERY_STATE} editable={false}') && addresses.includes('value={PRODUCT_DELIVERY_PINCODE} editable={false}'), "Address form state/PIN must be fixed");
+          assert.ok(checkout.includes('v={PRODUCT_DELIVERY_STATE} editable={false}') && checkout.includes('v={PRODUCT_DELIVERY_PINCODE} editable={false}'), "Checkout address form state/PIN must be fixed");
           assert.ok(backend.includes('PRODUCT_DELIVERY_PINCODE = "815352"') && backend.includes("delivery_pincode != PRODUCT_DELIVERY_PINCODE"), "Backend checkout must enforce PIN 815352");
           assert.ok(backend.includes('update_data.pop("latitude", None)') && backend.includes('update_data.pop("longitude", None)'), "Address PIN edits must preserve saved GPS coordinates");
           console.log("SINGLE_PIN_PRODUCT_DELIVERY_VALIDATION_PASS");

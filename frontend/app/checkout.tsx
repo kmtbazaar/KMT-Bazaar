@@ -8,7 +8,7 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Location from "expo-location";
-import { api, isProductDeliveryAvailableAtPincode, PRODUCT_DELIVERY_PINCODE } from "@/src/api";
+import { api, isProductDeliveryAvailableAtPincode, PRODUCT_DELIVERY_PINCODE, PRODUCT_DELIVERY_STATE } from "@/src/api";
 import { useCart } from "@/src/CartContext";
 import { COLORS, RADIUS, SPACING } from "@/src/theme";
 
@@ -25,7 +25,7 @@ export default function Checkout() {
   const [locationError, setLocationError] = useState("");
 
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [form, setForm] = useState({ label: "Home", full_name: "", phone: "", line1: "", line2: "", landmark: "", district: "", city: "", state: "", pincode: "" });
+  const [form, setForm] = useState({ label: "Home", full_name: "", phone: "", line1: "", line2: "", landmark: "", district: "", city: "", state: PRODUCT_DELIVERY_STATE, pincode: PRODUCT_DELIVERY_PINCODE });
 
   const loadAddrs = async () => {
     try {
@@ -85,8 +85,8 @@ export default function Checkout() {
       landmark: addr.landmark || "",
       district: addr.district || "",
       city: addr.city || "",
-      state: addr.state || "",
-      pincode: addr.pincode || ""
+      state: PRODUCT_DELIVERY_STATE,
+      pincode: PRODUCT_DELIVERY_PINCODE
     });
     setLocationCaptured(null);
     setLocationError("");
@@ -172,7 +172,7 @@ export default function Checkout() {
           line1: geo?.line1 || prev.line1,
           district: geo?.district || prev.district,
           city: geo?.city || prev.city,
-          state: geo?.state || prev.state,
+          state: PRODUCT_DELIVERY_STATE,
         }));
       } catch (error) {
         console.log("Checkout reverse geocode failed:", error);
@@ -202,8 +202,8 @@ export default function Checkout() {
       landmark: "",
       district: "",
       city: "",
-      state: "",
-      pincode: "",
+      state: PRODUCT_DELIVERY_STATE,
+      pincode: PRODUCT_DELIVERY_PINCODE,
     });
     setShowForm(true);
 
@@ -271,8 +271,9 @@ export default function Checkout() {
     }
 
     try {
+      const addressPayload = { ...form, state: PRODUCT_DELIVERY_STATE, pincode: PRODUCT_DELIVERY_PINCODE };
       if (editingId) {
-        const updatedAddress: any = await api.updateAddress(editingId, form);
+        const updatedAddress: any = await api.updateAddress(editingId, addressPayload);
         if (selectedAddr === String(editingId)) {
           await AsyncStorage.setItem("selected_address", JSON.stringify(updatedAddress));
         }
@@ -283,7 +284,7 @@ export default function Checkout() {
         }
 
         const a = await api.createAddress({
-          ...form,
+          ...addressPayload,
           latitude: locationCaptured.latitude,
           longitude: locationCaptured.longitude,
           is_default: addresses.length === 0,
@@ -430,9 +431,9 @@ export default function Checkout() {
 
               <View style={{ flexDirection: "row", gap: 8 }}>
                 <View style={{ flex: 1 }}><Input ph="City" v={form.city} oc={(v: string) => setForm({ ...form, city: v })} testID="addr-city" /></View>
-                <View style={{ flex: 1 }}><Input ph="State" v={form.state} oc={(v: string) => setForm({ ...form, state: v })} testID="addr-state" /></View>
+                <View style={{ flex: 1 }}><Input ph="State" v={PRODUCT_DELIVERY_STATE} editable={false} testID="addr-state" /></View>
               </View>
-              <Input ph={`Pincode (${PRODUCT_DELIVERY_PINCODE} only for products)`} v={form.pincode} oc={(v: string) => setForm({ ...form, pincode: v.replace(/[^0-9]/g, '') })} kt="number-pad" maxLength={6} testID="addr-pincode" />
+              <Input ph={`Pincode (${PRODUCT_DELIVERY_PINCODE} only for products)`} v={PRODUCT_DELIVERY_PINCODE} editable={false} kt="number-pad" maxLength={6} testID="addr-pincode" />
               
               <View style={{ flexDirection: "row", gap: 8, marginTop: 4 }}>
                  {addresses.length > 0 && (
@@ -491,8 +492,8 @@ export default function Checkout() {
   );
 }
 
-function Input({ ph, v, oc, kt, maxLength, testID }: any) {
-  return <TextInput testID={testID} placeholder={ph} value={v} onChangeText={oc} keyboardType={kt} maxLength={maxLength} placeholderTextColor={COLORS.textMuted} style={ss.input} />;
+function Input({ ph, v, oc, kt, maxLength, testID, editable = true }: any) {
+  return <TextInput testID={testID} placeholder={ph} value={v} onChangeText={oc} keyboardType={kt} maxLength={maxLength} editable={editable} placeholderTextColor={COLORS.textMuted} style={ss.input} />;
 }
 function Row({ l, v, bold }: any) {
   return <View style={{ flexDirection: "row", justifyContent: "space-between", marginVertical: 4 }}>

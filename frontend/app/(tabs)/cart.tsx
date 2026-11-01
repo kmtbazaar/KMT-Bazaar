@@ -11,7 +11,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useCart } from "@/src/CartContext";
 import { useAuth } from "@/src/AuthContext";
 import { COLORS, RADIUS, SPACING, shadow } from "@/src/theme";
-import { isProductDeliveryAvailableAtPincode, PRODUCT_DELIVERY_PINCODE } from "@/src/api";
+import { isProductDeliveryAvailableAtPincode, PRODUCT_DELIVERY_PINCODE, normalizeProductDeliveryAddress } from "@/src/api";
 import AnimatedBrandLogo, { BrandingFooter } from "@/src/components/AnimatedBrandLogo";
 
 export default function Cart() {
@@ -33,9 +33,11 @@ export default function Cart() {
     try {
       const stored = await AsyncStorage.getItem("selected_address");
       if (stored) {
-        setSelectedAddress(JSON.parse(stored));
+        const normalized = normalizeProductDeliveryAddress(JSON.parse(stored));
+        setSelectedAddress(normalized);
+        await AsyncStorage.setItem("selected_address", JSON.stringify(normalized));
       } else if (user?.activeAddress) {
-        setSelectedAddress(user.activeAddress);
+        setSelectedAddress(normalizeProductDeliveryAddress(user.activeAddress));
       } else {
         setSelectedAddress(null);
       }
