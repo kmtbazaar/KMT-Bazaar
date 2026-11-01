@@ -1243,16 +1243,16 @@ export default function Home() {
       {/* The search bar stays usable while the hero shell slides away after the banner scrolls off. */}
       <SafeAreaView
         edges={heroCollapsed ? ["top"] : []}
-        style={[s.searchBarSafeArea, heroCollapsed && s.searchBarSafeAreaCollapsed, { backgroundColor: heroCollapsed ? THEME.whiteBg : "transparent" }]}
+        style={[s.searchBarSafeArea, heroCollapsed && s.searchBarSafeAreaCollapsed, { backgroundColor: "transparent" }]}
       >
         <View style={[s.searchBarOuter, heroCollapsed && s.searchBarOuterCollapsed]}>
         {/* Search Bar */}
         <Pressable
           testID="home-search-trigger"
           onPress={() => router.push("/search" as any)}
-          style={[s.searchWrap, !heroCollapsed && { transform: [{ translateY: -12 }] }]}
+          style={[s.searchWrap, !heroCollapsed && { transform: [{ translateY: -18 }] }]}
         >
-          <MaterialCommunityIcons name="magnify" size={22} color={THEME.skyHeader} />
+          <MaterialCommunityIcons name="magnify" size={22} color={THEME.white} />
           <View style={{ flex: 1, marginLeft: 8, height: 22, overflow: "hidden", justifyContent: "center" }}>
             <Animated.View
               key={placeholderIdx}
@@ -1644,9 +1644,9 @@ const s = StyleSheet.create({
   headerBg: { position: "absolute", top: 0, left: 0, right: 0, height: HERO_BACKDROP_HEIGHT, borderBottomLeftRadius: 30, borderBottomRightRadius: 30, backgroundColor: "transparent", shadowColor: "#FFFFFF", shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.14, shadowRadius: 18, elevation: 7 },
   skyClearSpace: { height: Platform.OS === "web" ? 90 : 56 },
   skyClearSpaceCollapsed: { height: 0 },
-  searchBarSafeArea: { backgroundColor: THEME.whiteBg, zIndex: 20, elevation: 8 },
+  searchBarSafeArea: { backgroundColor: "transparent", zIndex: 20, elevation: 0 },
   searchBarSafeAreaCollapsed: { borderBottomWidth: 1, borderBottomColor: "rgba(226,232,240,0.9)" },
-  searchBarOuter: { paddingHorizontal: SPACING.lg, marginTop: SPACING.sm },
+  searchBarOuter: { paddingHorizontal: SPACING.lg, marginTop: 0 },
   searchBarOuterCollapsed: { marginTop: 0, paddingBottom: 8 },
   headerWrap: { paddingHorizontal: SPACING.lg, paddingBottom: SPACING.xs },
   headerRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingTop: 4 },
@@ -1660,8 +1660,8 @@ const s = StyleSheet.create({
   bellBadge: { position: "absolute", top: 2, right: 2, backgroundColor: THEME.orange, minWidth: 18, height: 18, borderRadius: 9, paddingHorizontal: 4, alignItems: "center", justifyContent: "center", borderWidth: 1.5, borderColor: THEME.white },
   bellBadgeText: { color: THEME.white, fontSize: 9, fontWeight: "900" },
   
-  searchWrap: { width: "100%", flexDirection: "row", alignItems: "center", backgroundColor: THEME.white, borderRadius: RADIUS.pill, paddingHorizontal: 14, paddingVertical: 7, marginTop: 14, height: 44, borderWidth: 1, borderColor: "rgba(255,255,255,0.88)", shadowColor: "#000000", shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.14, shadowRadius: 14, elevation: 6 },
-  searchPlaceholderText: { fontSize: 14, color: THEME.blackMuted, fontWeight: "600" },
+  searchWrap: { width: "100%", flexDirection: "row", alignItems: "center", backgroundColor: "rgba(255,255,255,0.10)", borderRadius: 8, paddingHorizontal: 14, paddingVertical: 7, marginTop: 14, height: 44, borderWidth: 1, borderColor: "rgba(255,255,255,0.42)", shadowColor: "#000000", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.06, shadowRadius: 8, elevation: 1 },
+  searchPlaceholderText: { fontSize: 14, color: THEME.white, fontWeight: "600", textShadowColor: "rgba(0,0,0,0.38)", textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 2 },
   searchMicBg: { width: 32, height: 32, backgroundColor: THEME.orange, borderRadius: 16, alignItems: "center", justifyContent: "center" },
   searchMicListening: { transform: [{ scale: 1.08 }], backgroundColor: THEME.orangeBright },
 
