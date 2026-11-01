@@ -15,6 +15,19 @@ const RECENT_SEARCHES_KEY = "kmt_recent_searches";
 const MAX_RECENT_SEARCHES = 5;
 import { COLORS, RADIUS, SPACING } from "@/src/theme";
 
+const getProductSearchText = (product: any) =>
+  [
+    product?.name,
+    product?.product_name,
+    product?.productName,
+    product?.title,
+    product?.description,
+  ]
+    .filter((value): value is string => typeof value === "string" && value.trim().length > 0)
+    .join(" ")
+    .normalize("NFKC")
+    .toLowerCase();
+
 export default function SearchScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ q?: string }>();
@@ -54,16 +67,12 @@ export default function SearchScreen() {
     (async () => {
       try {
         const data = await api.products({}); // Empty query se saare products le aayenge
-        const products = data || [];
+        const products = Array.isArray(data)
+          ? data
+          : Array.isArray((data as any)?.products)
+            ? (data as any).products
+            : [];
         setAllProducts(products);
-        const voiceQuery = typeof params.q === "string" ? params.q.trim() : "";
-        if (voiceQuery) {
-          const keyword = voiceQuery.toLowerCase();
-          setFilteredResults(products.filter((item: any) =>
-            (item.name && item.name.toLowerCase().includes(keyword)) ||
-            (item.description && item.description.toLowerCase().includes(keyword))
-          ));
-        }
       } catch (e) {
         console.error("Failed to load products for search:", e);
       } finally {
@@ -72,25 +81,22 @@ export default function SearchScreen() {
     })();
   }, []);
 
-  // FIX: Frontend Smart Search Engine (Name aur Description match karega)
-  const handleSearchTextChange = (text: string) => {
-    setQuery(text);
-    
-    if (text.trim().length === 0) {
+  // Recalculate results whenever either the product list or the search text changes.
+  // This also covers typing while the initial product request is still loading.
+  useEffect(() => {
+    const keyword = query.trim().normalize("NFKC").toLowerCase();
+    if (!keyword) {
       setFilteredResults([]);
       return;
     }
 
-    const searchKeyword = text.toLowerCase().trim();
-    
-    // Har ek product ka naam aur details filter karega
-    const matched = allProducts.filter((item: any) => {
-      const nameMatch = item.name ? item.name.toLowerCase().includes(searchKeyword) : false;
-      const descMatch = item.description ? item.description.toLowerCase().includes(searchKeyword) : false;
-      return nameMatch || descMatch;
-    });
+    setFilteredResults(
+      allProducts.filter((item: any) => getProductSearchText(item).includes(keyword))
+    );
+  }, [allProducts, query]);
 
-    setFilteredResults(matched);
+  const handleSearchTextChange = (text: string) => {
+    setQuery(text);
   };
 
   const saveRecentSearch = useCallback(async (value: string) => {
@@ -129,18 +135,6 @@ export default function SearchScreen() {
 
   const selectRecentSearch = (value: string) => {
     setQuery(value);
-    const searchKeyword = value.toLowerCase().trim();
-    setFilteredResults(
-      allProducts.filter((item: any) => {
-        const nameMatch = item.name
-          ? item.name.toLowerCase().includes(searchKeyword)
-          : false;
-        const descMatch = item.description
-          ? item.description.toLowerCase().includes(searchKeyword)
-          : false;
-        return nameMatch || descMatch;
-      })
-    );
   };
 
   const handleSubmitSearch = () => {

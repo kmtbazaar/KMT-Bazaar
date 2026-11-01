@@ -10,6 +10,7 @@ on:
       - "frontend/app/product/**"
       - "frontend/src/components/ProductCard.tsx"
       - "frontend/app/(tabs)/home.tsx"
+      - "frontend/app/search.tsx"
       - "frontend/src/components/AnimatedBrandLogo.tsx"
       - "frontend/app/auth/login.tsx"
       - "frontend/app/admin/index.tsx"
@@ -133,8 +134,12 @@ jobs:
           assert.ok(home.includes("float smokeY = smoothstep(0.238, 0.278, uv.y)"), "Chimney smoke plume is missing");
           assert.ok(home.includes("houseMainRoof") && home.includes("smokeStack: { position:"), "Native hut/chimney fallback is missing");
           assert.ok(home.includes('backgroundColor: "rgba(255,255,255,0.10)"') && home.includes("borderRadius: 8"), "Home search field must be translucent and square-cornered");
-          assert.ok(home.includes("translateY: -18") && home.includes("searchBarOuter: { paddingHorizontal: SPACING.lg, marginTop: 0 }"), "Home search field must sit higher without adding top spacing");
+          assert.ok(home.includes("translateY: -24") && home.includes("paddingTop: SPACING.lg"), "Home search must move slightly higher and banner spacing slightly lower");
           assert.ok(home.includes('backgroundColor: "transparent", zIndex: 20, elevation: 0'), "Home search area must not paint a white panel over the animated sky");
+          const search = fs.readFileSync("app/search.tsx", "utf8");
+          assert.ok(search.includes("}, [allProducts, query]);"), "Search results must recalculate when products load or the query changes");
+          assert.ok(search.includes("product?.product_name") && search.includes("product?.productName") && search.includes("product?.title"), "Search must match legacy product name fields as well as the current name");
+          assert.ok(search.includes("Array.isArray(data)"), "Search must normalize the product list API response before filtering");
           console.log("HERO_DAY_NIGHT_HUT_CHIMNEY_SMOKE_VALIDATION_PASS");
           console.log("HOME_SEARCH_TRANSPARENT_SQUARE_POSITION_VALIDATION_PASS");
           NODE
@@ -159,7 +164,7 @@ jobs:
 
       - name: Lint changed product and branding screens
         working-directory: frontend
-        run: npx eslint "app/vendor/store/[id].tsx" "app/vendor/products.tsx" "app/product/[id].tsx" "src/components/ProductCard.tsx" "src/components/AnimatedBrandLogo.tsx" "app/auth/login.tsx" "app/admin/index.tsx" "app/delivery/index.tsx" "app/vendor/holiday-dashboard.tsx" "app/vendor/car-rental-dashboard.tsx" "app/role/[role].tsx" "app/(tabs)/profile.tsx" "app/(tabs)/cart.tsx" "app/index.tsx" "src/components/ParticleLogoSplash.tsx" "components/AIAssistant.tsx" "src/components/RobotAvatar.tsx" "src/api.ts" --no-cache
+        run: npx eslint "app/vendor/store/[id].tsx" "app/vendor/products.tsx" "app/product/[id].tsx" "src/components/ProductCard.tsx" "src/components/AnimatedBrandLogo.tsx" "app/auth/login.tsx" "app/admin/index.tsx" "app/delivery/index.tsx" "app/vendor/holiday-dashboard.tsx" "app/vendor/car-rental-dashboard.tsx" "app/role/[role].tsx" "app/(tabs)/profile.tsx" "app/(tabs)/cart.tsx" "app/index.tsx" "app/search.tsx" "src/components/ParticleLogoSplash.tsx" "components/AIAssistant.tsx" "src/components/RobotAvatar.tsx" "src/api.ts" --no-cache
 
       - name: Validate particle-forming splash and black-background removal
         working-directory: frontend

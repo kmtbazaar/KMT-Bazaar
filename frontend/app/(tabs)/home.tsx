@@ -1250,7 +1250,7 @@ export default function Home() {
         <Pressable
           testID="home-search-trigger"
           onPress={() => router.push("/search" as any)}
-          style={[s.searchWrap, !heroCollapsed && { transform: [{ translateY: -18 }] }]}
+          style={[s.searchWrap, !heroCollapsed && { transform: [{ translateY: -24 }] }]}
         >
           <MaterialCommunityIcons name="magnify" size={22} color={THEME.white} />
           <View style={{ flex: 1, marginLeft: 8, height: 22, overflow: "hidden", justifyContent: "center" }}>
@@ -1339,7 +1339,7 @@ export default function Home() {
             showsHorizontalScrollIndicator={false}
             snapToInterval={BANNER_W + 12}
             decelerationRate={0.98}
-            contentContainerStyle={{ paddingHorizontal: SPACING.lg, paddingTop: SPACING.md, paddingBottom: SPACING.xs, gap: 12 }}
+            contentContainerStyle={{ paddingHorizontal: SPACING.lg, paddingTop: SPACING.lg, paddingBottom: SPACING.xs, gap: 12 }}
             keyExtractor={(it) => String(it.id)}
             ref={(ref) => {
               if (banners.length > 1 && ref && typeof (ref as any).scrollToIndex === "function") {
