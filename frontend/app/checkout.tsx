@@ -8,7 +8,7 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Location from "expo-location";
-import { api } from "@/src/api";
+import { api, isProductDeliveryAvailableAtPincode, PRODUCT_DELIVERY_PINCODE } from "@/src/api";
 import { useCart } from "@/src/CartContext";
 import { COLORS, RADIUS, SPACING } from "@/src/theme";
 
@@ -58,6 +58,10 @@ export default function Checkout() {
   };
 
   useEffect(() => { loadAddrs(); }, []);
+
+  const selectedAddressDetails = addresses.find((addr: any) => String(addr.id || addr._id) === String(selectedAddr)) || null;
+  const selectedPincode = String(selectedAddressDetails?.pincode || "").replace(/\D/g, "");
+  const selectedAddressUnavailable = Boolean(selectedAddr && selectedAddressDetails && !isProductDeliveryAvailableAtPincode(selectedPincode));
 
   const handleSelectAddr = async (addr: any) => {
     const id = String(addr.id || addr._id);
@@ -169,7 +173,6 @@ export default function Checkout() {
           district: geo?.district || prev.district,
           city: geo?.city || prev.city,
           state: geo?.state || prev.state,
-          pincode: geo?.pincode || prev.pincode,
         }));
       } catch (error) {
         console.log("Checkout reverse geocode failed:", error);
@@ -269,7 +272,10 @@ export default function Checkout() {
 
     try {
       if (editingId) {
-        await api.updateAddress(editingId, form);
+        const updatedAddress: any = await api.updateAddress(editingId, form);
+        if (selectedAddr === String(editingId)) {
+          await AsyncStorage.setItem("selected_address", JSON.stringify(updatedAddress));
+        }
       } else {
         if (!locationCaptured) {
           Alert.alert("Location Required", "Please allow current location for this new delivery address.");
@@ -319,6 +325,10 @@ export default function Checkout() {
 
   const onPlace = async () => {
     if (!selectedAddr) return;
+    if (selectedAddressDetails && !isProductDeliveryAvailableAtPincode(selectedPincode)) {
+      Alert.alert("Service not available", `Products can currently be delivered only to PIN ${PRODUCT_DELIVERY_PINCODE}. The selected address has PIN ${selectedPincode || "not entered"}.`);
+      return;
+    }
     setLoading(true);
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     try {
@@ -375,7 +385,18 @@ export default function Checkout() {
               </Pressable>
             );
           })}
-          
+
+          {!!selectedAddressDetails && (
+            <View style={[s.deliveryAvailability, selectedAddressUnavailable && s.deliveryAvailabilityBlocked]} testID="delivery-availability">
+              <MaterialCommunityIcons name={selectedAddressUnavailable ? "alert-circle" : "check-circle"} size={18} color={selectedAddressUnavailable ? "#B91C1C" : "#15803D"} />
+              <Text style={[s.deliveryAvailabilityText, selectedAddressUnavailable && s.deliveryAvailabilityBlockedText]}>
+                {selectedAddressUnavailable
+                  ? `Service not available at PIN ${selectedPincode || "not entered"}. Products are deliverable only at PIN ${PRODUCT_DELIVERY_PINCODE}.`
+                  : `Product delivery available at PIN ${PRODUCT_DELIVERY_PINCODE}.`}
+              </Text>
+            </View>
+          )}
+
           {!showForm && (
             <Pressable testID="add-address-btn" onPress={handleAddNewAddress} style={s.addBtn}>
               <MaterialCommunityIcons name="plus" size={18} color={COLORS.brand} />
@@ -411,7 +432,7 @@ export default function Checkout() {
                 <View style={{ flex: 1 }}><Input ph="City" v={form.city} oc={(v: string) => setForm({ ...form, city: v })} testID="addr-city" /></View>
                 <View style={{ flex: 1 }}><Input ph="State" v={form.state} oc={(v: string) => setForm({ ...form, state: v })} testID="addr-state" /></View>
               </View>
-              <Input ph="Pincode" v={form.pincode} oc={(v: string) => setForm({ ...form, pincode: v.replace(/[^0-9]/g, '') })} kt="number-pad" maxLength={6} testID="addr-pincode" />
+              <Input ph={`Pincode (${PRODUCT_DELIVERY_PINCODE} only for products)`} v={form.pincode} oc={(v: string) => setForm({ ...form, pincode: v.replace(/[^0-9]/g, '') })} kt="number-pad" maxLength={6} testID="addr-pincode" />
               
               <View style={{ flexDirection: "row", gap: 8, marginTop: 4 }}>
                  {addresses.length > 0 && (
@@ -455,8 +476,8 @@ export default function Checkout() {
         </ScrollView>
       </KeyboardAvoidingView>
       <View style={s.bar}>
-        <Pressable testID="place-order-btn" onPress={onPlace} disabled={!selectedAddr || loading || showForm} style={{ flex: 1 }}>
-          <LinearGradient colors={[COLORS.accent, COLORS.accentDark]} style={[s.placeBtn, (!selectedAddr || loading || showForm) && { opacity: 0.6 }]}>
+        <Pressable testID="place-order-btn" onPress={onPlace} disabled={!selectedAddr || loading || showForm || selectedAddressUnavailable} style={{ flex: 1 }}>
+          <LinearGradient colors={[COLORS.accent, COLORS.accentDark]} style={[s.placeBtn, (!selectedAddr || loading || showForm || selectedAddressUnavailable) && { opacity: 0.6 }]}>
             {loading ? <ActivityIndicator color="#fff" /> : (
               <>
                 <Text style={s.placeText}>Place Order · ₹{cart?.total || 0}</Text>
@@ -488,6 +509,10 @@ const s = StyleSheet.create({
   section: { fontSize: 15, fontWeight: "800", color: COLORS.text, marginTop: SPACING.lg, marginBottom: SPACING.sm },
   addrCard: { flexDirection: "column", padding: 12, borderRadius: RADIUS.md, borderWidth: 1.5, borderColor: COLORS.border, marginBottom: 8 },
   addrCardActive: { borderColor: COLORS.brand, backgroundColor: COLORS.brandLight },
+  deliveryAvailability: { flexDirection: "row", alignItems: "center", gap: 8, padding: 11, marginBottom: 10, borderRadius: RADIUS.md, backgroundColor: "#F0FDF4", borderWidth: 1, borderColor: "#BBF7D0" },
+  deliveryAvailabilityBlocked: { backgroundColor: "#FEF2F2", borderColor: "#FECACA" },
+  deliveryAvailabilityText: { flex: 1, color: "#166534", fontSize: 12, fontWeight: "700", lineHeight: 17 },
+  deliveryAvailabilityBlockedText: { color: "#B91C1C" },
   addrLabel: { fontWeight: "700", color: COLORS.text },
   addrText: { color: COLORS.textSecondary, fontSize: 13, marginTop: 2 },
   addrPhone: { color: COLORS.textMuted, fontSize: 12, marginTop: 2 },

@@ -11,6 +11,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useCart } from "@/src/CartContext";
 import { useAuth } from "@/src/AuthContext";
 import { COLORS, RADIUS, SPACING, shadow } from "@/src/theme";
+import { isProductDeliveryAvailableAtPincode, PRODUCT_DELIVERY_PINCODE } from "@/src/api";
 import AnimatedBrandLogo, { BrandingFooter } from "@/src/components/AnimatedBrandLogo";
 
 export default function Cart() {
@@ -72,6 +73,9 @@ export default function Cart() {
     return `${label} · ${line}`;
   };
 
+  const selectedPincode = String(selectedAddress?.pincode || "").replace(/\D/g, "");
+  const deliveryUnavailable = Boolean(selectedAddress) && !isProductDeliveryAvailableAtPincode(selectedPincode);
+
   return (
     <SafeAreaView style={s.root} edges={["top"]} testID="cart-screen">
       <Text style={s.title}>My Cart ({cart.item_count})</Text>
@@ -128,9 +132,15 @@ export default function Cart() {
           <Row label="To Pay" value={`₹${cart.total}`} bold />
         </View>
 
-        <View style={s.promise}>
+        <View style={[s.promise, deliveryUnavailable && s.promiseUnavailable]}>
           <AnimatedBrandLogo size={42} />
-          <Text style={s.promiseText}>Delivered by KMT Bazaar in 30–45 mins</Text>
+          <Text style={[s.promiseText, deliveryUnavailable && s.promiseTextUnavailable]}>
+            {!selectedAddress
+              ? `Select a delivery address. Product delivery is currently available only at PIN ${PRODUCT_DELIVERY_PINCODE}.`
+              : deliveryUnavailable
+                ? `Service not available at PIN ${selectedPincode || "not entered"}. Products can be delivered only to PIN ${PRODUCT_DELIVERY_PINCODE}.`
+                : `Product delivery is available at PIN ${PRODUCT_DELIVERY_PINCODE}.`}
+          </Text>
         </View>
         <BrandingFooter caption="Trusted Shopping · Fast Delivery" />
       </ScrollView>
@@ -140,8 +150,8 @@ export default function Cart() {
           <Text style={s.checkoutTotal}>₹{cart.total}</Text>
           <Text style={s.checkoutSub}>Total · {cart.item_count} items</Text>
         </View>
-        <Pressable testID="proceed-to-checkout" onPress={() => router.push("/checkout" as any)} style={{ flex: 1, marginLeft: 12 }} disabled={busy}>
-          <LinearGradient colors={[COLORS.accent, COLORS.accentDark]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={s.checkoutBtn}>
+        <Pressable testID="proceed-to-checkout" onPress={() => router.push("/checkout" as any)} style={{ flex: 1, marginLeft: 12 }} disabled={busy || deliveryUnavailable}>
+          <LinearGradient colors={[COLORS.accent, COLORS.accentDark]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[s.checkoutBtn, deliveryUnavailable && { opacity: 0.5 }]}>
             {busy ? <ActivityIndicator color="#fff" /> : (
               <>
                 <Text style={s.checkoutBtnText}>Proceed to Checkout</Text>
@@ -196,6 +206,8 @@ const s = StyleSheet.create({
 
   promise: { flexDirection: "row", alignItems: "center", gap: 10, padding: 12, marginTop: 12, backgroundColor: COLORS.brandLight, borderRadius: RADIUS.md },
   promiseText: { color: COLORS.brandDark, fontWeight: "600", fontSize: 13, flex: 1 },
+  promiseUnavailable: { backgroundColor: "#FEF2F2" },
+  promiseTextUnavailable: { color: "#B91C1C" },
 
   checkoutBar: { position: "absolute", left: 0, right: 0, bottom: 70, backgroundColor: "#fff", padding: SPACING.md, flexDirection: "row", alignItems: "center", borderTopWidth: 1, borderColor: COLORS.border },
   checkoutTotal: { fontWeight: "800", fontSize: 18, color: COLORS.text },

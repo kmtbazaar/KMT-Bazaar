@@ -46,6 +46,7 @@ MAX_IMAGE_SIZE = (1600, 1600)
 PRODUCT_IMAGE_MAX_BYTES = 200 * 1024
 PRODUCT_IMAGE_SIZES = (1000, 800, 640, 512, 448, 384, 320)
 DEFAULT_HOLIDAY_BANNER_URL = "https://images.unsplash.com/photo-1516483638261-f4dbaf036963?w=1800&q=85"
+PRODUCT_DELIVERY_PINCODE = "815352"
 
 mongo_url = os.environ['MONGO_URL']
 client = AsyncIOMotorClient(mongo_url)
@@ -2294,7 +2295,12 @@ async def update_address(addr_id: str, data: AddressIn, current=Depends(get_curr
         raise HTTPException(400, "Invalid location coordinates")
     if data.is_default:
         await db.addresses.update_many({"user_id": current["id"]}, {"$set": {"is_default": False}})
-    res = await db.addresses.update_one({"id": addr_id, "user_id": current["id"]}, {"$set": data.dict()})
+    update_data = data.dict()
+    if data.latitude is None and data.longitude is None:
+        # Address edits that only change postal details must retain saved GPS coordinates.
+        update_data.pop("latitude", None)
+        update_data.pop("longitude", None)
+    res = await db.addresses.update_one({"id": addr_id, "user_id": current["id"]}, {"$set": update_data})
     if res.matched_count == 0:
         raise HTTPException(status_code=404, detail="Address not found")
     updated = await db.addresses.find_one({"id": addr_id, "user_id": current["id"]}, {"_id": 0})
@@ -2332,6 +2338,23 @@ async def checkout(
 
     if not cart["items"]:
         raise HTTPException(400, "Cart is empty")
+
+    addr = await db.addresses.find_one(
+        {"id": data.address_id, "user_id": current["id"]},
+        {"_id": 0}
+    )
+    if not addr:
+        raise HTTPException(400, "Invalid address")
+
+    delivery_pincode = re.sub(r"\D", "", str(addr.get("pincode") or ""))
+    if delivery_pincode != PRODUCT_DELIVERY_PINCODE:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                f"Service not available at PIN code {delivery_pincode}. "
+                f"Products are currently deliverable only to PIN code {PRODUCT_DELIVERY_PINCODE}."
+            ),
+        )
 
     requested_quantities: dict[tuple[str, Optional[str]], int] = {}
     for cart_item in cart["items"]:
@@ -2388,13 +2411,6 @@ async def checkout(
             400,
             "One or more products are no longer available"
         )
-
-    addr = await db.addresses.find_one(
-        {"id": data.address_id, "user_id": current["id"]},
-        {"_id": 0}
-    )
-    if not addr:
-        raise HTTPException(400, "Invalid address")
 
     stored_latitude = addr.get("latitude")
     stored_longitude = addr.get("longitude")

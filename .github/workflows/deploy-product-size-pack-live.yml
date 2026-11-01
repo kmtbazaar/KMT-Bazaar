@@ -21,6 +21,9 @@ on:
       - "frontend/app/vendor/car-rental-dashboard.tsx"
       - "frontend/app/role/[role].tsx"
       - "frontend/app/(tabs)/cart.tsx"
+      - "frontend/app/addresses.tsx"
+      - "frontend/app/checkout.tsx"
+      - "backend/server.py"
       - "frontend/app/(tabs)/profile.tsx"
       - "frontend/app/index.tsx"
       - "frontend/src/components/ParticleLogoSplash.tsx"
@@ -177,7 +180,7 @@ jobs:
 
       - name: Lint changed product and branding screens
         working-directory: frontend
-        run: npx eslint "app/vendor/store/[id].tsx" "app/vendor/products.tsx" "app/product/[id].tsx" "src/components/ProductCard.tsx" "src/components/AnimatedBrandLogo.tsx" "app/auth/login.tsx" "app/admin/index.tsx" "app/delivery/index.tsx" "app/vendor/holiday-dashboard.tsx" "app/vendor/car-rental-dashboard.tsx" "app/role/[role].tsx" "app/(tabs)/profile.tsx" "app/(tabs)/cart.tsx" "app/index.tsx" "app/search.tsx" "src/components/ParticleLogoSplash.tsx" "components/AIAssistant.tsx" "src/components/RobotAvatar.tsx" "src/api.ts" --no-cache
+        run: npx eslint "app/vendor/store/[id].tsx" "app/vendor/products.tsx" "app/product/[id].tsx" "src/components/ProductCard.tsx" "src/components/AnimatedBrandLogo.tsx" "app/auth/login.tsx" "app/admin/index.tsx" "app/delivery/index.tsx" "app/vendor/holiday-dashboard.tsx" "app/vendor/car-rental-dashboard.tsx" "app/role/[role].tsx" "app/(tabs)/profile.tsx" "app/(tabs)/cart.tsx" "app/addresses.tsx" "app/checkout.tsx" "app/index.tsx" "app/search.tsx" "src/components/ParticleLogoSplash.tsx" "components/AIAssistant.tsx" "src/components/RobotAvatar.tsx" "src/api.ts" --no-cache
 
       - name: Validate particle-forming splash and black-background removal
         working-directory: frontend
@@ -247,6 +250,26 @@ jobs:
           assert.ok(!assistant.includes("styles.statusLight"), "Robot must not reference a missing style");
           console.log("GOOGLE_SIGN_IN_BOOTSTRAP_VALIDATION_PASS");
           console.log("LOGIN_ROBOT_ANIMATION_VALIDATION_PASS");
+          NODE
+
+      - name: Validate single-PIN product delivery restriction
+        working-directory: frontend
+        run: |
+          node <<'NODE'
+          const fs = require("fs");
+          const assert = require("assert");
+          const api = fs.readFileSync("src/api.ts", "utf8");
+          const cart = fs.readFileSync("app/(tabs)/cart.tsx", "utf8");
+          const checkout = fs.readFileSync("app/checkout.tsx", "utf8");
+          const addresses = fs.readFileSync("app/addresses.tsx", "utf8");
+          const backend = fs.readFileSync("../backend/server.py", "utf8");
+          assert.ok(api.includes('PRODUCT_DELIVERY_PINCODE = "815352"'), "Product delivery PIN must be 815352");
+          assert.ok(cart.includes("isProductDeliveryAvailableAtPincode") && cart.includes("disabled={busy || deliveryUnavailable}"), "Cart must block non-serviceable PIN codes");
+          assert.ok(checkout.includes("selectedAddressUnavailable") && checkout.includes("delivery-availability"), "Checkout must display and enforce selected PIN serviceability");
+          assert.ok(addresses.includes("PRODUCT_DELIVERY_MAP_CENTER") && !addresses.includes("25.5941"), "Address map must not fall back to Patna");
+          assert.ok(backend.includes('PRODUCT_DELIVERY_PINCODE = "815352"') && backend.includes("delivery_pincode != PRODUCT_DELIVERY_PINCODE"), "Backend checkout must enforce PIN 815352");
+          assert.ok(backend.includes('update_data.pop("latitude", None)') && backend.includes('update_data.pop("longitude", None)'), "Address PIN edits must preserve saved GPS coordinates");
+          console.log("SINGLE_PIN_PRODUCT_DELIVERY_VALIDATION_PASS");
           NODE
 
       - name: Build web app

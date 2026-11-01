@@ -1,4 +1,4 @@
-name: Safely patch Google sign-in configuration on kmtbazaar.com
+name: Deploy targeted KMT Bazaar backend patch to kmtbazaar.com
 
 on:
   push:
@@ -10,7 +10,7 @@ on:
   workflow_dispatch:
     inputs:
       confirm_live_deploy:
-        description: "Confirm the targeted Google sign-in backend patch"
+        description: "Confirm the targeted KMT Bazaar backend patch"
         required: true
         type: choice
         options:
@@ -32,8 +32,16 @@ jobs:
         with:
           ref: customer-live
 
-      - name: Validate repository backend syntax
-        run: python -m py_compile backend/server.py
+      - name: Validate repository backend syntax and delivery PIN rule
+        run: |
+          python -m py_compile backend/server.py
+          python - <<'PY'
+          from pathlib import Path
+          source = Path("backend/server.py").read_text(encoding="utf-8")
+          assert 'PRODUCT_DELIVERY_PINCODE = "815352"' in source
+          assert "delivery_pincode != PRODUCT_DELIVERY_PINCODE" in source
+          print("BACKEND_SINGLE_PIN_VALIDATION_PASS")
+          PY
 
       - name: Check required Hostinger SSH configuration
         env:
@@ -67,7 +75,7 @@ jobs:
           ssh-keyscan -p "$PORT" -H "$HOSTINGER_HOST" >> "$HOME/.ssh/known_hosts" 2>/dev/null
           printf 'port=%s\n' "$PORT" >> "$GITHUB_OUTPUT"
 
-      - name: Apply the targeted Google OAuth patch without replacing local server changes
+      - name: Apply targeted backend changes without replacing local server changes
         timeout-minutes: 5
         env:
           HOSTINGER_HOST: ${{ secrets.HOSTINGER_HOST }}
@@ -80,12 +88,12 @@ jobs:
             -i "$HOME/.ssh/kmt_bazaar_backend_key" -p "$HOSTINGER_PORT" "$DEST" \
             "DEPLOY_SHA='$GITHUB_SHA' bash -s" <<'REMOTE'
           set -Eeuo pipefail
-          exec 9>/run/kmt-bazaar-google-auth-deploy.lock
+          exec 9>/run/kmt-bazaar-com-backend-deploy.lock
           flock -n 9 || { echo "STOP: Another backend deployment is running."; exit 1; }
 
           TARGET=/root/KMT-Bazaar-com/backend/server.py
           test -s "$TARGET"
-          BACKUP="/root/kmtbazaar-google-auth-backup-${DEPLOY_SHA:0:12}-$(date +%Y%m%d-%H%M%S).py"
+          BACKUP="/root/kmtbazaar-backend-backup-${DEPLOY_SHA:0:12}-$(date +%Y%m%d-%H%M%S).py"
           cp -a "$TARGET" "$BACKUP"
 
           rollback() {
@@ -131,18 +139,74 @@ jobs:
               )
               source = source.replace(marker, config_route + marker, 1)
 
+          # Add the service PIN and order guard without replacing other live backend changes.
+          pin_setting = 'PRODUCT_DELIVERY_PINCODE = "815352"'
+          if "PRODUCT_DELIVERY_PINCODE" in source and pin_setting not in source:
+              raise SystemExit("STOP: Conflicting product delivery PIN setting; no VPS changes made.")
+          if pin_setting not in source:
+              setting_anchor = 'DEFAULT_HOLIDAY_BANNER_URL = "https://images.unsplash.com/photo-1516483638261-f4dbaf036963?w=1800&q=85"\n'
+              if source.count(setting_anchor) != 1:
+                  raise SystemExit("STOP: Could not safely locate backend constants; no VPS changes made.")
+              source = source.replace(setting_anchor, setting_anchor + pin_setting + "\n", 1)
+
+          if "delivery_pincode != PRODUCT_DELIVERY_PINCODE" not in source:
+              address_anchor = (
+                  '    addr = await db.addresses.find_one(\n'
+                  '        {"id": data.address_id, "user_id": current["id"]},\n'
+                  '        {"_id": 0}\n'
+                  '    )\n'
+                  '    if not addr:\n'
+                  '        raise HTTPException(400, "Invalid address")\n'
+              )
+              if source.count(address_anchor) != 1:
+                  raise SystemExit("STOP: Could not safely locate product checkout address validation; no VPS changes made.")
+              guard = (
+                  address_anchor
+                  + '\n'
+                  + '    delivery_pincode = re.sub(r"\\D", "", str(addr.get("pincode") or ""))\n'
+                  + '    if delivery_pincode != PRODUCT_DELIVERY_PINCODE:\n'
+                  + '        raise HTTPException(\n'
+                  + '            status_code=400,\n'
+                  + '            detail=(\n'
+                  + '                f"Service not available at PIN code {delivery_pincode}. "\n'
+                  + '                f"Products are currently deliverable only to PIN code {PRODUCT_DELIVERY_PINCODE}."\n'
+                  + '            ),\n'
+                  + '        )\n'
+              )
+              source = source.replace(address_anchor, guard, 1)
+
+          if 'update_data.pop("latitude", None)' not in source:
+              old_update = '    res = await db.addresses.update_one({"id": addr_id, "user_id": current["id"]}, {"$set": data.dict()})'
+              if source.count(old_update) != 1:
+                  raise SystemExit("STOP: Could not safely locate address update handler; no VPS changes made.")
+              new_update = (
+                  '    update_data = data.dict()\n'
+                  '    if data.latitude is None and data.longitude is None:\n'
+                  '        # Address edits that only change postal details must retain saved GPS coordinates.\n'
+                  '        update_data.pop("latitude", None)\n'
+                  '        update_data.pop("longitude", None)\n'
+                  '    res = await db.addresses.update_one({"id": addr_id, "user_id": current["id"]}, {"$set": update_data})'
+              )
+              source = source.replace(old_update, new_update, 1)
+
           if source != original:
               mode = path.stat().st_mode & 0o777
-              temporary = path.with_suffix(path.suffix + ".google-auth.tmp")
+              temporary = path.with_suffix(path.suffix + ".targeted-backend.tmp")
               temporary.write_text(source, encoding="utf-8")
               os.chmod(temporary, mode)
               os.replace(temporary, path)
-              print("GOOGLE_AUTH_TARGETED_PATCH_APPLIED")
+              print("KMT_BACKEND_TARGETED_PATCH_APPLIED")
           else:
-              print("GOOGLE_AUTH_PATCH_ALREADY_PRESENT")
+              print("KMT_BACKEND_PATCH_ALREADY_PRESENT")
           PY
           then
-            echo "STOP: Backend source did not match the expected Google OAuth structure."
+            echo "STOP: Backend source did not match the expected targeted patch structure."
+            exit 1
+          fi
+
+          if ! grep -Fq 'delivery_pincode != PRODUCT_DELIVERY_PINCODE' "$TARGET"; then
+            echo "BACKEND_DELIVERY_PIN_GUARD_MISSING"
+            rollback
             exit 1
           fi
 

@@ -133,6 +133,12 @@ export function clearWebSessionExpiredNotice(): void {
   } catch {}
 }
 
+export const PRODUCT_DELIVERY_PINCODE = "815352";
+
+export function isProductDeliveryAvailableAtPincode(pincode: unknown): boolean {
+  return String(pincode ?? "").replace(/\D/g, "") === PRODUCT_DELIVERY_PINCODE;
+}
+
 export type UserRole = "customer" | "vendor" | "delivery" | "admin";
 export type VendorType = "store" | "service";
 export type ServiceType = "holiday" | "car_rental" | "daily_service";

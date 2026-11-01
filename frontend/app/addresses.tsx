@@ -7,9 +7,12 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Location from "expo-location";
-import { api } from "@/src/api";
+import { api, isProductDeliveryAvailableAtPincode, PRODUCT_DELIVERY_PINCODE } from "@/src/api";
 import { useAuth } from "@/src/AuthContext";
 import { COLORS, RADIUS, SPACING, shadow } from "@/src/theme";
+
+// Approximate map starting point for PIN 815352, not an exact customer location.
+const PRODUCT_DELIVERY_MAP_CENTER = { latitude: 24.0431, longitude: 86.6161 };
 
 const normalizeMobile = (value: unknown) => {
   const digits = String(value || "").replace(/\D/g, "");
@@ -78,8 +81,9 @@ export default function Addresses() {
         // Open the map even if GPS was unavailable; user can move the map manually.
         const initialPoint = hasGps
           ? { latitude, longitude, accuracy: Number(gps?.accuracy) || undefined }
-          : { latitude: 25.5941, longitude: 85.1376 };
-        setPendingMapLocation(initialPoint);
+          : PRODUCT_DELIVERY_MAP_CENTER;
+        // Without GPS, require the customer to move the map pin or capture live GPS.
+        setPendingMapLocation(hasGps ? initialPoint : null);
         if (hasGps) setLocationCaptured(initialPoint);
         else setLocationCaptured(null);
         setExistingLocationSaved(false);
@@ -113,14 +117,13 @@ export default function Addresses() {
               district: geo?.district || prev.district,
               city: geo?.city || prev.city,
               state: geo?.state || prev.state,
-              pincode: geo?.pincode || prev.pincode,
-            }));
+                }));
           } catch (error) {
             console.log("Initial reverse geocode failed:", error);
             setLocationError("GPS captured. Please enter the address details manually.");
           }
         } else {
-          setLocationError("Map is ready. Use live GPS or move the map pin to your delivery point.");
+          setLocationError("GPS was unavailable. The map is centered near PIN 815352; move the pin to your exact address or use live GPS.");
         }
         setGpsPrefillLoading(false);
       } catch (error) {
@@ -222,7 +225,6 @@ export default function Addresses() {
         district: geo?.district || prev.district,
         city: geo?.city || geo?.district || prev.city,
         state: geo?.state || prev.state,
-        pincode: geo?.pincode || prev.pincode,
       }));
     } catch {
       setLocationError("Location set hai. Address details manually fill kar sakte hain.");
@@ -409,7 +411,14 @@ export default function Addresses() {
       let createdAddress: any = null;
 
       if (editingId) {
-        await api.updateAddress(editingId, saveData);
+        const updatedAddress: any = await api.updateAddress(editingId, saveData);
+        if (selectedAddrId === String(editingId)) {
+          const formattedAddressStr = `${updatedAddress.label || "Home"} · ${updatedAddress.line1 || updatedAddress.city || ""}`;
+          await AsyncStorage.setItem("selected_address", JSON.stringify(updatedAddress));
+          if (setUser) {
+            setUser({ ...user, activeAddress: updatedAddress, address: formattedAddressStr });
+          }
+        }
       } else {
         if (!locationCaptured) {
           Alert.alert("Location Required", "Please set your current location before saving this address.");
@@ -544,6 +553,11 @@ export default function Addresses() {
                 <Text style={s.nameText}>{item.full_name || item.name}</Text>
                 <Text style={s.addressText}>{item.line1 || item.address}</Text>
                 <Text style={s.addressText}>{item.city}, {item.state} - {item.pincode}</Text>
+                <Text style={[s.deliveryPinStatus, isProductDeliveryAvailableAtPincode(item.pincode) ? s.deliveryPinAvailable : s.deliveryPinUnavailable]}>
+                  {isProductDeliveryAvailableAtPincode(item.pincode)
+                    ? `Product delivery available · PIN ${PRODUCT_DELIVERY_PINCODE}`
+                    : `Service not available · products only at PIN ${PRODUCT_DELIVERY_PINCODE}`}
+                </Text>
                 <Text style={s.phoneText}>Phone: {item.phone}</Text>
                 <View style={[s.locationBadge, item.has_location ? s.locationBadgeOk : s.locationBadgeWarn]}>
                   <MaterialCommunityIcons name={item.has_location ? "crosshairs-gps" : "map-marker-alert"} size={14} color={item.has_location ? "#15803D" : "#B45309"} />
@@ -597,13 +611,13 @@ export default function Addresses() {
             {Platform.OS === "web" ? (
               <iframe
                 title="Set delivery location"
-                srcDoc={buildMapHtml(pendingMapLocation?.latitude ?? 25.5941, pendingMapLocation?.longitude ?? 85.1376)}
+                srcDoc={buildMapHtml(pendingMapLocation?.latitude ?? PRODUCT_DELIVERY_MAP_CENTER.latitude, pendingMapLocation?.longitude ?? PRODUCT_DELIVERY_MAP_CENTER.longitude)}
                 style={{ width: "100%", height: "100%", border: 0 } as any}
               />
             ) : (
               <WebView
                 originWhitelist={["*"]}
-                source={{ html: buildMapHtml(pendingMapLocation?.latitude ?? 25.5941, pendingMapLocation?.longitude ?? 85.1376) }}
+                source={{ html: buildMapHtml(pendingMapLocation?.latitude ?? PRODUCT_DELIVERY_MAP_CENTER.latitude, pendingMapLocation?.longitude ?? PRODUCT_DELIVERY_MAP_CENTER.longitude) }}
                 onMessage={(event) => {
                   try {
                     const data = JSON.parse(event.nativeEvent.data || "{}");
@@ -623,14 +637,14 @@ export default function Addresses() {
               <MaterialCommunityIcons name="map-marker" size={48} color="#E11D48" />
             </View>
             <View pointerEvents="none" style={s.mapHint}>
-              <Text style={s.mapHintText}>Move the map until the pin is exactly on your home.</Text>
+              <Text style={s.mapHintText}>{pendingMapLocation ? "Move the map until the pin is exactly on your home." : "Map starts near PIN 815352. Move it to your exact address or use live GPS."}</Text>
             </View>
           </View>
 
           <View style={s.mapFooter}>
             <View style={s.mapSelectedRow}>
               <MaterialCommunityIcons name="crosshairs-gps" size={20} color="#15803D" />
-              <Text style={s.mapSelectedText}>{pendingMapLocation ? "Location selected" : "Finding your location…"}</Text>
+              <Text style={s.mapSelectedText}>{pendingMapLocation ? "Location selected" : locationLoading ? "Finding your location…" : "Move the map to your exact address"}</Text>
             </View>
             <TouchableOpacity
               onPress={() => getCurrentLocation().catch(() => {})}
@@ -688,6 +702,7 @@ export default function Addresses() {
                 <View style={s.fieldHalf}>
                   <FieldLabel text="Pincode" required />
                   <TextInput style={s.input} placeholder="Pincode *" keyboardType="number-pad" maxLength={6} value={formData.pincode} onChangeText={t => setFormData({ ...formData, pincode: t.replace(/[^0-9]/g, '') })} />
+                  <Text style={s.pinNote}>Enter the actual 6-digit postal PIN. Product delivery is available only at PIN {PRODUCT_DELIVERY_PINCODE}.</Text>
                 </View>
               </View>
 
@@ -697,7 +712,7 @@ export default function Addresses() {
               {gpsPrefillLoading && (
                 <View style={s.gpsLoadingRow}>
                   <ActivityIndicator size="small" color={COLORS.brand} />
-                  <Text style={s.gpsLoadingText}>Finding nearby street, district, city and pincode…</Text>
+                  <Text style={s.gpsLoadingText}>Finding nearby street, district and city…</Text>
                 </View>
               )}
 
@@ -738,15 +753,15 @@ export default function Addresses() {
 
 
 function buildMapHtml(latitude: number, longitude: number) {
-  const lat = Number.isFinite(Number(latitude)) ? Number(latitude) : 20.5937;
-  const lng = Number.isFinite(Number(longitude)) ? Number(longitude) : 78.9629;
+  const lat = Number.isFinite(Number(latitude)) ? Number(latitude) : PRODUCT_DELIVERY_MAP_CENTER.latitude;
+  const lng = Number.isFinite(Number(longitude)) ? Number(longitude) : PRODUCT_DELIVERY_MAP_CENTER.longitude;
   return [
     "<!doctype html><html><head><meta name=\"viewport\" content=\"width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no\">",
     "<link rel=\"stylesheet\" href=\"https://unpkg.com/leaflet@1.9.4/dist/leaflet.css\">",
     "<style>html,body,#map{margin:0;width:100%;height:100%;overflow:hidden}.leaflet-control-attribution{font-size:9px}</style>",
     "</head><body><div id=\"map\"></div>",
     "<script src=\"https://unpkg.com/leaflet@1.9.4/dist/leaflet.js\"></script>",
-    "<script>(function(){var start=[" + lat + "," + lng + "];var map=L.map('map',{zoomControl:true}).setView(start,18);L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:20,attribution:'© OpenStreetMap contributors'}).addTo(map);var marker=L.marker(start,{draggable:true}).addTo(map);function send(){var p=marker.getLatLng();var msg=JSON.stringify({type:'location',lat:p.lat,lng:p.lng});try{if(window.ReactNativeWebView){window.ReactNativeWebView.postMessage(msg);}}catch(e){}try{if(window.parent&&window.parent!==window){window.parent.postMessage(msg,'*');}}catch(e){}}marker.on('dragend',send);map.on('moveend',function(){var c=map.getCenter();marker.setLatLng(c);send();});send();})();</script>",
+    "<script>(function(){var start=[" + lat + "," + lng + "];var map=L.map('map',{zoomControl:true}).setView(start,18);L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:20,attribution:'© OpenStreetMap contributors'}).addTo(map);var marker=L.marker(start,{draggable:true}).addTo(map);function send(){var p=marker.getLatLng();var msg=JSON.stringify({type:'location',lat:p.lat,lng:p.lng});try{if(window.ReactNativeWebView){window.ReactNativeWebView.postMessage(msg);}}catch(e){}try{if(window.parent&&window.parent!==window){window.parent.postMessage(msg,'*');}}catch(e){}}marker.on('dragend',send);map.on('moveend',function(){var c=map.getCenter();marker.setLatLng(c);send();});})();</script>",
     "</body></html>"
   ].join("");
 }
@@ -794,6 +809,10 @@ const s = StyleSheet.create({
   nameText: { color: COLORS.text, fontSize: 16, fontWeight: "800", paddingTop: 10, paddingBottom: 2 },
   addressText: { color: COLORS.text, fontSize: 14, paddingTop: 2, lineHeight: 20 },
   phoneText: { color: COLORS.textMuted, fontSize: 13, paddingVertical: 6, fontWeight: "600" },
+  deliveryPinStatus: { marginTop: 4, fontSize: 11, fontWeight: "800" },
+  deliveryPinAvailable: { color: "#15803D" },
+  deliveryPinUnavailable: { color: "#B91C1C" },
+  pinNote: { color: COLORS.textMuted, fontSize: 10, lineHeight: 15, marginTop: -2, marginBottom: 8 },
   locationBadge: { flexDirection: "row", alignItems: "center", alignSelf: "flex-start", gap: 5, paddingHorizontal: 8, paddingVertical: 5, borderRadius: RADIUS.pill, marginBottom: 10, borderWidth: 1 },
   locationBadgeOk: { backgroundColor: "#F0FDF4", borderColor: "#BBF7D0" },
   locationBadgeWarn: { backgroundColor: "#FFFBEB", borderColor: "#FDE68A" },
