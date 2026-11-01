@@ -145,13 +145,13 @@ jobs:
               source = source.replace(marker, config_route + marker, 1)
 
           # Safely add the canonical state/PIN constants without relying on exact newline formatting.
-          newline = "\\r\\n" if "\\r\\n" in source else "\\n"
+          newline = "\r\n" if "\r\n" in source else "\n"
           lines = source.splitlines(keepends=True)
-          pin_indexes = [i for i, line in enumerate(lines) if re.match(r"^\\s*PRODUCT_DELIVERY_PINCODE\\s*=", line)]
+          pin_indexes = [i for i, line in enumerate(lines) if re.match(r"^\s*PRODUCT_DELIVERY_PINCODE\s*=", line)]
           if len(pin_indexes) > 1:
               raise SystemExit("STOP: Multiple product delivery PIN declarations; no VPS changes made.")
           if not pin_indexes:
-              defaults = [i for i, line in enumerate(lines) if re.match(r"^\\s*DEFAULT_HOLIDAY_BANNER_URL\\s*=", line)]
+              defaults = [i for i, line in enumerate(lines) if re.match(r"^\s*DEFAULT_HOLIDAY_BANNER_URL\s*=", line)]
               if len(defaults) != 1:
                   raise SystemExit("STOP: Could not safely locate backend constants; no VPS changes made.")
               lines.insert(defaults[0] + 1, 'PRODUCT_DELIVERY_PINCODE = "815352"' + newline)
@@ -160,14 +160,14 @@ jobs:
           if pin_line != 'PRODUCT_DELIVERY_PINCODE = "815352"':
               raise SystemExit("STOP: Conflicting product delivery PIN setting; no VPS changes made.")
 
-          state_indexes = [i for i, line in enumerate(lines) if re.match(r"^\\s*PRODUCT_DELIVERY_STATE\\s*=", line)]
+          state_indexes = [i for i, line in enumerate(lines) if re.match(r"^\s*PRODUCT_DELIVERY_STATE\s*=", line)]
           if len(state_indexes) > 1:
               raise SystemExit("STOP: Multiple product delivery state declarations; no VPS changes made.")
           if state_indexes:
               if lines[state_indexes[0]].strip() != 'PRODUCT_DELIVERY_STATE = "Jharkhand"':
                   raise SystemExit("STOP: Conflicting product delivery state setting; no VPS changes made.")
           else:
-              pin_indexes = [i for i, line in enumerate(lines) if re.match(r"^\\s*PRODUCT_DELIVERY_PINCODE\\s*=", line)]
+              pin_indexes = [i for i, line in enumerate(lines) if re.match(r"^\s*PRODUCT_DELIVERY_PINCODE\s*=", line)]
               lines.insert(pin_indexes[0] + 1, 'PRODUCT_DELIVERY_STATE = "Jharkhand"' + newline)
           source = "".join(lines)
 
@@ -175,7 +175,7 @@ jobs:
           if "force_product_delivery_state" not in source:
               address_class = source.find("class AddressIn(")
               pin_validator = source.find('    @field_validator("pincode")', address_class)
-              validator_end = source.find("\\n\\nclass CartItemIn", pin_validator)
+              validator_end = source.find("\n\nclass CartItemIn", pin_validator)
               if address_class < 0 or pin_validator < 0 or validator_end < 0:
                   raise SystemExit("STOP: Could not safely locate AddressIn validators; no VPS changes made.")
               new_validator = (
@@ -192,7 +192,7 @@ jobs:
               source = source[:pin_validator] + new_validator + source[validator_end:]
 
           # Update older saved addresses when customers load their address list.
-          list_matches = [m.start() for m in re.finditer(r"^async def list_addresses\\(", source, re.M)]
+          list_matches = [m.start() for m in re.finditer(r"^async def list_addresses\(", source, re.M)]
           if len(list_matches) != 1:
               raise SystemExit("STOP: Could not uniquely locate address-list route; no VPS changes made.")
           list_start = list_matches[0]
