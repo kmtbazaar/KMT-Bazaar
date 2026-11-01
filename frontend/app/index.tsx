@@ -168,9 +168,15 @@ export default function Index() {
             </View>
 
             {/* Character Section */}
-            <View style={styles.characterContainer}>
+            <View style={styles.characterContainer} pointerEvents="box-none">
               <View style={styles.characterWrapper}>
-                <TouchableOpacity style={{ width: "100%", height: "100%" }} activeOpacity={0.92} onPress={playWelcomeGreeting} accessibilityRole="button" accessibilityLabel="Replay KMT Bazaar welcome greeting">
+                <TouchableOpacity
+                  style={{ width: "100%", height: "100%", alignItems: "center", justifyContent: "center" }}
+                  activeOpacity={0.92}
+                  onPress={playWelcomeGreeting}
+                  accessibilityRole="button"
+                  accessibilityLabel="Replay KMT Bazaar welcome greeting"
+                >
                   <RobotAvatar
                     size={Math.min(width * 0.68, 252)}
                     talking={greetingPlaying}
@@ -238,7 +244,7 @@ const styles = StyleSheet.create({
   },
   mainContent: {
     flex: 1,
-    justifyContent: "center",
+    justifyContent: "space-between",
     alignItems: "center",
     paddingHorizontal: 20,
     paddingTop: 15,
@@ -287,17 +293,18 @@ const styles = StyleSheet.create({
 
   // Character Layout (Bada Assistant)
   characterContainer: {
-    width: "100%",
-    flex: 1,
-    minHeight: 260,
-    maxHeight: 380,
+    position: "absolute",
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
+    zIndex: 1,
     justifyContent: "center",
     alignItems: "center",
   },
   characterWrapper: {
-    width: width * 0.90,
+    width: "100%",
     height: "100%",
-    maxHeight: 360,
     justifyContent: "center",
     alignItems: "center",
   },

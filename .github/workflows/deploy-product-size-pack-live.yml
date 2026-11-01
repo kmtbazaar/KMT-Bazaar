@@ -185,7 +185,9 @@ jobs:
           assert.ok(entry.includes("/api/assistant/welcome-audio?v=2"), "Assistant screen must play the generated Hindi welcome audio");
           assert.ok(entry.includes("talking={greetingPlaying}") && entry.includes("<RobotAvatar"), "Welcome robot mouth lights must follow the greeting audio");
           assert.match(entry, /mainContent:\s*\{[\s\S]*?justifyContent:\s*"center"/, "Welcome assistant layout must be vertically centered");
-          assert.match(entry, /characterContainer:\s*\{[\s\S]*?flex:\s*1[\s\S]*?minHeight:\s*260/, "Assistant character must occupy the centered middle area");
+          assert.match(entry, /characterContainer:\s*\{[\s\S]*?position:\s*"absolute"[\s\S]*?top:\s*0[\s\S]*?bottom:\s*0[\s\S]*?justifyContent:\s*"center"/, "Assistant character layer must be centered on the full screen");
+          assert.ok(entry.includes('style={{ width: "100%", height: "100%", alignItems: "center", justifyContent: "center" }}'), "Robot circle must be centered inside its full-screen touch target");
+          assert.ok(entry.includes('pointerEvents="box-none"'), "Center overlay must not block login/navigation buttons");
           assert.ok(entry.includes('utterance.lang = "hi-IN"') && entry.includes("utterance.pitch = 1.2"), "Browser fallback must use a youthful Hindi speech profile");
           console.log("PARTICLE_SPLASH_TRANSPARENT_LOGO_VALIDATION_PASS");
           console.log("ASSISTANT_WELCOME_TTS_LIPSYNC_VALIDATION_PASS");
