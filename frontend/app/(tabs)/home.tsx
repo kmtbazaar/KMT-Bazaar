@@ -1380,6 +1380,11 @@ export default function Home() {
     }
   }, [loadHomeSearchProducts, saveHomeRecentSearch, voiceListening]);
 
+  const handleHomeOverlayVoicePress = (event: any) => {
+    event?.stopPropagation?.();
+    startVoiceSearch();
+  };
+
   useEffect(() => () => {
     try { voiceRecognitionRef.current?.stop?.(); } catch {}
   }, []);
@@ -1796,7 +1801,7 @@ export default function Home() {
                   testID="home-search-mic"
                   accessibilityRole="button"
                   accessibilityLabel={voiceListening ? "Stop voice search" : "Start voice search"}
-                  onPress={startVoiceSearch}
+                  onPress={handleHomeOverlayVoicePress}
                   hitSlop={8}
                   style={s.homeSearchMic}
                 >
