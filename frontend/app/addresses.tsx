@@ -72,7 +72,14 @@ export default function Addresses() {
         const gps = raw ? JSON.parse(raw) : null;
         const latitude = Number(gps?.latitude);
         const longitude = Number(gps?.longitude);
-        const hasGps = Number.isFinite(latitude) && Number.isFinite(longitude);
+        const gpsAccuracy = Number(gps?.accuracy);
+        const hasGps =
+          Number.isFinite(latitude) &&
+          latitude >= -90 && latitude <= 90 &&
+          Number.isFinite(longitude) &&
+          longitude >= -180 && longitude <= 180 &&
+          Number.isFinite(gpsAccuracy) &&
+          gpsAccuracy <= 150;
 
         if (raw) await AsyncStorage.removeItem("kmt_current_location");
         setEditingId(null);
@@ -277,7 +284,7 @@ export default function Addresses() {
     try {
       if (Platform.OS === "web") {
         if (typeof window !== "undefined" && !window.isSecureContext) {
-          throw new Error("Location requires a secure HTTPS connection. Please open https://kmtbazaar.tech.");
+          throw new Error("Location requires a secure HTTPS connection. Please open https://kmtbazaar.com.");
         }
         if (!navigator.geolocation) {
           throw new Error("This browser does not support location access.");
@@ -346,10 +353,15 @@ export default function Addresses() {
       }
 
       const current = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
+      const accuracy = current.coords.accuracy;
+      if (accuracy == null || !Number.isFinite(Number(accuracy)) || Number(accuracy) > 150) {
+        const accuracyText = accuracy == null ? "unknown" : `${Math.round(Number(accuracy))} m`;
+        throw new Error(`GPS accuracy is ${accuracyText}. Enable precise location or move the map pin to your exact address.`);
+      }
       const result = {
         latitude: current.coords.latitude,
         longitude: current.coords.longitude,
-        accuracy: current.coords.accuracy,
+        accuracy: Number(accuracy),
       };
       setLocationCaptured(result);
       setPendingMapLocation(result);
