@@ -826,6 +826,7 @@ export default function Home() {
 
   const [homeSearchOpen, setHomeSearchOpen] = useState(false);
   const [homeSearchQuery, setHomeSearchQuery] = useState("");
+  const [homeSearchFocusInput, setHomeSearchFocusInput] = useState(true);
   const [homeSearchProducts, setHomeSearchProducts] = useState<any[]>([]);
   const [homeSearchLoading, setHomeSearchLoading] = useState(false);
   const [homeSearchError, setHomeSearchError] = useState("");
@@ -849,6 +850,9 @@ export default function Home() {
 
       const handleBrowserBack = () => {
         homeSearchHistoryEntry.current = false;
+        try { voiceRecognitionRef.current?.stop?.(); } catch {}
+        voiceRecognitionRef.current = null;
+        setVoiceListening(false);
         setHomeSearchOpen(false);
         setHomeSearchQuery("");
       };
@@ -857,6 +861,9 @@ export default function Home() {
     }
 
     const backSubscription = BackHandler.addEventListener("hardwareBackPress", () => {
+      try { voiceRecognitionRef.current?.stop?.(); } catch {}
+      voiceRecognitionRef.current = null;
+      setVoiceListening(false);
       setHomeSearchOpen(false);
       setHomeSearchQuery("");
       return true;
@@ -1208,12 +1215,16 @@ export default function Home() {
   }, []);
 
   const openHomeSearch = () => {
+    setHomeSearchFocusInput(true);
     setHomeSearchQuery("");
     setHomeSearchOpen(true);
     void loadHomeSearchProducts();
   };
 
   const closeHomeSearch = () => {
+    try { voiceRecognitionRef.current?.stop?.(); } catch {}
+    voiceRecognitionRef.current = null;
+    setVoiceListening(false);
     if (
       Platform.OS === "web" &&
       typeof window !== "undefined" &&
@@ -1291,6 +1302,14 @@ export default function Home() {
     });
   }, [homeSearchProducts, homeSearchQuery]);
 
+  const homeSearchRows = useMemo(() => {
+    const rows: any[][] = [];
+    for (let index = 0; index < homeSearchResults.length; index += 2) {
+      rows.push(homeSearchResults.slice(index, index + 2));
+    }
+    return rows;
+  }, [homeSearchResults]);
+
   const heroExpandedHeight = Platform.OS === "web" ? 100 : 106;
   const heroAnimatedHeight = heroCollapseProgress.interpolate({
     inputRange: [0, 1],
@@ -1309,8 +1328,14 @@ export default function Home() {
     if (voiceListening) {
       try { voiceRecognitionRef.current?.stop?.(); } catch {}
       setVoiceListening(false);
+      voiceRecognitionRef.current = null;
       return;
     }
+
+    setHomeSearchFocusInput(false);
+    setHomeSearchQuery("");
+    setHomeSearchOpen(true);
+    void loadHomeSearchProducts();
 
     if (Platform.OS !== "web" || typeof window === "undefined") {
       return;
@@ -1336,7 +1361,8 @@ export default function Home() {
         setVoiceListening(false);
         voiceRecognitionRef.current = null;
         if (transcript) {
-          router.push({ pathname: "/search", params: { q: transcript } } as any);
+          setHomeSearchQuery(transcript);
+          void saveHomeRecentSearch(transcript);
         }
       };
       recognition.onerror = () => {
@@ -1352,7 +1378,7 @@ export default function Home() {
       setVoiceListening(false);
       voiceRecognitionRef.current = null;
     }
-  }, [router, voiceListening]);
+  }, [loadHomeSearchProducts, saveHomeRecentSearch, voiceListening]);
 
   useEffect(() => () => {
     try { voiceRecognitionRef.current?.stop?.(); } catch {}
@@ -1746,7 +1772,7 @@ export default function Home() {
                   onChangeText={setHomeSearchQuery}
                   placeholder="Search products..."
                   placeholderTextColor="#64748B"
-                  autoFocus
+                  autoFocus={homeSearchFocusInput}
                   autoCapitalize="none"
                   autoCorrect={false}
                   returnKeyType="search"
@@ -1763,6 +1789,20 @@ export default function Home() {
                     <MaterialCommunityIcons name="close-circle" size={19} color="#64748B" />
                   </Pressable>
                 )}
+                <Pressable
+                  testID="home-search-mic"
+                  accessibilityRole="button"
+                  accessibilityLabel={voiceListening ? "Stop voice search" : "Start voice search"}
+                  onPress={startVoiceSearch}
+                  hitSlop={8}
+                  style={s.homeSearchMic}
+                >
+                  <MaterialCommunityIcons
+                    name={voiceListening ? "microphone" : "microphone-outline"}
+                    size={19}
+                    color={voiceListening ? THEME.orange : THEME.skyHeader}
+                  />
+                </Pressable>
               </View>
               <Pressable
                 testID="home-search-back"
@@ -1780,7 +1820,7 @@ export default function Home() {
               <Text style={s.homeSearchSummary}>
                 {homeSearchQuery.trim()
                   ? homeSearchResults.length + " products found"
-                  : "All products"}
+                  : homeSearchProducts.length + " products available"}
               </Text>
             </View>
 
@@ -1797,67 +1837,69 @@ export default function Home() {
                 </Pressable>
               </View>
             ) : (
-              <FlatList
+              <ScrollView
                 testID="home-search-product-list"
                 style={s.homeSearchResultsScroll}
-                data={homeSearchResults}
-                keyExtractor={(item, index) => String(item?.id ?? item?.product_id ?? index)}
-                numColumns={2}
                 contentContainerStyle={s.homeSearchResultsGrid}
                 keyboardShouldPersistTaps="handled"
                 showsVerticalScrollIndicator={false}
-                initialNumToRender={6}
-                windowSize={5}
-                renderItem={({ item }) => (
-                  <View style={s.homeSearchProductCell}>
-                    <ProductCard p={item} compact />
+              >
+                {homeSearchQuery.trim().length === 0 && recentSearches.length > 0 && (
+                  <View style={s.homeSearchRecentSection} testID="home-search-recent-history">
+                    <View style={s.homeSearchRecentHeader}>
+                      <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                        <MaterialCommunityIcons name="history" size={17} color={THEME.skyHeader} />
+                        <Text style={s.homeSearchRecentTitle}>Recent searches</Text>
+                      </View>
+                      <Text style={s.homeSearchRecentCount}>{recentSearches.length}/5</Text>
+                    </View>
+                    <View style={s.homeSearchRecentChips}>
+                      {recentSearches.map((item) => (
+                        <View key={item} style={s.homeSearchRecentChip}>
+                          <Pressable
+                            onPress={() => setHomeSearchQuery(item)}
+                            hitSlop={6}
+                            style={s.homeSearchRecentChipMain}
+                          >
+                            <MaterialCommunityIcons name="history" size={14} color={THEME.skyHeader} />
+                            <Text style={s.homeSearchRecentChipText} numberOfLines={1}>{item}</Text>
+                          </Pressable>
+                          <Pressable
+                            onPress={() => void deleteHomeRecentSearch(item)}
+                            hitSlop={6}
+                            style={s.homeSearchRecentChipDelete}
+                          >
+                            <MaterialCommunityIcons name="close" size={13} color="#64748B" />
+                          </Pressable>
+                        </View>
+                      ))}
+                    </View>
                   </View>
                 )}
-                ListHeaderComponent={
-                  homeSearchQuery.trim().length === 0 && recentSearches.length > 0 ? (
-                    <View style={s.homeSearchRecentSection} testID="home-search-recent-history">
-                      <View style={s.homeSearchRecentHeader}>
-                        <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-                          <MaterialCommunityIcons name="history" size={17} color={THEME.skyHeader} />
-                          <Text style={s.homeSearchRecentTitle}>Recent searches</Text>
+                {homeSearchRows.length > 0 ? (
+                  homeSearchRows.map((row, rowIndex) => (
+                    <View key={"home-search-row-" + rowIndex} style={s.homeSearchProductRow}>
+                      {row.map((item: any) => (
+                        <View key={String(item.id)} style={s.homeSearchProductCell}>
+                          <ProductCard p={item} compact />
                         </View>
-                        <Text style={s.homeSearchRecentCount}>{recentSearches.length}/5</Text>
-                      </View>
-                      <View style={s.homeSearchRecentChips}>
-                        {recentSearches.map((item) => (
-                          <View key={item} style={s.homeSearchRecentChip}>
-                            <Pressable
-                              onPress={() => setHomeSearchQuery(item)}
-                              hitSlop={6}
-                              style={s.homeSearchRecentChipMain}
-                            >
-                              <MaterialCommunityIcons name="history" size={14} color={THEME.skyHeader} />
-                              <Text style={s.homeSearchRecentChipText} numberOfLines={1}>{item}</Text>
-                            </Pressable>
-                            <Pressable
-                              onPress={() => void deleteHomeRecentSearch(item)}
-                              hitSlop={6}
-                              style={s.homeSearchRecentChipDelete}
-                            >
-                              <MaterialCommunityIcons name="close" size={13} color="#64748B" />
-                            </Pressable>
-                          </View>
-                        ))}
-                      </View>
+                      ))}
+                      {row.length === 1 && <View style={s.homeSearchProductCell} pointerEvents="none" />}
                     </View>
-                  ) : null
-                }
-                ListEmptyComponent={
+                  ))
+                ) : (
                   <View style={s.homeSearchState}>
-                    <MaterialCommunityIcons name="magnify-close" size={42} color="#FFFFFF" />
+                    <MaterialCommunityIcons name="magnify-close" size={42} color={THEME.white} />
                     <Text style={s.homeSearchStateText}>
                       {homeSearchQuery.trim()
                         ? "No matching products found. Try another product name."
-                        : "No products are currently available."}
+                        : homeSearchProducts.length === 0
+                          ? "No products are currently available."
+                          : "No products match this search."}
                     </Text>
                   </View>
-                }
-              />
+                )}
+              </ScrollView>
             )}
           </SafeAreaView>
         </View>
@@ -2047,12 +2089,14 @@ const s = StyleSheet.create({
   homeSearchInputWrap: { flex: 1, minWidth: 0, height: 50, flexDirection: "row", alignItems: "center", gap: 9, paddingHorizontal: 12, borderRadius: 10, backgroundColor: "rgba(255,255,255,0.97)", borderWidth: 1, borderColor: "rgba(255,255,255,0.95)" },
   homeSearchInput: { flex: 1, minWidth: 0, height: 46, padding: 0, fontSize: 15, color: THEME.black, backgroundColor: "transparent", ...(Platform.OS === "web" ? ({ outlineStyle: "none" } as any) : {}) },
   homeSearchClear: { width: 28, height: 34, alignItems: "center", justifyContent: "center" },
+  homeSearchMic: { width: 30, height: 34, alignItems: "center", justifyContent: "center", borderLeftWidth: 1, borderLeftColor: "#E2E8F0" },
   homeSearchClose: { width: 48, height: 48, alignItems: "center", justifyContent: "center", borderRadius: 10, backgroundColor: "rgba(255,255,255,0.97)" },
   homeSearchSummaryRow: { paddingBottom: 9 },
   homeSearchSummary: { color: THEME.white, fontSize: 13, fontWeight: "800", textShadowColor: "rgba(0,0,0,0.45)", textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 3 },
-  homeSearchResultsScroll: { flex: 1, minHeight: 0 },
-  homeSearchResultsGrid: { paddingHorizontal: 8, paddingTop: 10, paddingBottom: 120 },
-  homeSearchProductCell: { width: "50%", paddingHorizontal: 4, paddingBottom: 8, flexGrow: 0, flexShrink: 0 },
+  homeSearchResultsScroll: { flex: 1, minHeight: 0, width: "100%" },
+  homeSearchResultsGrid: { flexGrow: 1, paddingHorizontal: 4, paddingTop: 10, paddingBottom: 120 },
+  homeSearchProductRow: { width: "100%", flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 10 },
+  homeSearchProductCell: { width: "48.5%", minWidth: 0, flexGrow: 0, flexShrink: 0 },
   homeSearchRecentSection: { marginHorizontal: 4, marginBottom: 12, padding: 12, backgroundColor: "#FFFFFF", borderRadius: 14, borderWidth: 1, borderColor: "#E2E8F0" },
   homeSearchRecentHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 10 },
   homeSearchRecentTitle: { color: "#0F172A", fontSize: 14, fontWeight: "900" },
