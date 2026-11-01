@@ -52,6 +52,9 @@ const SEARCH_PLACEHOLDERS = [
   "Search 'daily essentials'..."
 ];
 
+const RECENT_SEARCHES_KEY = "kmt_recent_searches";
+const MAX_RECENT_SEARCHES = 5;
+
 const SKY_STARS = Array.from({ length: 26 }, (_, index) => ({
   left: `${(index * 37 + 11) % 96}%`,
   top: 7 + ((index * 19 + 13) % 68),
@@ -826,7 +829,26 @@ export default function Home() {
   const [homeSearchProducts, setHomeSearchProducts] = useState<any[]>([]);
   const [homeSearchLoading, setHomeSearchLoading] = useState(false);
   const [homeSearchError, setHomeSearchError] = useState("");
+  const [recentSearches, setRecentSearches] = useState<string[]>([]);
   const homeSearchFetchStarted = useRef(false);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const saved = await AsyncStorage.getItem(RECENT_SEARCHES_KEY);
+        const parsed = saved ? JSON.parse(saved) : [];
+        if (Array.isArray(parsed)) {
+          setRecentSearches(
+            parsed
+              .filter((item): item is string => typeof item === "string")
+              .slice(0, MAX_RECENT_SEARCHES)
+          );
+        }
+      } catch (error) {
+        console.warn("Failed to load recent searches:", error);
+      }
+    })();
+  }, []);
 
   const tabBarTranslateY = useRef(new RNAnimated.Value(0)).current;
   const lastHomeOffsetY = useRef(0);
@@ -1124,14 +1146,26 @@ export default function Home() {
 
     try {
       const data = await api.products({});
-      const products = Array.isArray(data)
-        ? data
-        : Array.isArray((data as any)?.products)
-          ? (data as any).products
-          : [];
-      setHomeSearchProducts(products.filter((item: any) =>
-        item && typeof item === "object" && item.id != null
-      ));
+      const response = data as any;
+      const products = Array.isArray(response)
+        ? response
+        : Array.isArray(response?.products)
+          ? response.products
+          : Array.isArray(response?.data)
+            ? response.data
+            : Array.isArray(response?.data?.products)
+              ? response.data.products
+              : Array.isArray(response?.items)
+                ? response.items
+                : [];
+      const normalizedProducts = products
+        .filter((item: any) => item && typeof item === "object")
+        .map((item: any) => ({
+          ...item,
+          id: item.id ?? item.product_id ?? item._id,
+        }))
+        .filter((item: any) => item.id != null && String(item.id).trim() !== "");
+      setHomeSearchProducts(normalizedProducts);
     } catch (error) {
       console.warn("Home search products unavailable:", error);
       setHomeSearchError("Products could not be loaded. Please try again.");
@@ -1157,6 +1191,39 @@ export default function Home() {
     void loadHomeSearchProducts();
   };
 
+  const saveHomeRecentSearch = useCallback(async (value: string) => {
+    const clean = value.trim().replace(/\s+/g, " ");
+    if (!clean) return;
+
+    const updated = [
+      clean,
+      ...recentSearches.filter((item) => item.toLowerCase() !== clean.toLowerCase()),
+    ].slice(0, MAX_RECENT_SEARCHES);
+
+    setRecentSearches(updated);
+    try {
+      await AsyncStorage.setItem(RECENT_SEARCHES_KEY, JSON.stringify(updated));
+    } catch (error) {
+      console.warn("Failed to save recent search:", error);
+    }
+  }, [recentSearches]);
+
+  const deleteHomeRecentSearch = useCallback(async (value: string) => {
+    const updated = recentSearches.filter((item) => item !== value);
+    setRecentSearches(updated);
+    try {
+      await AsyncStorage.setItem(RECENT_SEARCHES_KEY, JSON.stringify(updated));
+    } catch (error) {
+      console.warn("Failed to delete recent search:", error);
+    }
+  }, [recentSearches]);
+
+  const handleHomeSearchSubmit = () => {
+    if (homeSearchQuery.trim()) {
+      void saveHomeRecentSearch(homeSearchQuery);
+    }
+  };
+
   const homeSearchResults = useMemo(() => {
     const keyword = homeSearchQuery.trim().normalize("NFKC").toLowerCase();
     if (!keyword) return homeSearchProducts;
@@ -1169,6 +1236,10 @@ export default function Home() {
         item?.title,
         item?.description,
         item?.unit,
+        item?.category,
+        item?.item_category,
+        item?.brand,
+        item?.sku,
       ]
         .filter((value) => typeof value === "string" && value.trim())
         .join(" ")
@@ -1638,6 +1709,7 @@ export default function Home() {
                   autoCorrect={false}
                   returnKeyType="search"
                   style={s.homeSearchInput}
+                  onSubmitEditing={handleHomeSearchSubmit}
                 />
                 {homeSearchQuery.length > 0 && (
                   <Pressable
@@ -1680,28 +1752,68 @@ export default function Home() {
                   <Text style={s.homeSearchRetryText}>Try again</Text>
                 </Pressable>
               </View>
-            ) : homeSearchResults.length > 0 ? (
-              <ScrollView
+            ) : (
+              <FlatList
+                testID="home-search-product-list"
                 style={s.homeSearchResultsScroll}
+                data={homeSearchResults}
+                keyExtractor={(item, index) => String(item?.id ?? item?.product_id ?? index)}
+                numColumns={2}
                 contentContainerStyle={s.homeSearchResultsGrid}
                 keyboardShouldPersistTaps="handled"
                 showsVerticalScrollIndicator={false}
-              >
-                {homeSearchResults.map((item) => (
-                  <View key={String(item.id)} style={s.homeSearchProductCell}>
+                initialNumToRender={6}
+                windowSize={5}
+                renderItem={({ item }) => (
+                  <View style={s.homeSearchProductCell}>
                     <ProductCard p={item} compact />
                   </View>
-                ))}
-              </ScrollView>
-            ) : (
-              <View style={s.homeSearchState}>
-                <MaterialCommunityIcons name="magnify-close" size={42} color="#FFFFFF" />
-                <Text style={s.homeSearchStateText}>
-                  {homeSearchQuery.trim()
-                    ? "No matching products found. Try another product name."
-                    : "No products are currently available."}
-                </Text>
-              </View>
+                )}
+                ListHeaderComponent={
+                  homeSearchQuery.trim().length === 0 && recentSearches.length > 0 ? (
+                    <View style={s.homeSearchRecentSection} testID="home-search-recent-history">
+                      <View style={s.homeSearchRecentHeader}>
+                        <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                          <MaterialCommunityIcons name="history" size={17} color={THEME.skyHeader} />
+                          <Text style={s.homeSearchRecentTitle}>Recent searches</Text>
+                        </View>
+                        <Text style={s.homeSearchRecentCount}>{recentSearches.length}/5</Text>
+                      </View>
+                      <View style={s.homeSearchRecentChips}>
+                        {recentSearches.map((item) => (
+                          <View key={item} style={s.homeSearchRecentChip}>
+                            <Pressable
+                              onPress={() => setHomeSearchQuery(item)}
+                              hitSlop={6}
+                              style={s.homeSearchRecentChipMain}
+                            >
+                              <MaterialCommunityIcons name="history" size={14} color={THEME.skyHeader} />
+                              <Text style={s.homeSearchRecentChipText} numberOfLines={1}>{item}</Text>
+                            </Pressable>
+                            <Pressable
+                              onPress={() => void deleteHomeRecentSearch(item)}
+                              hitSlop={6}
+                              style={s.homeSearchRecentChipDelete}
+                            >
+                              <MaterialCommunityIcons name="close" size={13} color="#64748B" />
+                            </Pressable>
+                          </View>
+                        ))}
+                      </View>
+                    </View>
+                  ) : null
+                }
+                ListEmptyComponent={
+                  <View style={s.homeSearchState}>
+                    <MaterialCommunityIcons name="magnify-close" size={42} color="#FFFFFF" />
+                    <Text style={s.homeSearchStateText}>
+                      {homeSearchQuery.trim()
+                        ? "No matching products found. Try another product name."
+                        : "No products are currently available."}
+                    </Text>
+                  </View>
+                }
+              />
             )}
           </SafeAreaView>
         </View>
@@ -1895,8 +2007,17 @@ const s = StyleSheet.create({
   homeSearchSummaryRow: { paddingBottom: 9 },
   homeSearchSummary: { color: THEME.white, fontSize: 13, fontWeight: "800", textShadowColor: "rgba(0,0,0,0.45)", textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 3 },
   homeSearchResultsScroll: { flex: 1, minHeight: 0 },
-  homeSearchResultsGrid: { flexDirection: "row", flexWrap: "wrap", justifyContent: "space-between", paddingBottom: 120 },
-  homeSearchProductCell: { width: width > 768 ? "32%" : "48.5%", flexGrow: 0, flexShrink: 0, marginBottom: 12 },
+  homeSearchResultsGrid: { paddingHorizontal: 8, paddingTop: 10, paddingBottom: 120 },
+  homeSearchProductCell: { width: "50%", paddingHorizontal: 4, paddingBottom: 8, flexGrow: 0, flexShrink: 0 },
+  homeSearchRecentSection: { marginHorizontal: 4, marginBottom: 12, padding: 12, backgroundColor: "#FFFFFF", borderRadius: 14, borderWidth: 1, borderColor: "#E2E8F0" },
+  homeSearchRecentHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 10 },
+  homeSearchRecentTitle: { color: "#0F172A", fontSize: 14, fontWeight: "900" },
+  homeSearchRecentCount: { color: "#64748B", fontSize: 10, fontWeight: "800" },
+  homeSearchRecentChips: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  homeSearchRecentChip: { maxWidth: "100%", flexDirection: "row", alignItems: "center", backgroundColor: "#F8FAFC", borderRadius: 99, borderWidth: 1, borderColor: "#E2E8F0", paddingLeft: 10, minHeight: 34 },
+  homeSearchRecentChipMain: { flexDirection: "row", alignItems: "center", gap: 6, paddingVertical: 6, paddingRight: 7, maxWidth: 190 },
+  homeSearchRecentChipText: { flexShrink: 1, color: "#334155", fontSize: 12, fontWeight: "700" },
+  homeSearchRecentChipDelete: { width: 28, height: 28, borderRadius: 14, alignItems: "center", justifyContent: "center", marginRight: 3, backgroundColor: "#FFFFFF" },
   homeSearchState: { flex: 1, minHeight: 180, alignItems: "center", justifyContent: "center", paddingHorizontal: 24, gap: 10 },
   homeSearchStateText: { color: THEME.white, fontSize: 14, fontWeight: "700", lineHeight: 20, textAlign: "center", textShadowColor: "rgba(0,0,0,0.45)", textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 3 },
   homeSearchRetry: { marginTop: 4, paddingHorizontal: 18, paddingVertical: 10, borderRadius: 8, backgroundColor: THEME.orange },
