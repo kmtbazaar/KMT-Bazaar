@@ -143,15 +143,68 @@ jobs:
               )
               source = source.replace(marker, config_route + marker, 1)
 
-          # Add the service PIN and order guard without replacing other live backend changes.
+          # Add fixed delivery state/PIN while preserving unrelated live backend changes.
           pin_setting = 'PRODUCT_DELIVERY_PINCODE = "815352"'
+          state_setting = 'PRODUCT_DELIVERY_STATE = "Jharkhand"'
           if "PRODUCT_DELIVERY_PINCODE" in source and pin_setting not in source:
               raise SystemExit("STOP: Conflicting product delivery PIN setting; no VPS changes made.")
           if pin_setting not in source:
-              setting_anchor = 'DEFAULT_HOLIDAY_BANNER_URL = "https://images.unsplash.com/photo-1516483638261-f4dbaf036963?w=1800&q=85"\n'
+              setting_anchor = 'DEFAULT_HOLIDAY_BANNER_URL = "https://images.unsplash.com/photo-1516483638261-f4dbaf036963?w=1800&q=85"\\n'
               if source.count(setting_anchor) != 1:
                   raise SystemExit("STOP: Could not safely locate backend constants; no VPS changes made.")
-              source = source.replace(setting_anchor, setting_anchor + pin_setting + "\n", 1)
+              source = source.replace(setting_anchor, setting_anchor + pin_setting + "\\n", 1)
+
+          if "PRODUCT_DELIVERY_STATE" in source and state_setting not in source:
+              raise SystemExit("STOP: Conflicting product delivery state setting; no VPS changes made.")
+          if state_setting not in source:
+              pin_anchor = pin_setting + "\\n"
+              if source.count(pin_anchor) != 1:
+                  raise SystemExit("STOP: Could not safely locate delivery PIN constant; no VPS changes made.")
+              source = source.replace(pin_anchor, pin_anchor + state_setting + "\\n", 1)
+
+          # Force address writes through AddressIn even when reverse geocoding returns another state/PIN.
+          if "force_product_delivery_state" not in source:
+              old_validator = '''    @field_validator("pincode")
+              @classmethod
+              def validate_address_pincode(cls, value):
+                  value = str(value).strip()
+                  if not value.isdigit() or len(value) != 6:
+                      raise ValueError("Pincode must be exactly 6 digits")
+                  return value'''
+              new_validator = '''    @field_validator("state")
+              @classmethod
+              def force_product_delivery_state(cls, value):
+                  return PRODUCT_DELIVERY_STATE
+
+              @field_validator("pincode")
+              @classmethod
+              def validate_address_pincode(cls, value):
+                  return PRODUCT_DELIVERY_PINCODE'''
+              if source.count(old_validator) != 1:
+                  raise SystemExit("STOP: Could not safely locate address state/PIN validators; no VPS changes made.")
+              source = source.replace(old_validator, new_validator, 1)
+
+          # Normalize older saved addresses when the customer opens their address list.
+          migration_marker = '''async def list_addresses(current=Depends(get_current_user)):
+              addrs = await db.addresses.find({"user_id": current["id"]}, {"_id": 0}).to_list(50)'''
+          if 'async def list_addresses' not in source:
+              raise SystemExit("STOP: Address-list route missing; no VPS changes made.")
+          if 'await db.addresses.update_many(' not in source[source.index('async def list_addresses'):source.index('@api.post("/addresses")')]:
+              if source.count(migration_marker) != 1:
+                  raise SystemExit("STOP: Could not safely locate saved address list; no VPS changes made.")
+              migration = '''async def list_addresses(current=Depends(get_current_user)):
+              await db.addresses.update_many(
+                  {
+                      "user_id": current["id"],
+                      "$or": [
+                          {"state": {"$ne": PRODUCT_DELIVERY_STATE}},
+                          {"pincode": {"$ne": PRODUCT_DELIVERY_PINCODE}},
+                      ],
+                  },
+                  {"$set": {"state": PRODUCT_DELIVERY_STATE, "pincode": PRODUCT_DELIVERY_PINCODE}},
+              )
+              addrs = await db.addresses.find({"user_id": current["id"]}, {"_id": 0}).to_list(50)'''
+              source = source.replace(migration_marker, migration, 1)
 
           if "delivery_pincode != PRODUCT_DELIVERY_PINCODE" not in source:
               address_anchor = (
@@ -208,8 +261,12 @@ jobs:
             exit 1
           fi
 
-          if ! grep -Fq 'delivery_pincode != PRODUCT_DELIVERY_PINCODE' "$TARGET"; then
-            echo "BACKEND_DELIVERY_PIN_GUARD_MISSING"
+          if ! grep -Fq 'delivery_pincode != PRODUCT_DELIVERY_PINCODE' "$TARGET" \
+            || ! grep -Fq 'PRODUCT_DELIVERY_STATE = "Jharkhand"' "$TARGET" \
+            || ! grep -Fq 'force_product_delivery_state' "$TARGET" \
+            || ! grep -Fq 'return PRODUCT_DELIVERY_PINCODE' "$TARGET" \
+            || ! grep -Fq 'await db.addresses.update_many(' "$TARGET"; then
+            echo "BACKEND_FIXED_STATE_PIN_PATCH_MISSING"
             rollback
             exit 1
           fi
