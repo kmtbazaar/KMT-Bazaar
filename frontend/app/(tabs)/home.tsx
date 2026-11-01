@@ -1476,7 +1476,10 @@ export default function Home() {
           </View>
           <Pressable
             testID="home-voice-search"
-            onPress={startVoiceSearch}
+            onPress={(event: any) => {
+              event?.stopPropagation?.();
+              startVoiceSearch();
+            }}
             hitSlop={8}
             style={[s.searchMicBg, voiceListening && s.searchMicListening]}
           >
