@@ -178,17 +178,17 @@ jobs:
               validator_end = source.find("\n\nclass CartItemIn", pin_validator)
               if address_class < 0 or pin_validator < 0 or validator_end < 0:
                   raise SystemExit("STOP: Could not safely locate AddressIn validators; no VPS changes made.")
-              new_validator = (
-                  '    @field_validator("state")' + newline
-                  '    @classmethod' + newline
-                  '    def force_product_delivery_state(cls, value):' + newline
-                  '        return PRODUCT_DELIVERY_STATE' + newline
-                  newline
-                  '    @field_validator("pincode")' + newline
-                  '    @classmethod' + newline
-                  '    def validate_address_pincode(cls, value):' + newline
-                  '        return PRODUCT_DELIVERY_PINCODE'
-              )
+              new_validator = newline.join([
+                  '    @field_validator("state")',
+                  '    @classmethod',
+                  '    def force_product_delivery_state(cls, value):',
+                  '        return PRODUCT_DELIVERY_STATE',
+                  '',
+                  '    @field_validator("pincode")',
+                  '    @classmethod',
+                  '    def validate_address_pincode(cls, value):',
+                  '        return PRODUCT_DELIVERY_PINCODE',
+              ])
               source = source[:pin_validator] + new_validator + source[validator_end:]
 
           # Update older saved addresses when customers load their address list.
@@ -201,18 +201,18 @@ jobs:
           list_end = next_route if next_route >= 0 else len(source)
           list_body = source[list_body_start:list_end]
           if "PRODUCT_DELIVERY_STATE" not in list_body or "PRODUCT_DELIVERY_PINCODE" not in list_body:
-              migration = (
-                  '    await db.addresses.update_many(' + newline
-                  '        {' + newline
-                  '            "user_id": current["id"],' + newline
-                  '            "$or": [' + newline
-                  '                {"state": {"$ne": PRODUCT_DELIVERY_STATE}},' + newline
-                  '                {"pincode": {"$ne": PRODUCT_DELIVERY_PINCODE}},' + newline
-                  '            ],' + newline
-                  '        },' + newline
-                  '        {"$set": {"state": PRODUCT_DELIVERY_STATE, "pincode": PRODUCT_DELIVERY_PINCODE}},' + newline
-                  '    )' + newline
-              )
+              migration = newline.join([
+                  '    await db.addresses.update_many(',
+                  '        {',
+                  '            "user_id": current["id"],',
+                  '            "$or": [',
+                  '                {"state": {"$ne": PRODUCT_DELIVERY_STATE}},',
+                  '                {"pincode": {"$ne": PRODUCT_DELIVERY_PINCODE}},',
+                  '            ],',
+                  '        },',
+                  '        {"$set": {"state": PRODUCT_DELIVERY_STATE, "pincode": PRODUCT_DELIVERY_PINCODE}},',
+                  '    )',
+              ]) + newline
               source = source[:list_body_start] + migration + source[list_body_start:]
 
           if "delivery_pincode != PRODUCT_DELIVERY_PINCODE" not in source:
