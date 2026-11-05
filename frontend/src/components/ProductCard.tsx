@@ -438,7 +438,7 @@ const s = StyleSheet.create({
 
   imgWrap: {
     width: "100%",
-    height: 105,
+    height: 125,
     backgroundColor: COLORS.surfaceSecondary,
     overflow: "hidden",
     position: "relative",
@@ -509,7 +509,7 @@ const s = StyleSheet.create({
 
   body: {
     paddingHorizontal: 5,
-    paddingTop: 10,
+    paddingTop: 12,
     paddingBottom: 2,
   },
 
@@ -517,15 +517,15 @@ const s = StyleSheet.create({
     fontSize: 15,
     fontWeight: "600",
     color: COLORS.text,
-    height: 38,
-    lineHeight: 18,
+    minHeight: 16,
+    lineHeight: 16,
   },
 
   unit: {
     fontSize: 11,
     fontWeight: "700",
     color: COLORS.textMuted,
-    marginTop: 2,
+    marginTop: 1,
     height: 14,
   },
 
