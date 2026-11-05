@@ -704,7 +704,7 @@ export default function Addresses() {
               <FieldLabel text="Area / Street" required />
               <TextInput style={s.input} placeholder="Area / Street *" value={formData.line2 || ""} onChangeText={t => setFormData({ ...formData, line2: t })} />
               <FieldLabel text="Nearby / Landmark" />
-              <TextInput style={s.input} placeholder="Nearby / Landmark (optional)" value={formData.landmark} onChangeText={t => setFormData({ ...formData, landmark: t })} />
+              <TextInput style={s.input} placeholder="Nearby / Landmark (optional)" placeholderTextColor={COLORS.textMuted} value={formData.landmark} onChangeText={t => setFormData({ ...formData, landmark: t })} />
               <FieldLabel text="Village" required />
               <TextInput style={s.input} placeholder="Village *" value={formData.district} onChangeText={t => setFormData({ ...formData, district: t })} />
 
