@@ -13,6 +13,7 @@ import Animated, {
   FadeOut, 
   useSharedValue, 
   useAnimatedStyle, 
+  withDelay,
   withRepeat, 
   withSequence, 
   withTiming 
@@ -60,6 +61,233 @@ const SKY_STARS = Array.from({ length: 26 }, (_, index) => ({
   top: 7 + ((index * 19 + 13) % 68),
   size: index % 5 === 0 ? 2 : 1.4,
 }));
+
+
+const FESTIVAL_BULBS = Array.from({ length: 9 }, (_, index) => ({
+  left: String(index * 12) + "%",
+  top: index % 2 === 0 ? 7 : 12,
+  color: ["#FFE08A", "#FDBA74", "#FCA5A5", "#FDE68A", "#93C5FD"][index % 5],
+}));
+
+const FESTIVAL_LANTERNS = [
+  { left: "13%", bottom: 22, delay: 0, duration: 6200, size: 0.82 },
+  { left: "79%", bottom: 18, delay: 1400, duration: 7100, size: 0.96 },
+  { left: "56%", bottom: 12, delay: 2800, duration: 7600, size: 0.68 },
+];
+
+const FESTIVAL_FIREWORKS = [
+  { left: "19%", top: 82, delay: 300, size: 0.78 },
+  { left: "77%", top: 73, delay: 1700, size: 0.92 },
+];
+
+function FestivalLantern({
+  left,
+  bottom,
+  delay,
+  duration,
+  size,
+}: {
+  left: string;
+  bottom: number;
+  delay: number;
+  duration: number;
+  size: number;
+}) {
+  const floatProgress = useSharedValue(0);
+
+  useEffect(() => {
+    floatProgress.value = withDelay(
+      delay,
+      withRepeat(
+        withSequence(
+          withTiming(1, { duration }),
+          withTiming(0, { duration: Math.round(duration * 0.9) })
+        ),
+        -1,
+        false
+      )
+    );
+  }, [delay, duration]);
+
+  const floatStyle = useAnimatedStyle(() => ({
+    opacity: 0.3 + floatProgress.value * 0.7,
+    transform: [
+      { translateY: -floatProgress.value * 82 },
+      { translateX: Math.sin(floatProgress.value * Math.PI * 2) * 7 },
+      { scale: size },
+    ],
+  }));
+
+  return (
+    <Animated.View style={[s.festivalLantern, { left, bottom }, floatStyle]}>
+      <View style={s.festivalLanternGlow} />
+      <View style={s.festivalLanternString} />
+      <View style={s.festivalLanternCap} />
+      <LinearGradient
+        colors={["#FFF0B8", "#F59E0B", "#C2410C"]}
+        locations={[0, 0.48, 1]}
+        style={s.festivalLanternBody}
+      >
+        <View style={s.festivalLanternRib} />
+        <View style={s.festivalLanternFlame} />
+      </LinearGradient>
+      <View style={s.festivalLanternBase} />
+    </Animated.View>
+  );
+}
+
+function FestivalFirework({
+  left,
+  top,
+  delay,
+  size,
+}: {
+  left: string;
+  top: number;
+  delay: number;
+  size: number;
+}) {
+  const burstProgress = useSharedValue(0.12);
+
+  useEffect(() => {
+    burstProgress.value = withDelay(
+      delay,
+      withRepeat(
+        withSequence(
+          withTiming(1, { duration: 480 }),
+          withTiming(0.16, { duration: 1500 })
+        ),
+        -1,
+        false
+      )
+    );
+  }, [delay]);
+
+  const burstStyle = useAnimatedStyle(() => ({
+    opacity: 0.18 + burstProgress.value * 0.82,
+    transform: [{ scale: size * (0.5 + burstProgress.value * 0.62) }],
+  }));
+
+  const rays = [0, 45, 90, 135, 180, 225, 270, 315];
+  const sparks = [
+    { left: 17, top: 0 },
+    { left: 34, top: 15 },
+    { left: 17, top: 33 },
+    { left: 0, top: 15 },
+    { left: 5, top: 4 },
+    { left: 31, top: 5 },
+    { left: 5, top: 29 },
+    { left: 30, top: 29 },
+  ];
+
+  return (
+    <Animated.View style={[s.festivalFirework, { left, top }, burstStyle]}>
+      {rays.map((angle) => (
+        <View
+          key={angle}
+          style={[
+            s.festivalFireworkRay,
+            { transform: [{ rotate: String(angle) + "deg" }] },
+          ]}
+        />
+      ))}
+      {sparks.map((spark, index) => (
+        <View
+          key={index}
+          style={[
+            s.festivalFireworkSpark,
+            { left: spark.left, top: spark.top },
+            index % 3 === 0 && s.festivalFireworkSparkWarm,
+          ]}
+        />
+      ))}
+      <View style={s.festivalFireworkCore} />
+    </Animated.View>
+  );
+}
+
+function FestivalDecor() {
+  const lightPulse = useSharedValue(0);
+  const waterDrift = useSharedValue(0);
+
+  useEffect(() => {
+    lightPulse.value = withRepeat(
+      withSequence(
+        withTiming(1, { duration: 1100 }),
+        withTiming(0, { duration: 1300 })
+      ),
+      -1,
+      false
+    );
+    waterDrift.value = withRepeat(
+      withTiming(1, { duration: 4200 }),
+      -1,
+      false
+    );
+  }, []);
+
+  const lightsStyle = useAnimatedStyle(() => ({
+    opacity: 0.72 + lightPulse.value * 0.28,
+  }));
+  const waterShimmerStyle = useAnimatedStyle(() => ({
+    opacity: 0.22 + Math.sin(waterDrift.value * Math.PI * 2) * 0.10,
+    transform: [{ translateX: -18 + waterDrift.value * 36 }],
+  }));
+
+  return (
+    <View pointerEvents="none" style={s.festivalDecor} testID="home-festival-hero">
+      <Animated.View style={[s.festivalLightString, lightsStyle]}>
+        <View style={s.festivalLightWire} />
+        {FESTIVAL_BULBS.map((bulb, index) => (
+          <View
+            key={index}
+            style={[
+              s.festivalBulb,
+              {
+                left: bulb.left,
+                top: bulb.top,
+                backgroundColor: bulb.color,
+                shadowColor: bulb.color,
+              },
+            ]}
+          />
+        ))}
+      </Animated.View>
+
+      {FESTIVAL_LANTERNS.map((lantern, index) => (
+        <FestivalLantern key={index} {...lantern} />
+      ))}
+
+      {FESTIVAL_FIREWORKS.map((firework, index) => (
+        <FestivalFirework key={index} {...firework} />
+      ))}
+
+      <View style={s.festivalBrandWrap}>
+        <View style={s.festivalBrandPlate}>
+          <Text style={s.festivalBrandTitle}>KMT BAZAAR</Text>
+          <Text style={s.festivalBrandSub}>DIWALI • CHHATH UTSAV</Text>
+        </View>
+      </View>
+
+      <View style={s.festivalGhatStepOne} />
+      <View style={s.festivalGhatStepTwo} />
+      <View style={s.festivalGhatStepThree} />
+
+      <LinearGradient
+        colors={["rgba(19,75,101,0.04)", "rgba(8,39,63,0.60)"]}
+        style={s.festivalWater}
+      >
+        <Animated.View style={[s.festivalWaterShimmer, waterShimmerStyle]} />
+        {["15%", "39%", "66%", "87%"].map((left, index) => (
+          <View key={left} style={[s.festivalDiya, { left }]}>
+            <View style={[s.festivalDiyaFlame, index % 2 === 0 && s.festivalDiyaFlameBright]} />
+            <View style={s.festivalDiyaBowl} />
+          </View>
+        ))}
+      </LinearGradient>
+    </View>
+  );
+}
 
 
 function NightSky() {
@@ -555,6 +783,7 @@ function NightSky() {
     return (
       <View pointerEvents="none" style={s.nightSky}>
         {React.createElement("canvas" as any, { ref: canvasRef, style: { width: "100%", height: `${HERO_BACKDROP_HEIGHT}px`, display: "block" } })}
+        <FestivalDecor />
       </View>
     );
   }
@@ -801,6 +1030,7 @@ function NightSky() {
         <View style={[s.smokePuff, { width: 56, height: 49, left: 19, top: 19, opacity: 0.40 }]} />
       </Animated.View>
       <View style={s.smokeStack} />
+      <FestivalDecor />
     </View>
   );
 }
@@ -1964,6 +2194,36 @@ const s = StyleSheet.create({
   nightSky: { position: "absolute", top: 0, left: 0, right: 0, height: HERO_BACKDROP_HEIGHT, overflow: "hidden", zIndex: 0, pointerEvents: "none" },
   nightGradientLayer: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0 },
   nightGradient: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0 },
+  festivalDecor: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, zIndex: 20, overflow: "hidden" },
+  festivalLightString: { position: "absolute", left: "6%", right: "6%", top: 57, height: 24, zIndex: 8 },
+  festivalLightWire: { position: "absolute", left: 0, right: 0, top: 5, height: 16, borderBottomWidth: 1, borderBottomColor: "rgba(255,211,128,0.76)", borderBottomLeftRadius: 90, borderBottomRightRadius: 90 },
+  festivalBulb: { position: "absolute", width: 5, height: 5, borderRadius: 3, borderWidth: 0.5, borderColor: "rgba(255,255,255,0.72)", shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.9, shadowRadius: 7, elevation: 5 },
+  festivalLantern: { position: "absolute", width: 24, height: 36, alignItems: "center", zIndex: 10 },
+  festivalLanternGlow: { position: "absolute", top: 7, width: 30, height: 30, borderRadius: 15, backgroundColor: "rgba(255,181,64,0.18)", shadowColor: "#FBBF24", shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.65, shadowRadius: 12, elevation: 5 },
+  festivalLanternString: { position: "absolute", top: -7, width: 1, height: 8, backgroundColor: "#FDE68A" },
+  festivalLanternCap: { width: 12, height: 3, borderRadius: 2, backgroundColor: "#FDE68A" },
+  festivalLanternBody: { width: 15, height: 22, borderRadius: 5, borderWidth: 1, borderColor: "#FFF1C1", overflow: "hidden", alignItems: "center", justifyContent: "center" },
+  festivalLanternRib: { position: "absolute", left: 3, right: 3, top: 1, bottom: 1, borderLeftWidth: 0.8, borderRightWidth: 0.8, borderColor: "rgba(255,244,201,0.65)" },
+  festivalLanternFlame: { width: 4, height: 8, borderRadius: 4, backgroundColor: "#FFF9D5", shadowColor: "#FFF2A6", shadowOffset: { width: 0, height: 0 }, shadowOpacity: 1, shadowRadius: 5, elevation: 4 },
+  festivalLanternBase: { width: 8, height: 2, borderRadius: 2, backgroundColor: "#FDE68A" },
+  festivalFirework: { position: "absolute", width: 38, height: 38, zIndex: 9 },
+  festivalFireworkRay: { position: "absolute", left: 18, top: 12, width: 2, height: 14, borderRadius: 2, backgroundColor: "#FFE6A3", shadowColor: "#FDBA74", shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.9, shadowRadius: 5, elevation: 3 },
+  festivalFireworkSpark: { position: "absolute", width: 3, height: 3, borderRadius: 2, backgroundColor: "#FFF6D6", shadowColor: "#FDE68A", shadowOffset: { width: 0, height: 0 }, shadowOpacity: 1, shadowRadius: 4, elevation: 3 },
+  festivalFireworkSparkWarm: { backgroundColor: "#FB923C", shadowColor: "#FB923C" },
+  festivalFireworkCore: { position: "absolute", left: 16, top: 16, width: 5, height: 5, borderRadius: 3, backgroundColor: "#FFFFFF", shadowColor: "#FFFFFF", shadowOffset: { width: 0, height: 0 }, shadowOpacity: 1, shadowRadius: 5, elevation: 4 },
+  festivalBrandWrap: { position: "absolute", top: 99, left: 0, right: 0, alignItems: "center", zIndex: 12 },
+  festivalBrandPlate: { minWidth: 148, alignItems: "center", paddingHorizontal: 13, paddingVertical: 5, borderRadius: 10, borderWidth: 1, borderColor: "rgba(255,210,128,0.72)", backgroundColor: "rgba(7,17,34,0.56)", shadowColor: "#F59E0B", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.25, shadowRadius: 8, elevation: 4 },
+  festivalBrandTitle: { color: "#FFF4D6", fontSize: 13, fontWeight: "900", letterSpacing: 2, textShadowColor: "rgba(255,177,66,0.72)", textShadowOffset: { width: 0, height: 0 }, textShadowRadius: 7 },
+  festivalBrandSub: { color: "#FBBF24", fontSize: 7, fontWeight: "900", letterSpacing: 1.1, marginTop: 1 },
+  festivalGhatStepOne: { position: "absolute", right: "5%", bottom: 9, width: 72, height: 4, borderRadius: 2, backgroundColor: "rgba(13,34,50,0.78)", zIndex: 11 },
+  festivalGhatStepTwo: { position: "absolute", right: "8%", bottom: 13, width: 58, height: 4, borderRadius: 2, backgroundColor: "rgba(18,45,62,0.78)", zIndex: 11 },
+  festivalGhatStepThree: { position: "absolute", right: "11%", bottom: 17, width: 44, height: 4, borderRadius: 2, backgroundColor: "rgba(25,57,72,0.76)", zIndex: 11 },
+  festivalWater: { position: "absolute", left: 0, right: 0, bottom: 0, height: 18, zIndex: 13, overflow: "hidden", borderTopWidth: 1, borderTopColor: "rgba(253,205,124,0.22)" },
+  festivalWaterShimmer: { position: "absolute", left: "22%", top: 5, width: "35%", height: 1.5, borderRadius: 2, backgroundColor: "rgba(255,217,144,0.82)" },
+  festivalDiya: { position: "absolute", bottom: 3, width: 12, height: 12, alignItems: "center", justifyContent: "flex-end" },
+  festivalDiyaFlame: { position: "absolute", top: 0, width: 4, height: 7, borderRadius: 4, backgroundColor: "#FDBA74", shadowColor: "#F59E0B", shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.9, shadowRadius: 5, elevation: 4 },
+  festivalDiyaFlameBright: { backgroundColor: "#FFF4C2", shadowColor: "#FFF4C2" },
+  festivalDiyaBowl: { width: 11, height: 4, borderBottomLeftRadius: 7, borderBottomRightRadius: 7, backgroundColor: "#D97706", borderTopWidth: 1, borderTopColor: "#FDE68A" },
   horizonGlow: { position: "absolute", left: "12%", right: "12%", bottom: 4, height: 68, borderTopLeftRadius: 170, borderTopRightRadius: 170, backgroundColor: "rgba(255,190,130,0.10)" },
   horizonSilhouette: { position: "absolute", left: 0, right: 0, bottom: 0, height: 18, backgroundColor: "rgba(13,28,38,0.58)" },
   house: { position: "absolute", bottom: 1, height: 22, zIndex: 3 },
