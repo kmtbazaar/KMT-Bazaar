@@ -206,6 +206,80 @@ function FestivalFirework({
   );
 }
 
+function FestivalSugarcane({ left, bottom }: { left: string; bottom: number }) {
+  const sway = useSharedValue(0);
+
+  useEffect(() => {
+    sway.value = withRepeat(
+      withSequence(
+        withTiming(1, { duration: 2600 }),
+        withTiming(0, { duration: 2600 })
+      ),
+      -1,
+      true
+    );
+  }, []);
+
+  const swayStyle = useAnimatedStyle(() => ({
+    transform: [{ rotate: `${-1.5 + sway.value * 3}deg` }],
+  }));
+
+  const stalkOffsets = [5, 17, 29];
+  const nodePositions = ["18%", "36%", "54%", "72%"];
+
+  return (
+    <Animated.View
+      pointerEvents="none"
+      testID="home-festival-sugarcane"
+      style={[s.festivalSugarcaneCluster, { left, bottom }, swayStyle]}
+    >
+      {stalkOffsets.map((offset, index) => (
+        <View
+          key={offset}
+          style={[
+            s.festivalSugarcaneStalk,
+            {
+              left: offset,
+              height: index === 1 ? 84 : index === 0 ? 75 : 79,
+              transform: [{ rotate: index === 0 ? "-5deg" : index === 2 ? "6deg" : "1deg" }],
+            },
+          ]}
+        >
+          {nodePositions.map((top) => (
+            <View key={top} style={[s.festivalSugarcaneNode, { top }]} />
+          ))}
+        </View>
+      ))}
+      <View style={[s.festivalSugarcaneLeaf, { left: -2, top: 18, transform: [{ rotate: "-34deg" }] }]} />
+      <View style={[s.festivalSugarcaneLeaf, { left: 15, top: 9, transform: [{ rotate: "34deg" }] }]} />
+      <View style={[s.festivalSugarcaneLeaf, { left: 4, top: 38, transform: [{ rotate: "-25deg" }] }]} />
+      <View style={[s.festivalSugarcaneLeaf, { left: 18, top: 32, transform: [{ rotate: "28deg" }] }]} />
+    </Animated.View>
+  );
+}
+
+function FestivalChhathSoop() {
+  return (
+    <View pointerEvents="none" testID="home-chhath-soop" style={s.festivalChhathSoop}>
+      <View style={s.festivalSoopBody}>
+        {[8, 17, 26, 35, 44].map((left) => (
+          <View key={left} style={[s.festivalSoopWeave, { left }]} />
+        ))}
+      </View>
+      <View style={s.festivalSoopRim} />
+      <View style={[s.festivalPaanLeaf, { left: 15, top: -13, transform: [{ rotate: "-34deg" }] }]}>
+        <View style={s.festivalPaanVein} />
+      </View>
+      <View style={[s.festivalPaanLeaf, { left: 30, top: -12, transform: [{ rotate: "31deg" }] }]}>
+        <View style={s.festivalPaanVein} />
+      </View>
+      <View style={s.festivalSoopFruitOrange} />
+      <View style={s.festivalSoopFruitBanana} />
+      <View style={s.festivalSoopCoconut} />
+    </View>
+  );
+}
+
 function FestivalDecor() {
   const lightPulse = useSharedValue(0);
   const waterDrift = useSharedValue(0);
@@ -260,18 +334,6 @@ function FestivalDecor() {
         ))}
       </View>
 
-      <View style={s.festivalRooftop}>
-        <View style={s.festivalRoofParapet} />
-        <View style={s.festivalRoofEdge} />
-        <View style={s.festivalRoofPillarLeft} />
-        <View style={s.festivalRoofPillarRight} />
-        <View style={s.festivalRoofWindow}>
-          <View style={s.festivalRoofWindowCross} />
-        </View>
-        <View style={s.festivalRoofWindowSecond} />
-      </View>
-      <View style={s.festivalRooflineGlow} />
-
       <Animated.View style={[s.festivalLightString, lightsStyle]}>
         <View style={s.festivalLightWire} />
         {FESTIVAL_BULBS.map((bulb, index) => (
@@ -298,16 +360,6 @@ function FestivalDecor() {
         <FestivalFirework key={index} {...firework} />
       ))}
 
-      <View style={s.festivalBrandWrap}>
-        <View style={s.festivalBrandPlate}>
-          <View style={s.festivalBrandTitleRow}>
-            <MaterialCommunityIcons name="shopping" size={13} color="#FDBA4D" />
-            <Text style={s.festivalBrandTitle}>KMT BAZAAR</Text>
-          </View>
-          <Text style={s.festivalBrandSub}>DIWALI • CHHATH UTSAV</Text>
-        </View>
-      </View>
-
       <View style={s.festivalGhatStepOne} />
       <View style={s.festivalGhatStepTwo} />
       <View style={s.festivalGhatStepThree} />
@@ -324,6 +376,10 @@ function FestivalDecor() {
           </View>
         ))}
       </LinearGradient>
+
+      <FestivalSugarcane left="61%" bottom={15} />
+      <FestivalSugarcane left="75%" bottom={12} />
+      <FestivalChhathSoop />
     </View>
   );
 }
@@ -967,6 +1023,14 @@ export default function Home() {
             </View>
           </Pressable>
 
+          <Animated.View
+            pointerEvents="none"
+            testID="home-location-neon-glow"
+            style={[s.headerNeonGlow, animatedFlashStyle]}
+          >
+            <View style={s.headerNeonCore} />
+          </Animated.View>
+
           {/* Animated Notification Bell on Top Right */}
           <View style={s.headerActions}>
             <Animated.View style={animatedBellStyle}>
@@ -1501,15 +1565,6 @@ const s = StyleSheet.create({
   festivalHorizonGlow: { position: "absolute", left: "17%", right: "17%", top: 84, height: 58, borderRadius: 70, backgroundColor: "rgba(251,146,60,0.17)", shadowColor: "#FB923C", shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.42, shadowRadius: 24, elevation: 3 },
   festivalStarLayer: { position: "absolute", left: 0, right: 0, top: 0, height: 92 },
   festivalStar: { position: "absolute", borderRadius: 2, backgroundColor: "#FFF8E8", shadowColor: "#FFF8E8", shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.8, shadowRadius: 3, elevation: 2 },
-  festivalRooftop: { position: "absolute", left: 0, bottom: 18, width: "43%", height: 34, zIndex: 5 },
-  festivalRoofParapet: { position: "absolute", left: 0, right: 0, bottom: 0, height: 19, backgroundColor: "#101A2E", borderTopWidth: 1, borderTopColor: "rgba(255,198,111,0.55)" },
-  festivalRoofEdge: { position: "absolute", left: 0, right: 0, bottom: 18, height: 4, backgroundColor: "#27324A", borderTopWidth: 1, borderTopColor: "#E7A65D" },
-  festivalRoofPillarLeft: { position: "absolute", left: "13%", bottom: 20, width: 4, height: 12, backgroundColor: "#25324A" },
-  festivalRoofPillarRight: { position: "absolute", right: "13%", bottom: 20, width: 4, height: 12, backgroundColor: "#25324A" },
-  festivalRoofWindow: { position: "absolute", left: "22%", bottom: 5, width: 10, height: 10, backgroundColor: "#FBBF24", borderWidth: 1, borderColor: "#FDE68A", shadowColor: "#F59E0B", shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.8, shadowRadius: 8, elevation: 3 },
-  festivalRoofWindowCross: { position: "absolute", left: 4, top: 0, bottom: 0, width: 1, backgroundColor: "#8A4B20" },
-  festivalRoofWindowSecond: { position: "absolute", left: "44%", bottom: 5, width: 7, height: 8, backgroundColor: "rgba(251,191,36,0.76)", borderWidth: 1, borderColor: "rgba(253,230,138,0.7)" },
-  festivalRooflineGlow: { position: "absolute", left: "2%", bottom: 47, width: "35%", height: 2, backgroundColor: "rgba(255,203,128,0.62)", shadowColor: "#F59E0B", shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.55, shadowRadius: 5, elevation: 3 },
   festivalLightString: { position: "absolute", left: "6%", right: "6%", top: 57, height: 24, zIndex: 8 },
   festivalLightWire: { position: "absolute", left: 0, right: 0, top: 5, height: 16, borderBottomWidth: 1, borderBottomColor: "rgba(255,211,128,0.76)", borderBottomLeftRadius: 90, borderBottomRightRadius: 90 },
   festivalBulb: { position: "absolute", width: 5, height: 5, borderRadius: 3, borderWidth: 0.5, borderColor: "rgba(255,255,255,0.72)", shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.9, shadowRadius: 7, elevation: 5 },
@@ -1526,13 +1581,22 @@ const s = StyleSheet.create({
   festivalFireworkSpark: { position: "absolute", width: 3, height: 3, borderRadius: 2, backgroundColor: "#FFF6D6", shadowColor: "#FDE68A", shadowOffset: { width: 0, height: 0 }, shadowOpacity: 1, shadowRadius: 4, elevation: 3 },
   festivalFireworkSparkWarm: { backgroundColor: "#FB923C", shadowColor: "#FB923C" },
   festivalFireworkCore: { position: "absolute", left: 16, top: 16, width: 5, height: 5, borderRadius: 3, backgroundColor: "#FFFFFF", shadowColor: "#FFFFFF", shadowOffset: { width: 0, height: 0 }, shadowOpacity: 1, shadowRadius: 5, elevation: 4 },
-  festivalBrandWrap: { position: "absolute", top: 99, left: 0, right: 0, alignItems: "center", zIndex: 12 },
-  festivalBrandPlate: { minWidth: 148, alignItems: "center", paddingHorizontal: 13, paddingVertical: 5, borderRadius: 10, borderWidth: 1, borderColor: "rgba(255,210,128,0.72)", backgroundColor: "rgba(7,17,34,0.56)", shadowColor: "#F59E0B", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.25, shadowRadius: 8, elevation: 4 },
-  festivalBrandTitle: { color: "#FFF4D6", fontSize: 13, fontWeight: "900", letterSpacing: 2, textShadowColor: "rgba(255,177,66,0.72)", textShadowOffset: { width: 0, height: 0 }, textShadowRadius: 7 },
-  festivalBrandSub: { color: "#FBBF24", fontSize: 7, fontWeight: "900", letterSpacing: 1.1, marginTop: 1 },
-  festivalGhatStepOne: { position: "absolute", right: "5%", bottom: 9, width: 72, height: 4, borderRadius: 2, backgroundColor: "rgba(13,34,50,0.78)", zIndex: 11 },
-  festivalGhatStepTwo: { position: "absolute", right: "8%", bottom: 13, width: 58, height: 4, borderRadius: 2, backgroundColor: "rgba(18,45,62,0.78)", zIndex: 11 },
-  festivalGhatStepThree: { position: "absolute", right: "11%", bottom: 17, width: 44, height: 4, borderRadius: 2, backgroundColor: "rgba(25,57,72,0.76)", zIndex: 11 },
+  festivalSugarcaneCluster: { position: "absolute", width: 46, height: 90, zIndex: 14, overflow: "visible" },
+  festivalSugarcaneStalk: { position: "absolute", bottom: 0, width: 6, borderRadius: 4, backgroundColor: "#397C3A", borderWidth: 1, borderColor: "#A7CF72", shadowColor: "#A3D66B", shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.42, shadowRadius: 3, elevation: 2 },
+  festivalSugarcaneNode: { position: "absolute", left: -0.5, right: -0.5, height: 1.5, backgroundColor: "rgba(231,245,174,0.92)", borderRadius: 2 },
+  festivalSugarcaneLeaf: { position: "absolute", width: 29, height: 6, borderRadius: 10, backgroundColor: "#397A35", borderWidth: 0.6, borderColor: "#9FC66D" },
+  festivalChhathSoop: { position: "absolute", left: "43%", bottom: 14, width: 64, height: 40, zIndex: 16, alignItems: "center" },
+  festivalSoopBody: { position: "absolute", bottom: 0, width: 58, height: 23, borderBottomLeftRadius: 30, borderBottomRightRadius: 30, borderWidth: 1.2, borderTopWidth: 0, borderColor: "#E7B875", backgroundColor: "rgba(157,99,45,0.94)", overflow: "hidden" },
+  festivalSoopRim: { position: "absolute", top: 13, width: 64, height: 8, borderRadius: 8, borderWidth: 1.2, borderColor: "#F3D29A", backgroundColor: "#C88B4B" },
+  festivalSoopWeave: { position: "absolute", top: 3, bottom: 2, width: 1.3, backgroundColor: "rgba(255,220,158,0.62)" },
+  festivalPaanLeaf: { position: "absolute", width: 19, height: 27, borderTopLeftRadius: 19, borderTopRightRadius: 3, borderBottomLeftRadius: 3, borderBottomRightRadius: 19, backgroundColor: "#238443", borderWidth: 0.8, borderColor: "#9ED27C", zIndex: 3 },
+  festivalPaanVein: { position: "absolute", left: 8, top: 3, bottom: 3, width: 1, backgroundColor: "rgba(204,245,166,0.92)", borderRadius: 1 },
+  festivalSoopFruitOrange: { position: "absolute", top: 7, left: 9, width: 9, height: 9, borderRadius: 5, backgroundColor: "#F59E0B", borderWidth: 1, borderColor: "#FDE68A", zIndex: 2 },
+  festivalSoopFruitBanana: { position: "absolute", top: 5, left: 39, width: 15, height: 6, borderRadius: 8, backgroundColor: "#FDE68A", borderBottomWidth: 1.5, borderBottomColor: "#D69A35", transform: [{ rotate: "-22deg" }], zIndex: 2 },
+  festivalSoopCoconut: { position: "absolute", top: 3, left: 25, width: 9, height: 9, borderRadius: 5, backgroundColor: "#8B5A35", borderWidth: 1, borderColor: "#D6A16A", zIndex: 2 },
+  festivalGhatStepOne: { position: "absolute", right: "5%", bottom: 9, width: 72, height: 5, borderRadius: 2, backgroundColor: "rgba(151,91,50,0.9)", borderTopWidth: 1, borderTopColor: "rgba(255,218,157,0.86)", zIndex: 11 },
+  festivalGhatStepTwo: { position: "absolute", right: "8%", bottom: 14, width: 58, height: 5, borderRadius: 2, backgroundColor: "rgba(175,112,62,0.88)", borderTopWidth: 1, borderTopColor: "rgba(255,221,163,0.84)", zIndex: 11 },
+  festivalGhatStepThree: { position: "absolute", right: "11%", bottom: 19, width: 44, height: 5, borderRadius: 2, backgroundColor: "rgba(194,135,78,0.9)", borderTopWidth: 1, borderTopColor: "rgba(255,227,177,0.82)", zIndex: 11 },
   festivalWater: { position: "absolute", left: 0, right: 0, bottom: 0, height: 18, zIndex: 13, overflow: "hidden", borderTopWidth: 1, borderTopColor: "rgba(253,205,124,0.22)" },
   festivalWaterShimmer: { position: "absolute", left: "22%", top: 5, width: "35%", height: 1.5, borderRadius: 2, backgroundColor: "rgba(255,217,144,0.82)" },
   festivalDiya: { position: "absolute", bottom: 3, width: 12, height: 12, alignItems: "center", justifyContent: "flex-end" },
@@ -1600,6 +1664,8 @@ const s = StyleSheet.create({
   locLabel: { color: "rgba(255,255,255,0.85)", fontSize: 11, fontWeight: "600" },
   locValue: { color: THEME.white, fontSize: 14, fontWeight: "800" },
   locationErrorText: { color: "#FEF3C7", fontSize: 9, fontWeight: "700", marginTop: 2, maxWidth: 260 },
+  headerNeonGlow: { width: 25, height: 4, marginRight: 10, borderRadius: 99, backgroundColor: "#FFF2A6", shadowColor: "#FFC928", shadowOffset: { width: 0, height: 0 }, shadowOpacity: 1, shadowRadius: 11, elevation: 7, alignItems: "center", justifyContent: "center" },
+  headerNeonCore: { width: 9, height: 2, borderRadius: 99, backgroundColor: "#FFFFFF", shadowColor: "#FFF7C2", shadowOffset: { width: 0, height: 0 }, shadowOpacity: 1, shadowRadius: 4, elevation: 4 },
   headerActions: { flexDirection: "row", alignItems: "center" },
   iconBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: "rgba(255,255,255,0.2)", alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: "rgba(255,255,255,0.3)" },
   bellBadge: { position: "absolute", top: 2, right: 2, backgroundColor: THEME.orange, minWidth: 18, height: 18, borderRadius: 9, paddingHorizontal: 4, alignItems: "center", justifyContent: "center", borderWidth: 1.5, borderColor: THEME.white },
