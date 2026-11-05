@@ -842,7 +842,7 @@ export default function Home() {
     return rows;
   }, [homeSearchResults]);
 
-  const heroExpandedHeight = Platform.OS === "web" ? 100 : 106;
+  const heroExpandedHeight = HERO_BACKDROP_HEIGHT;
   const heroAnimatedHeight = heroCollapseProgress.interpolate({
     inputRange: [0, 1],
     outputRange: [heroExpandedHeight, 0],
@@ -996,7 +996,7 @@ export default function Home() {
         <Pressable
           testID="home-search-trigger"
           onPress={openHomeSearch}
-          style={[s.searchWrap, !heroCollapsed && { transform: [{ translateY: -24 }] }]}
+          style={s.searchWrap}
         >
           <MaterialCommunityIcons name="magnify" size={22} color={THEME.white} />
           <View style={{ flex: 1, marginLeft: 8, height: 22, overflow: "hidden", justifyContent: "center" }}>
@@ -1605,7 +1605,7 @@ const s = StyleSheet.create({
   bellBadge: { position: "absolute", top: 2, right: 2, backgroundColor: THEME.orange, minWidth: 18, height: 18, borderRadius: 9, paddingHorizontal: 4, alignItems: "center", justifyContent: "center", borderWidth: 1.5, borderColor: THEME.white },
   bellBadgeText: { color: THEME.white, fontSize: 9, fontWeight: "900" },
   
-  searchWrap: { width: "100%", flexDirection: "row", alignItems: "center", backgroundColor: "rgba(255,255,255,0.10)", borderRadius: 8, paddingHorizontal: 14, paddingVertical: 7, marginTop: 14, height: 44, borderWidth: 1, borderColor: "rgba(255,255,255,0.42)", shadowColor: "#000000", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.06, shadowRadius: 8, elevation: 1 },
+  searchWrap: { width: "100%", flexDirection: "row", alignItems: "center", backgroundColor: "rgba(22,163,74,0.22)", borderRadius: 8, paddingHorizontal: 14, paddingVertical: 7, marginTop: 14, height: 44, borderWidth: 1, borderColor: "rgba(134,239,172,0.72)", shadowColor: "#000000", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.06, shadowRadius: 8, elevation: 1 },
   searchPlaceholderText: { fontSize: 14, color: THEME.white, fontWeight: "600", textShadowColor: "rgba(0,0,0,0.38)", textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 2 },
   searchMicBg: { width: 32, height: 32, backgroundColor: THEME.orange, borderRadius: 16, alignItems: "center", justifyContent: "center" },
   searchMicListening: { transform: [{ scale: 1.08 }], backgroundColor: THEME.orangeBright },
