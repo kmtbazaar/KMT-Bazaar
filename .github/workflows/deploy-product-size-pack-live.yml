@@ -124,7 +124,7 @@ jobs:
           console.log("PRODUCT_SIZE_PACK_UI_VALIDATION_PASS");
           NODE
 
-      - name: Validate Diwali hero and home search placement
+      - name: Validate traditional Chhath ghat and home search placement
         working-directory: frontend
         run: |
           node <<'NODE'
@@ -132,7 +132,12 @@ jobs:
           const fs = require("node:fs");
           const home = fs.readFileSync("app/(tabs)/home.tsx", "utf8");
           assert.ok(home.includes("function FestivalDecor()") && home.includes('testID="home-festival-hero"'), "Existing Diwali festival hero must render");
-          assert.ok(home.includes("function FestivalLantern") && home.includes("function FestivalFirework") && home.includes("s.festivalDiya"), "Diwali lantern, fireworks, and diya layers must remain available");
+          assert.ok(home.includes("function FestivalLantern") && home.includes("function FestivalFirework") && home.includes("s.festivalDiya"), "Festival lanterns, fireworks, and diyas must remain available");
+          assert.ok(home.includes("function FestivalSugarcane") && home.includes('testID="home-festival-sugarcane"') && home.includes('FestivalSugarcane left="61%"') && home.includes('FestivalSugarcane left="75%"'), "Traditional animated sugarcane must appear at the ghat");
+          assert.ok(home.includes("function FestivalChhathSoop") && home.includes('testID="home-chhath-soop"') && home.includes("festivalPaanLeaf") && home.includes("festivalSoopFruitBanana"), "Chhath soop must include paan leaves and traditional offerings");
+          assert.ok(!home.includes("KMT BAZAAR") && !home.includes("festivalBrandPlate") && !home.includes("s.festivalRooftop"), "Centered KMT Bazaar plate and modern rooftop must be removed from the ghat");
+          assert.ok(home.includes('testID="home-location-neon-glow"') && home.includes("#FFF2A6") && home.includes("#FFC928"), "Location and notification must have a warm-yellow neon glow");
+          assert.ok(home.includes("rgba(151,91,50,0.9)") && home.includes("rgba(194,135,78,0.9)"), "Ghat steps must use a traditional warm sandstone palette");
           assert.ok(home.includes('backgroundColor: "rgba(22,163,74,0.22)"') && home.includes('borderColor: "rgba(134,239,172,0.72)"') && home.includes("borderRadius: 8"), "Home search field must use translucent green styling and square corners");
           const heroHeightLine = home.includes("const heroExpandedHeight = HERO_BACKDROP_HEIGHT;");
           const searchStyleLine = home.includes("style={s.searchWrap}") && !home.includes("translateY: -24");
@@ -156,7 +161,7 @@ jobs:
           assert.ok(search.includes("}, [allProducts, query]);"), "Search results must recalculate when products load or the query changes");
           assert.ok(search.includes("product?.product_name") && search.includes("product?.productName") && search.includes("product?.title"), "Search must match legacy product name fields as well as the current name");
           assert.ok(search.includes("Array.isArray(data)"), "Search must normalize the product list API response before filtering");
-          console.log("DIWALI_FESTIVAL_HERO_VALIDATION_PASS");
+          console.log("TRADITIONAL_CHHATH_GHAT_VALIDATION_PASS");
           console.log("HOME_SEARCH_GREEN_TRANSPARENT_BELOW_HERO_VALIDATION_PASS");
           NODE
 
