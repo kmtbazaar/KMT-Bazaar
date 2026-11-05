@@ -104,7 +104,7 @@ function StoreProductTile({ p }: { p: any }) {
           <Image
             source={{ uri: imageUri }}
             style={StyleSheet.absoluteFillObject}
-            contentFit="cover"
+            contentFit="contain"
             transition={150}
             onError={() => setImageIndex((current) =>
               current < imageCandidates.length ? current + 1 : current
@@ -630,7 +630,7 @@ const s = StyleSheet.create({
   },
   storeTileBody: {
     paddingHorizontal: 7,
-    paddingTop: 7,
+    paddingTop: 11,
     paddingBottom: 8,
   },
   storeTileName: {

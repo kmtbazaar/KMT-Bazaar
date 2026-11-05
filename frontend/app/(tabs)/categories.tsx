@@ -103,7 +103,7 @@ export function CategoryProductTile({ p }: { p: any }) {
           <Image
             source={{ uri: imageUri }}
             style={StyleSheet.absoluteFillObject}
-            contentFit="cover"
+            contentFit="contain"
             transition={150}
             onError={() =>
               setImageIndex((current) =>
@@ -555,7 +555,7 @@ const s = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  categoryProductBody: { paddingHorizontal: 7, paddingTop: 7, paddingBottom: 8 },
+  categoryProductBody: { paddingHorizontal: 7, paddingTop: 11, paddingBottom: 8 },
   categoryProductName: {
     color: COLORS.text,
     fontSize: 13,

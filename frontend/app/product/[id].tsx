@@ -288,7 +288,7 @@ export default function Product() {
                 key={uri + "-" + index}
                 style={[s.carouselSlide, carouselWidth > 0 ? { width: carouselWidth } : null]}
               >
-                <Image source={{ uri }} style={s.img} contentFit="cover" />
+                <Image source={{ uri }} style={s.img} contentFit="contain" />
               </View>
             ))}
           </ScrollView>
@@ -404,7 +404,7 @@ export default function Product() {
                       >
                         <View style={s.suggestionImageWrap}>
                           {item.image ? (
-                            <Image source={{ uri: item.image }} style={s.suggestionImage} contentFit="cover" />
+                            <Image source={{ uri: item.image }} style={s.suggestionImage} contentFit="contain" />
                           ) : (
                             <View style={s.suggestionImageFallback}>
                               <MaterialCommunityIcons name="image-outline" size={22} color={COLORS.textMuted} />
@@ -506,7 +506,7 @@ const s = StyleSheet.create({
   carouselDotActive: { width: 18, backgroundColor: COLORS.brand },
   carouselCount: { color: COLORS.textMuted, fontSize: 11, fontWeight: "700", marginLeft: 8 },
   card: { padding: SPACING.lg },
-  name: { fontSize: 22, fontWeight: "800", color: COLORS.text },
+  name: { fontSize: 22, fontWeight: "800", color: COLORS.text, marginTop: 8 },
   unit: { color: COLORS.textMuted, marginTop: 4, fontSize: 13 },
   outOfStockText: { color: COLORS.error, fontWeight: "900", fontSize: 16, letterSpacing: 0.4, marginTop: 6 },
   priceRow: { flexDirection: "row", alignItems: "center", gap: 10, marginTop: 12 },

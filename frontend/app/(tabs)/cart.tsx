@@ -105,7 +105,7 @@ export default function Cart() {
       <ScrollView contentContainerStyle={{ padding: SPACING.lg, paddingBottom: 200 }} showsVerticalScrollIndicator={false}>
         {cart.items.map((it: any) => (
           <View key={`${it.product_id}:${it.variant || "default"}`} style={s.itemCard} testID={`cart-item-${it.product_id}-${it.variant || "default"}`}>
-            <Image source={{ uri: it.image }} style={s.itemImg} contentFit="cover" />
+            <Image source={{ uri: it.image }} style={s.itemImg} contentFit="contain" />
             <View style={{ flex: 1 }}>
               <Text style={s.itemName} numberOfLines={2}>{it.name}</Text>
               <Text style={s.itemUnit}>{it.unit}</Text>

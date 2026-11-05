@@ -188,7 +188,7 @@ export default function ProductCard({
           <Image
             source={{ uri: productImage }}
             style={StyleSheet.absoluteFillObject}
-            contentFit="cover"
+            contentFit="contain"
             transition={200}
             onError={() => setImageIndex((current) =>
               current < productImageCandidates.length ? current + 1 : current
@@ -509,7 +509,7 @@ const s = StyleSheet.create({
 
   body: {
     paddingHorizontal: 5,
-    paddingTop: 5,
+    paddingTop: 10,
     paddingBottom: 2,
   },
 
