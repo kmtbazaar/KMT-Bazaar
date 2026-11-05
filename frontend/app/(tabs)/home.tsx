@@ -236,6 +236,42 @@ function FestivalDecor() {
 
   return (
     <View pointerEvents="none" style={s.festivalDecor} testID="home-festival-hero">
+      <LinearGradient
+        colors={["#080F27", "#1B1D43", "#59304C", "#C06A4E"]}
+        locations={[0, 0.42, 0.76, 1]}
+        style={s.festivalBackdrop}
+      />
+      <View style={s.festivalHorizonGlow} />
+      <View style={s.festivalStarLayer}>
+        {SKY_STARS.slice(0, 18).map((star, index) => (
+          <View
+            key={index}
+            style={[
+              s.festivalStar,
+              {
+                left: star.left,
+                top: star.top,
+                width: star.size,
+                height: star.size,
+                opacity: index % 4 === 0 ? 0.95 : 0.55,
+              },
+            ]}
+          />
+        ))}
+      </View>
+
+      <View style={s.festivalRooftop}>
+        <View style={s.festivalRoofParapet} />
+        <View style={s.festivalRoofEdge} />
+        <View style={s.festivalRoofPillarLeft} />
+        <View style={s.festivalRoofPillarRight} />
+        <View style={s.festivalRoofWindow}>
+          <View style={s.festivalRoofWindowCross} />
+        </View>
+        <View style={s.festivalRoofWindowSecond} />
+      </View>
+      <View style={s.festivalRooflineGlow} />
+
       <Animated.View style={[s.festivalLightString, lightsStyle]}>
         <View style={s.festivalLightWire} />
         {FESTIVAL_BULBS.map((bulb, index) => (
@@ -264,7 +300,10 @@ function FestivalDecor() {
 
       <View style={s.festivalBrandWrap}>
         <View style={s.festivalBrandPlate}>
-          <Text style={s.festivalBrandTitle}>KMT BAZAAR</Text>
+          <View style={s.festivalBrandTitleRow}>
+            <MaterialCommunityIcons name="shopping" size={13} color="#FDBA4D" />
+            <Text style={s.festivalBrandTitle}>KMT BAZAAR</Text>
+          </View>
           <Text style={s.festivalBrandSub}>DIWALI • CHHATH UTSAV</Text>
         </View>
       </View>
@@ -2195,14 +2234,27 @@ const s = StyleSheet.create({
   nightGradientLayer: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0 },
   nightGradient: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0 },
   festivalDecor: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, zIndex: 20, overflow: "hidden" },
+  festivalBackdrop: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0 },
+  festivalHorizonGlow: { position: "absolute", left: "17%", right: "17%", top: 84, height: 58, borderRadius: 70, backgroundColor: "rgba(251,146,60,0.17)", shadowColor: "#FB923C", shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.42, shadowRadius: 24, elevation: 3 },
+  festivalStarLayer: { position: "absolute", left: 0, right: 0, top: 0, height: 92 },
+  festivalStar: { position: "absolute", borderRadius: 2, backgroundColor: "#FFF8E8", shadowColor: "#FFF8E8", shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.8, shadowRadius: 3, elevation: 2 },
+  festivalRooftop: { position: "absolute", left: 0, bottom: 18, width: "43%", height: 34, zIndex: 5 },
+  festivalRoofParapet: { position: "absolute", left: 0, right: 0, bottom: 0, height: 19, backgroundColor: "#101A2E", borderTopWidth: 1, borderTopColor: "rgba(255,198,111,0.55)" },
+  festivalRoofEdge: { position: "absolute", left: 0, right: 0, bottom: 18, height: 4, backgroundColor: "#27324A", borderTopWidth: 1, borderTopColor: "#E7A65D" },
+  festivalRoofPillarLeft: { position: "absolute", left: "13%", bottom: 20, width: 4, height: 12, backgroundColor: "#25324A" },
+  festivalRoofPillarRight: { position: "absolute", right: "13%", bottom: 20, width: 4, height: 12, backgroundColor: "#25324A" },
+  festivalRoofWindow: { position: "absolute", left: "22%", bottom: 5, width: 10, height: 10, backgroundColor: "#FBBF24", borderWidth: 1, borderColor: "#FDE68A", shadowColor: "#F59E0B", shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.8, shadowRadius: 8, elevation: 3 },
+  festivalRoofWindowCross: { position: "absolute", left: 4, top: 0, bottom: 0, width: 1, backgroundColor: "#8A4B20" },
+  festivalRoofWindowSecond: { position: "absolute", left: "44%", bottom: 5, width: 7, height: 8, backgroundColor: "rgba(251,191,36,0.76)", borderWidth: 1, borderColor: "rgba(253,230,138,0.7)" },
+  festivalRooflineGlow: { position: "absolute", left: "2%", bottom: 47, width: "35%", height: 2, backgroundColor: "rgba(255,203,128,0.62)", shadowColor: "#F59E0B", shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.55, shadowRadius: 5, elevation: 3 },
   festivalLightString: { position: "absolute", left: "6%", right: "6%", top: 57, height: 24, zIndex: 8 },
   festivalLightWire: { position: "absolute", left: 0, right: 0, top: 5, height: 16, borderBottomWidth: 1, borderBottomColor: "rgba(255,211,128,0.76)", borderBottomLeftRadius: 90, borderBottomRightRadius: 90 },
   festivalBulb: { position: "absolute", width: 5, height: 5, borderRadius: 3, borderWidth: 0.5, borderColor: "rgba(255,255,255,0.72)", shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.9, shadowRadius: 7, elevation: 5 },
-  festivalLantern: { position: "absolute", width: 24, height: 36, alignItems: "center", zIndex: 10 },
+  festivalLantern: { position: "absolute", width: 28, height: 44, alignItems: "center", zIndex: 10 },
   festivalLanternGlow: { position: "absolute", top: 7, width: 30, height: 30, borderRadius: 15, backgroundColor: "rgba(255,181,64,0.18)", shadowColor: "#FBBF24", shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.65, shadowRadius: 12, elevation: 5 },
   festivalLanternString: { position: "absolute", top: -7, width: 1, height: 8, backgroundColor: "#FDE68A" },
-  festivalLanternCap: { width: 12, height: 3, borderRadius: 2, backgroundColor: "#FDE68A" },
-  festivalLanternBody: { width: 15, height: 22, borderRadius: 5, borderWidth: 1, borderColor: "#FFF1C1", overflow: "hidden", alignItems: "center", justifyContent: "center" },
+  festivalLanternCap: { width: 15, height: 3, borderRadius: 2, backgroundColor: "#FDE68A" },
+  festivalLanternBody: { width: 18, height: 27, borderRadius: 5, borderWidth: 1, borderColor: "#FFF1C1", overflow: "hidden", alignItems: "center", justifyContent: "center" },
   festivalLanternRib: { position: "absolute", left: 3, right: 3, top: 1, bottom: 1, borderLeftWidth: 0.8, borderRightWidth: 0.8, borderColor: "rgba(255,244,201,0.65)" },
   festivalLanternFlame: { width: 4, height: 8, borderRadius: 4, backgroundColor: "#FFF9D5", shadowColor: "#FFF2A6", shadowOffset: { width: 0, height: 0 }, shadowOpacity: 1, shadowRadius: 5, elevation: 4 },
   festivalLanternBase: { width: 8, height: 2, borderRadius: 2, backgroundColor: "#FDE68A" },
