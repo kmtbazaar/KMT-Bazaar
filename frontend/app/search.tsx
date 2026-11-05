@@ -70,7 +70,7 @@ export default function SearchScreen() {
         <View style={s.inputWrapper}>
           <MaterialCommunityIcons name="magnify" size={20} color={COLORS.textMuted} />
           <TextInput
-            placeholder="Search for groceries, food, medicines..."
+            placeholder="Search for groceries, Tv, Ac, bryani , Rasan..."
             value={query}
             onChangeText={handleSearchTextChange}
             autoFocus={true}
