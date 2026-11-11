@@ -1659,14 +1659,14 @@ const s = StyleSheet.create({
   locLabel: { color: "rgba(255,255,255,0.85)", fontSize: 11, fontWeight: "600" },
   locValue: { color: THEME.white, fontSize: 14, fontWeight: "800" },
   locationErrorText: { color: "#FEF3C7", fontSize: 9, fontWeight: "700", marginTop: 2, maxWidth: 260 },
-  heroBrandNeon: { color: "#FFF7D6", fontSize: 18, fontWeight: "900", letterSpacing: 3, textAlign: "center", textShadowColor: "#FFC928", textShadowOffset: { width: 0, height: 0 }, textShadowRadius: 14 },
+  heroBrandNeon: { color: "#FFF7D6", fontSize: 18, fontWeight: "900", letterSpacing: 3, textAlign: "center", transform: [{ translateY: -24 }], textShadowColor: "#FFC928", textShadowOffset: { width: 0, height: 0 }, textShadowRadius: 14 },
   headerActions: { flexDirection: "row", alignItems: "center" },
   iconBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: "rgba(255,255,255,0.2)", alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: "rgba(255,255,255,0.3)" },
   bellBadge: { position: "absolute", top: 2, right: 2, backgroundColor: THEME.orange, minWidth: 18, height: 18, borderRadius: 9, paddingHorizontal: 4, alignItems: "center", justifyContent: "center", borderWidth: 1.5, borderColor: THEME.white },
   bellBadgeText: { color: THEME.white, fontSize: 9, fontWeight: "900" },
   
   searchWrap: { width: "100%", flexDirection: "row", alignItems: "center", backgroundColor: "rgba(22,163,74,0.22)", borderRadius: 8, paddingHorizontal: 14, paddingVertical: 7, marginTop: 14, height: 44, borderWidth: 1, borderColor: "rgba(134,239,172,0.72)", shadowColor: "#000000", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.06, shadowRadius: 8, elevation: 1 },
-  searchPlaceholderText: { fontSize: 16, color: "#FF8A00", fontWeight: "800", textShadowColor: "rgba(0,0,0,0.38)", textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 2 },
+  searchPlaceholderText: { fontSize: 16, color: "#FFFFFF", fontWeight: "500", textShadowColor: "rgba(0,0,0,0.38)", textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 2 },
   searchMicBg: { width: 32, height: 32, backgroundColor: THEME.orange, borderRadius: 16, alignItems: "center", justifyContent: "center" },
   searchMicListening: { transform: [{ scale: 1.08 }], backgroundColor: THEME.orangeBright },
 
