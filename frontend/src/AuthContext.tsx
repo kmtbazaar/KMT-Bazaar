@@ -98,12 +98,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const acceptRestoredWebUser = useCallback(async (fresh: User, cached: User | null) => {
-    // Browser tabs now share one persistent browser-profile session selector.
-    // A different cached profile means another tab intentionally signed into a
-    // different account; adopt the server-verified account instead of revoking
-    // the shared cookie and unexpectedly logging every tab out.
+    // Each browser tab selects its own HttpOnly session cookie by X-KMT-Tab-Id.
+    // Prefer the server-verified profile if this same tab has a stale cached user.
     if (Platform.OS === "web" && cached?.id && fresh?.id && cached.id !== fresh.id) {
-      console.info("[auth] Browser account changed in another tab; adopting the active server session.");
+      console.info("[auth] Active tab account changed; adopting its server-verified session.");
     }
     await setUser(fresh);
     markSessionActive();
