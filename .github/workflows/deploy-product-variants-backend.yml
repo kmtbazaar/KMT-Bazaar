@@ -36,6 +36,7 @@ jobs:
         run: |
           python -m py_compile backend/server.py
           python - <<'PY'
+          import re
           from pathlib import Path
           source = Path("backend/server.py").read_text(encoding="utf-8")
           assert 'PRODUCT_DELIVERY_STATE = "Jharkhand"' in source
@@ -50,6 +51,24 @@ jobs:
           assert "delivery_pincode != PRODUCT_DELIVERY_PINCODE" in source
           assert '"state": PRODUCT_DELIVERY_STATE, "pincode": PRODUCT_DELIVERY_PINCODE' in source
           print("BACKEND_FIXED_STATE_PIN_VALIDATION_PASS")
+
+          frontend_api = Path("frontend/src/api.ts").read_text(encoding="utf-8")
+          auth_context = Path("frontend/src/AuthContext.tsx").read_text(encoding="utf-8")
+          assert "export const AUTH_SESSION_DAYS = 30" in frontend_api
+          assert "WEB_SESSION_TIMEOUT_MS = AUTH_SESSION_DAYS * 24 * 60 * 60 * 1000" in frontend_api
+          assert "window.localStorage.getItem(WEB_TAB_ID_KEY)" in frontend_api
+          assert "window.localStorage.setItem(WEB_TAB_ID_KEY, legacySessionId)" in frontend_api
+          assert "api.refreshWebSession()" in auth_context
+          assert "adopting the active server session" in auth_context
+          for route_name in ("login", "verify_email_login_otp", "verify_email_signup_otp", "google_login", "verify_otp"):
+              route_start = source.find("async def " + route_name + "(")
+              assert route_start >= 0, f"Missing auth route: {route_name}"
+              route_end = source.find("\n@api.", route_start + 1)
+              if route_end < 0:
+                  route_end = len(source)
+              route_block = source[route_start:route_end]
+              assert "build_auth_response" in route_block, f"{route_name} must issue the shared 30-day session"
+          print("ALL_ROLE_30_DAY_SESSION_AND_PERSISTENT_BROWSER_SELECTOR_VALIDATION_PASS")
           PY
 
       - name: Check required Hostinger SSH configuration
@@ -307,6 +326,15 @@ jobs:
             || ! grep -Fq 'return PRODUCT_DELIVERY_PINCODE' "$TARGET" \
             || ! grep -Fq 'await db.addresses.update_many(' "$TARGET"; then
             echo "BACKEND_FIXED_STATE_PIN_PATCH_MISSING"
+            rollback
+            exit 1
+          fi
+
+          if ! grep -Fq 'AUTH_SESSION_DAYS = 30' "$TARGET" \
+            || ! grep -Fq 'JWT_EXPIRE_MIN = 60 * 24 * AUTH_SESSION_DAYS' "$TARGET" \
+            || ! grep -Fq 'WEB_SESSION_TIMEOUT_MIN = 60 * 24 * AUTH_SESSION_DAYS' "$TARGET" \
+            || ! grep -Fq 'AUTH_COOKIE_MAX_AGE = WEB_SESSION_TIMEOUT_MIN * 60' "$TARGET"; then
+            echo "BACKEND_30_DAY_AUTH_SESSION_PATCH_MISSING"
             rollback
             exit 1
           fi
