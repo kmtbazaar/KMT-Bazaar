@@ -28,9 +28,6 @@ const WEB_SESSION_EXPIRED_KEY = "kmt_web_session_expired";
 const WEB_SESSION_LOGGED_OUT_KEY = "kmt_web_session_logged_out";
 const WEB_TAB_ID_KEY = "kmt_web_tab_id";
 
-// Browser profiles use a persistent opaque session-cookie selector so the
-// 30-day HttpOnly session remains addressable after closing and reopening a tab.
-// Migrate the old sessionStorage selector once to preserve existing sessions.
 // A tab-scoped cookie selector: sessionStorage survives refreshes but is not shared
 // by separately opened tabs. Never store this selector in localStorage.
 export function getWebTabId(): string | null {
