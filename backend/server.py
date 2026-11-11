@@ -55,9 +55,10 @@ db = client[os.environ['DB_NAME']]
 
 JWT_SECRET = os.environ.get("JWT_SECRET", "kmt-bazaar-super-secret-key-change-me")
 JWT_ALGO = "HS256"
-JWT_EXPIRE_MIN = 60 * 24 * 30  # 30 days for native Bearer tokens
-# Web sessions expire after 30 days without browser activity.
-WEB_SESSION_TIMEOUT_MIN = 60 * 24 * 30
+AUTH_SESSION_DAYS = 30
+JWT_EXPIRE_MIN = 60 * 24 * AUTH_SESSION_DAYS  # Native Bearer tokens
+# Browser sessions use a sliding 30-day idle expiry and a persistent HttpOnly cookie.
+WEB_SESSION_TIMEOUT_MIN = 60 * 24 * AUTH_SESSION_DAYS
 AUTH_COOKIE_NAME = "__Host-kmt_session"
 AUTH_COOKIE_MAX_AGE = WEB_SESSION_TIMEOUT_MIN * 60
 COOKIE_AUTH_MODE_HEADER = "x-kmt-auth-mode"
