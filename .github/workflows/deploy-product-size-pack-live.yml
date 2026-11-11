@@ -165,7 +165,8 @@ jobs:
           assert.ok(home.includes("width: Math.min((width - SPACING.lg * 2 - 10) / 2, 190)") && home.includes("storeCardSmall: { width: Math.min((width - SPACING.lg * 2 - 10) / 2, 190), height: 112") && home.includes("storeImgSmall: { width: \"100%\", height: 64 }"), "Nearby store cards must fit exactly two across the screen while preserving the original card and image heights");
           assert.ok(!home.includes("Search 'medicines'..."), "Medicine must be removed from animated home search suggestions");
           assert.ok(["Search 'groceries'...", "Search 'fresh food'...", "Search 'electronics'...", "Search 'daily essentials'..."].every((suggestion) => home.includes(suggestion)), "All other animated search suggestions must remain");
-          assert.ok(home.includes('searchPlaceholderText: { fontSize: 16, color: "#FF8A00", fontWeight: "800"'), "Home search suggestion text must be larger and orange");
+          assert.ok(home.includes('heroBrandNeon: { color: "#FFF7D6"') && home.includes("transform: [{ translateY: -24 }]"), "KMT Bazaar hero neon text must be shifted above its previous position");
+          assert.ok(home.includes('searchPlaceholderText: { fontSize: 16, color: "#FFFFFF", fontWeight: "500"'), "Home search suggestion text must be larger, white, and less bold");
           console.log("HOME_HERO_NEON_AND_SEARCH_SUGGESTIONS_VALIDATION_PASS");
           console.log("TRADITIONAL_CHHATH_GHAT_VALIDATION_PASS");
           console.log("HOME_SEARCH_GREEN_TRANSPARENT_BELOW_HERO_VALIDATION_PASS");
