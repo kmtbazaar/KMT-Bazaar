@@ -386,8 +386,14 @@ function FestivalDecor() {
 
 function NightSky() {
   return (
-    <View pointerEvents="none" style={s.nightSky}>
-      <FestivalDecor />
+    <View pointerEvents="none" style={s.nightSky} testID="home-festival-hero">
+      <Image
+        source={require("../../assets/chhath-hero-240-q26.webp")}
+        style={s.chhathHeroImage}
+        contentFit="cover"
+        autoplay
+        cachePolicy="memory-disk"
+      />
     </View>
   );
 }
@@ -1553,6 +1559,7 @@ const s = StyleSheet.create({
   /* Realistic 3D-style sky layers stay behind the existing header/search only */
   heroHeaderShell: { position: "relative", width: "100%", overflow: "visible" },
   nightSky: { position: "absolute", top: 0, left: 0, right: 0, height: HERO_BACKDROP_HEIGHT, overflow: "hidden", zIndex: 0, pointerEvents: "none" },
+  chhathHeroImage: { position: "absolute", top: 0, left: 0, width: "100%", height: "100%" },
   nightGradientLayer: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0 },
   nightGradient: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0 },
   festivalDecor: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, zIndex: 20, overflow: "hidden" },
