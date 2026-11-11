@@ -31,26 +31,22 @@ const WEB_TAB_ID_KEY = "kmt_web_tab_id";
 // Browser profiles use a persistent opaque session-cookie selector so the
 // 30-day HttpOnly session remains addressable after closing and reopening a tab.
 // Migrate the old sessionStorage selector once to preserve existing sessions.
+// A tab-scoped cookie selector: sessionStorage survives refreshes but is not shared
+// by separately opened tabs. Never store this selector in localStorage.
 export function getWebTabId(): string | null {
   if (Platform.OS !== "web" || typeof window === "undefined") return null;
 
   const isValidId = (value: string | null): value is string =>
     !!value && /^[a-f0-9]{32}$/.test(value);
 
-  try {
-    const persistentId = window.localStorage.getItem(WEB_TAB_ID_KEY);
-    if (isValidId(persistentId)) return persistentId;
-  } catch {}
+  let sessionId: string | null = null;
+  let legacyPersistentId: string | null = null;
+  try { sessionId = window.sessionStorage.getItem(WEB_TAB_ID_KEY); } catch {}
+  try { legacyPersistentId = window.localStorage.getItem(WEB_TAB_ID_KEY); } catch {}
 
-  try {
-    const legacySessionId = window.sessionStorage.getItem(WEB_TAB_ID_KEY);
-    if (isValidId(legacySessionId)) {
-      try {
-        window.localStorage.setItem(WEB_TAB_ID_KEY, legacySessionId);
-      } catch {}
-      return legacySessionId;
-    }
-  } catch {}
+  // The previous release copied one localStorage ID into every tab's sessionStorage.
+  // Rotate that shared ID once; subsequent refreshes keep this tab's own selector.
+  if (isValidId(sessionId) && sessionId !== legacyPersistentId) return sessionId;
 
   try {
     const bytes = new Uint8Array(16);
@@ -59,10 +55,9 @@ export function getWebTabId(): string | null {
     } else {
       for (let i = 0; i < bytes.length; i += 1) bytes[i] = Math.floor(Math.random() * 256);
     }
-    const browserId = Array.from(bytes, (value) => value.toString(16).padStart(2, "0")).join("");
-    try { window.localStorage.setItem(WEB_TAB_ID_KEY, browserId); } catch {}
-    try { window.sessionStorage.setItem(WEB_TAB_ID_KEY, browserId); } catch {}
-    return browserId;
+    const tabId = Array.from(bytes, (value) => value.toString(16).padStart(2, "0")).join("");
+    window.sessionStorage.setItem(WEB_TAB_ID_KEY, tabId);
+    return tabId;
   } catch {
     return null;
   }
