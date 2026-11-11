@@ -13,6 +13,7 @@ import Animated, {
   FadeOut, 
   useSharedValue, 
   useAnimatedStyle, 
+  withDelay,
   withRepeat, 
   withSequence, 
   withTiming 
@@ -54,399 +55,339 @@ const SEARCH_PLACEHOLDERS = [
 const RECENT_SEARCHES_KEY = "kmt_recent_searches";
 const MAX_RECENT_SEARCHES = 5;
 
-function NightSky() {
-  const canvasRef = useRef<any>(null);
-  const [hour, setHour] = useState(new Date().getHours() + new Date().getMinutes() / 60);
-  const cloudOne = useSharedValue(-45);
-  const cloudTwo = useSharedValue(0);
-  const cloudDepth = useSharedValue(0);
+const SKY_STARS = Array.from({ length: 26 }, (_, index) => ({
+  left: `${(index * 37 + 11) % 96}%`,
+  top: 7 + ((index * 19 + 13) % 68),
+  size: index % 5 === 0 ? 2 : 1.4,
+}));
+
+
+const FESTIVAL_BULBS = Array.from({ length: 9 }, (_, index) => ({
+  left: String(index * 12) + "%",
+  top: index % 2 === 0 ? 7 : 12,
+  color: ["#FFE08A", "#FDBA74", "#FCA5A5", "#FDE68A", "#93C5FD"][index % 5],
+}));
+
+const FESTIVAL_LANTERNS = [
+  { left: "13%", bottom: 22, delay: 0, duration: 6200, size: 0.82 },
+  { left: "79%", bottom: 18, delay: 1400, duration: 7100, size: 0.96 },
+  { left: "56%", bottom: 12, delay: 2800, duration: 7600, size: 0.68 },
+];
+
+const FESTIVAL_FIREWORKS = [
+  { left: "19%", top: 82, delay: 300, size: 0.78 },
+  { left: "77%", top: 73, delay: 1700, size: 0.92 },
+];
+
+function FestivalLantern({
+  left,
+  bottom,
+  delay,
+  duration,
+  size,
+}: {
+  left: string;
+  bottom: number;
+  delay: number;
+  duration: number;
+  size: number;
+}) {
+  const floatProgress = useSharedValue(0);
 
   useEffect(() => {
-    const clock = setInterval(() => {
-      const now = new Date();
-      setHour(now.getHours() + now.getMinutes() / 60);
-    }, 30000);
-    return () => clearInterval(clock);
-  }, []);
-
-  useEffect(() => {
-    if (Platform.OS === "web") {
-      const canvas = canvasRef.current;
-      if (!canvas) return;
-
-      const gl = canvas.getContext("webgl", {
-        alpha: true,
-        antialias: true,
-        premultipliedAlpha: true,
-      });
-      if (!gl) return;
-
-      const vertexSource = `
-        attribute vec2 a_position;
-        varying vec2 v_uv;
-        void main() {
-          v_uv = a_position * 0.5 + 0.5;
-          gl_Position = vec4(a_position, 0.0, 1.0);
-        }
-      `;
-
-      const fragmentSource = `
-        precision highp float;
-        varying vec2 v_uv;
-        uniform float u_time;
-        uniform float u_hour;
-        uniform vec2 u_resolution;
-
-        float hash(vec2 p) {
-          p = fract(p * vec2(127.1, 311.7));
-          p += dot(p, p + 31.19);
-          return fract(p.x * p.y);
-        }
-
-        float noise(vec2 p) {
-          vec2 i = floor(p);
-          vec2 f = fract(p);
-          f = f * f * (3.0 - 2.0 * f);
-          float a = hash(i);
-          float b = hash(i + vec2(1.0, 0.0));
-          float c = hash(i + vec2(0.0, 1.0));
-          float d = hash(i + vec2(1.0, 1.0));
-          return mix(mix(a, b, f.x), mix(c, d, f.x), f.y);
-        }
-
-        float fbm(vec2 p) {
-          float value = 0.0;
-          float amp = 0.5;
-          for (int i = 0; i < 6; i++) {
-            value += noise(p) * amp;
-            p = p * 2.03 + vec2(17.0, 9.0);
-            amp *= 0.5;
-          }
-          return value;
-        }
-
-        float boxMask(vec2 p, vec2 center, vec2 halfSize, float softness) {
-          float d = max(abs(p.x - center.x) - halfSize.x, abs(p.y - center.y) - halfSize.y);
-          return 1.0 - smoothstep(0.0, softness, d);
-        }
-
-        float phaseSun(float x) {
-          return smoothstep(5.0, 8.0, x) * (1.0 - smoothstep(16.5, 20.0, x));
-        }
-
-        void main() {
-          vec2 uv = v_uv;
-          float aspect = u_resolution.x / max(u_resolution.y, 1.0);
-          float t = u_time * 0.00002;
-
-          float day = phaseSun(u_hour);
-          float sunset = smoothstep(16.0, 18.8, u_hour) * (1.0 - smoothstep(18.8, 20.5, u_hour));
-          float night = 1.0 - day;
-
-          float horizon = pow(1.0 - uv.y, 1.45);
-          float upper = smoothstep(0.0, 0.92, uv.y);
-
-          vec3 daylightTop = vec3(0.055, 0.34, 0.68);
-          vec3 daylightMid = vec3(0.14, 0.58, 0.88);
-          vec3 daylightHorizon = vec3(0.88, 0.95, 1.0);
-
-          vec3 sunsetTop = vec3(0.035, 0.025, 0.11);
-          vec3 sunsetMid = vec3(0.30, 0.075, 0.33);
-          vec3 sunsetHorizon = vec3(1.0, 0.42, 0.18);
-
-          vec3 nightTop = vec3(0.002, 0.006, 0.022);
-          vec3 nightMid = vec3(0.012, 0.045, 0.14);
-          vec3 nightHorizon = vec3(0.06, 0.11, 0.22);
-
-          vec3 daySky = mix(daylightHorizon, daylightTop, upper);
-          daySky = mix(daySky, daylightMid, 0.32 + horizon * 0.20);
-
-          vec3 sunsetSky = mix(sunsetHorizon, sunsetTop, upper);
-          sunsetSky = mix(sunsetSky, sunsetMid, 0.42 + horizon * 0.18);
-
-          vec3 nightSky = mix(nightHorizon, nightTop, upper);
-          nightSky = mix(nightSky, nightMid, 0.36 + horizon * 0.20);
-
-          vec3 sky = mix(nightSky, daySky, day);
-          sky = mix(sky, sunsetSky, sunset);
-
-          float haze = pow(max(1.0 - uv.y, 0.0), 3.1);
-          vec3 hazeColor = mix(vec3(0.64, 0.79, 0.92), vec3(1.0, 0.54, 0.30), sunset);
-          hazeColor = mix(hazeColor, vec3(0.12, 0.20, 0.34), night * 0.68);
-          sky = mix(sky, hazeColor, haze * (0.20 + sunset * 0.42 + night * 0.08));
-
-          // Layered volumetric-style cloud banks with independent motion.
-          float highA = fbm(vec2(uv.x * 2.0 + t * 0.34, uv.y * 4.2 + 1.7));
-          float highB = fbm(vec2(uv.x * 4.5 - t * 0.22, uv.y * 7.5 + 7.0));
-          float highCloud = smoothstep(0.54, 0.74, highA * 0.72 + highB * 0.28);
-          highCloud *= smoothstep(0.40, 0.58, uv.y) * (1.0 - smoothstep(0.82, 0.98, uv.y));
-
-          float lowA = fbm(vec2(uv.x * 3.6 - t * 0.55, uv.y * 7.0 + 15.0));
-          float lowB = fbm(vec2(uv.x * 7.5 + t * 0.30, uv.y * 13.0 + 4.0));
-          float lowCloud = smoothstep(0.50, 0.71, lowA * 0.67 + lowB * 0.33);
-          lowCloud *= smoothstep(0.10, 0.24, uv.y) * (1.0 - smoothstep(0.42, 0.62, uv.y));
-
-          vec3 cloudTop = mix(vec3(0.98, 0.99, 1.0), vec3(0.52, 0.62, 0.74), night);
-          vec3 cloudMid = mix(vec3(0.76, 0.84, 0.92), vec3(0.17, 0.24, 0.36), night);
-          vec3 cloudHighColor = mix(cloudMid, cloudTop, 0.58 + 0.42 * highA);
-          vec3 cloudLowColor = mix(vec3(0.58, 0.68, 0.78), vec3(0.09, 0.14, 0.23), night);
-
-          sky = mix(sky, cloudHighColor, highCloud * (0.16 + 0.24 * (day + sunset * 0.7 + night * 0.16)));
-          sky = mix(sky, cloudLowColor, lowCloud * (0.18 + 0.22 * night));
-
-          // Sun bloom and atmospheric disk.
-          float sunPhase = clamp((u_hour - 5.8) / 13.0, 0.0, 1.0);
-          float sunX = mix(0.14, 0.86, sunPhase);
-          float sunY = 0.16 + 0.58 * sin(sunPhase * 3.1415926);
-          vec2 sunDelta = vec2((uv.x - sunX) * aspect, uv.y - sunY);
-          float sunDist = length(sunDelta);
-          float sunHalo = exp(-sunDist * 5.2);
-          float sunDisc = 1.0 - smoothstep(0.018, 0.032, sunDist);
-          sky += vec3(1.0, 0.70, 0.32) * sunHalo * (day * 0.16 + sunset * 0.30);
-          sky += vec3(1.0, 0.90, 0.62) * sunDisc * (day * 0.52 + sunset * 0.34);
-
-          // Dense stars with gentle twinkle at night.
-          vec2 starGrid = floor(vec2(uv.x * 250.0, uv.y * 140.0));
-          float starRnd = hash(starGrid);
-          float starLayer = step(0.993, starRnd) * smoothstep(0.18, 0.72, uv.y);
-          float starTwinkle = 0.62 + 0.38 * sin(u_time * 0.0013 + starRnd * 37.0);
-          sky += vec3(0.72, 0.84, 1.0) * starLayer * starTwinkle * night * 0.72;
-
-          vec2 brightGrid = floor(vec2(uv.x * 92.0 + 3.0, uv.y * 58.0 + 11.0));
-          float brightRnd = hash(brightGrid);
-          float brightStar = step(0.986, brightRnd) * smoothstep(0.24, 0.76, uv.y);
-          sky += vec3(0.90, 0.95, 1.0) * brightStar * night * 0.55;
-
-          // Moon with surface variation and cloud occlusion.
-          vec2 moonPos = vec2(0.79, 0.71);
-          vec2 moonDelta = vec2((uv.x - moonPos.x) * aspect, uv.y - moonPos.y);
-          float moonDist = length(moonDelta);
-          float moonMask = 1.0 - smoothstep(0.045, 0.053, moonDist);
-          float moonHalo = exp(-moonDist * 9.0);
-          float moonCrater1 = exp(-length(moonDelta - vec2(-0.011, 0.009)) * 42.0);
-          float moonCrater2 = exp(-length(moonDelta - vec2(0.015, -0.011)) * 50.0);
-          float moonCrater3 = exp(-length(moonDelta - vec2(0.005, 0.018)) * 65.0);
-          float moonSurface = 0.92 - moonCrater1 * 0.12 - moonCrater2 * 0.09 - moonCrater3 * 0.06;
-          float moonCloudOcclusion = highCloud * 0.75;
-
-          sky += vec3(0.62, 0.74, 0.98) * moonHalo * night * 0.20;
-          sky += vec3(0.92, 0.95, 1.0) * moonMask * moonSurface * night * (0.72 - moonCloudOcclusion * 0.48);
-
-          // Distant hills and horizon silhouette.
-          float hillNoise = fbm(vec2(uv.x * 2.5 + 2.0, 8.0));
-          float hillLine = 0.060 + hillNoise * 0.035 + 0.018 * sin(uv.x * 9.0 + t * 0.8);
-          float distantLand = 1.0 - smoothstep(hillLine, hillLine + 0.012, uv.y);
-          sky = mix(sky, mix(vec3(0.07, 0.11, 0.16), vec3(0.012, 0.020, 0.032), night), distantLand);
-
-          // A tiny warm village glow behind the hut.
-          float villageGlow = exp(-pow((uv.x - 0.29) * 22.0, 2.0)) * exp(-pow((uv.y - 0.095) * 24.0, 2.0));
-          sky += vec3(1.0, 0.42, 0.12) * villageGlow * (0.12 + night * 0.22);
-
-          // Rustic hut silhouette with warm window.
-          float hutWall = boxMask(uv, vec2(0.29, 0.126), vec2(0.095, 0.053), 0.004);
-          float roofHalf = 0.125;
-          float roofTop = 0.175 + (1.0 - abs(uv.x - 0.29) / roofHalf) * 0.090;
-          float roofMask = step(abs(uv.x - 0.29), roofHalf) * step(0.175, uv.y) * step(uv.y, roofTop);
-          float eaveMask = boxMask(uv, vec2(0.29, 0.175), vec2(0.137, 0.010), 0.004);
-          float chimney = boxMask(uv, vec2(0.355, 0.225), vec2(0.015, 0.038), 0.003);
-
-          vec3 hutColor = mix(vec3(0.08, 0.045, 0.026), vec3(0.015, 0.018, 0.024), night * 0.92);
-          sky = mix(sky, hutColor, max(hutWall, max(roofMask, eaveMask)) * (0.72 + night * 0.25));
-          sky = mix(sky, vec3(0.035, 0.028, 0.022), chimney * 0.95);
-
-          float windowMask = boxMask(uv, vec2(0.323, 0.132), vec2(0.016, 0.014), 0.003);
-          float doorMask = boxMask(uv, vec2(0.255, 0.115), vec2(0.020, 0.043), 0.003);
-          sky = mix(sky, vec3(0.06, 0.035, 0.02), doorMask);
-          sky += vec3(1.0, 0.52, 0.15) * windowMask * (0.24 + night * 1.35);
-          sky += vec3(1.0, 0.25, 0.07) * windowMask * exp(-length(vec2((uv.x - 0.323) * aspect, uv.y - 0.132)) * 24.0) * night * 0.30;
-
-          // Chimney smoke: expands, curls, drifts and fades into the clouds.
-          float smokeY = smoothstep(0.245, 0.29, uv.y) * (1.0 - smoothstep(0.60, 0.76, uv.y));
-          float smokeCenter = 0.355
-            + 0.018 * sin(uv.y * 19.0 + t * 1.5)
-            + 0.014 * sin(uv.y * 47.0 - t * 2.1)
-            + 0.010 * sin(uv.y * 81.0 + t * 0.9);
-          float smokeWidth = 0.016 + (uv.y - 0.25) * 0.075;
-          float smokeDist = abs(uv.x - smokeCenter) / max(smokeWidth, 0.006);
-          float smokeShape = 1.0 - smoothstep(0.28, 1.10, smokeDist);
-          float smokeNoise = fbm(vec2(uv.x * 8.0 + t * 0.28, uv.y * 10.0 - t * 0.65));
-          float smokePockets = smoothstep(0.28, 0.76, smokeNoise);
-          float smoke = smokeShape * smokePockets * smokeY;
-
-          vec3 smokeColor = mix(vec3(0.72, 0.75, 0.78), vec3(0.21, 0.25, 0.31), night);
-          sky = mix(sky, smokeColor, smoke * (0.16 + 0.24 * night));
-
-          // Soft foreground haze + filmic vignette.
-          float grassHaze = smoothstep(0.0, 0.12, uv.y) * (1.0 - smoothstep(0.12, 0.20, uv.y));
-          sky = mix(sky, vec3(0.10, 0.15, 0.16), grassHaze * (0.10 + night * 0.10));
-
-          vec2 vig = uv - 0.5;
-          float vignette = 1.0 - smoothstep(0.34, 0.78, length(vec2(vig.x * 0.85, vig.y)));
-          sky *= 0.84 + vignette * 0.16;
-
-          float grain = (hash(uv * u_resolution + u_time * 0.008) - 0.5) * 0.012;
-          sky += grain;
-
-          gl_FragColor = vec4(clamp(sky, 0.0, 1.0), 1.0);
-        }
-      `;
-
-      const compile = (type: number, source: string) => {
-        const shader = gl.createShader(type);
-        if (!shader) return null;
-        gl.shaderSource(shader, source);
-        gl.compileShader(shader);
-        if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
-          console.error("Cinematic sky shader compile failed:", gl.getShaderInfoLog(shader));
-          gl.deleteShader(shader);
-          return null;
-        }
-        return shader;
-      };
-
-      const vertexShader = compile(gl.VERTEX_SHADER, vertexSource);
-      const fragmentShader = compile(gl.FRAGMENT_SHADER, fragmentSource);
-      if (!vertexShader || !fragmentShader) return;
-
-      const program = gl.createProgram();
-      if (!program) return;
-      gl.attachShader(program, vertexShader);
-      gl.attachShader(program, fragmentShader);
-      gl.linkProgram(program);
-      if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
-        console.error("Cinematic sky shader link failed:", gl.getProgramInfoLog(program));
-        return;
-      }
-
-      const buffer = gl.createBuffer();
-      gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
-      gl.bufferData(
-        gl.ARRAY_BUFFER,
-        new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]),
-        gl.STATIC_DRAW
-      );
-
-      const position = gl.getAttribLocation(program, "a_position");
-      const timeUniform = gl.getUniformLocation(program, "u_time");
-      const hourUniform = gl.getUniformLocation(program, "u_hour");
-      const resolutionUniform = gl.getUniformLocation(program, "u_resolution");
-
-      const resize = () => {
-        const widthPx = Math.max(1, Math.floor(window.innerWidth * Math.min(window.devicePixelRatio, 2)));
-        const heightPx = Math.max(1, Math.floor(HERO_BACKDROP_HEIGHT * Math.min(window.devicePixelRatio, 2)));
-        canvas.width = widthPx;
-        canvas.height = heightPx;
-        canvas.style.width = "100%";
-        canvas.style.height = `${HERO_BACKDROP_HEIGHT}px`;
-        gl.viewport(0, 0, widthPx, heightPx);
-      };
-
-      resize();
-      window.addEventListener("resize", resize);
-
-      let frame = 0;
-      const render = (time: number) => {
-        gl.useProgram(program);
-        gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
-        gl.enableVertexAttribArray(position);
-        gl.vertexAttribPointer(position, 2, gl.FLOAT, false, 0, 0);
-        gl.uniform1f(timeUniform, time);
-        gl.uniform1f(hourUniform, hour);
-        gl.uniform2f(resolutionUniform, canvas.width, canvas.height);
-        gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
-        frame = window.requestAnimationFrame(render);
-      };
-
-      frame = window.requestAnimationFrame(render);
-
-      return () => {
-        window.cancelAnimationFrame(frame);
-        window.removeEventListener("resize", resize);
-        if (program) gl.deleteProgram(program);
-        if (vertexShader) gl.deleteShader(vertexShader);
-        if (fragmentShader) gl.deleteShader(fragmentShader);
-        if (buffer) gl.deleteBuffer(buffer);
-      };
-    }
-
-    cloudOne.value = withRepeat(
-      withSequence(
-        withTiming(58, { duration: 22000 }),
-        withTiming(-45, { duration: 22000 })
-      ),
-      -1,
-      false
+    floatProgress.value = withDelay(
+      delay,
+      withRepeat(
+        withSequence(
+          withTiming(1, { duration }),
+          withTiming(0, { duration: Math.round(duration * 0.9) })
+        ),
+        -1,
+        false
+      )
     );
+  }, [delay, duration]);
 
-    cloudTwo.value = withRepeat(
-      withSequence(
-        withTiming(-58, { duration: 28000 }),
-        withTiming(72, { duration: 28000 })
-      ),
-      -1,
-      false
-    );
-
-    cloudDepth.value = withRepeat(
-      withSequence(
-        withTiming(1, { duration: 7000 }),
-        withTiming(0, { duration: 7000 })
-      ),
-      -1,
-      true
-    );
-  }, [hour]);
-
-  const isNight = hour >= 19 || hour < 6;
-  const isSunset = hour >= 17 && hour < 19;
-
-  if (Platform.OS === "web") {
-    return (
-      <View pointerEvents="none" style={s.nightSky}>
-        {React.createElement("canvas" as any, { ref: canvasRef, style: { width: "100%", height: `${HERO_BACKDROP_HEIGHT}px`, display: "block" } })}
-      </View>
-    );
-  }
-
-  const cloudOneStyle = useAnimatedStyle(() => ({
+  const floatStyle = useAnimatedStyle(() => ({
+    opacity: 0.3 + floatProgress.value * 0.7,
     transform: [
-      { translateX: cloudOne.value },
-      { translateY: -cloudDepth.value * 2 },
-      { scale: 1 + cloudDepth.value * 0.025 },
-    ],
-  }));
-
-  const cloudTwoStyle = useAnimatedStyle(() => ({
-    transform: [
-      { translateX: cloudTwo.value },
-      { translateY: cloudDepth.value * 2 },
-      { scale: 1.02 - cloudDepth.value * 0.02 },
+      { translateY: -floatProgress.value * 82 },
+      { translateX: Math.sin(floatProgress.value * Math.PI * 2) * 7 },
+      { scale: size },
     ],
   }));
 
   return (
-    <View pointerEvents="none" style={s.nightSky}>
+    <Animated.View style={[s.festivalLantern, { left, bottom }, floatStyle]}>
+      <View style={s.festivalLanternGlow} />
+      <View style={s.festivalLanternString} />
+      <View style={s.festivalLanternCap} />
       <LinearGradient
-        colors={
-          isNight
-            ? ["#020617", "#0B1120", "#172554", "#312E81"]
-            : isSunset
-              ? ["#1E1B4B", "#4C1D95", "#8B5CF6", "#F5D0FE"]
-              : ["#7DD3FC", "#38BDF8", "#0EA5E9", "#E0F2FE"]
-        }
-        locations={[0, 0.28, 0.68, 1]}
-        style={s.nightGradient}
+        colors={["#FFF0B8", "#F59E0B", "#C2410C"]}
+        locations={[0, 0.48, 1]}
+        style={s.festivalLanternBody}
+      >
+        <View style={s.festivalLanternRib} />
+        <View style={s.festivalLanternFlame} />
+      </LinearGradient>
+      <View style={s.festivalLanternBase} />
+    </Animated.View>
+  );
+}
+
+function FestivalFirework({
+  left,
+  top,
+  delay,
+  size,
+}: {
+  left: string;
+  top: number;
+  delay: number;
+  size: number;
+}) {
+  const burstProgress = useSharedValue(0.12);
+
+  useEffect(() => {
+    burstProgress.value = withDelay(
+      delay,
+      withRepeat(
+        withSequence(
+          withTiming(1, { duration: 480 }),
+          withTiming(0.04, { duration: 1500 })
+        ),
+        -1,
+        false
+      )
+    );
+  }, [delay]);
+
+  const burstStyle = useAnimatedStyle(() => ({
+    opacity: burstProgress.value,
+    transform: [{ scale: size * (0.5 + burstProgress.value * 0.62) }],
+  }));
+
+  const rays = [0, 45, 90, 135, 180, 225, 270, 315];
+  const sparks = [
+    { left: 17, top: 0 },
+    { left: 34, top: 15 },
+    { left: 17, top: 33 },
+    { left: 0, top: 15 },
+    { left: 5, top: 4 },
+    { left: 31, top: 5 },
+    { left: 5, top: 29 },
+    { left: 30, top: 29 },
+  ];
+
+  return (
+    <Animated.View style={[s.festivalFirework, { left, top }, burstStyle]}>
+      {rays.map((angle) => (
+        <View
+          key={angle}
+          style={[
+            s.festivalFireworkRay,
+            { transform: [{ rotate: String(angle) + "deg" }] },
+          ]}
+        />
+      ))}
+      {sparks.map((spark, index) => (
+        <View
+          key={index}
+          style={[
+            s.festivalFireworkSpark,
+            { left: spark.left, top: spark.top },
+            index % 3 === 0 && s.festivalFireworkSparkWarm,
+          ]}
+        />
+      ))}
+      <View style={s.festivalFireworkCore} />
+    </Animated.View>
+  );
+}
+
+function FestivalSugarcane({ left, bottom }: { left: string; bottom: number }) {
+  const sway = useSharedValue(0);
+
+  useEffect(() => {
+    sway.value = withRepeat(
+      withSequence(
+        withTiming(1, { duration: 2600 }),
+        withTiming(0, { duration: 2600 })
+      ),
+      -1,
+      true
+    );
+  }, []);
+
+  const swayStyle = useAnimatedStyle(() => ({
+    transform: [{ rotate: `${-1.5 + sway.value * 3}deg` }],
+  }));
+
+  const stalkOffsets = [5, 17, 29];
+  const nodePositions = ["18%", "36%", "54%", "72%"];
+
+  return (
+    <Animated.View
+      pointerEvents="none"
+      testID="home-festival-sugarcane"
+      style={[s.festivalSugarcaneCluster, { left, bottom }, swayStyle]}
+    >
+      {stalkOffsets.map((offset, index) => (
+        <View
+          key={offset}
+          style={[
+            s.festivalSugarcaneStalk,
+            {
+              left: offset,
+              height: index === 1 ? 84 : index === 0 ? 75 : 79,
+              transform: [{ rotate: index === 0 ? "-5deg" : index === 2 ? "6deg" : "1deg" }],
+            },
+          ]}
+        >
+          {nodePositions.map((top) => (
+            <View key={top} style={[s.festivalSugarcaneNode, { top }]} />
+          ))}
+        </View>
+      ))}
+      <View style={[s.festivalSugarcaneLeaf, { left: -2, top: 18, transform: [{ rotate: "-34deg" }] }]} />
+      <View style={[s.festivalSugarcaneLeaf, { left: 15, top: 9, transform: [{ rotate: "34deg" }] }]} />
+      <View style={[s.festivalSugarcaneLeaf, { left: 4, top: 38, transform: [{ rotate: "-25deg" }] }]} />
+      <View style={[s.festivalSugarcaneLeaf, { left: 18, top: 32, transform: [{ rotate: "28deg" }] }]} />
+    </Animated.View>
+  );
+}
+
+function FestivalChhathSoop() {
+  return (
+    <View pointerEvents="none" testID="home-chhath-soop" style={s.festivalChhathSoop}>
+      <View style={s.festivalSoopBody}>
+        {[8, 17, 26, 35, 44].map((left) => (
+          <View key={left} style={[s.festivalSoopWeave, { left }]} />
+        ))}
+      </View>
+      <View style={s.festivalSoopRim} />
+      <View style={[s.festivalPaanLeaf, { left: 15, top: -13, transform: [{ rotate: "-34deg" }] }]}>
+        <View style={s.festivalPaanVein} />
+      </View>
+      <View style={[s.festivalPaanLeaf, { left: 30, top: -12, transform: [{ rotate: "31deg" }] }]}>
+        <View style={s.festivalPaanVein} />
+      </View>
+      <View style={s.festivalSoopFruitOrange} />
+      <View style={s.festivalSoopFruitBanana} />
+      <View style={s.festivalSoopCoconut} />
+    </View>
+  );
+}
+
+function FestivalDecor() {
+  const lightPulse = useSharedValue(0);
+  const waterDrift = useSharedValue(0);
+
+  useEffect(() => {
+    lightPulse.value = withRepeat(
+      withSequence(
+        withTiming(1, { duration: 1100 }),
+        withTiming(0, { duration: 1300 })
+      ),
+      -1,
+      false
+    );
+    waterDrift.value = withRepeat(
+      withTiming(1, { duration: 4200 }),
+      -1,
+      false
+    );
+  }, []);
+
+  const lightsStyle = useAnimatedStyle(() => ({
+    opacity: 0.72 + lightPulse.value * 0.28,
+  }));
+  const waterShimmerStyle = useAnimatedStyle(() => ({
+    opacity: 0.22 + Math.sin(waterDrift.value * Math.PI * 2) * 0.10,
+    transform: [{ translateX: -18 + waterDrift.value * 36 }],
+  }));
+
+  return (
+    <View pointerEvents="none" style={s.festivalDecor} testID="home-festival-hero">
+      <LinearGradient
+        colors={["#080F27", "#1B1D43", "#59304C", "#C06A4E"]}
+        locations={[0, 0.42, 0.76, 1]}
+        style={s.festivalBackdrop}
       />
-      <Animated.View style={[s.cloud, s.cloudOne, cloudOneStyle]}>
-        <View style={[s.cloudPuff, { width: 58, height: 32, left: 14, top: 10, backgroundColor: "rgba(255,255,255,0.82)" }]} />
-        <View style={[s.cloudPuff, { width: 82, height: 44, left: 42, top: -1, backgroundColor: "rgba(255,255,255,0.88)" }]} />
-        <View style={[s.cloudPuff, { width: 54, height: 30, left: 102, top: 12, backgroundColor: "rgba(255,255,255,0.76)" }]} />
+      <View style={s.festivalHorizonGlow} />
+      <View style={s.festivalStarLayer}>
+        {SKY_STARS.slice(0, 18).map((star, index) => (
+          <View
+            key={index}
+            style={[
+              s.festivalStar,
+              {
+                left: star.left,
+                top: star.top,
+                width: star.size,
+                height: star.size,
+                opacity: index % 4 === 0 ? 0.95 : 0.55,
+              },
+            ]}
+          />
+        ))}
+      </View>
+
+      <Animated.View style={[s.festivalLightString, lightsStyle]}>
+        <View style={s.festivalLightWire} />
+        {FESTIVAL_BULBS.map((bulb, index) => (
+          <View
+            key={index}
+            style={[
+              s.festivalBulb,
+              {
+                left: bulb.left,
+                top: bulb.top,
+                backgroundColor: bulb.color,
+                shadowColor: bulb.color,
+              },
+            ]}
+          />
+        ))}
       </Animated.View>
-      <Animated.View style={[s.cloud, s.cloudTwo, cloudTwoStyle]}>
-        <View style={[s.cloudPuff, { width: 46, height: 26, left: 14, top: 11, backgroundColor: "rgba(255,255,255,0.74)" }]} />
-        <View style={[s.cloudPuff, { width: 72, height: 38, left: 40, top: 0, backgroundColor: "rgba(255,255,255,0.82)" }]} />
-        <View style={[s.cloudPuff, { width: 54, height: 29, left: 86, top: 10, backgroundColor: "rgba(255,255,255,0.68)" }]} />
-      </Animated.View>
+
+      {FESTIVAL_LANTERNS.map((lantern, index) => (
+        <FestivalLantern key={index} {...lantern} />
+      ))}
+
+      {FESTIVAL_FIREWORKS.map((firework, index) => (
+        <FestivalFirework key={index} {...firework} />
+      ))}
+
+      <View style={s.festivalGhatStepOne} />
+      <View style={s.festivalGhatStepTwo} />
+      <View style={s.festivalGhatStepThree} />
+
+      <LinearGradient
+        colors={["rgba(19,75,101,0.04)", "rgba(8,39,63,0.60)"]}
+        style={s.festivalWater}
+      >
+        <Animated.View style={[s.festivalWaterShimmer, waterShimmerStyle]} />
+        {["15%", "39%", "66%", "87%"].map((left, index) => (
+          <View key={left} style={[s.festivalDiya, { left }]}>
+            <View style={[s.festivalDiyaFlame, index % 2 === 0 && s.festivalDiyaFlameBright]} />
+            <View style={s.festivalDiyaBowl} />
+          </View>
+        ))}
+      </LinearGradient>
+
+      <FestivalSugarcane left="61%" bottom={15} />
+      <FestivalSugarcane left="75%" bottom={12} />
+      <FestivalChhathSoop />
+    </View>
+  );
+}
+
+
+function NightSky() {
+  return (
+    <View pointerEvents="none" style={s.nightSky}>
+      <FestivalDecor />
     </View>
   );
 }
@@ -1045,7 +986,7 @@ export default function Home() {
 
   return (
     <View style={[s.root, Platform.OS === 'web' ? ({ height: '100vh', overflow: 'hidden' } as any) : {}]} testID="home-screen">
-      {/* Dynamic time-of-day hero: day, sunset and night */}
+      {/* Animated Chhath–Diwali hero: ghat, diyas, fireworks, lanterns and offerings */}
       <RNAnimated.View
         pointerEvents={heroCollapsed ? "none" : "auto"}
         style={[
@@ -1594,6 +1535,49 @@ function SectionTitle({ title, subtitle }: { title: string; subtitle?: string })
 }
 
 const s = StyleSheet.create({
+  festivalDecor: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, zIndex: 20, overflow: "hidden" },
+  festivalBackdrop: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0 },
+  festivalHorizonGlow: { position: "absolute", left: "17%", right: "17%", top: 84, height: 58, borderRadius: 70, backgroundColor: "rgba(251,146,60,0.17)", shadowColor: "#FB923C", shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.42, shadowRadius: 24, elevation: 3 },
+  festivalStarLayer: { position: "absolute", left: 0, right: 0, top: 0, height: 92 },
+  festivalStar: { position: "absolute", borderRadius: 2, backgroundColor: "#FFF8E8", shadowColor: "#FFF8E8", shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.8, shadowRadius: 3, elevation: 2 },
+  festivalLightString: { position: "absolute", left: "6%", right: "6%", top: 57, height: 24, zIndex: 8 },
+  festivalLightWire: { position: "absolute", left: 0, right: 0, top: 5, height: 16, borderBottomWidth: 1, borderBottomColor: "rgba(255,211,128,0.76)", borderBottomLeftRadius: 90, borderBottomRightRadius: 90 },
+  festivalBulb: { position: "absolute", width: 5, height: 5, borderRadius: 3, borderWidth: 0.5, borderColor: "rgba(255,255,255,0.72)", shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.9, shadowRadius: 7, elevation: 5 },
+  festivalLantern: { position: "absolute", width: 28, height: 44, alignItems: "center", zIndex: 10 },
+  festivalLanternGlow: { position: "absolute", top: 7, width: 30, height: 30, borderRadius: 15, backgroundColor: "rgba(255,181,64,0.18)", shadowColor: "#FBBF24", shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.65, shadowRadius: 12, elevation: 5 },
+  festivalLanternString: { position: "absolute", top: -7, width: 1, height: 8, backgroundColor: "#FDE68A" },
+  festivalLanternCap: { width: 15, height: 3, borderRadius: 2, backgroundColor: "#FDE68A" },
+  festivalLanternBody: { width: 18, height: 27, borderRadius: 5, borderWidth: 1, borderColor: "#FFF1C1", overflow: "hidden", alignItems: "center", justifyContent: "center" },
+  festivalLanternRib: { position: "absolute", left: 3, right: 3, top: 1, bottom: 1, borderLeftWidth: 0.8, borderRightWidth: 0.8, borderColor: "rgba(255,244,201,0.65)" },
+  festivalLanternFlame: { width: 4, height: 8, borderRadius: 4, backgroundColor: "#FFF9D5", shadowColor: "#FFF2A6", shadowOffset: { width: 0, height: 0 }, shadowOpacity: 1, shadowRadius: 5, elevation: 4 },
+  festivalLanternBase: { width: 8, height: 2, borderRadius: 2, backgroundColor: "#FDE68A" },
+  festivalFirework: { position: "absolute", width: 38, height: 38, zIndex: 9 },
+  festivalFireworkRay: { position: "absolute", left: 18, top: 12, width: 2, height: 14, borderRadius: 2, backgroundColor: "#FFE6A3", shadowColor: "#FDBA74", shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.9, shadowRadius: 5, elevation: 3 },
+  festivalFireworkSpark: { position: "absolute", width: 3, height: 3, borderRadius: 2, backgroundColor: "#FFF6D6", shadowColor: "#FDE68A", shadowOffset: { width: 0, height: 0 }, shadowOpacity: 1, shadowRadius: 4, elevation: 3 },
+  festivalFireworkSparkWarm: { backgroundColor: "#FB923C", shadowColor: "#FB923C" },
+  festivalFireworkCore: { position: "absolute", left: 16, top: 16, width: 5, height: 5, borderRadius: 3, backgroundColor: "#FFFFFF", shadowColor: "#FFFFFF", shadowOffset: { width: 0, height: 0 }, shadowOpacity: 1, shadowRadius: 5, elevation: 4 },
+  festivalSugarcaneCluster: { position: "absolute", width: 46, height: 90, zIndex: 14, overflow: "visible" },
+  festivalSugarcaneStalk: { position: "absolute", bottom: 0, width: 6, borderRadius: 4, backgroundColor: "#397C3A", borderWidth: 1, borderColor: "#A7CF72", shadowColor: "#A3D66B", shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.42, shadowRadius: 3, elevation: 2 },
+  festivalSugarcaneNode: { position: "absolute", left: -0.5, right: -0.5, height: 1.5, backgroundColor: "rgba(231,245,174,0.92)", borderRadius: 2 },
+  festivalSugarcaneLeaf: { position: "absolute", width: 29, height: 6, borderRadius: 10, backgroundColor: "#397A35", borderWidth: 0.6, borderColor: "#9FC66D" },
+  festivalChhathSoop: { position: "absolute", left: "43%", bottom: 14, width: 64, height: 40, zIndex: 16, alignItems: "center" },
+  festivalSoopBody: { position: "absolute", bottom: 0, width: 58, height: 23, borderBottomLeftRadius: 30, borderBottomRightRadius: 30, borderWidth: 1.2, borderTopWidth: 0, borderColor: "#E7B875", backgroundColor: "rgba(157,99,45,0.94)", overflow: "hidden" },
+  festivalSoopRim: { position: "absolute", top: 13, width: 64, height: 8, borderRadius: 8, borderWidth: 1.2, borderColor: "#F3D29A", backgroundColor: "#C88B4B" },
+  festivalSoopWeave: { position: "absolute", top: 3, bottom: 2, width: 1.3, backgroundColor: "rgba(255,220,158,0.62)" },
+  festivalPaanLeaf: { position: "absolute", width: 19, height: 27, borderTopLeftRadius: 19, borderTopRightRadius: 3, borderBottomLeftRadius: 3, borderBottomRightRadius: 19, backgroundColor: "#238443", borderWidth: 0.8, borderColor: "#9ED27C", zIndex: 3 },
+  festivalPaanVein: { position: "absolute", left: 8, top: 3, bottom: 3, width: 1, backgroundColor: "rgba(204,245,166,0.92)", borderRadius: 1 },
+  festivalSoopFruitOrange: { position: "absolute", top: 7, left: 9, width: 9, height: 9, borderRadius: 5, backgroundColor: "#F59E0B", borderWidth: 1, borderColor: "#FDE68A", zIndex: 2 },
+  festivalSoopFruitBanana: { position: "absolute", top: 5, left: 39, width: 15, height: 6, borderRadius: 8, backgroundColor: "#FDE68A", borderBottomWidth: 1.5, borderBottomColor: "#D69A35", transform: [{ rotate: "-22deg" }], zIndex: 2 },
+  festivalSoopCoconut: { position: "absolute", top: 3, left: 25, width: 9, height: 9, borderRadius: 5, backgroundColor: "#8B5A35", borderWidth: 1, borderColor: "#D6A16A", zIndex: 2 },
+  festivalGhatStepOne: { position: "absolute", right: "5%", bottom: 9, width: 72, height: 5, borderRadius: 2, backgroundColor: "rgba(151,91,50,0.9)", borderTopWidth: 1, borderTopColor: "rgba(255,218,157,0.86)", zIndex: 11 },
+  festivalGhatStepTwo: { position: "absolute", right: "8%", bottom: 14, width: 58, height: 5, borderRadius: 2, backgroundColor: "rgba(175,112,62,0.88)", borderTopWidth: 1, borderTopColor: "rgba(255,221,163,0.84)", zIndex: 11 },
+  festivalGhatStepThree: { position: "absolute", right: "11%", bottom: 19, width: 44, height: 5, borderRadius: 2, backgroundColor: "rgba(194,135,78,0.9)", borderTopWidth: 1, borderTopColor: "rgba(255,227,177,0.82)", zIndex: 11 },
+  festivalWater: { position: "absolute", left: 0, right: 0, bottom: 0, height: 18, zIndex: 13, overflow: "hidden", borderTopWidth: 1, borderTopColor: "rgba(253,205,124,0.22)" },
+  festivalWaterShimmer: { position: "absolute", left: "22%", top: 5, width: "35%", height: 1.5, borderRadius: 2, backgroundColor: "rgba(255,217,144,0.82)" },
+  festivalDiya: { position: "absolute", bottom: 3, width: 12, height: 12, alignItems: "center", justifyContent: "flex-end" },
+  festivalDiyaFlame: { position: "absolute", top: 0, width: 4, height: 7, borderRadius: 4, backgroundColor: "#FDBA74", shadowColor: "#F59E0B", shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.9, shadowRadius: 5, elevation: 4 },
+  festivalDiyaFlameBright: { backgroundColor: "#FFF4C2", shadowColor: "#FFF4C2" },
+  festivalDiyaBowl: { width: 11, height: 4, borderBottomLeftRadius: 7, borderBottomRightRadius: 7, backgroundColor: "#D97706", borderTopWidth: 1, borderTopColor: "#FDE68A" },
   serviceCardSmall: { width: width > 768 ? 240 : Math.max(150, (width - (SPACING.lg * 2) - 10) / 2), height: 150, backgroundColor: THEME.white, borderRadius: RADIUS.md, overflow: "hidden", borderWidth: 1, borderColor: THEME.borderSoft },
   serviceImgSmall: { width: "100%", height: 105 },
   servicePlaceholder: { alignItems: "center", justifyContent: "center", backgroundColor: "#E0F2FE" },
