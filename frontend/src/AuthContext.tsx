@@ -98,18 +98,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const acceptRestoredWebUser = useCallback(async (fresh: User, cached: User | null) => {
-    // Never silently switch this tab to the account last used by another tab.
+    // Browser tabs now share one persistent browser-profile session selector.
+    // A different cached profile means another tab intentionally signed into a
+    // different account; adopt the server-verified account instead of revoking
+    // the shared cookie and unexpectedly logging every tab out.
     if (Platform.OS === "web" && cached?.id && fresh?.id && cached.id !== fresh.id) {
-      console.warn("[auth] This tab's saved user does not match its active session; requiring sign-in.");
-      try { await api.logoutSession(); } catch (error) {
-        console.warn("[auth] Could not clear the mismatched tab session", error);
-      }
-      await clearAuth();
-      // Keep this tab signed out even if the server could not revoke its cookie.
-      markWebSessionLoggedOut();
-      setSessionExpired(false);
-      setU(null);
-      return false;
+      console.info("[auth] Browser account changed in another tab; adopting the active server session.");
     }
     await setUser(fresh);
     markSessionActive();
