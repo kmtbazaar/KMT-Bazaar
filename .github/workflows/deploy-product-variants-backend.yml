@@ -151,7 +151,7 @@ jobs:
 
           # Keep all successful logins on the same 30-day native/browser session policy.
           newline = "\r\n" if "\r\n" in source else "\n"
-          auth_days = re.compile(r"^AUTH_SESSION_DAYS\\s*=.*$", re.M)
+          auth_days = re.compile(r"^AUTH_SESSION_DAYS\s*=.*$", re.M)
           auth_days_matches = list(auth_days.finditer(source))
           if len(auth_days_matches) > 1:
               raise SystemExit("STOP: Multiple AUTH_SESSION_DAYS settings; no VPS changes made.")
@@ -159,10 +159,10 @@ jobs:
               if auth_days_matches[0].group(0).strip() != "AUTH_SESSION_DAYS = 30":
                   raise SystemExit("STOP: Conflicting AUTH_SESSION_DAYS setting; no VPS changes made.")
           else:
-              jwt_setting = re.compile(r"^JWT_EXPIRE_MIN\\s*=.*$", re.M)
+              jwt_setting = re.compile(r"^JWT_EXPIRE_MIN\s*=.*$", re.M)
               if len(list(jwt_setting.finditer(source))) != 1:
                   raise SystemExit("STOP: Could not safely locate JWT_EXPIRE_MIN; no VPS changes made.")
-              source = jwt_setting.sub("AUTH_SESSION_DAYS = 30" + newline + r"\\g<0>", source, count=1)
+              source = jwt_setting.sub("AUTH_SESSION_DAYS = 30" + newline + r"\g<0>", source, count=1)
 
           duration_settings = {
               "JWT_EXPIRE_MIN": "JWT_EXPIRE_MIN = 60 * 24 * AUTH_SESSION_DAYS",
@@ -170,7 +170,7 @@ jobs:
               "AUTH_COOKIE_MAX_AGE": "AUTH_COOKIE_MAX_AGE = WEB_SESSION_TIMEOUT_MIN * 60",
           }
           for setting_name, expected_line in duration_settings.items():
-              setting_pattern = re.compile(rf"^\\s*{re.escape(setting_name)}\\s*=.*$", re.M)
+              setting_pattern = re.compile(rf"^\s*{re.escape(setting_name)}\s*=.*$", re.M)
               setting_matches = list(setting_pattern.finditer(source))
               if len(setting_matches) != 1:
                   raise SystemExit(f"STOP: Expected exactly one {setting_name} setting; no VPS changes made.")
