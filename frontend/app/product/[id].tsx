@@ -1,6 +1,6 @@
 import { LocalizedText as Text, LocalizedTextInput as TextInput } from "@/src/LocalizedText";
 import React, { useEffect, useState, useMemo, useRef } from "react";
-import { View, StyleSheet, Pressable, ScrollView, ActivityIndicator, Share, Platform } from "react-native";
+import { View, StyleSheet, Pressable, ScrollView, ActivityIndicator, Share, Platform, useWindowDimensions } from "react-native";
 import { Image } from "expo-image";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
@@ -14,6 +14,8 @@ import CheckoutBar from "@/src/components/CheckoutBar";
 import { useWishlist } from "@/src/WishlistContext";
 
 export default function Product() {
+  const { width: screenWidth } = useWindowDimensions();
+  const productImageHeight = Math.min(320, Math.max(240, screenWidth * 0.78));
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const { add, update, cart, itemCount } = useCart();
@@ -261,7 +263,7 @@ export default function Product() {
       
       <ScrollView style={{ flex: 1, minHeight: 0 }} contentContainerStyle={{ paddingBottom: 190 }} showsVerticalScrollIndicator={false}>
         <View
-          style={s.imageCarousel}
+          style={[s.imageCarousel, { height: productImageHeight }]}
           onLayout={(event) => {
             const nextWidth = event.nativeEvent.layout.width;
             setCarouselWidth((current) => current === nextWidth ? current : nextWidth);
@@ -286,7 +288,7 @@ export default function Product() {
             {productImages.map((uri: string, index: number) => (
               <View
                 key={uri + "-" + index}
-                style={[s.carouselSlide, carouselWidth > 0 ? { width: carouselWidth } : null]}
+                style={[s.carouselSlide, carouselWidth > 0 ? { width: carouselWidth } : null, { height: productImageHeight }]}
               >
                 <Image source={{ uri }} style={s.img} contentFit="contain" />
               </View>
@@ -499,22 +501,22 @@ const s = StyleSheet.create({
   hbtn: { width: 38, height: 38, backgroundColor: "transparent", alignItems: "center", justifyContent: "center" },
   wishIcon: { textShadowColor: "rgba(0,0,0,0.65)", textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 2 },
   imageCarousel: { width: "100%", overflow: "hidden", backgroundColor: COLORS.surfaceSecondary },
-  carouselSlide: { width: "100%", aspectRatio: 1, backgroundColor: COLORS.surfaceSecondary },
-  img: { width: "100%", aspectRatio: 1, backgroundColor: COLORS.surfaceSecondary },
-  carouselIndicators: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 4, paddingVertical: SPACING.sm },
+  carouselSlide: { width: "100%", backgroundColor: COLORS.surfaceSecondary },
+  img: { width: "100%", height: "100%", backgroundColor: COLORS.surfaceSecondary },
+  carouselIndicators: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 4, paddingVertical: 4 },
   carouselDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: COLORS.border, marginHorizontal: 2 },
   carouselDotActive: { width: 18, backgroundColor: COLORS.brand },
   carouselCount: { color: COLORS.textMuted, fontSize: 11, fontWeight: "700", marginLeft: 8 },
-  card: { padding: SPACING.lg },
-  name: { fontSize: 22, fontWeight: "800", color: COLORS.text, marginTop: 8 },
-  unit: { color: COLORS.textMuted, marginTop: 4, fontSize: 13 },
+  card: { paddingHorizontal: SPACING.lg, paddingTop: SPACING.sm, paddingBottom: SPACING.lg },
+  name: { fontSize: 22, fontWeight: "800", color: COLORS.text, marginTop: 0 },
+  unit: { color: COLORS.textMuted, marginTop: 2, fontSize: 13 },
   outOfStockText: { color: COLORS.error, fontWeight: "900", fontSize: 16, letterSpacing: 0.4, marginTop: 6 },
-  priceRow: { flexDirection: "row", alignItems: "center", gap: 10, marginTop: 12 },
+  priceRow: { flexDirection: "row", alignItems: "center", gap: 10, marginTop: 6 },
   price: { fontSize: 28, fontWeight: "800", color: COLORS.text },
   mrp: { fontSize: 16, color: COLORS.textMuted, textDecorationLine: "line-through" },
   discPill: { backgroundColor: COLORS.success, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 4 },
   discText: { color: "#fff", fontWeight: "800", fontSize: 11 },
-  variantSelector: { marginTop: SPACING.md, padding: SPACING.md, borderRadius: 18, borderWidth: 1, borderColor: "#FED7AA", backgroundColor: "#FFF7ED", gap: 12 },
+  variantSelector: { marginTop: SPACING.sm, padding: SPACING.md, borderRadius: 18, borderWidth: 1, borderColor: "#FED7AA", backgroundColor: "#FFF7ED", gap: 12 },
   variantSelectorHeader: { flexDirection: "row", alignItems: "center", gap: 10 },
   variantSelectorTitle: { color: COLORS.text, fontSize: 16, fontWeight: "900" },
   variantSelectorSubtitle: { color: COLORS.textSecondary, fontSize: 12, marginTop: 3 },
