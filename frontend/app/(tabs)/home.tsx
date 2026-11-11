@@ -48,7 +48,6 @@ const THEME = {
 const SEARCH_PLACEHOLDERS = [
   "Search 'groceries'...",
   "Search 'fresh food'...",
-  "Search 'medicines'...",
   "Search 'electronics'...",
   "Search 'daily essentials'..."
 ];
@@ -1023,14 +1022,6 @@ export default function Home() {
             </View>
           </Pressable>
 
-          <Animated.View
-            pointerEvents="none"
-            testID="home-location-neon-glow"
-            style={[s.headerNeonGlow, animatedFlashStyle]}
-          >
-            <View style={s.headerNeonCore} />
-          </Animated.View>
-
           {/* Animated Notification Bell on Top Right */}
           <View style={s.headerActions}>
             <Animated.View style={animatedBellStyle}>
@@ -1047,7 +1038,11 @@ export default function Home() {
         </View>
 
       </SafeAreaView>
-      <View style={s.skyClearSpace} />
+      <View style={s.skyClearSpace} pointerEvents="none" testID="home-hero-brand-space">
+        <Animated.Text testID="home-hero-brand-neon" style={[s.heroBrandNeon, animatedFlashStyle]}>
+          KMT BAZAAR
+        </Animated.Text>
+      </View>
       </RNAnimated.View>
 
       {/* The search bar stays usable while the hero shell slides away after the banner scrolls off. */}
@@ -1651,7 +1646,7 @@ const s = StyleSheet.create({
   cloudHighlightTwo: { position: "absolute", left: 38, top: 7, width: 32, height: 9, borderRadius: 10, backgroundColor: "rgba(255,255,255,0.2)" },
   cloudBase: { position: "absolute", left: 2, right: 2, bottom: 4, height: 24, borderRadius: 18, backgroundColor: "rgba(100,116,139,0.12)" },
   headerBg: { position: "absolute", top: 0, left: 0, right: 0, height: HERO_BACKDROP_HEIGHT, borderBottomLeftRadius: 30, borderBottomRightRadius: 30, backgroundColor: "transparent", shadowColor: "#FFFFFF", shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.14, shadowRadius: 18, elevation: 7 },
-  skyClearSpace: { height: Platform.OS === "web" ? 90 : 56 },
+  skyClearSpace: { height: Platform.OS === "web" ? 90 : 56, alignItems: "center", justifyContent: "center" },
   skyClearSpaceCollapsed: { height: 0 },
   searchBarSafeArea: { backgroundColor: "transparent", zIndex: 20, elevation: 0 },
   searchBarSafeAreaCollapsed: { borderBottomWidth: 1, borderBottomColor: "rgba(226,232,240,0.9)" },
@@ -1664,15 +1659,14 @@ const s = StyleSheet.create({
   locLabel: { color: "rgba(255,255,255,0.85)", fontSize: 11, fontWeight: "600" },
   locValue: { color: THEME.white, fontSize: 14, fontWeight: "800" },
   locationErrorText: { color: "#FEF3C7", fontSize: 9, fontWeight: "700", marginTop: 2, maxWidth: 260 },
-  headerNeonGlow: { width: 25, height: 4, marginRight: 10, borderRadius: 99, backgroundColor: "#FFF2A6", shadowColor: "#FFC928", shadowOffset: { width: 0, height: 0 }, shadowOpacity: 1, shadowRadius: 11, elevation: 7, alignItems: "center", justifyContent: "center" },
-  headerNeonCore: { width: 9, height: 2, borderRadius: 99, backgroundColor: "#FFFFFF", shadowColor: "#FFF7C2", shadowOffset: { width: 0, height: 0 }, shadowOpacity: 1, shadowRadius: 4, elevation: 4 },
+  heroBrandNeon: { color: "#FFF7D6", fontSize: 18, fontWeight: "900", letterSpacing: 3, textAlign: "center", textShadowColor: "#FFC928", textShadowOffset: { width: 0, height: 0 }, textShadowRadius: 14 },
   headerActions: { flexDirection: "row", alignItems: "center" },
   iconBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: "rgba(255,255,255,0.2)", alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: "rgba(255,255,255,0.3)" },
   bellBadge: { position: "absolute", top: 2, right: 2, backgroundColor: THEME.orange, minWidth: 18, height: 18, borderRadius: 9, paddingHorizontal: 4, alignItems: "center", justifyContent: "center", borderWidth: 1.5, borderColor: THEME.white },
   bellBadgeText: { color: THEME.white, fontSize: 9, fontWeight: "900" },
   
   searchWrap: { width: "100%", flexDirection: "row", alignItems: "center", backgroundColor: "rgba(22,163,74,0.22)", borderRadius: 8, paddingHorizontal: 14, paddingVertical: 7, marginTop: 14, height: 44, borderWidth: 1, borderColor: "rgba(134,239,172,0.72)", shadowColor: "#000000", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.06, shadowRadius: 8, elevation: 1 },
-  searchPlaceholderText: { fontSize: 14, color: "#FFD54A", fontWeight: "700", textShadowColor: "rgba(0,0,0,0.38)", textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 2 },
+  searchPlaceholderText: { fontSize: 16, color: "#FF8A00", fontWeight: "800", textShadowColor: "rgba(0,0,0,0.38)", textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 2 },
   searchMicBg: { width: 32, height: 32, backgroundColor: THEME.orange, borderRadius: 16, alignItems: "center", justifyContent: "center" },
   searchMicListening: { transform: [{ scale: 1.08 }], backgroundColor: THEME.orangeBright },
 
