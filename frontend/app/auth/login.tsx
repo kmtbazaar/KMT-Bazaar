@@ -292,10 +292,13 @@ export default function Login() {
   }, []);
 
   useEffect(() => {
-    if (Platform.OS !== "web" || !googleClientId) return;
+    // The Google button container is conditionally removed after account lookup.
+    // Re-render the embedded button whenever the fresh login form becomes visible again.
+    if (Platform.OS !== "web" || !googleClientId || accountChecked) return;
 
     let cancelled = false;
     let scriptElement: HTMLScriptElement | null = null;
+    setGoogleButtonReady(false);
 
     const initializeGoogle = () => {
       if (cancelled) return;
@@ -391,7 +394,7 @@ export default function Login() {
       scriptElement?.removeEventListener("load", initializeGoogle);
       scriptElement?.removeEventListener("error", handleScriptError);
     };
-  }, [googleClientId]);
+  }, [googleClientId, accountChecked]);
 
   const onGoogleLogin = () => {
     setError("Google sign-in is currently available on the KMT Bazaar website. Native Android/iOS sign-in needs separate platform client IDs.");
