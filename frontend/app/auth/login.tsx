@@ -1,6 +1,6 @@
 import { LocalizedText as Text, LocalizedTextInput as TextInput } from "@/src/LocalizedText";
 import AIAssistant from "../../components/AIAssistant";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   View,
   Pressable,
@@ -11,7 +11,7 @@ import {
   Dimensions,
 } from "react-native";
 import AnimatedBrandLogo from "@/src/components/AnimatedBrandLogo";
-import { useRouter } from "expo-router";
+import { useFocusEffect, useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
@@ -108,6 +108,24 @@ export default function Login() {
   const [otpLoading, setOtpLoading] = useState(false);
   const keyboardShift = useSharedValue(0);
   const brandFlashOpacity = useSharedValue(1);
+
+  // Returning from registration must restore the initial login form.
+  // This prevents the previous "account not found" state from hiding Continue.
+  useFocusEffect(
+    useCallback(() => {
+      setLoginType("email");
+      setIdentifier("");
+      setAccountChecked(false);
+      setRegistered(false);
+      setPassword("");
+      setEmailOtpStep(false);
+      setEmailOtp("");
+      setShowPassword(false);
+      setError(null);
+      setLoading(false);
+      setOtpLoading(false);
+    }, [])
+  );
 
   useEffect(() => {
     brandFlashOpacity.value = withRepeat(
