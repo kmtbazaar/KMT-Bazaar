@@ -135,8 +135,9 @@ jobs:
           assert.ok(home.includes("function FestivalLantern") && home.includes("function FestivalFirework") && home.includes("s.festivalDiya"), "Festival lanterns, fireworks, and diyas must remain available");
           assert.ok(home.includes("function FestivalSugarcane") && home.includes('testID="home-festival-sugarcane"') && home.includes('FestivalSugarcane left="61%"') && home.includes('FestivalSugarcane left="75%"'), "Traditional animated sugarcane must appear at the ghat");
           assert.ok(home.includes("function FestivalChhathSoop") && home.includes('testID="home-chhath-soop"') && home.includes("festivalPaanLeaf") && home.includes("festivalSoopFruitBanana"), "Chhath soop must include paan leaves and traditional offerings");
-          assert.ok(!home.includes("KMT BAZAAR") && !home.includes("festivalBrandPlate") && !home.includes("s.festivalRooftop"), "Centered KMT Bazaar plate and modern rooftop must be removed from the ghat");
-          assert.ok(home.includes('testID="home-location-neon-glow"') && home.includes("#FFF2A6") && home.includes("#FFC928"), "Location and notification must have a warm-yellow neon glow");
+          assert.ok(!home.includes("festivalBrandPlate") && !home.includes("s.festivalRooftop"), "Centered brand plate and modern rooftop must remain removed from the festival ghat");
+          assert.ok(!home.includes('testID="home-location-neon-glow"') && !home.includes("headerNeonGlow"), "Neon bar between location and notification must be removed");
+          assert.ok(home.includes('testID="home-hero-brand-neon"') && home.includes("KMT BAZAAR") && home.includes("heroBrandNeon:") && home.includes('textShadowColor: "#FFC928"'), "KMT Bazaar hero text must have a warm-yellow neon glow");
           assert.ok(home.includes("rgba(151,91,50,0.9)") && home.includes("rgba(194,135,78,0.9)"), "Ghat steps must use a traditional warm sandstone palette");
           assert.ok(home.includes('backgroundColor: "rgba(22,163,74,0.22)"') && home.includes('borderColor: "rgba(134,239,172,0.72)"') && home.includes("borderRadius: 8"), "Home search field must use translucent green styling and square corners");
           const heroHeightLine = home.includes("const heroExpandedHeight = HERO_BACKDROP_HEIGHT;");
@@ -162,6 +163,10 @@ jobs:
           assert.ok(search.includes("product?.product_name") && search.includes("product?.productName") && search.includes("product?.title"), "Search must match legacy product name fields as well as the current name");
           assert.ok(search.includes("Array.isArray(data)"), "Search must normalize the product list API response before filtering");
           assert.ok(home.includes("width: Math.min((width - SPACING.lg * 2 - 10) / 2, 190)") && home.includes("storeCardSmall: { width: Math.min((width - SPACING.lg * 2 - 10) / 2, 190), height: 112") && home.includes("storeImgSmall: { width: \"100%\", height: 64 }"), "Nearby store cards must fit exactly two across the screen while preserving the original card and image heights");
+          assert.ok(!home.includes("Search 'medicines'..."), "Medicine must be removed from animated home search suggestions");
+          assert.ok(["Search 'groceries'...", "Search 'fresh food'...", "Search 'electronics'...", "Search 'daily essentials'..."].every((suggestion) => home.includes(suggestion)), "All other animated search suggestions must remain");
+          assert.ok(home.includes('searchPlaceholderText: { fontSize: 16, color: "#FF8A00", fontWeight: "800"'), "Home search suggestion text must be larger and orange");
+          console.log("HOME_HERO_NEON_AND_SEARCH_SUGGESTIONS_VALIDATION_PASS");
           console.log("TRADITIONAL_CHHATH_GHAT_VALIDATION_PASS");
           console.log("HOME_SEARCH_GREEN_TRANSPARENT_BELOW_HERO_VALIDATION_PASS");
           NODE
