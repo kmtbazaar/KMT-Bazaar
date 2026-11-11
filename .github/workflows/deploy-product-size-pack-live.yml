@@ -124,22 +124,20 @@ jobs:
           console.log("PRODUCT_SIZE_PACK_UI_VALIDATION_PASS");
           NODE
 
-      - name: Validate traditional Chhath ghat and home search placement
+      - name: Validate pre-GIF animated sky, neon brand and home search placement
         working-directory: frontend
         run: |
           node <<'NODE'
           const assert = require("node:assert/strict");
           const fs = require("node:fs");
           const home = fs.readFileSync("app/(tabs)/home.tsx", "utf8");
-          assert.ok(home.includes("function FestivalDecor()") && home.includes('testID="home-festival-hero"'), "Existing Diwali festival hero must render");
-          assert.ok(home.includes("function FestivalLantern") && home.includes("function FestivalFirework") && home.includes("s.festivalDiya"), "Festival lanterns, fireworks, and diyas must remain available");
-          assert.ok(home.includes("function FestivalSugarcane") && home.includes('testID="home-festival-sugarcane"') && home.includes('FestivalSugarcane left="61%"') && home.includes('FestivalSugarcane left="75%"'), "Traditional animated sugarcane must appear at the ghat");
-          assert.ok(home.includes("function FestivalChhathSoop") && home.includes('testID="home-chhath-soop"') && home.includes("festivalPaanLeaf") && home.includes("festivalSoopFruitBanana"), "Chhath soop must include paan leaves and traditional offerings");
-          assert.ok(!home.includes("festivalBrandPlate") && !home.includes("s.festivalRooftop"), "Centered brand plate and modern rooftop must remain removed from the festival ghat");
-          assert.ok(!home.includes('testID="home-location-neon-glow"') && !home.includes("headerNeonGlow"), "Neon bar between location and notification must be removed");
-          assert.ok(home.includes('testID="home-hero-brand-neon"') && home.includes("KMT BAZAAR") && home.includes("heroBrandNeon:") && home.includes('textShadowColor: "#FFC928"'), "KMT Bazaar hero text must have a warm-yellow neon glow");
-          assert.ok(home.includes("rgba(151,91,50,0.9)") && home.includes("rgba(194,135,78,0.9)"), "Ghat steps must use a traditional warm sandstone palette");
-          assert.ok(home.includes('backgroundColor: "rgba(22,163,74,0.22)"') && home.includes('borderColor: "rgba(134,239,172,0.72)"') && home.includes("borderRadius: 8"), "Home search field must use translucent green styling and square corners");
+          assert.ok(home.includes("function NightSky()") && home.includes("Cinematic sky shader compile failed:") && home.includes("float phaseSun(float x)") && home.includes("gl_FragColor = vec4(clamp(sky, 0.0, 1.0), 1.0);"), "Original pre-GIF WebGL day/night hero must render");
+          assert.ok(home.includes("Sun bloom and atmospheric disk") && home.includes("Moon with surface variation") && home.includes("Rustic hut silhouette with warm window") && home.includes("Chimney smoke: expands, curls, drifts and fades into the clouds"), "Original animated sun, moon, hut and chimney smoke must remain");
+          assert.ok(home.includes("cloudOneStyle") && home.includes("cloudTwoStyle") && home.includes("cloudPuff:"), "Native day/night hero fallback must retain moving clouds");
+          assert.ok(!home.includes("chhath-hero-240-q26.webp") && !home.includes("function FestivalDecor()") && !home.includes("FESTIVAL_LANTERNS"), "GIF/Chhath hero must remain removed");
+          assert.ok(!home.includes('testID="home-location-neon-glow"') && !home.includes("headerNeonGlow"), "Neon bar between location and notification must remain removed");
+          assert.ok(home.includes('testID="home-hero-brand-neon"') && home.includes("KMT BAZAAR") && home.includes("heroBrandNeon:") && home.includes('textShadowColor: "#FFC928"'), "Pre-GIF KMT Bazaar hero neon text must render");
+          assert.ok(home.includes('backgroundColor: "rgba(22,163,74,0.22)"') && home.includes('borderColor: "rgba(134,239,172,0.72)"') && home.includes("borderRadius: 8"), "Home search field must retain translucent green styling and square corners");
           const heroHeightLine = home.includes("const heroExpandedHeight = HERO_BACKDROP_HEIGHT;");
           const searchStyleLine = home.includes("style={s.searchWrap}") && !home.includes("translateY: -24");
           const searchPosition = home.indexOf('testID="home-search-trigger"');
@@ -168,7 +166,7 @@ jobs:
           assert.ok(home.includes('heroBrandNeon: { color: "#FFF7D6"') && home.includes("transform: [{ translateY: -26 }]"), "KMT Bazaar hero neon text must be shifted above its previous position");
           assert.ok(home.includes('searchPlaceholderText: { fontSize: 16, color: "#FFFFFF", fontWeight: "500"'), "Home search suggestion text must be larger, white, and less bold");
           console.log("HOME_HERO_NEON_AND_SEARCH_SUGGESTIONS_VALIDATION_PASS");
-          console.log("TRADITIONAL_CHHATH_GHAT_VALIDATION_PASS");
+          console.log("PRE_GIF_NEON_SKY_HERO_VALIDATION_PASS");
           console.log("HOME_SEARCH_GREEN_TRANSPARENT_BELOW_HERO_VALIDATION_PASS");
           NODE
 
