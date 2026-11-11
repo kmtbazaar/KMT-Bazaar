@@ -19,7 +19,8 @@ export const API = `${BASE}/api`;
 const TOKEN_KEY = "kmt_token";
 const USER_KEY = "kmt_user";
 
-export const WEB_SESSION_TIMEOUT_MS = 30 * 24 * 60 * 60 * 1000;
+export const AUTH_SESSION_DAYS = 30;
+export const WEB_SESSION_TIMEOUT_MS = AUTH_SESSION_DAYS * 24 * 60 * 60 * 1000;
 export const WEB_SESSION_ACTIVITY_SYNC_DELAY_MS = 3 * 1000;
 export const WEB_SESSION_REFRESH_INTERVAL_MS = 30 * 1000;
 const WEB_LAST_ACTIVITY_KEY = "kmt_web_last_activity";
@@ -27,22 +28,41 @@ const WEB_SESSION_EXPIRED_KEY = "kmt_web_session_expired";
 const WEB_SESSION_LOGGED_OUT_KEY = "kmt_web_session_logged_out";
 const WEB_TAB_ID_KEY = "kmt_web_tab_id";
 
-// Each browser tab keeps an independent opaque session-cookie selector. The
-// actual authentication credential remains HttpOnly and is never exposed here.
+// Browser profiles use a persistent opaque session-cookie selector so the
+// 30-day HttpOnly session remains addressable after closing and reopening a tab.
+// Migrate the old sessionStorage selector once to preserve existing sessions.
 export function getWebTabId(): string | null {
   if (Platform.OS !== "web" || typeof window === "undefined") return null;
+
+  const isValidId = (value: string | null): value is string =>
+    !!value && /^[a-f0-9]{32}$/.test(value);
+
   try {
-    const existing = window.sessionStorage.getItem(WEB_TAB_ID_KEY);
-    if (existing && /^[a-f0-9]{32}$/.test(existing)) return existing;
+    const persistentId = window.localStorage.getItem(WEB_TAB_ID_KEY);
+    if (isValidId(persistentId)) return persistentId;
+  } catch {}
+
+  try {
+    const legacySessionId = window.sessionStorage.getItem(WEB_TAB_ID_KEY);
+    if (isValidId(legacySessionId)) {
+      try {
+        window.localStorage.setItem(WEB_TAB_ID_KEY, legacySessionId);
+      } catch {}
+      return legacySessionId;
+    }
+  } catch {}
+
+  try {
     const bytes = new Uint8Array(16);
     if (window.crypto && typeof window.crypto.getRandomValues === "function") {
       window.crypto.getRandomValues(bytes);
     } else {
       for (let i = 0; i < bytes.length; i += 1) bytes[i] = Math.floor(Math.random() * 256);
     }
-    const tabId = Array.from(bytes, (value) => value.toString(16).padStart(2, "0")).join("");
-    window.sessionStorage.setItem(WEB_TAB_ID_KEY, tabId);
-    return tabId;
+    const browserId = Array.from(bytes, (value) => value.toString(16).padStart(2, "0")).join("");
+    try { window.localStorage.setItem(WEB_TAB_ID_KEY, browserId); } catch {}
+    try { window.sessionStorage.setItem(WEB_TAB_ID_KEY, browserId); } catch {}
+    return browserId;
   } catch {
     return null;
   }
@@ -113,7 +133,7 @@ export function markWebSessionExpired(): void {
   try {
     window.localStorage.removeItem(webSessionStorageKey(WEB_LAST_ACTIVITY_KEY));
     window.localStorage.removeItem(webSessionStorageKey(WEB_SESSION_LOGGED_OUT_KEY));
-    window.localStorage.setItem(WEB_SESSION_EXPIRED_KEY, "1");
+    window.localStorage.setItem(webSessionStorageKey(WEB_SESSION_EXPIRED_KEY), "1");
   } catch {}
 }
 
