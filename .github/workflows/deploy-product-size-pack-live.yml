@@ -225,7 +225,16 @@ jobs:
           assert.match(entry, /characterContainer:\s*\{[\s\S]*?position:\s*"absolute"[\s\S]*?top:\s*0[\s\S]*?bottom:\s*0[\s\S]*?justifyContent:\s*"center"/, "Assistant character layer must be centered on the full screen");
           assert.ok(entry.includes('pointerEvents="box-none">') && entry.includes('styles.characterWrapper} pointerEvents="box-none"'), "Center overlay must pass through taps outside the robot");
           assert.ok(entry.includes("style={{ width: assistantSize, height: assistantSize, alignItems: \"center\", justifyContent: \"center\" }}"), "Robot touch target must be limited to the visible circle");
-          assert.ok(entry.includes("onPress={() => router.replace(\"/auth/login\")}"), "Let's get started must keep its login navigation handler");
+          assert.ok(entry.includes("onPress={() => router.replace(\"/(tabs)/home\")}"), "Let's get started must open the storefront home before customer login");
+          const routes = fs.readFileSync("app/_layout.tsx", "utf8");
+          const cart = fs.readFileSync("src/CartContext.tsx", "utf8");
+          const login = fs.readFileSync("app/auth/login.tsx", "utf8");
+          const registration = fs.readFileSync("app/auth/register.tsx", "utf8");
+          assert.ok(routes.includes('[\"home\", \"categories\", \"cart\"].includes(second)') && routes.includes('[\"category\", \"home-category\", \"store\", \"product\", \"search\"].includes(first)'), "Guests must be allowed to browse the customer storefront");
+          assert.ok(cart.includes("PENDING_CART_ADD_KEY") && cart.includes('pathname: "/auth/login"') && cart.includes("api.cartAdd(") && cart.includes('router.replace("/(tabs)/cart" as any)'), "Guest cart actions must require login and restore the pending item into the customer cart");
+          assert.ok(cart.includes("quantity: qty") && cart.includes("variant: variant ?? null"), "Pending cart restoration must preserve quantity and selected variant");
+          assert.ok(login.includes('const fromCart = params.source === "cart"') && login.includes('returnTo: fromCart ? "cart" : undefined'), "Existing login and Google signup handoff must preserve cart intent");
+          assert.ok(registration.includes('const fromCart = params.returnTo === "cart"') && registration.includes('role: fromCart ? "customer" : role'), "Cart-originated signup must create a customer account only");
           assert.ok(entry.includes('utterance.lang = "hi-IN"') && entry.includes("utterance.pitch = 1.2"), "Browser fallback must use a youthful Hindi speech profile");
           console.log("PARTICLE_SPLASH_TRANSPARENT_LOGO_VALIDATION_PASS");
           console.log("ASSISTANT_WELCOME_TTS_LIPSYNC_VALIDATION_PASS");
