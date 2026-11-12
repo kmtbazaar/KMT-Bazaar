@@ -195,13 +195,15 @@ export default function Product() {
   const onAddFirstTime = async () => {
     if (outOfStock) return;
     setAdding(true);
-    try { await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success); } catch {}
-    try { 
-      await add(p.id, 1, selectedVariant?.id); 
-      setToast("Added to cart!"); 
-      setTimeout(() => setToast(null), 1500); 
-    } finally { 
-      setAdding(false); 
+    try {
+      const added = await add(p.id, 1, selectedVariant?.id);
+      if (added) {
+        try { await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success); } catch {}
+        setToast("Added to cart!");
+        setTimeout(() => setToast(null), 1500);
+      }
+    } finally {
+      setAdding(false);
     }
   };
 

@@ -62,15 +62,13 @@ export default function ProductCard({
     e?.stopPropagation?.();
 
     try {
-      await Haptics.impactAsync(
-        Haptics.ImpactFeedbackStyle.Medium
-      );
-    } catch {}
+      const added = await add(p.id, 1);
+      if (!added) return;
 
-    bump();
-
-    try {
-      await add(p.id, 1);
+      try {
+        await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      } catch {}
+      bump();
     } catch {}
   };
 

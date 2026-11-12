@@ -35,8 +35,15 @@ function RoleRouteGuard({ children }: { children: React.ReactNode }) {
       first === "daily-services" ||
       first === "daily-service-booking";
 
+    // Guests can browse customer-facing pages and view an empty cart.
+    // Account, order, address, and checkout routes remain protected.
+    const isGuestBrowsingRoute =
+      isPublicRoute ||
+      (first === "(tabs)" && ["home", "categories", "cart"].includes(second)) ||
+      ["category", "home-category", "store", "product", "search"].includes(first);
+
     if (!user) {
-      if (!isAuthRoute && !isPublicRoute) router.replace("/auth/login");
+      if (!isAuthRoute && !isGuestBrowsingRoute) router.replace("/auth/login");
       return;
     }
 

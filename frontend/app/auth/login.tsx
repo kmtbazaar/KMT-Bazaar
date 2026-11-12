@@ -11,7 +11,7 @@ import {
   Dimensions,
 } from "react-native";
 import AnimatedBrandLogo from "@/src/components/AnimatedBrandLogo";
-import { useFocusEffect, useRouter } from "expo-router";
+import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
@@ -80,6 +80,8 @@ function AnimatedTile({
 
 export default function Login() {
   const router = useRouter();
+  const params = useLocalSearchParams<{ source?: string }>();
+  const fromCart = params.source === "cart";
   const { login, requestEmailLoginOtp, verifyEmailLoginOtp, googleLogin, sessionExpired } = useAuth();
   const insets = useSafeAreaInsets();
 
@@ -207,7 +209,7 @@ export default function Login() {
             ? `email=${encodeURIComponent(value)}`
             : `phone=${encodeURIComponent(value)}`;
 
-        router.push(`/auth/register?${param}` as any);
+        router.push(`/auth/register?${param}${fromCart ? "&returnTo=cart" : ""}` as any);
       }
     } catch (e: any) {
       setError(e?.message || "Could not check account");
@@ -234,6 +236,7 @@ export default function Login() {
             email: result.email,
             name: result.name,
             source: "google",
+            returnTo: fromCart ? "cart" : undefined,
           },
         } as any);
         return;

@@ -35,8 +35,9 @@ const SERVICE_TYPES = [
 export default function Register() {
 const router = useRouter();
 const { register, requestEmailSignupOtp, verifyEmailSignupOtp } = useAuth();
-const params = useLocalSearchParams<{ email?: string; phone?: string; name?: string; source?: string }>();
+const params = useLocalSearchParams<{ email?: string; phone?: string; name?: string; source?: string; returnTo?: string }>();
 const fromGoogle = params.source === "google";
+const fromCart = params.returnTo === "cart";
 
 const [name, setName] = useState(params.name || "");
 const [email, setEmail] = useState(params.email || "");
@@ -114,9 +115,9 @@ try {
     email: normalizedEmail,
     phone: phone.trim(),
     password,
-    role,
-    vendor_type: role === "vendor" ? vendorType : undefined,
-    service_type: role === "vendor" && vendorType === "service" ? serviceType : undefined,
+    role: fromCart ? "customer" : role,
+    vendor_type: !fromCart && role === "vendor" ? vendorType : undefined,
+    service_type: !fromCart && role === "vendor" && vendorType === "service" ? serviceType : undefined,
   });
   setOtpStep(true);
   setOtp("");
@@ -137,9 +138,9 @@ try {
     email: email.trim().toLowerCase(),
     phone: phone.trim(),
     password,
-    role,
-    vendor_type: role === "vendor" ? vendorType : undefined,
-    service_type: role === "vendor" && vendorType === "service" ? serviceType : undefined,
+    role: fromCart ? "customer" : role,
+    vendor_type: !fromCart && role === "vendor" ? vendorType : undefined,
+    service_type: !fromCart && role === "vendor" && vendorType === "service" ? serviceType : undefined,
   });
   setOtp("");
   setError(null);
@@ -257,36 +258,40 @@ color={COLORS.text}
       )}
       {!fromGoogle && (
         <>
-          <Text style={s.sub}>I want to join as</Text>
-
-          <View style={s.rolesRow}>
-            {ROLES.map((r) => (
-              <Pressable
-                key={r.id}
-                testID={`role-${r.id}`}
-                onPress={() => setRole(r.id)}
-                style={[
-                  s.roleCard,
-                  role === r.id && s.roleCardActive,
-                ]}
-              >
-                <MaterialCommunityIcons
-                  name={r.icon as any}
-                  size={24}
-                  color={role === r.id ? "#fff" : COLORS.brand}
-                />
-
-                <Text
-                  style={[
-                    s.roleLabel,
-                    role === r.id && { color: "#fff" },
-                  ]}
-                >
-                  {r.label}
-                </Text>
-              </Pressable>
-            ))}
-          </View>
+          {fromCart ? (
+            <Text style={s.sub}>Create your KMT Bazaar customer account to continue shopping.</Text>
+          ) : (
+            <>
+              <Text style={s.sub}>I want to join as</Text>
+              <View style={s.rolesRow}>
+                {ROLES.map((r) => (
+                  <Pressable
+                    key={r.id}
+                    testID={`role-${r.id}`}
+                    onPress={() => setRole(r.id)}
+                    style={[
+                      s.roleCard,
+                      role === r.id && s.roleCardActive,
+                    ]}
+                  >
+                    <MaterialCommunityIcons
+                      name={r.icon as any}
+                      size={24}
+                      color={role === r.id ? "#fff" : COLORS.brand}
+                    />
+                    <Text
+                      style={[
+                        s.roleLabel,
+                        role === r.id && { color: "#fff" },
+                      ]}
+                    >
+                      {r.label}
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
+            </>
+          )}
 
           {role === "vendor" && (
             <View style={s.vendorTypeBox}>

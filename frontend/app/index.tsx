@@ -205,7 +205,7 @@ export default function Index() {
               <TouchableOpacity
                 activeOpacity={0.85}
                 style={styles.primaryBtnWrapper}
-                onPress={() => router.replace("/auth/login")}
+                onPress={() => router.replace("/(tabs)/home")}
               >
                 <View style={styles.primaryGradientBtn}>
                   <Text style={styles.primaryBtnText}>Let&apos;s get started</Text>
