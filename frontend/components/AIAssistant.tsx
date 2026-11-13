@@ -12,11 +12,7 @@ import Animated, {
   withSequence,
 } from "react-native-reanimated";
 
-type AIAssistantProps = {
-  placement?: "login" | "home";
-};
-
-export default function AIAssistant({ placement = "login" }: AIAssistantProps) {
+export default function AIAssistant() {
   const router = useRouter();
   const orbitRotation = useSharedValue(0);
   const lightPulse = useSharedValue(0.55);
@@ -69,7 +65,7 @@ export default function AIAssistant({ placement = "login" }: AIAssistantProps) {
   return (
     <View
       pointerEvents="box-none"
-      style={[styles.container, placement === "home" && styles.homeContainer]}
+      style={styles.container}
     >
       <Animated.View pointerEvents="none" style={[styles.halo, haloStyle]} />
       <Animated.View pointerEvents="none" style={[styles.orbit, orbitStyle]}>
@@ -79,7 +75,7 @@ export default function AIAssistant({ placement = "login" }: AIAssistantProps) {
 
       <Animated.View pointerEvents="box-none" style={[styles.robotFloat, robotStyle]}>
         <RobotCompanion3D
-          size={placement === "home" ? 104 : 100}
+          size={76}
           interactive={true}
           onActivate={() => router.push("/assistant")}
         />
@@ -94,21 +90,16 @@ const styles = StyleSheet.create({
     right: 12,
     bottom: 16,
     zIndex: 9999,
-    width: 122,
-    height: 142,
+    width: 100,
+    height: 112,
     alignItems: "center",
     justifyContent: "center",
   },
-  homeContainer: {
-    left: 10,
-    right: undefined,
-    bottom: 82,
-  },
   halo: {
     position: "absolute",
-    width: 90,
-    height: 90,
-    borderRadius: 45,
+    width: 72,
+    height: 72,
+    borderRadius: 36,
     borderWidth: 1.5,
     borderColor: "rgba(34, 211, 238, 0.72)",
     shadowColor: "#06B6D4",
@@ -119,9 +110,9 @@ const styles = StyleSheet.create({
   },
   orbit: {
     position: "absolute",
-    width: 108,
-    height: 108,
-    borderRadius: 54,
+    width: 88,
+    height: 88,
+    borderRadius: 44,
     borderWidth: 1.5,
     borderColor: "rgba(34, 211, 238, 0.12)",
     borderTopColor: "#22D3EE",
