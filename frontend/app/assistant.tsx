@@ -52,7 +52,7 @@ export default function AssistantScreen() {
   const [messages, setMessages] = useState<Message[]>([
     {
       id: 1,
-      text: "🙏 Namaste! Welcome to KMT Bazaar AI Assistant.\nHow can I help you today?",
+      text: "🙏 Namaste! Main KMT Bazaar ka live guide hoon. Home banner ke offers aur Roojgar / Jobs ke baare mein mujhse poochhiye.",
       isUser: false,
     },
   ]);
@@ -393,7 +393,10 @@ export default function AssistantScreen() {
     <SafeAreaView style={[styles.container, { paddingTop: insets.top + 10, paddingBottom: insets.bottom + 10 }]} edges={[]}>
       <Animated.View entering={ZoomIn.duration(320).springify()} style={styles.panel}>
       {/* 1. PATLA HEADER */}
-      <BotHeader />
+      <BotHeader
+        talking={typing || listening || speaking}
+        onRobotPress={handleActionPress}
+      />
 
       <KeyboardAvoidingView
         style={{ flex: 1 }}
@@ -427,15 +430,32 @@ export default function AssistantScreen() {
           </View>
         </ScrollView>
 
-        {/* ROOJGAR BUTTON */}
+        {/* KMT MASCOT DESTINATIONS: HOME BANNER + ROOJGAR */}
         <View style={styles.quickActionsContainer}>
-          <TouchableOpacity
-            style={styles.roojgarButton}
-            onPress={() => router.push("/RoojgarForm")}
-            activeOpacity={0.8}
-          >
-            <Text style={styles.roojgarButtonText}>💼 Roojgar / Jobs</Text>
-          </TouchableOpacity>
+          <View style={styles.quickActionsRow}>
+            <TouchableOpacity
+              style={[styles.guideButton, styles.bannerGuideButton]}
+              onPress={() => router.replace("/(tabs)/home" as any)}
+              activeOpacity={0.82}
+              accessibilityRole="button"
+              accessibilityLabel="Explore Home banners and offers"
+              testID="assistant-home-banner-link"
+            >
+              <MaterialCommunityIcons name="image-multiple-outline" size={16} color="#BAE6FD" />
+              <Text style={styles.guideButtonText}>Home Offers</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.guideButton, styles.roojgarButton]}
+              onPress={() => router.push("/RoojgarForm")}
+              activeOpacity={0.82}
+              accessibilityRole="button"
+              accessibilityLabel="Open Roojgar and jobs"
+              testID="assistant-roojgar-link"
+            >
+              <MaterialCommunityIcons name="briefcase-outline" size={16} color="#DCFCE7" />
+              <Text style={styles.guideButtonText}>Roojgar / Jobs</Text>
+            </TouchableOpacity>
+          </View>
           {!!voiceStatus && (
             <Text style={styles.voiceStatus} numberOfLines={2}>
               {listening ? "Listening… " + voiceStatus : speaking ? "Speaking… " + voiceStatus : voiceStatus}
@@ -532,17 +552,38 @@ const styles = StyleSheet.create({
   },
   quickActionsContainer: {
     paddingHorizontal: 12,
-    paddingVertical: 4,
+    paddingVertical: 6,
     backgroundColor: "#0F172A",
   },
-  roojgarButton: {
-    alignSelf: "flex-start",
-    backgroundColor: "#15803D",
-    paddingVertical: 3,
+  quickActionsRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  guideButton: {
+    flex: 1,
+    minWidth: 0,
+    minHeight: 38,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
     paddingHorizontal: 8,
     borderRadius: 12,
     borderWidth: 1,
+  },
+  bannerGuideButton: {
+    backgroundColor: "rgba(3,105,161,0.32)",
+    borderColor: "#0EA5E9",
+  },
+  roojgarButton: {
+    backgroundColor: "rgba(21,128,61,0.34)",
     borderColor: "#22C55E",
+  },
+  guideButtonText: {
+    color: "#FFFFFF",
+    fontSize: 11,
+    fontWeight: "800",
   },
   voiceStatus: {
     color: "#CBD5E1",
@@ -550,11 +591,6 @@ const styles = StyleSheet.create({
     lineHeight: 14,
     marginTop: 4,
     marginHorizontal: 4,
-  },
-  roojgarButtonText: {
-    color: "#FFFFFF",
-    fontSize: 11,
-    fontWeight: "600",
   },
   // Mota/Spacious Bottom Input Area Style
   bottomContainer: {

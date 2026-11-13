@@ -23,6 +23,7 @@ import { useAuth } from "@/src/AuthContext";
 import { IMAGE_FALLBACK_URL, RADIUS, SPACING, shadow } from "@/src/theme";
 import ProductCard from "@/src/components/ProductCard";
 import CheckoutBar from "@/src/components/CheckoutBar";
+import AIAssistant from "../../components/AIAssistant";
 import { BrandingFooter } from "@/src/components/AnimatedBrandLogo";
 
 const { width } = Dimensions.get("window");
@@ -1350,6 +1351,7 @@ export default function Home() {
 
       {/* Floating Checkout Bar */}
       <CheckoutBar />
+      {!homeSearchOpen && <AIAssistant placement="home" />}
 
       {homeSearchOpen && (
         <View style={s.homeSearchOverlay} testID="home-search-overlay">

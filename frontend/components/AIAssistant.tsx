@@ -13,7 +13,11 @@ import Animated, {
   withSpring,
 } from "react-native-reanimated";
 
-export default function AIAssistant() {
+type AIAssistantProps = {
+  placement?: "login" | "home";
+};
+
+export default function AIAssistant({ placement = "login" }: AIAssistantProps) {
   const router = useRouter();
   const orbitRotation = useSharedValue(0);
   const lightPulse = useSharedValue(0.55);
@@ -69,7 +73,7 @@ export default function AIAssistant() {
   }));
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, placement === "home" && styles.homeContainer]}>
       <Animated.View pointerEvents="none" style={[styles.halo, haloStyle]} />
       <Animated.View pointerEvents="none" style={[styles.orbit, orbitStyle]}>
         <View style={styles.orbitLightBlue} />
@@ -91,7 +95,7 @@ export default function AIAssistant() {
         style={styles.pressable}
       >
         <Animated.View style={[styles.robotFloat, robotStyle]}>
-          <RobotAvatar size={62} showOrbit={false} />
+          <RobotAvatar size={placement === "home" ? 68 : 62} showOrbit={false} />
         </Animated.View>
       </Pressable>
     </View>
@@ -104,16 +108,21 @@ const styles = StyleSheet.create({
     right: 12,
     bottom: 16,
     zIndex: 9999,
-    width: 86,
-    height: 86,
+    width: 94,
+    height: 94,
     alignItems: "center",
     justifyContent: "center",
   },
+  homeContainer: {
+    left: 10,
+    right: undefined,
+    bottom: 82,
+  },
   halo: {
     position: "absolute",
-    width: 74,
-    height: 74,
-    borderRadius: 37,
+    width: 82,
+    height: 82,
+    borderRadius: 41,
     borderWidth: 1.5,
     borderColor: "rgba(34, 211, 238, 0.72)",
     shadowColor: "#06B6D4",
@@ -124,9 +133,9 @@ const styles = StyleSheet.create({
   },
   orbit: {
     position: "absolute",
-    width: 84,
-    height: 84,
-    borderRadius: 42,
+    width: 90,
+    height: 90,
+    borderRadius: 45,
     borderWidth: 1.5,
     borderColor: "rgba(34, 211, 238, 0.12)",
     borderTopColor: "#22D3EE",
@@ -159,11 +168,11 @@ const styles = StyleSheet.create({
     elevation: 4,
   },
   pressable: {
-    width: 66,
-    height: 66,
+    width: 76,
+    height: 76,
     alignItems: "center",
     justifyContent: "center",
-    borderRadius: 33,
+    borderRadius: 38,
   },
   robotFloat: {
     alignItems: "center",
