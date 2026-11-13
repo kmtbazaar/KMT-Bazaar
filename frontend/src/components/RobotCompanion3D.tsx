@@ -583,6 +583,8 @@ export default function RobotCompanion3D({
       let previousX = 0;
       let previousY = 0;
       let moved = 0;
+      let greetingUntil = 0;
+      let activationTimeout: number | null = null;
 
       const onPointerDown = (event: PointerEvent) => {
         event.preventDefault();
@@ -614,7 +616,11 @@ export default function RobotCompanion3D({
         event.stopPropagation();
         pointerId = null;
         renderer!.domElement.style.cursor = "grab";
-        if (moved < 8) activateRef.current?.();
+        if (moved < 8) {
+          greetingUntil = performance.now() + 850;
+          if (activationTimeout !== null) window.clearTimeout(activationTimeout);
+          activationTimeout = window.setTimeout(() => activateRef.current?.(), 320);
+        }
       };
 
       const onPointerCancel = (event: PointerEvent) => {
@@ -625,7 +631,9 @@ export default function RobotCompanion3D({
       const onKeyDown = (event: KeyboardEvent) => {
         if (event.key === "Enter" || event.key === " ") {
           event.preventDefault();
-          activateRef.current?.();
+          greetingUntil = performance.now() + 850;
+          if (activationTimeout !== null) window.clearTimeout(activationTimeout);
+          activationTimeout = window.setTimeout(() => activateRef.current?.(), 320);
         } else if (event.key === "ArrowLeft") {
           targetYaw -= 0.22;
         } else if (event.key === "ArrowRight") {
@@ -668,13 +676,18 @@ export default function RobotCompanion3D({
         const head = state.head as THREE.Group;
         const arms = state.armPivots as THREE.Group[];
         const legs = state.legPivots as THREE.Group[];
-        robot.position.y = Math.sin(elapsed * 2.1) * 0.035;
+        const greeting = performance.now() < greetingUntil;
+        robot.position.y = Math.sin(elapsed * 2.1) * 0.035 + (greeting ? Math.abs(Math.sin(elapsed * 10)) * 0.035 : 0);
         robot.rotation.y += (targetYaw + Math.sin(elapsed * 0.42) * 0.035 - robot.rotation.y) * 0.075;
         robot.rotation.x += (targetPitch - robot.rotation.x) * 0.12;
         head.rotation.y = Math.sin(elapsed * 1.15) * 0.075;
-        head.rotation.x = Math.sin(elapsed * 1.6) * 0.025;
+        head.rotation.x = greeting
+          ? -0.17 + Math.sin(elapsed * 9) * 0.055
+          : Math.sin(elapsed * 1.6) * 0.025;
         arms[0].rotation.z = -0.08 + Math.sin(elapsed * 2.0) * 0.035;
-        arms[1].rotation.z = 0.08 - Math.sin(elapsed * 2.0) * 0.035;
+        arms[1].rotation.z = greeting
+          ? 2.2 + Math.sin(elapsed * 14) * 0.24
+          : 0.08 - Math.sin(elapsed * 2.0) * 0.035;
         legs[0].rotation.x = Math.sin(elapsed * 1.6) * 0.025;
         legs[1].rotation.x = -Math.sin(elapsed * 1.6) * 0.025;
 
@@ -696,6 +709,7 @@ export default function RobotCompanion3D({
       return () => {
         disposed = true;
         window.cancelAnimationFrame(frameId);
+        if (activationTimeout !== null) window.clearTimeout(activationTimeout);
         resizeObserver?.disconnect();
         window.removeEventListener("resize", resize);
         if (interactive) {
@@ -783,6 +797,8 @@ function NativeRobotStage({
   const resourcesRef = useRef<NativeRobotResources | null>(null);
   const activateRef = useRef(onActivate);
   const talkingRef = useRef(talking);
+  const greetingUntilRef = useRef(0);
+  const activationTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const controlsRef = useRef({
     yaw: -0.14,
     pitch: 0,
@@ -802,6 +818,7 @@ function NativeRobotStage({
     const resources = resourcesRef.current;
     if (!resources) return;
     cancelAnimationFrame(resources.frameId);
+    if (activationTimeoutRef.current) clearTimeout(activationTimeoutRef.current);
     resources.built.materials.forEach((material) => material.dispose());
     resources.scene.traverse((object) => {
       if (object instanceof THREE.Mesh) object.geometry.dispose();
@@ -829,7 +846,11 @@ function NativeRobotStage({
           );
         },
         onPanResponderRelease: (_event, gesture) => {
-          if (Math.hypot(gesture.dx, gesture.dy) < 8) activateRef.current?.();
+          if (Math.hypot(gesture.dx, gesture.dy) < 8) {
+            greetingUntilRef.current = performance.now() + 850;
+            if (activationTimeoutRef.current) clearTimeout(activationTimeoutRef.current);
+            activationTimeoutRef.current = setTimeout(() => activateRef.current?.(), 320);
+          }
         },
         onPanResponderTerminate: () => undefined,
       }),
@@ -890,7 +911,8 @@ function NativeRobotStage({
         const head = state.head as THREE.Group;
         const arms = state.armPivots as THREE.Group[];
         const legs = state.legPivots as THREE.Group[];
-        robot.position.y = Math.sin(elapsed * 2.1) * 0.035;
+        const greeting = performance.now() < greetingUntilRef.current;
+        robot.position.y = Math.sin(elapsed * 2.1) * 0.035 + (greeting ? Math.abs(Math.sin(elapsed * 10)) * 0.035 : 0);
         robot.rotation.y += (
           controlsRef.current.yaw +
           Math.sin(elapsed * 0.42) * 0.035 -
@@ -898,9 +920,13 @@ function NativeRobotStage({
         ) * 0.075;
         robot.rotation.x += (controlsRef.current.pitch - robot.rotation.x) * 0.12;
         head.rotation.y = Math.sin(elapsed * 1.15) * 0.075;
-        head.rotation.x = Math.sin(elapsed * 1.6) * 0.025;
+        head.rotation.x = greeting
+          ? -0.17 + Math.sin(elapsed * 9) * 0.055
+          : Math.sin(elapsed * 1.6) * 0.025;
         arms[0].rotation.z = -0.08 + Math.sin(elapsed * 2.0) * 0.035;
-        arms[1].rotation.z = 0.08 - Math.sin(elapsed * 2.0) * 0.035;
+        arms[1].rotation.z = greeting
+          ? 2.2 + Math.sin(elapsed * 14) * 0.24
+          : 0.08 - Math.sin(elapsed * 2.0) * 0.035;
         legs[0].rotation.x = Math.sin(elapsed * 1.6) * 0.025;
         legs[1].rotation.x = -Math.sin(elapsed * 1.6) * 0.025;
 
