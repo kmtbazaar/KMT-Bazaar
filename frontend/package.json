@@ -53,7 +53,8 @@
     "react-native-worklets": "0.5.1",
     "expo-crypto": "~15.0.9",
     "three": "^0.180.0",
-    "expo-location": "~19.0.8"
+    "expo-location": "~19.0.8",
+    "expo-gl": "~16.0.9"
   },
   "devDependencies": {
     "@types/react": "~19.1.0",
