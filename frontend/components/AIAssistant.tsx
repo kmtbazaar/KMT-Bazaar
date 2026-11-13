@@ -1,7 +1,7 @@
 import React, { useEffect } from "react";
-import { View, Pressable, StyleSheet } from "react-native";
+import { View, StyleSheet } from "react-native";
 import { useRouter } from "expo-router";
-import RobotAvatar from "../src/components/RobotAvatar";
+import RobotCompanion3D from "../src/components/RobotCompanion3D";
 import Animated, {
   cancelAnimation,
   Easing,
@@ -10,7 +10,6 @@ import Animated, {
   withRepeat,
   withTiming,
   withSequence,
-  withSpring,
 } from "react-native-reanimated";
 
 type AIAssistantProps = {
@@ -22,7 +21,6 @@ export default function AIAssistant({ placement = "login" }: AIAssistantProps) {
   const orbitRotation = useSharedValue(0);
   const lightPulse = useSharedValue(0.55);
   const floatOffset = useSharedValue(0);
-  const pressScale = useSharedValue(1);
 
   useEffect(() => {
     orbitRotation.value = withRepeat(
@@ -51,7 +49,6 @@ export default function AIAssistant({ placement = "login" }: AIAssistantProps) {
       cancelAnimation(orbitRotation);
       cancelAnimation(lightPulse);
       cancelAnimation(floatOffset);
-      cancelAnimation(pressScale);
     };
   }, []);
 
@@ -66,38 +63,26 @@ export default function AIAssistant({ placement = "login" }: AIAssistantProps) {
   }));
 
   const robotStyle = useAnimatedStyle(() => ({
-    transform: [
-      { translateY: floatOffset.value },
-      { scale: pressScale.value },
-    ],
+    transform: [{ translateY: floatOffset.value }],
   }));
 
   return (
-    <View style={[styles.container, placement === "home" && styles.homeContainer]}>
+    <View
+      pointerEvents="box-none"
+      style={[styles.container, placement === "home" && styles.homeContainer]}
+    >
       <Animated.View pointerEvents="none" style={[styles.halo, haloStyle]} />
       <Animated.View pointerEvents="none" style={[styles.orbit, orbitStyle]}>
         <View style={styles.orbitLightBlue} />
         <View style={styles.orbitLightAmber} />
       </Animated.View>
 
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel="Open KMT Bazaar AI assistant"
-        accessibilityHint="Opens the KMT Bazaar AI assistant"
-        testID="login-ai-assistant"
-        onPressIn={() => {
-          pressScale.value = withSpring(0.92);
-        }}
-        onPressOut={() => {
-          pressScale.value = withSpring(1);
-        }}
-        onPress={() => router.push("/assistant")}
-        style={styles.pressable}
-      >
-        <Animated.View style={[styles.robotFloat, robotStyle]}>
-          <RobotAvatar size={placement === "home" ? 68 : 62} showOrbit={false} />
-        </Animated.View>
-      </Pressable>
+      <Animated.View pointerEvents="box-none" style={[styles.robotFloat, robotStyle]}>
+        <RobotCompanion3D
+          size={placement === "home" ? 104 : 100}
+          onActivate={() => router.push("/assistant")}
+        />
+      </Animated.View>
     </View>
   );
 }
@@ -108,8 +93,8 @@ const styles = StyleSheet.create({
     right: 12,
     bottom: 16,
     zIndex: 9999,
-    width: 94,
-    height: 94,
+    width: 122,
+    height: 142,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -120,9 +105,9 @@ const styles = StyleSheet.create({
   },
   halo: {
     position: "absolute",
-    width: 82,
-    height: 82,
-    borderRadius: 41,
+    width: 90,
+    height: 90,
+    borderRadius: 45,
     borderWidth: 1.5,
     borderColor: "rgba(34, 211, 238, 0.72)",
     shadowColor: "#06B6D4",
@@ -133,9 +118,9 @@ const styles = StyleSheet.create({
   },
   orbit: {
     position: "absolute",
-    width: 90,
-    height: 90,
-    borderRadius: 45,
+    width: 108,
+    height: 108,
+    borderRadius: 54,
     borderWidth: 1.5,
     borderColor: "rgba(34, 211, 238, 0.12)",
     borderTopColor: "#22D3EE",
@@ -167,23 +152,8 @@ const styles = StyleSheet.create({
     shadowRadius: 5,
     elevation: 4,
   },
-  pressable: {
-    width: 76,
-    height: 76,
-    alignItems: "center",
-    justifyContent: "center",
-    borderRadius: 38,
-  },
   robotFloat: {
     alignItems: "center",
     justifyContent: "center",
   },
-
-
-
-
-
-
-
-
 });
