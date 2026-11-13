@@ -3,7 +3,7 @@ import React from "react";
 import { View, StyleSheet, TouchableOpacity } from "react-native";
 import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
-import RobotAvatar from "../src/components/RobotAvatar";
+import RobotCompanion3D from "../src/components/RobotCompanion3D";
 
 type BotHeaderProps = {
   talking?: boolean;
@@ -22,16 +22,13 @@ export default function BotHeader({ talking = false, onRobotPress }: BotHeaderPr
         <Ionicons name="arrow-back" size={20} color="#fff" />
       </TouchableOpacity>
 
-      <TouchableOpacity
-        onPress={onRobotPress}
-        style={styles.avatarWrap}
-        activeOpacity={0.78}
-        accessibilityRole="button"
-        accessibilityLabel="Touch the KMT robot to start or stop voice conversation"
-        testID="assistant-live-robot"
-      >
-        <RobotAvatar size={52} talking={talking} showOrbit />
-      </TouchableOpacity>
+      <View style={styles.avatarWrap} testID="assistant-live-robot">
+        <RobotCompanion3D
+          size={54}
+          talking={talking}
+          onActivate={onRobotPress}
+        />
+      </View>
 
       <View style={styles.info}>
         <Text style={styles.title}>KMT Bazaar Live Guide</Text>
@@ -60,7 +57,7 @@ const styles = StyleSheet.create({
   },
   avatarWrap: {
     width: 58,
-    height: 58,
+    height: 66,
     alignItems: "center",
     justifyContent: "center",
   },
