@@ -250,6 +250,7 @@ jobs:
           const api = fs.readFileSync("src/api.ts", "utf8");
           const assistant = fs.readFileSync("components/AIAssistant.tsx", "utf8");
           const robot = fs.readFileSync("src/components/RobotAvatar.tsx", "utf8");
+          const robot3d = fs.readFileSync("src/components/RobotCompanion3D.tsx", "utf8");
           const index = fs.readFileSync("app/index.tsx", "utf8");
           const backend = fs.readFileSync("../backend/server.py", "utf8");
           assert.ok(login.includes("api.googleConfig()"), "Login must load the OAuth client ID from backend configuration");
@@ -257,7 +258,8 @@ jobs:
           assert.ok(!login.includes("EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID"), "Login must not rely on a separate build-time OAuth client ID");
           assert.ok(api.includes('"/auth/google/config"'), "Frontend API must expose Google OAuth configuration");
           assert.ok(backend.includes('@api.get("/auth/google/config")'), "Backend must expose Google OAuth configuration");
-          assert.ok(assistant.includes("login-ai-assistant") && assistant.includes("RobotAvatar") && assistant.includes("orbitRotation") && assistant.includes("lightPulse"), "Login assistant must use the glowing animated robot");
+          assert.ok(assistant.includes("RobotCompanion3D") && assistant.includes("orbitRotation") && assistant.includes("lightPulse") && robot3d.includes('testID="login-ai-assistant"'), "Login assistant must use the glowing interactive 3D robot");
+          assert.ok(robot3d.includes("pointerdown") && robot3d.includes("pointermove") && robot3d.includes("PanResponder") && robot3d.includes("GLView") && robot3d.includes("gl.endFrameEXP()"), "3D robot must support drag rotation on web and touch rotation on native Android/iOS");
           assert.ok(robot.includes("talking") && robot.includes("orbitRotation") && robot.includes("mouthPulse") && robot.includes("#67E8F9"), "Robot avatar must animate its lights and talking indicator");
           assert.ok(index.includes("RobotAvatar") && !index.includes("AssistantChar") && !index.includes("assistant-char.png"), "Post-splash welcome screen must not render the old static assistant PNG");
           assert.ok(login.includes("googleButtonContainerRef") && login.includes("response.credential"), "Google sign-in must initialize against its mounted button container and handle the returned credential");
