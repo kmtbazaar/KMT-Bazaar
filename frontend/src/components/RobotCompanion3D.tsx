@@ -148,23 +148,192 @@ function buildRobot() {
   );
   helmet.scale.set(1.04, 0.88, 0.84);
 
-  const visor = makeRoundedPanel(0.61, 0.29, 0.055, dark, 0.085);
-  visor.position.set(0, -0.015, 0.322);
-  head.add(visor);
+  // A friendly, youthful boy face sits inside the robot's open helmet.
+  const faceSkin = new THREE.MeshPhysicalMaterial({
+    color: 0xd9a27f,
+    roughness: 0.58,
+    metalness: 0.02,
+    clearcoat: 0.12,
+    clearcoatRoughness: 0.5,
+  });
+  const hairMaterial = new THREE.MeshStandardMaterial({
+    color: 0x30201b,
+    roughness: 0.78,
+    metalness: 0.02,
+  });
+  const eyeWhite = new THREE.MeshStandardMaterial({
+    color: 0xfff8ed,
+    roughness: 0.28,
+  });
+  const irisMaterial = new THREE.MeshStandardMaterial({
+    color: 0x258bb5,
+    emissive: 0x07506f,
+    emissiveIntensity: 0.55,
+    roughness: 0.24,
+    metalness: 0.12,
+  });
+  const pupilMaterial = new THREE.MeshStandardMaterial({
+    color: 0x101b2a,
+    roughness: 0.2,
+  });
+  const browMaterial = new THREE.MeshStandardMaterial({
+    color: 0x422a23,
+    roughness: 0.75,
+  });
+  const cheekMaterial = new THREE.MeshStandardMaterial({
+    color: 0xe58e83,
+    transparent: true,
+    opacity: 0.36,
+    roughness: 0.7,
+  });
+  const smileMaterial = new THREE.MeshStandardMaterial({
+    color: 0x713e3b,
+    roughness: 0.62,
+  });
 
-  const visorLine = makeRoundedPanel(0.42, 0.012, 0.012, silver, 0.006);
-  visorLine.position.set(0, -0.118, 0.358);
-  head.add(visorLine);
+  const face = add(
+    new THREE.SphereGeometry(0.30, 40, 30),
+    faceSkin,
+    head,
+    0,
+    -0.035,
+    0.345
+  );
+  face.scale.set(0.91, 1.04, 0.38);
 
-  const eyeGeometry = new THREE.SphereGeometry(0.052, 24, 18);
-  const leftEye = add(eyeGeometry, cyan, head, -0.145, 0.018, 0.371);
-  leftEye.scale.set(0.72, 1.22, 0.35);
-  const rightEye = add(eyeGeometry.clone(), cyan, head, 0.145, 0.018, 0.371);
-  rightEye.scale.set(0.72, 1.22, 0.35);
+  // Soft dark hair with a swept fringe and small side locks.
+  const hairCapGeometry = new THREE.SphereGeometry(
+    0.345, 36, 24, 0, Math.PI * 2, 0, Math.PI * 0.55
+  );
+  const hairCap = add(hairCapGeometry, hairMaterial, head, 0, 0.18, 0.315);
+  hairCap.scale.set(1.0, 0.86, 0.92);
+  const fringeOne = add(
+    new THREE.SphereGeometry(0.12, 24, 18),
+    hairMaterial,
+    head,
+    -0.13,
+    0.205,
+    0.465
+  );
+  fringeOne.scale.set(1.1, 0.48, 0.36);
+  const fringeTwo = add(
+    new THREE.SphereGeometry(0.105, 24, 18),
+    hairMaterial,
+    head,
+    0.005,
+    0.23,
+    0.472
+  );
+  fringeTwo.scale.set(1.05, 0.5, 0.36);
+  const fringeThree = add(
+    new THREE.SphereGeometry(0.09, 24, 18),
+    hairMaterial,
+    head,
+    0.13,
+    0.18,
+    0.455
+  );
+  fringeThree.scale.set(1.05, 0.52, 0.38);
 
-  const mouth = makeRoundedPanel(0.13, 0.018, 0.012, orange, 0.009);
-  mouth.position.set(0, -0.083, 0.371);
-  head.add(mouth);
+  // Ears, expressive brows, white eyes and bright blue irises.
+  [-1, 1].forEach((side) => {
+    const humanEar = add(
+      new THREE.SphereGeometry(0.075, 20, 16),
+      faceSkin,
+      head,
+      side * 0.265,
+      -0.035,
+      0.325
+    );
+    humanEar.scale.set(0.52, 0.82, 0.5);
+
+    const brow = makeRoundedPanel(0.115, 0.022, 0.012, browMaterial, 0.01);
+    brow.position.set(side * 0.125, 0.112, 0.489);
+    brow.rotation.z = side * -0.1;
+    head.add(brow);
+
+    const white = add(
+      new THREE.SphereGeometry(0.073, 24, 18),
+      eyeWhite,
+      head,
+      side * 0.125,
+      0.025,
+      0.466
+    );
+    white.scale.set(0.92, 1.12, 0.42);
+  });
+
+  const leftEye = add(
+    new THREE.SphereGeometry(0.041, 24, 18),
+    irisMaterial,
+    head,
+    -0.125,
+    0.022,
+    0.507
+  );
+  leftEye.scale.set(0.9, 1.05, 0.42);
+  const rightEye = add(
+    new THREE.SphereGeometry(0.041, 24, 18),
+    irisMaterial,
+    head,
+    0.125,
+    0.022,
+    0.507
+  );
+  rightEye.scale.set(0.9, 1.05, 0.42);
+  [-1, 1].forEach((side) => {
+    add(
+      new THREE.SphereGeometry(0.018, 18, 14),
+      pupilMaterial,
+      head,
+      side * 0.125,
+      0.02,
+      0.524
+    );
+    add(
+      new THREE.SphereGeometry(0.008, 12, 10),
+      eyeWhite,
+      head,
+      side * 0.137,
+      0.04,
+      0.532
+    );
+    const cheek = add(
+      new THREE.SphereGeometry(0.047, 18, 12),
+      cheekMaterial,
+      head,
+      side * 0.195,
+      -0.075,
+      0.448
+    );
+    cheek.scale.set(1.0, 0.48, 0.22);
+  });
+
+  const nose = add(
+    new THREE.SphereGeometry(0.031, 20, 14),
+    faceSkin,
+    head,
+    0,
+    -0.047,
+    0.495
+  );
+  nose.scale.set(0.72, 0.88, 0.7);
+
+  const smileCurve = new THREE.CatmullRomCurve3([
+    new THREE.Vector3(-0.065, -0.135, 0.478),
+    new THREE.Vector3(-0.032, -0.16, 0.49),
+    new THREE.Vector3(0, -0.166, 0.493),
+    new THREE.Vector3(0.032, -0.16, 0.49),
+    new THREE.Vector3(0.065, -0.135, 0.478),
+  ]);
+  const mouth = add(
+    new THREE.TubeGeometry(smileCurve, 16, 0.009, 8, false),
+    smileMaterial,
+    head,
+    0,
+    0,
+    0
+  );
 
   const antennaStem = add(
     new THREE.CylinderGeometry(0.018, 0.024, 0.17, 12),
@@ -328,7 +497,7 @@ function buildRobot() {
   robot.add(platform);
 
   root.userData = { robot, head, armPivots, legPivots, leftEye, rightEye, mouth, chestCore };
-  return { root, materials: [pearl, silver, dark, cyan, orange, rubber] };
+  return { root, materials: [pearl, silver, dark, cyan, orange, rubber, faceSkin, hairMaterial, eyeWhite, irisMaterial, pupilMaterial, browMaterial, cheekMaterial, smileMaterial] };
 }
 
 export default function RobotCompanion3D({
