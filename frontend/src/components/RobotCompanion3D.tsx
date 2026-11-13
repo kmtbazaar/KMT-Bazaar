@@ -60,14 +60,14 @@ function buildRobot() {
   root.add(robot);
 
   const pearl = new THREE.MeshPhysicalMaterial({
-    color: 0xe7f0f6,
+    color: 0xf5f9ff,
     metalness: 0.74,
     roughness: 0.25,
     clearcoat: 0.8,
     clearcoatRoughness: 0.22,
   });
   const silver = new THREE.MeshStandardMaterial({
-    color: 0x8fa7b9,
+    color: 0xa7bfce,
     metalness: 0.82,
     roughness: 0.3,
   });
@@ -146,11 +146,11 @@ function buildRobot() {
     0,
     0
   );
-  helmet.scale.set(1.04, 0.88, 0.84);
+  helmet.scale.set(1.08, 0.94, 0.91);
 
   // A friendly, youthful boy face sits inside the robot's open helmet.
   const faceSkin = new THREE.MeshPhysicalMaterial({
-    color: 0xd9a27f,
+    color: 0xe7b58f,
     roughness: 0.58,
     metalness: 0.02,
     clearcoat: 0.12,
@@ -162,13 +162,13 @@ function buildRobot() {
     metalness: 0.02,
   });
   const eyeWhite = new THREE.MeshStandardMaterial({
-    color: 0xfff8ed,
+    color: 0xfffdf7,
     roughness: 0.28,
   });
   const irisMaterial = new THREE.MeshStandardMaterial({
-    color: 0x258bb5,
-    emissive: 0x07506f,
-    emissiveIntensity: 0.55,
+    color: 0x2aafe3,
+    emissive: 0x0a719b,
+    emissiveIntensity: 0.7,
     roughness: 0.24,
     metalness: 0.12,
   });
@@ -181,13 +181,13 @@ function buildRobot() {
     roughness: 0.75,
   });
   const cheekMaterial = new THREE.MeshStandardMaterial({
-    color: 0xe58e83,
+    color: 0xe77f88,
     transparent: true,
-    opacity: 0.36,
+    opacity: 0.46,
     roughness: 0.7,
   });
   const smileMaterial = new THREE.MeshStandardMaterial({
-    color: 0x713e3b,
+    color: 0x8a4b50,
     roughness: 0.62,
   });
 
@@ -199,7 +199,7 @@ function buildRobot() {
     -0.035,
     0.345
   );
-  face.scale.set(0.91, 1.04, 0.38);
+  face.scale.set(0.95, 1.08, 0.38);
 
   // Soft dark hair with a swept fringe and small side locks.
   const hairCapGeometry = new THREE.SphereGeometry(
@@ -235,6 +235,21 @@ function buildRobot() {
   );
   fringeThree.scale.set(1.05, 0.52, 0.38);
 
+  // A soft curved forelock gives the mascot a playful, recognizable silhouette.
+  const hairSweepCurve = new THREE.CatmullRomCurve3([
+    new THREE.Vector3(-0.18, 0.27, 0.435),
+    new THREE.Vector3(-0.12, 0.355, 0.455),
+    new THREE.Vector3(-0.015, 0.385, 0.458),
+    new THREE.Vector3(0.09, 0.345, 0.45),
+    new THREE.Vector3(0.16, 0.275, 0.43),
+  ]);
+  add(new THREE.TubeGeometry(hairSweepCurve, 22, 0.038, 10, false), hairMaterial, head, 0, 0, 0);
+
+  // Keep the complete eye details together for natural blinking.
+  const eyeWhites: THREE.Mesh[] = [];
+  const eyePupils: THREE.Mesh[] = [];
+  const eyeHighlights: THREE.Mesh[] = [];
+
   // Ears, expressive brows, white eyes and bright blue irises.
   [-1, 1].forEach((side) => {
     const humanEar = add(
@@ -261,6 +276,7 @@ function buildRobot() {
       0.466
     );
     white.scale.set(0.92, 1.12, 0.42);
+    eyeWhites.push(white);
   });
 
   const leftEye = add(
@@ -282,7 +298,7 @@ function buildRobot() {
   );
   rightEye.scale.set(0.9, 1.05, 0.42);
   [-1, 1].forEach((side) => {
-    add(
+    const pupil = add(
       new THREE.SphereGeometry(0.018, 18, 14),
       pupilMaterial,
       head,
@@ -290,7 +306,8 @@ function buildRobot() {
       0.02,
       0.524
     );
-    add(
+    eyePupils.push(pupil);
+    const eyeHighlight = add(
       new THREE.SphereGeometry(0.008, 12, 10),
       eyeWhite,
       head,
@@ -298,6 +315,7 @@ function buildRobot() {
       0.04,
       0.532
     );
+    eyeHighlights.push(eyeHighlight);
     const cheek = add(
       new THREE.SphereGeometry(0.047, 18, 12),
       cheekMaterial,
@@ -307,6 +325,21 @@ function buildRobot() {
       0.448
     );
     cheek.scale.set(1.0, 0.48, 0.22);
+  });
+
+  // Tiny cheek freckles add a little personality without cluttering the face.
+  [-1, 1].forEach((side) => {
+    [-1, 1].forEach((dot) => {
+      const freckle = add(
+        new THREE.SphereGeometry(0.008, 12, 10),
+        cheekMaterial,
+        head,
+        side * (0.19 + dot * 0.018),
+        -0.082 + dot * 0.012,
+        0.467
+      );
+      freckle.scale.set(1.15, 0.8, 0.55);
+    });
   });
 
   const nose = add(
@@ -496,7 +529,7 @@ function buildRobot() {
   platform.position.y = 0.065;
   robot.add(platform);
 
-  root.userData = { robot, head, armPivots, legPivots, leftEye, rightEye, mouth, chestCore };
+  root.userData = { robot, head, armPivots, legPivots, leftEye, rightEye, eyeWhites, eyeIrises: [leftEye, rightEye], eyePupils, eyeHighlights, mouth, chestCore };
   return { root, materials: [pearl, silver, dark, cyan, orange, rubber, faceSkin, hairMaterial, eyeWhite, irisMaterial, pupilMaterial, browMaterial, cheekMaterial, smileMaterial] };
 }
 
@@ -694,9 +727,21 @@ export default function RobotCompanion3D({
         const glow = talkingRef.current
           ? 1.7 + Math.sin(elapsed * 12) * 0.45
           : 1.75 + Math.sin(elapsed * 2.3) * 0.24;
-        const eyes = [state.leftEye, state.rightEye] as THREE.Mesh[];
+        const blinkPhase = elapsed % 5.1;
+        const blink = blinkPhase > 4.82 && blinkPhase < 4.96 ? 0.08 : 1;
+        (state.eyeWhites as THREE.Mesh[]).forEach((eye) => {
+          eye.scale.y = 1.12 * blink;
+        });
+        const eyes = state.eyeIrises as THREE.Mesh[];
         eyes.forEach((eye) => {
+          eye.scale.y = 1.05 * blink;
           (eye.material as THREE.MeshStandardMaterial).emissiveIntensity = glow;
+        });
+        (state.eyePupils as THREE.Mesh[]).forEach((pupil) => {
+          pupil.scale.y = blink;
+        });
+        (state.eyeHighlights as THREE.Mesh[]).forEach((highlight) => {
+          highlight.scale.y = blink;
         });
         (state.chestCore as THREE.Mesh).rotation.z = elapsed * 0.34;
         (state.mouth as THREE.Mesh).scale.x = talkingRef.current
@@ -933,8 +978,20 @@ function NativeRobotStage({
         const glow = talkingRef.current
           ? 1.7 + Math.sin(elapsed * 12) * 0.45
           : 1.75 + Math.sin(elapsed * 2.3) * 0.24;
-        ([state.leftEye, state.rightEye] as THREE.Mesh[]).forEach((eye) => {
+        const blinkPhase = elapsed % 5.1;
+        const blink = blinkPhase > 4.82 && blinkPhase < 4.96 ? 0.08 : 1;
+        (state.eyeWhites as THREE.Mesh[]).forEach((eye) => {
+          eye.scale.y = 1.12 * blink;
+        });
+        (state.eyeIrises as THREE.Mesh[]).forEach((eye) => {
+          eye.scale.y = 1.05 * blink;
           (eye.material as THREE.MeshStandardMaterial).emissiveIntensity = glow;
+        });
+        (state.eyePupils as THREE.Mesh[]).forEach((pupil) => {
+          pupil.scale.y = blink;
+        });
+        (state.eyeHighlights as THREE.Mesh[]).forEach((highlight) => {
+          highlight.scale.y = blink;
         });
         (state.chestCore as THREE.Mesh).rotation.z = elapsed * 0.34;
         (state.mouth as THREE.Mesh).scale.x = talkingRef.current

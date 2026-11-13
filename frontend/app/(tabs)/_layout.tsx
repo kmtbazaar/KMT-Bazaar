@@ -63,9 +63,9 @@ export default function TabsLayout() {
           borderTopColor: COLORS.border,
           backgroundColor:
             Platform.OS === "ios" ? "transparent" : "#FFFFFF",
-          height: 65,
-          paddingTop: 4,
-          paddingBottom: 12,
+          height: 82,
+          paddingTop: 1,
+          paddingBottom: 8,
         },
         tabBarBackground: () =>
           Platform.OS === "ios" ? (
@@ -76,7 +76,7 @@ export default function TabsLayout() {
             />
           ) : null,
         tabBarLabelStyle: {
-          fontSize: 11,
+          fontSize: 10,
           fontWeight: "600",
         },
       }}
@@ -147,12 +147,14 @@ export default function TabsLayout() {
         }}
         options={{
           title: t("AI"),
-          tabBarIcon: () => (
-            <RobotCompanion3D
-              size={34}
-              interactive
-              onActivate={() => router.push("/assistant")}
-            />
+          tabBarIcon: ({ focused }) => (
+            <View style={[s.assistantTabIcon, focused && s.assistantTabIconActive]}>
+              <RobotCompanion3D
+                size={48}
+                interactive
+                onActivate={() => router.push("/assistant")}
+              />
+            </View>
           ),
         }}
       />
@@ -168,6 +170,27 @@ export default function TabsLayout() {
 }
 
 const s = StyleSheet.create({
+  assistantTabIcon: {
+    width: 62,
+    height: 62,
+    borderRadius: 31,
+    marginTop: -4,
+    alignItems: "center",
+    justifyContent: "center",
+    overflow: "visible",
+    backgroundColor: "rgba(8,145,178,0.08)",
+    borderWidth: 1,
+    borderColor: "rgba(34,211,238,0.34)",
+  },
+  assistantTabIconActive: {
+    backgroundColor: "rgba(34,211,238,0.16)",
+    borderColor: "rgba(6,182,212,0.72)",
+    shadowColor: "#22D3EE",
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.28,
+    shadowRadius: 7,
+    elevation: 4,
+  },
   badge: {
     position: "absolute",
     top: -6,
