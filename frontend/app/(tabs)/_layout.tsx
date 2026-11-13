@@ -13,7 +13,7 @@ import Animated, {
 import { useEffect } from "react";
 import { COLORS } from "@/src/theme";
 import { useCart } from "@/src/CartContext";
-import RobotAvatar from "@/src/components/RobotAvatar";
+import RobotCompanion3D from "@/src/components/RobotCompanion3D";
 
 function CartIcon({ color, size }: { color: string; size: number }) {
   const { itemCount, badgePulse } = useCart();
@@ -123,7 +123,7 @@ export default function TabsLayout() {
   options={{
     title: t("AI"),
     tabBarIcon: () => (
-      <RobotAvatar size={31} showOrbit={false} />
+      <RobotCompanion3D size={31} interactive={false} />
     ),
   }}
 />
