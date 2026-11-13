@@ -80,6 +80,7 @@ export default function AIAssistant({ placement = "login" }: AIAssistantProps) {
       <Animated.View pointerEvents="box-none" style={[styles.robotFloat, robotStyle]}>
         <RobotCompanion3D
           size={placement === "home" ? 104 : 100}
+          interactive={true}
           onActivate={() => router.push("/assistant")}
         />
       </Animated.View>
