@@ -1,5 +1,6 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
+  PanResponder,
   Platform,
   Pressable,
   StyleSheet,
@@ -8,6 +9,7 @@ import {
   type ViewStyle,
 } from "react-native";
 import * as THREE from "three";
+import { GLView, type ExpoWebGLRenderingContext } from "expo-gl";
 import RobotAvatar from "./RobotAvatar";
 
 type RobotCompanion3DProps = {
@@ -15,6 +17,7 @@ type RobotCompanion3DProps = {
   talking?: boolean;
   onActivate?: () => void;
   style?: StyleProp<ViewStyle>;
+  interactive?: boolean;
 };
 
 function makeRoundedPanel(
@@ -333,6 +336,7 @@ export default function RobotCompanion3D({
   talking = false,
   onActivate,
   style,
+  interactive = true,
 }: RobotCompanion3DProps) {
   const hostRef = useRef<any>(null);
   const activateRef = useRef(onActivate);
@@ -379,6 +383,7 @@ export default function RobotCompanion3D({
       renderer.domElement.style.height = "100%";
       renderer.domElement.style.outline = "none";
       renderer.domElement.style.touchAction = "none";
+      renderer.domElement.style.pointerEvents = interactive ? "auto" : "none";
       renderer.domElement.style.cursor = "grab";
       renderer.domElement.setAttribute("role", "button");
       renderer.domElement.setAttribute("aria-label", "KMT Bazaar 3D robot assistant. Drag to rotate or tap to open the assistant.");
@@ -460,11 +465,13 @@ export default function RobotCompanion3D({
       };
 
       const canvas = renderer.domElement;
-      canvas.addEventListener("pointerdown", onPointerDown);
-      canvas.addEventListener("pointermove", onPointerMove);
-      canvas.addEventListener("pointerup", onPointerUp);
-      canvas.addEventListener("pointercancel", onPointerCancel);
-      canvas.addEventListener("keydown", onKeyDown);
+      if (interactive) {
+        canvas.addEventListener("pointerdown", onPointerDown);
+        canvas.addEventListener("pointermove", onPointerMove);
+        canvas.addEventListener("pointerup", onPointerUp);
+        canvas.addEventListener("pointercancel", onPointerCancel);
+        canvas.addEventListener("keydown", onKeyDown);
+      }
 
       const resize = () => {
         if (!renderer || disposed) return;
@@ -522,11 +529,13 @@ export default function RobotCompanion3D({
         window.cancelAnimationFrame(frameId);
         resizeObserver?.disconnect();
         window.removeEventListener("resize", resize);
-        canvas.removeEventListener("pointerdown", onPointerDown);
-        canvas.removeEventListener("pointermove", onPointerMove);
-        canvas.removeEventListener("pointerup", onPointerUp);
-        canvas.removeEventListener("pointercancel", onPointerCancel);
-        canvas.removeEventListener("keydown", onKeyDown);
+        if (interactive) {
+          canvas.removeEventListener("pointerdown", onPointerDown);
+          canvas.removeEventListener("pointermove", onPointerMove);
+          canvas.removeEventListener("pointerup", onPointerUp);
+          canvas.removeEventListener("pointercancel", onPointerCancel);
+          canvas.removeEventListener("keydown", onKeyDown);
+        }
         built.materials.forEach((material) => material.dispose());
         scene.traverse((object) => {
           if (object instanceof THREE.Mesh) object.geometry.dispose();
@@ -538,16 +547,230 @@ export default function RobotCompanion3D({
       renderer?.dispose();
       setWebglFailed(true);
     }
-  }, [size, webglFailed]);
+  }, [size, webglFailed, interactive]);
 
-  if (Platform.OS !== "web" || webglFailed) {
+  if (Platform.OS === "web") {
+    if (webglFailed) {
+      return (
+        <Pressable
+          onPress={interactive ? onActivate : undefined}
+          accessibilityRole="button"
+          accessibilityLabel="Open KMT Bazaar AI assistant"
+          testID="login-ai-assistant"
+          pointerEvents={interactive ? "auto" : "none"}
+          style={[styles.fallback, { width: size, height: size }, style]}
+        >
+          <RobotAvatar size={Math.round(size * 0.82)} talking={talking} showOrbit />
+        </Pressable>
+      );
+    }
+
+    return (
+      <View
+        ref={hostRef}
+        testID="login-ai-assistant"
+        accessibilityRole="button"
+        accessibilityLabel="KMT Bazaar 3D robot assistant. Drag to rotate or tap to open."
+        style={[styles.stage, { width: size, height: Math.round(size * 1.22) }, style]}
+      />
+    );
+  }
+
+  return (
+    <NativeRobotStage
+      size={size}
+      talking={talking}
+      onActivate={onActivate}
+      interactive={interactive}
+      style={style}
+    />
+  );
+}
+
+
+type NativeRobotResources = {
+  renderer: THREE.WebGLRenderer;
+  scene: THREE.Scene;
+  frameId: number;
+  built: ReturnType<typeof buildRobot>;
+};
+
+type NativeRobotStageProps = {
+  size: number;
+  talking: boolean;
+  onActivate?: () => void;
+  interactive: boolean;
+  style?: StyleProp<ViewStyle>;
+};
+
+function NativeRobotStage({
+  size,
+  talking,
+  onActivate,
+  interactive,
+  style,
+}: NativeRobotStageProps) {
+  const [failed, setFailed] = useState(false);
+  const resourcesRef = useRef<NativeRobotResources | null>(null);
+  const activateRef = useRef(onActivate);
+  const talkingRef = useRef(talking);
+  const controlsRef = useRef({
+    yaw: -0.14,
+    pitch: 0,
+    startYaw: -0.14,
+    startPitch: 0,
+  });
+
+  useEffect(() => {
+    activateRef.current = onActivate;
+  }, [onActivate]);
+
+  useEffect(() => {
+    talkingRef.current = talking;
+  }, [talking]);
+
+  useEffect(() => () => {
+    const resources = resourcesRef.current;
+    if (!resources) return;
+    cancelAnimationFrame(resources.frameId);
+    resources.built.materials.forEach((material) => material.dispose());
+    resources.scene.traverse((object) => {
+      if (object instanceof THREE.Mesh) object.geometry.dispose();
+    });
+    resources.renderer.dispose();
+    resourcesRef.current = null;
+  }, []);
+
+  const panResponder = useMemo(
+    () =>
+      PanResponder.create({
+        onStartShouldSetPanResponder: () => interactive,
+        onMoveShouldSetPanResponder: (_event, gesture) =>
+          interactive && (Math.abs(gesture.dx) > 3 || Math.abs(gesture.dy) > 3),
+        onPanResponderGrant: () => {
+          controlsRef.current.startYaw = controlsRef.current.yaw;
+          controlsRef.current.startPitch = controlsRef.current.pitch;
+        },
+        onPanResponderMove: (_event, gesture) => {
+          controlsRef.current.yaw = controlsRef.current.startYaw + gesture.dx * 0.012;
+          controlsRef.current.pitch = THREE.MathUtils.clamp(
+            controlsRef.current.startPitch + gesture.dy * 0.008,
+            -0.22,
+            0.22
+          );
+        },
+        onPanResponderRelease: (_event, gesture) => {
+          if (Math.hypot(gesture.dx, gesture.dy) < 8) activateRef.current?.();
+        },
+        onPanResponderTerminate: () => undefined,
+      }),
+    [interactive]
+  );
+
+  const onContextCreate = useCallback((gl: ExpoWebGLRenderingContext) => {
+    try {
+      const width = Math.max(1, gl.drawingBufferWidth || size);
+      const height = Math.max(1, gl.drawingBufferHeight || Math.round(size * 1.22));
+      // Three.js expects a browser-like canvas; Expo GL supplies the actual native context.
+      const nativeCanvas = {
+        width,
+        height,
+        clientWidth: width,
+        clientHeight: height,
+        style: {},
+        addEventListener: () => undefined,
+        removeEventListener: () => undefined,
+        getContext: () => gl,
+      };
+      const renderer = new THREE.WebGLRenderer({
+        canvas: nativeCanvas as unknown as HTMLCanvasElement,
+        context: gl as unknown as WebGLRenderingContext,
+        antialias: true,
+        alpha: true,
+      });
+      renderer.setPixelRatio(1);
+      renderer.setSize(width, height, false);
+      renderer.setClearColor(0x000000, 0);
+      renderer.outputColorSpace = THREE.SRGBColorSpace;
+      renderer.toneMapping = THREE.ACESFilmicToneMapping;
+      renderer.toneMappingExposure = 1.14;
+
+      const scene = new THREE.Scene();
+      const camera = new THREE.PerspectiveCamera(29, width / height, 0.1, 30);
+      camera.position.set(0, 1.25, 5.25);
+      camera.lookAt(0, 1.23, 0);
+      scene.add(new THREE.HemisphereLight(0xd9f6ff, 0x172337, 2.0));
+      const keyLight = new THREE.DirectionalLight(0xffffff, 3.0);
+      keyLight.position.set(-3, 4, 5);
+      scene.add(keyLight);
+      const cyanLight = new THREE.PointLight(0x27dfff, 2.8, 5);
+      cyanLight.position.set(2.2, 1.8, 2.3);
+      scene.add(cyanLight);
+      const warmLight = new THREE.PointLight(0xffa24a, 1.6, 4);
+      warmLight.position.set(-2.1, 0.75, 1.2);
+      scene.add(warmLight);
+
+      const built = buildRobot();
+      scene.add(built.root);
+      const state = built.root.userData;
+      const clock = new THREE.Clock();
+
+      const animate = () => {
+        const elapsed = clock.getElapsedTime();
+        const robot = state.robot as THREE.Group;
+        const head = state.head as THREE.Group;
+        const arms = state.armPivots as THREE.Group[];
+        const legs = state.legPivots as THREE.Group[];
+        robot.position.y = Math.sin(elapsed * 2.1) * 0.035;
+        robot.rotation.y += (
+          controlsRef.current.yaw +
+          Math.sin(elapsed * 0.42) * 0.035 -
+          robot.rotation.y
+        ) * 0.075;
+        robot.rotation.x += (controlsRef.current.pitch - robot.rotation.x) * 0.12;
+        head.rotation.y = Math.sin(elapsed * 1.15) * 0.075;
+        head.rotation.x = Math.sin(elapsed * 1.6) * 0.025;
+        arms[0].rotation.z = -0.08 + Math.sin(elapsed * 2.0) * 0.035;
+        arms[1].rotation.z = 0.08 - Math.sin(elapsed * 2.0) * 0.035;
+        legs[0].rotation.x = Math.sin(elapsed * 1.6) * 0.025;
+        legs[1].rotation.x = -Math.sin(elapsed * 1.6) * 0.025;
+
+        const glow = talkingRef.current
+          ? 1.7 + Math.sin(elapsed * 12) * 0.45
+          : 1.75 + Math.sin(elapsed * 2.3) * 0.24;
+        ([state.leftEye, state.rightEye] as THREE.Mesh[]).forEach((eye) => {
+          (eye.material as THREE.MeshStandardMaterial).emissiveIntensity = glow;
+        });
+        (state.chestCore as THREE.Mesh).rotation.z = elapsed * 0.34;
+        (state.mouth as THREE.Mesh).scale.x = talkingRef.current
+          ? 0.82 + Math.abs(Math.sin(elapsed * 11)) * 0.55
+          : 1;
+        renderer.render(scene, camera);
+        gl.endFrameEXP();
+
+        const current = resourcesRef.current;
+        if (current) current.frameId = requestAnimationFrame(animate);
+      };
+
+      resourcesRef.current = {
+        renderer,
+        scene,
+        frameId: requestAnimationFrame(animate),
+        built,
+      };
+    } catch {
+      setFailed(true);
+    }
+  }, [size]);
+
+  if (failed) {
     return (
       <Pressable
-        onPress={onActivate}
+        onPress={interactive ? onActivate : undefined}
+        pointerEvents={interactive ? "auto" : "none"}
         accessibilityRole="button"
         accessibilityLabel="Open KMT Bazaar AI assistant"
-        testID="login-ai-assistant"
-        style={[styles.fallback, { width: size, height: size }, style]}
+        style={[styles.fallback, { width: size, height: Math.round(size * 1.22) }, style]}
       >
         <RobotAvatar size={Math.round(size * 0.82)} talking={talking} showOrbit />
       </Pressable>
@@ -556,12 +779,18 @@ export default function RobotCompanion3D({
 
   return (
     <View
-      ref={hostRef}
-      testID="login-ai-assistant"
+      {...(interactive ? panResponder.panHandlers : {})}
+      pointerEvents={interactive ? "auto" : "none"}
       accessibilityRole="button"
       accessibilityLabel="KMT Bazaar 3D robot assistant. Drag to rotate or tap to open."
+      testID="kmt-robot-3d-native"
       style={[styles.stage, { width: size, height: Math.round(size * 1.22) }, style]}
-    />
+    >
+      <GLView
+        style={StyleSheet.absoluteFill}
+        onContextCreate={onContextCreate}
+      />
+    </View>
   );
 }
 
