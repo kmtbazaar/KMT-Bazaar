@@ -111,23 +111,6 @@ export default function TabsLayout() {
         }}
       />
 
-      {/* AI Assistant */}
-<Tabs.Screen
-  name="ai"
-  listeners={{
-    tabPress: (e) => {
-      e.preventDefault();
-      router.push("/assistant");
-    },
-  }}
-  options={{
-    title: t("AI"),
-    tabBarIcon: () => (
-      <RobotCompanion3D size={31} interactive={false} />
-    ),
-  }}
-/>
-
       {/* Cart */}
       <Tabs.Screen
         name="cart"
@@ -137,12 +120,6 @@ export default function TabsLayout() {
             <CartIcon color={color} size={size} />
           ),
         }}
-      />
-
-      {/* Wishlist route is opened from Profile, not shown in bottom navigation */}
-      <Tabs.Screen
-        name="wishlist"
-        options={{ href: null }}
       />
 
       {/* Profile */}
@@ -159,6 +136,33 @@ export default function TabsLayout() {
           ),
         }}
       />
+      {/* Assistant - far right; the 3D mascot is the touch/drag control */}
+      <Tabs.Screen
+        name="ai"
+        listeners={{
+          tabPress: (e) => {
+            e.preventDefault();
+            router.push("/assistant");
+          },
+        }}
+        options={{
+          title: t("AI"),
+          tabBarIcon: () => (
+            <RobotCompanion3D
+              size={34}
+              interactive
+              onActivate={() => router.push("/assistant")}
+            />
+          ),
+        }}
+      />
+
+      {/* Wishlist route is opened from Profile, not shown in bottom navigation */}
+      <Tabs.Screen
+        name="wishlist"
+        options={{ href: null }}
+      />
+
     </Tabs>
   );
 }
