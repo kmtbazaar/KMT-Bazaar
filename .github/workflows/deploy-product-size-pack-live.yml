@@ -142,7 +142,7 @@ jobs:
           assert.ok(home.includes("festivalGhatStepOne") && home.includes("festivalWaterShimmer") && home.includes("festivalDiyaFlame"), "Ghat steps, moving water reflections and diyas must be present");
           assert.ok(!home.includes("chhath-hero-240-q26.webp"), "The old flat GIF/WebP image must not replace the animated festival scene");
           assert.ok(!home.includes('testID="home-location-neon-glow"') && !home.includes("headerNeonGlow"), "Neon bar between location and notification must remain removed");
-          assert.ok(home.includes('testID="home-hero-brand-neon"') && home.includes("KMT BAZAAR") && home.includes("heroBrandNeon:") && home.includes('textShadowColor: "#FFC928"'), "Pre-GIF KMT Bazaar hero neon text must render");
+          assert.ok(home.includes('testID="home-hero-brand-neon"') && home.includes("KMT BAZAAR") && home.includes("heroBrandNeon:") && home.includes('textShadowColor: "#FFB928"'), "Pre-GIF KMT Bazaar hero neon text must render");
           assert.ok(home.includes('backgroundColor: "rgba(22,163,74,0.22)"') && home.includes('borderColor: "rgba(134,239,172,0.72)"') && home.includes("borderRadius: 8"), "Home search field must retain translucent green styling and square corners");
           const heroHeightLine = home.includes("const heroExpandedHeight = HERO_BACKDROP_HEIGHT;");
           const searchStyleLine = home.includes("style={s.searchWrap}") && !home.includes("translateY: -24");
@@ -169,7 +169,7 @@ jobs:
           assert.ok(home.includes("width: Math.min((width - SPACING.lg * 2 - 10) / 2, 190)") && home.includes("storeCardSmall: { width: Math.min((width - SPACING.lg * 2 - 10) / 2, 190), height: 112") && home.includes("storeImgSmall: { width: \"100%\", height: 64 }"), "Nearby store cards must fit exactly two across the screen while preserving the original card and image heights");
           assert.ok(!home.includes("Search 'medicines'..."), "Medicine must be removed from animated home search suggestions");
           assert.ok(["Search 'groceries'...", "Search 'fresh food'...", "Search 'electronics'...", "Search 'daily essentials'..."].every((suggestion) => home.includes(suggestion)), "All other animated search suggestions must remain");
-          assert.ok(home.includes('heroBrandNeon: { color: "#FFF7D6"') && home.includes("transform: [{ translateY: -26 }]"), "KMT Bazaar hero neon text must be shifted above its previous position");
+          assert.ok(home.includes('heroBrandNeon: { color: "#FFFBEA", fontSize: 21') && home.includes("transform: [{ translateY: -26 }]"), "KMT Bazaar hero neon text must be shifted above its previous position");
           assert.ok(home.includes('searchPlaceholderText: { fontSize: 16, color: "#FFFFFF", fontWeight: "500"'), "Home search suggestion text must be larger, white, and less bold");
           assert.ok(home.includes("const BANNER_W = Math.max(0, width - 24);") && home.includes("paddingHorizontal: SPACING.md") && home.includes("bannerItemWrap: { width: BANNER_W, flexShrink: 0"), "Home banners must be wider with consistent 12px side gutters");
           assert.ok(home.includes('bannerCarouselShell: { position: "relative", width: "100%", alignSelf: "stretch", minWidth: 0, overflow: "hidden"') && home.includes('overflowY: "hidden"'), "Banner carousel must stay clipped to its own viewport so it cannot cross the Shop by Category orange indicator");
