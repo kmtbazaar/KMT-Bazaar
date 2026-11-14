@@ -135,6 +135,7 @@ jobs:
           const assert = require("node:assert/strict");
           const fs = require("node:fs");
           const home = fs.readFileSync("app/(tabs)/home.tsx", "utf8");
+          const robot = fs.readFileSync("src/components/RobotCompanion3D.tsx", "utf8");
           assert.ok(home.includes("function NightSky()") && home.includes("<FestivalDecor />"), "The animated Chhath–Diwali festival scene must render in the home hero");
           assert.ok(home.includes("function FestivalDecor()") && home.includes("FESTIVAL_BULBS"), "Festival lighting and atmospheric backdrop must be present");
           assert.ok(home.includes("FESTIVAL_LANTERNS") && home.includes("FESTIVAL_FIREWORKS") && home.includes("function FestivalLantern") && home.includes("function FestivalFirework"), "Floating lanterns and animated fireworks must be present");
