@@ -394,7 +394,7 @@ export default function AssistantScreen() {
     <SafeAreaView style={[styles.container, { paddingTop: insets.top + 10, paddingBottom: insets.bottom + 10 }]} edges={[]}>
       <LinearGradient
         pointerEvents="none"
-        colors={["rgba(3,10,24,0.62)", "rgba(13,31,49,0.42)", "rgba(4,9,22,0.66)"]}
+        colors={["rgba(1,8,20,0.78)", "rgba(3,29,46,0.62)", "rgba(1,7,18,0.80)"]}
         style={StyleSheet.absoluteFillObject}
       />
       <Animated.View entering={ZoomIn.duration(320).springify()} style={styles.panel}>
@@ -445,7 +445,7 @@ export default function AssistantScreen() {
             accessibilityLabel="Open Roojgar and jobs"
             testID="assistant-roojgar-link"
           >
-            <MaterialCommunityIcons name="briefcase-outline" size={17} color="#E8FBFF" />
+            <MaterialCommunityIcons name="briefcase-outline" size={15} color="#FFFFFF" />
             <Text style={styles.guideButtonText}>Roojgar / Jobs</Text>
           </TouchableOpacity>
           {!!voiceStatus && (
@@ -462,31 +462,32 @@ export default function AssistantScreen() {
               style={styles.motaInput}
               value={input}
               onChangeText={setInput}
-              placeholder="Ask anything..."
+              placeholder="Ask KMT Bazaar AI..."
               placeholderTextColor="#64748B"
               multiline={false}
               returnKeyType="send"
               onSubmitEditing={onSend}
             />
 
-            {/* DUAL BUTTON (SEND / MIC) */}
+            {/* Laptop-style Enter key sends the typed message; voice remains on the robot control. */}
             <TouchableOpacity
               style={[
-                styles.actionBtn,
-                input.trim().length > 0
-                  ? styles.sendBtnBg
-                  : voiceMode ? styles.voiceModeActiveBtn : styles.voiceBtnBg,
+                styles.enterBtn,
+                (!input.trim() || typing) && styles.enterBtnDisabled,
               ]}
-              onPress={handleActionPress}
-              activeOpacity={0.7}
+              onPress={() => void onSend()}
+              disabled={!input.trim() || typing}
+              activeOpacity={0.78}
               accessibilityRole="button"
-              accessibilityLabel={input.trim().length > 0 ? "Send message" : voiceMode ? "Stop voice conversation" : "Start voice conversation"}
+              accessibilityLabel="Press Enter to send message"
+              testID="assistant-enter-button"
             >
               <MaterialCommunityIcons
-                name={input.trim().length > 0 ? "send" : voiceMode ? "stop-circle" : "microphone"}
-                size={20}
-                color="#FFFFFF"
+                name="keyboard-return"
+                size={18}
+                color={input.trim() && !typing ? "#ECFEFF" : "#78909C"}
               />
+              <Text style={styles.enterBtnText}>ENTER</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -511,10 +512,10 @@ const styles = StyleSheet.create({
     maxHeight: 820,
     borderRadius: 26,
     borderWidth: 1,
-    borderColor: "rgba(230,248,255,0.52)",
+    borderColor: "rgba(34,211,238,0.58)",
     overflow: "hidden",
-    backgroundColor: "rgba(13,25,39,0.58)",
-    shadowColor: "#A5F3FC",
+    backgroundColor: "rgba(5,15,29,0.66)",
+    shadowColor: "#22D3EE",
     shadowOffset: { width: 0, height: 12 },
     shadowOpacity: 0.2,
     shadowRadius: 30,
@@ -524,7 +525,7 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     borderRadius: 26,
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.13)",
+    borderColor: "rgba(103,232,249,0.24)",
   },
   panelTopGlow: {
     position: "absolute",
@@ -533,8 +534,8 @@ const styles = StyleSheet.create({
     right: "16%",
     height: 110,
     borderRadius: 60,
-    backgroundColor: "rgba(186,230,253,0.12)",
-    shadowColor: "#CFFAFE",
+    backgroundColor: "rgba(34,211,238,0.16)",
+    shadowColor: "#22D3EE",
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.36,
     shadowRadius: 34,
@@ -553,40 +554,41 @@ const styles = StyleSheet.create({
   },
   quickActionsContainer: {
     paddingHorizontal: 16,
-    paddingVertical: 10,
-    backgroundColor: "rgba(255,255,255,0.045)",
+    paddingVertical: 8,
+    alignItems: "flex-start",
+    backgroundColor: "rgba(3,14,26,0.48)",
     borderTopWidth: 1,
-    borderTopColor: "rgba(226,245,255,0.16)",
+    borderTopColor: "rgba(34,211,238,0.28)",
   },
   guideButton: {
-    width: "100%",
+    alignSelf: "flex-start",
     minWidth: 0,
-    minHeight: 42,
+    minHeight: 32,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: 8,
-    paddingHorizontal: 12,
-    borderRadius: 14,
+    gap: 6,
+    paddingHorizontal: 11,
+    borderRadius: 10,
     borderWidth: 1,
   },
   roojgarButton: {
-    backgroundColor: "rgba(210,240,255,0.085)",
-    borderColor: "rgba(207,250,254,0.58)",
-    shadowColor: "#A5F3FC",
+    backgroundColor: "#F97316",
+    borderColor: "#FDBA74",
+    shadowColor: "#FB923C",
     shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.14,
-    shadowRadius: 12,
-    elevation: 3,
+    shadowOpacity: 0.32,
+    shadowRadius: 10,
+    elevation: 4,
   },
   guideButtonText: {
-    color: "#F0FAFF",
-    fontSize: 12,
+    color: "#FFFFFF",
+    fontSize: 11,
     fontWeight: "800",
-    letterSpacing: 0.25,
+    letterSpacing: 0.35,
   },
   voiceStatus: {
-    color: "#D7EDF7",
+    color: "#A5F3FC",
     fontSize: 10,
     lineHeight: 14,
     marginTop: 7,
@@ -596,20 +598,20 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingTop: 10,
     paddingBottom: Platform.OS === "ios" ? 10 : 14,
-    backgroundColor: "rgba(255,255,255,0.045)",
+    backgroundColor: "rgba(2,12,24,0.58)",
     borderTopWidth: 1,
-    borderTopColor: "rgba(226,245,255,0.17)",
+    borderTopColor: "rgba(34,211,238,0.28)",
   },
   motaInputWrapper: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "rgba(229,246,255,0.10)",
-    borderRadius: 24,
-    paddingHorizontal: 14,
-    paddingVertical: 6,
+    backgroundColor: "rgba(3,18,32,0.68)",
+    borderRadius: 14,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
     borderWidth: 1,
-    borderColor: "rgba(224,242,254,0.52)",
-    shadowColor: "#A5F3FC",
+    borderColor: "rgba(103,232,249,0.66)",
+    shadowColor: "#22D3EE",
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.10,
     shadowRadius: 10,
@@ -622,25 +624,38 @@ const styles = StyleSheet.create({
     height: 44,
     paddingHorizontal: 4,
   },
-  actionBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    justifyContent: "center",
-    alignItems: "center",
+  enterBtn: {
+    minWidth: 68,
+    height: 42,
+    paddingHorizontal: 9,
     marginLeft: 8,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 4,
+    borderRadius: 9,
     borderWidth: 1,
-    borderColor: "rgba(240,252,255,0.62)",
+    borderColor: "rgba(103,232,249,0.94)",
+    borderBottomWidth: 4,
+    borderBottomColor: "rgba(8,145,178,0.9)",
+    backgroundColor: "rgba(8,145,178,0.58)",
+    shadowColor: "#22D3EE",
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.28,
+    shadowRadius: 8,
+    elevation: 4,
   },
-  voiceBtnBg: {
-    backgroundColor: "rgba(235,248,255,0.17)",
+  enterBtnDisabled: {
+    borderColor: "rgba(148,163,184,0.34)",
+    borderBottomColor: "rgba(71,85,105,0.58)",
+    backgroundColor: "rgba(30,45,58,0.48)",
+    shadowOpacity: 0,
+    elevation: 0,
   },
-  voiceModeActiveBtn: {
-    backgroundColor: "rgba(34,211,238,0.32)",
-    borderColor: "rgba(165,243,252,0.9)",
-  },
-  sendBtnBg: {
-    backgroundColor: "rgba(14,116,144,0.80)",
-    borderColor: "rgba(186,230,253,0.84)",
+  enterBtnText: {
+    color: "#E8FBFF",
+    fontSize: 9,
+    fontWeight: "900",
+    letterSpacing: 0.5,
   },
 });
