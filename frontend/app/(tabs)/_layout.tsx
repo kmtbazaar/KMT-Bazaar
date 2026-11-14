@@ -139,12 +139,6 @@ export default function TabsLayout() {
       {/* Assistant - far right; the 3D mascot is the touch/drag control */}
       <Tabs.Screen
         name="ai"
-        listeners={{
-          tabPress: (e) => {
-            e.preventDefault();
-            router.push("/assistant");
-          },
-        }}
         options={{
           title: t("AI"),
           tabBarIcon: ({ focused }) => (

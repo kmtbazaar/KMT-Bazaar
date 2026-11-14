@@ -24,7 +24,6 @@ import { IMAGE_FALLBACK_URL, RADIUS, SPACING, shadow } from "@/src/theme";
 import ProductCard from "@/src/components/ProductCard";
 import CheckoutBar from "@/src/components/CheckoutBar";
 import { BrandingFooter } from "@/src/components/AnimatedBrandLogo";
-import HomeRobotCompanion from "@/src/components/HomeRobotCompanion";
 
 const { width } = Dimensions.get("window");
 const BANNER_W = width - 32;
@@ -1351,13 +1350,6 @@ export default function Home() {
 
       {/* Floating Checkout Bar */}
       <CheckoutBar />
-
-      {!homeSearchOpen && (
-        <HomeRobotCompanion
-          size={122}
-          onActivate={() => router.push("/assistant" as any)}
-        />
-      )}
 
       {homeSearchOpen && (
         <View style={s.homeSearchOverlay} testID="home-search-overlay">
