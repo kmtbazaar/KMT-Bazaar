@@ -695,7 +695,7 @@ export default function RobotCompanion3D({
         antialias: true,
         powerPreference: "low-power",
       });
-      renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.35));
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.15));
       renderer.setClearColor(0x000000, 0);
       renderer.outputColorSpace = THREE.SRGBColorSpace;
       renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -821,9 +821,13 @@ export default function RobotCompanion3D({
       resize();
 
       const clock = new THREE.Clock();
+      let lastRenderedAt = 0;
       const animate = () => {
         if (disposed || !renderer) return;
         frameId = window.requestAnimationFrame(animate);
+        const frameNow = performance.now();
+        if (frameNow - lastRenderedAt < 1000 / 30) return;
+        lastRenderedAt = frameNow;
         const elapsed = clock.getElapsedTime();
         const robot = state.robot as THREE.Group;
         const head = state.head as THREE.Group;
@@ -1086,8 +1090,15 @@ function NativeRobotStage({
       scene.add(built.root);
       const state = built.root.userData;
       const clock = new THREE.Clock();
+      let lastRenderedAt = 0;
 
       const animate = () => {
+        const current = resourcesRef.current;
+        if (!current) return;
+        current.frameId = requestAnimationFrame(animate);
+        const frameNow = performance.now();
+        if (frameNow - lastRenderedAt < 1000 / 30) return;
+        lastRenderedAt = frameNow;
         const elapsed = clock.getElapsedTime();
         const robot = state.robot as THREE.Group;
         const head = state.head as THREE.Group;
@@ -1146,8 +1157,6 @@ function NativeRobotStage({
         renderer.render(scene, camera);
         gl.endFrameEXP();
 
-        const current = resourcesRef.current;
-        if (current) current.frameId = requestAnimationFrame(animate);
       };
 
       resourcesRef.current = {

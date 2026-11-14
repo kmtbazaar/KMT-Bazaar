@@ -55,20 +55,29 @@ const SEARCH_PLACEHOLDERS = [
 const RECENT_SEARCHES_KEY = "kmt_recent_searches";
 const MAX_RECENT_SEARCHES = 5;
 
-const SKY_STARS = Array.from({ length: 26 }, (_, index) => ({
-  left: `${(index * 37 + 11) % 96}%`,
-  top: 7 + ((index * 19 + 13) % 68),
-  size: index % 5 === 0 ? 2 : 1.4,
-}));
-// Keep the centered KMT Bazaar wordmark clear by removing its seven overlapping sky specks.
-const HERO_BRAND_CLEAR_STAR_INDICES = new Set([1, 4, 6, 9, 11, 12, 16]);
+// Keep decorative night-sky stars to the outer edges so the KMT Bazaar wordmark stays completely clear.
+const SKY_STARS = Array.from({ length: 18 }, (_, index) => {
+  const point = Math.floor(index / 2);
+  const isLeftSide = index % 2 === 0;
+  return {
+    left: `${isLeftSide ? 4 + ((point * 9) % 18) : 78 + ((point * 11) % 18)}%`,
+    top: 7 + ((index * 19 + 13) % 68),
+    size: index % 5 === 0 ? 2.2 : 1.6,
+  };
+});
 
 
-const FESTIVAL_BULBS = Array.from({ length: 9 }, (_, index) => ({
-  left: String(index * 12) + "%",
-  top: index % 2 === 0 ? 7 : 12,
-  color: ["#FFE08A", "#FDBA74", "#FCA5A5", "#FDE68A", "#93C5FD"][index % 5],
-}));
+// Warm bulbs stay at the left and right edges, never across the central wordmark.
+const FESTIVAL_BULBS = [
+  { left: "0%", top: 7, color: "#FFE08A" },
+  { left: "6%", top: 12, color: "#FDBA74" },
+  { left: "12%", top: 7, color: "#FCA5A5" },
+  { left: "18%", top: 12, color: "#FDE68A" },
+  { left: "82%", top: 12, color: "#93C5FD" },
+  { left: "88%", top: 7, color: "#FFE08A" },
+  { left: "94%", top: 12, color: "#FDBA74" },
+  { left: "100%", top: 7, color: "#FCA5A5" },
+];
 
 const FESTIVAL_LANTERNS = [
   { left: "13%", bottom: 22, delay: 0, duration: 6200, size: 0.82 },
@@ -391,7 +400,7 @@ function FestivalDecor() {
       <View style={s.festivalHorizonGlow} />
       <FestivalArghyaSun />
       <View style={s.festivalStarLayer}>
-        {SKY_STARS.slice(0, 18).filter((_, index) => !HERO_BRAND_CLEAR_STAR_INDICES.has(index)).map((star, index) => (
+        {SKY_STARS.map((star, index) => (
           <View
             key={index}
             style={[
@@ -409,7 +418,8 @@ function FestivalDecor() {
       </View>
 
       <Animated.View style={[s.festivalLightString, lightsStyle]}>
-        <View style={s.festivalLightWire} />
+        <View style={[s.festivalLightWire, s.festivalLightWireLeft]} />
+        <View style={[s.festivalLightWire, s.festivalLightWireRight]} />
         {FESTIVAL_BULBS.map((bulb, index) => (
           <View
             key={index}
@@ -477,7 +487,6 @@ export default function Home() {
   const [brokenImages, setBrokenImages] = useState<Record<string, boolean>>({});
   const [cats, setCats] = useState<any[]>([]);
   const [stores, setStores] = useState<any[]>([]);
-  const [vendorServices, setVendorServices] = useState<any[]>([]);
   const [trending, setTrending] = useState<any[]>([]);
   const [unread, setUnread] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
@@ -724,46 +733,31 @@ export default function Home() {
     router.push("/addresses" as any);
   }, [router]);
 
-  // Public catalog data can load before a delivery location is selected.
+  // Load home sections independently so one slow endpoint cannot hold back the first visible content.
   const load = useCallback(async () => {
-
-    try {
-      const [b, c, s, vs, t, u] = await Promise.all([
-        api.banners().catch((error) => {
-          console.warn("Home banners unavailable:", error);
-          return [];
-        }),
-        api.categories().catch((error) => {
-          console.warn("Shop by Category unavailable:", error);
-          return [];
-        }),
-        api.stores().catch((error) => {
-          console.warn("Nearby Stores unavailable:", error);
-          return [];
-        }),
-        api.vendorServices().catch((error) => {
-          console.warn("Vendor services unavailable:", error);
-          return [];
-        }),
-        api.products({ trending: true }).catch((error) => {
-          console.warn("Trending products unavailable:", error);
-          return [];
-        }),
-        api.unreadCount().catch((error) => {
-          // A notification/session issue must not block public catalog data.
-          console.warn("Unread count unavailable:", error);
-          return null;
-        }),
-      ]);
-      setBanners(b || []);
-      setCats(c || []);
-      setStores(s || []);
-      setVendorServices(vs || []);
-      setTrending(t || []);
-      setUnread(u?.count || 0);
-    } catch (e) {
-      console.log("load err", e);
-    }
+    await Promise.all([
+      api.banners().then((data) => setBanners(data || [])).catch((error) => {
+        console.warn("Home banners unavailable:", error);
+        setBanners([]);
+      }),
+      api.categories().then((data) => setCats(data || [])).catch((error) => {
+        console.warn("Shop by Category unavailable:", error);
+        setCats([]);
+      }),
+      api.stores().then((data) => setStores(data || [])).catch((error) => {
+        console.warn("Nearby Stores unavailable:", error);
+        setStores([]);
+      }),
+      // Keep the first home paint lightweight; dedicated product pages still use their normal limits.
+      api.products({ trending: true, limit: 12 }).then((data) => setTrending(data || [])).catch((error) => {
+        console.warn("Trending products unavailable:", error);
+        setTrending([]);
+      }),
+      api.unreadCount().then((data) => setUnread(data?.count || 0)).catch((error) => {
+        console.warn("Unread count unavailable:", error);
+        setUnread(0);
+      }),
+    ]);
   }, []);
 
   useEffect(() => {
@@ -1624,9 +1618,11 @@ const s = StyleSheet.create({
   festivalBackdrop: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0 },
   festivalHorizonGlow: { position: "absolute", left: "17%", right: "17%", top: 84, height: 58, borderRadius: 70, backgroundColor: "rgba(251,146,60,0.17)", shadowColor: "#FB923C", shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.42, shadowRadius: 24, elevation: 3 },
   festivalStarLayer: { position: "absolute", left: 0, right: 0, top: 0, height: 92 },
-  festivalStar: { position: "absolute", borderRadius: 2, backgroundColor: "#FFF8E8", shadowColor: "#FFF8E8", shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.8, shadowRadius: 3, elevation: 2 },
+  festivalStar: { position: "absolute", borderRadius: 3, backgroundColor: "#EAF7FF", shadowColor: "#8ADFFF", shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.9, shadowRadius: 6, elevation: 2 },
   festivalLightString: { position: "absolute", left: "6%", right: "6%", top: 57, height: 24, zIndex: 8 },
-  festivalLightWire: { position: "absolute", left: 0, right: 0, top: 5, height: 16, borderBottomWidth: 1, borderBottomColor: "rgba(255,211,128,0.76)", borderBottomLeftRadius: 90, borderBottomRightRadius: 90 },
+  festivalLightWire: { position: "absolute", top: 5, height: 16, borderBottomWidth: 1, borderBottomColor: "rgba(255,211,128,0.76)", borderBottomLeftRadius: 90, borderBottomRightRadius: 90 },
+  festivalLightWireLeft: { left: 0, width: "22%" },
+  festivalLightWireRight: { right: 0, width: "22%" },
   festivalBulb: { position: "absolute", width: 5, height: 5, borderRadius: 3, borderWidth: 0.5, borderColor: "rgba(255,255,255,0.72)", shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.9, shadowRadius: 7, elevation: 5 },
   festivalLantern: { position: "absolute", width: 28, height: 44, alignItems: "center", zIndex: 10 },
   festivalLanternGlow: { position: "absolute", top: 7, width: 30, height: 30, borderRadius: 15, backgroundColor: "rgba(255,181,64,0.18)", shadowColor: "#FBBF24", shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.65, shadowRadius: 12, elevation: 5 },
@@ -1765,7 +1761,7 @@ const s = StyleSheet.create({
   cloudHighlightTwo: { position: "absolute", left: 38, top: 7, width: 32, height: 9, borderRadius: 10, backgroundColor: "rgba(255,255,255,0.2)" },
   cloudBase: { position: "absolute", left: 2, right: 2, bottom: 4, height: 24, borderRadius: 18, backgroundColor: "rgba(100,116,139,0.12)" },
   headerBg: { position: "absolute", top: 0, left: 0, right: 0, height: HERO_BACKDROP_HEIGHT, borderBottomLeftRadius: 30, borderBottomRightRadius: 30, backgroundColor: "transparent", shadowColor: "#FFFFFF", shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.14, shadowRadius: 18, elevation: 7 },
-  skyClearSpace: { height: Platform.OS === "web" ? 90 : 56, alignItems: "center", justifyContent: "center" },
+  skyClearSpace: { height: Platform.OS === "web" ? 90 : 56, alignItems: "center", justifyContent: "center", zIndex: 30, elevation: 30 },
   skyClearSpaceCollapsed: { height: 0 },
   searchBarSafeArea: { backgroundColor: "transparent", zIndex: 20, elevation: 0 },
   searchBarSafeAreaCollapsed: { borderBottomWidth: 1, borderBottomColor: "rgba(226,232,240,0.9)" },
@@ -1778,7 +1774,7 @@ const s = StyleSheet.create({
   locLabel: { color: "rgba(255,255,255,0.85)", fontSize: 11, fontWeight: "600" },
   locValue: { color: THEME.white, fontSize: 14, fontWeight: "800" },
   locationErrorText: { color: "#FEF3C7", fontSize: 9, fontWeight: "700", marginTop: 2, maxWidth: 260 },
-  heroBrandNeon: { color: "#FFF7D6", fontSize: 18, fontWeight: "900", letterSpacing: 3, textAlign: "center", transform: [{ translateY: -26 }], textShadowColor: "#FFC928", textShadowOffset: { width: 0, height: 0 }, textShadowRadius: 14 },
+  heroBrandNeon: { color: "#FFFBEA", fontSize: 21, fontWeight: "900", letterSpacing: 3.2, textAlign: "center", includeFontPadding: false, zIndex: 30, elevation: 30, transform: [{ translateY: -26 }], textShadowColor: "#FFB928", textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 11 },
   headerActions: { flexDirection: "row", alignItems: "center" },
   iconBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: "rgba(255,255,255,0.2)", alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: "rgba(255,255,255,0.3)" },
   bellBadge: { position: "absolute", top: 2, right: 2, backgroundColor: THEME.orange, minWidth: 18, height: 18, borderRadius: 9, paddingHorizontal: 4, alignItems: "center", justifyContent: "center", borderWidth: 1.5, borderColor: THEME.white },
