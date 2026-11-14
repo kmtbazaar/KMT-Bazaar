@@ -171,6 +171,11 @@ jobs:
           assert.ok(["Search 'groceries'...", "Search 'fresh food'...", "Search 'electronics'...", "Search 'daily essentials'..."].every((suggestion) => home.includes(suggestion)), "All other animated search suggestions must remain");
           assert.ok(home.includes('heroBrandNeon: { color: "#FFF7D6"') && home.includes("transform: [{ translateY: -26 }]"), "KMT Bazaar hero neon text must be shifted above its previous position");
           assert.ok(home.includes('searchPlaceholderText: { fontSize: 16, color: "#FFFFFF", fontWeight: "500"'), "Home search suggestion text must be larger, white, and less bold");
+          assert.ok(home.includes("const BANNER_W = Math.max(0, width - 24);") && home.includes("paddingHorizontal: SPACING.md") && home.includes("bannerItemWrap: { width: BANNER_W, flexShrink: 0"), "Home banners must be wider with consistent 12px side gutters");
+          assert.ok(home.includes('bannerCarouselShell: { position: "relative", width: "100%", alignSelf: "stretch", minWidth: 0, overflow: "hidden"') && home.includes('overflowY: "hidden"'), "Banner carousel must stay clipped to its own viewport so it cannot cross the Shop by Category orange indicator");
+          assert.ok(home.includes("ref={bannerListRef}") && !home.includes("ref={(ref) =>") && home.includes("bannerScrollOffsetRef.current") && home.includes("Math.abs(bannerScrollOffsetRef.current - targetOffset) > 2"), "Carousel must use one stable list ref and avoid duplicate scroll animations during re-renders");
+          assert.ok(home.includes('decelerationRate="fast"') && home.includes("disableIntervalMomentum") && home.includes('snapToAlignment="start"'), "Home banner swipes must snap cleanly and smoothly to one banner");
+          assert.ok(home.includes("sectionIndicator: { width: 4, height: 16, backgroundColor: THEME.orange"), "The orange Shop by Category indicator must remain in its original position and styling");
           console.log("HOME_HERO_NEON_AND_SEARCH_SUGGESTIONS_VALIDATION_PASS");
           console.log("CHHATH_DIWALI_GHAT_HERO_VALIDATION_PASS");
           console.log("HOME_SEARCH_GREEN_TRANSPARENT_BELOW_HERO_VALIDATION_PASS");
