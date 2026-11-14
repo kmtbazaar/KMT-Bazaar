@@ -448,7 +448,7 @@ export default function AssistantScreen() {
             <MaterialCommunityIcons name="arrow-up-bold" size={17} color="#F0F9FF" />
             <View style={styles.shiftKeyLabelWrap}>
               <Text style={styles.shiftKeyLabel}>SHIFT</Text>
-              <Text style={styles.shiftKeyCaption}>ROOJGAAR / JOBS</Text>
+              <Text style={styles.shiftKeyCaption}>ROOJGAR / JOBS</Text>
             </View>
           </TouchableOpacity>
           {!!voiceStatus && (
