@@ -60,6 +60,8 @@ const SKY_STARS = Array.from({ length: 26 }, (_, index) => ({
   top: 7 + ((index * 19 + 13) % 68),
   size: index % 5 === 0 ? 2 : 1.4,
 }));
+// Keep the centered KMT Bazaar wordmark clear by removing its seven overlapping sky specks.
+const HERO_BRAND_CLEAR_STAR_INDICES = new Set([1, 4, 6, 9, 11, 12, 16]);
 
 
 const FESTIVAL_BULBS = Array.from({ length: 9 }, (_, index) => ({
@@ -279,6 +281,78 @@ function FestivalChhathSoop() {
   );
 }
 
+
+function FestivalChhathWoman() {
+  const offeringLift = useSharedValue(0);
+
+  useEffect(() => {
+    offeringLift.value = withRepeat(
+      withSequence(
+        withTiming(1, { duration: 1450 }),
+        withTiming(0, { duration: 1450 })
+      ),
+      -1,
+      false
+    );
+  }, []);
+
+  const offeringMotion = useAnimatedStyle(() => ({
+    transform: [
+      { translateY: -2 + offeringLift.value * 2 },
+      { rotate: `${-2 + offeringLift.value * 2}deg` },
+    ],
+  }));
+
+  return (
+    <View pointerEvents="none" style={s.festivalChhathWoman} testID="home-chhath-woman">
+      {/* Traditional red sari silhouette with a gold border */}
+      <View style={s.festivalWomanSariBack} />
+      <View style={s.festivalWomanBody} />
+      <View style={s.festivalWomanSariDrape} />
+      <View style={s.festivalWomanGoldBorder} />
+      <View style={s.festivalWomanNeck} />
+      <View style={s.festivalWomanBlouse} />
+
+      {/* Side profile facing the setting sun, with hair covered by the pallu */}
+      <View style={s.festivalWomanVeil} />
+      <View style={s.festivalWomanHair} />
+      <View style={s.festivalWomanFace}>
+        <View style={s.festivalWomanEye} />
+        <View style={s.festivalWomanNose} />
+      </View>
+      <View style={s.festivalWomanEarring} />
+
+      {/* Both arms gently lift the soop towards the sun for arghya */}
+      <Animated.View style={[s.festivalWomanOffering, offeringMotion]}>
+        <View style={s.festivalWomanUpperArm} />
+        <View style={s.festivalWomanLowerArm} />
+        <View style={s.festivalWomanSecondArm} />
+        <View style={s.festivalWomanHandTop} />
+        <View style={s.festivalWomanHandBottom} />
+        <View style={s.festivalWomanSoop}>
+          <View style={s.festivalWomanSoopRim} />
+          <View style={s.festivalWomanSoopBody}>
+            <View style={s.festivalWomanSoopWeave} />
+          </View>
+          <View style={s.festivalWomanSoopBanana} />
+          <View style={s.festivalWomanSoopFruit} />
+          <View style={s.festivalWomanSoopLeaf} />
+        </View>
+      </Animated.View>
+      <View style={s.festivalWomanFoot} />
+    </View>
+  );
+}
+
+function FestivalArghyaSun() {
+  return (
+    <View pointerEvents="none" style={s.festivalArghyaSun} testID="home-chhath-arghya-sun">
+      <View style={s.festivalArghyaSunHalo} />
+      <View style={s.festivalArghyaSunCore} />
+    </View>
+  );
+}
+
 function FestivalDecor() {
   const lightPulse = useSharedValue(0);
   const waterDrift = useSharedValue(0);
@@ -315,8 +389,9 @@ function FestivalDecor() {
         style={s.festivalBackdrop}
       />
       <View style={s.festivalHorizonGlow} />
+      <FestivalArghyaSun />
       <View style={s.festivalStarLayer}>
-        {SKY_STARS.slice(0, 18).map((star, index) => (
+        {SKY_STARS.slice(0, 18).filter((_, index) => !HERO_BRAND_CLEAR_STAR_INDICES.has(index)).map((star, index) => (
           <View
             key={index}
             style={[
@@ -376,6 +451,7 @@ function FestivalDecor() {
         ))}
       </LinearGradient>
 
+      <FestivalChhathWoman />
       <FestivalSugarcane left="61%" bottom={15} />
       <FestivalSugarcane left="75%" bottom={12} />
       <FestivalChhathSoop />
@@ -1578,6 +1654,36 @@ const s = StyleSheet.create({
   festivalSoopFruitOrange: { position: "absolute", top: 7, left: 9, width: 9, height: 9, borderRadius: 5, backgroundColor: "#F59E0B", borderWidth: 1, borderColor: "#FDE68A", zIndex: 2 },
   festivalSoopFruitBanana: { position: "absolute", top: 5, left: 39, width: 15, height: 6, borderRadius: 8, backgroundColor: "#FDE68A", borderBottomWidth: 1.5, borderBottomColor: "#D69A35", transform: [{ rotate: "-22deg" }], zIndex: 2 },
   festivalSoopCoconut: { position: "absolute", top: 3, left: 25, width: 9, height: 9, borderRadius: 5, backgroundColor: "#8B5A35", borderWidth: 1, borderColor: "#D6A16A", zIndex: 2 },
+  festivalChhathWoman: { position: "absolute", left: "5%", bottom: 11, width: 84, height: 108, zIndex: 17, overflow: "visible" },
+  festivalWomanSariBack: { position: "absolute", left: 8, top: 45, width: 43, height: 58, borderTopLeftRadius: 21, borderTopRightRadius: 14, borderBottomLeftRadius: 10, borderBottomRightRadius: 12, backgroundColor: "#9F243B", transform: [{ rotate: "5deg" }] },
+  festivalWomanBody: { position: "absolute", left: 19, top: 38, width: 24, height: 42, borderRadius: 11, backgroundColor: "#B85B3C" },
+  festivalWomanSariDrape: { position: "absolute", left: 9, top: 35, width: 39, height: 58, borderTopLeftRadius: 22, borderTopRightRadius: 8, borderBottomLeftRadius: 5, borderBottomRightRadius: 18, backgroundColor: "#B83246", borderLeftWidth: 2, borderLeftColor: "#F6C56E", transform: [{ rotate: "12deg" }] },
+  festivalWomanGoldBorder: { position: "absolute", left: 12, top: 57, width: 35, height: 3, borderRadius: 2, backgroundColor: "#F4C56D", transform: [{ rotate: "-55deg" }] },
+  festivalWomanNeck: { position: "absolute", left: 23, top: 27, width: 9, height: 12, borderRadius: 4, backgroundColor: "#B97955" },
+  festivalWomanBlouse: { position: "absolute", left: 24, top: 36, width: 21, height: 24, borderRadius: 7, backgroundColor: "#7F1D38" },
+  festivalWomanVeil: { position: "absolute", left: 12, top: 5, width: 29, height: 34, borderTopLeftRadius: 20, borderTopRightRadius: 17, borderBottomLeftRadius: 5, borderBottomRightRadius: 12, backgroundColor: "#A5223B", borderTopWidth: 2, borderTopColor: "#F3C56E", transform: [{ rotate: "-8deg" }], zIndex: 4 },
+  festivalWomanHair: { position: "absolute", left: 12, top: 15, width: 21, height: 20, borderRadius: 11, backgroundColor: "#261A22", zIndex: 5 },
+  festivalWomanFace: { position: "absolute", left: 24, top: 17, width: 18, height: 20, borderRadius: 10, backgroundColor: "#C98A65", zIndex: 6 },
+  festivalWomanEye: { position: "absolute", right: 4, top: 7, width: 2, height: 2, borderRadius: 1, backgroundColor: "#291A18" },
+  festivalWomanNose: { position: "absolute", right: -2, top: 10, width: 5, height: 3, borderTopWidth: 1.4, borderTopColor: "#A9674C", transform: [{ rotate: "12deg" }] },
+  festivalWomanEarring: { position: "absolute", left: 38, top: 31, width: 4, height: 5, borderRadius: 3, borderWidth: 1, borderColor: "#F6D28B", backgroundColor: "#D69A42", zIndex: 7 },
+  festivalWomanOffering: { position: "absolute", left: 0, top: 0, width: 84, height: 54, zIndex: 8 },
+  festivalWomanUpperArm: { position: "absolute", left: 34, top: 29, width: 30, height: 7, borderRadius: 5, backgroundColor: "#B97955", borderWidth: 0.7, borderColor: "#E5B08B", transform: [{ rotate: "-34deg" }] },
+  festivalWomanLowerArm: { position: "absolute", left: 53, top: 12, width: 17, height: 6, borderRadius: 5, backgroundColor: "#C98A65", transform: [{ rotate: "-31deg" }] },
+  festivalWomanSecondArm: { position: "absolute", left: 33, top: 38, width: 30, height: 6, borderRadius: 5, backgroundColor: "#A9664B", borderWidth: 0.6, borderColor: "#E5B08B", transform: [{ rotate: "-27deg" }] },
+  festivalWomanHandTop: { position: "absolute", left: 65, top: 3, width: 9, height: 6, borderRadius: 5, backgroundColor: "#D39A72", transform: [{ rotate: "-28deg" }] },
+  festivalWomanHandBottom: { position: "absolute", left: 64, top: 17, width: 9, height: 6, borderRadius: 5, backgroundColor: "#B97955", transform: [{ rotate: "-25deg" }] },
+  festivalWomanSoop: { position: "absolute", left: 48, top: -2, width: 35, height: 18, alignItems: "center", justifyContent: "flex-end" },
+  festivalWomanSoopRim: { position: "absolute", top: 4, left: 0, width: 35, height: 8, borderRadius: 18, backgroundColor: "#D99B4D", borderWidth: 1.2, borderColor: "#FFE0A1", transform: [{ rotate: "-8deg" }] },
+  festivalWomanSoopBody: { position: "absolute", bottom: 0, left: 4, width: 27, height: 9, borderBottomLeftRadius: 12, borderBottomRightRadius: 12, backgroundColor: "#A76A39", borderBottomWidth: 1.2, borderBottomColor: "#F2C27D", overflow: "hidden" },
+  festivalWomanSoopWeave: { position: "absolute", top: 2, left: 3, right: 3, height: 1, backgroundColor: "rgba(255,225,170,0.9)" },
+  festivalWomanSoopBanana: { position: "absolute", top: -1, left: 17, width: 12, height: 4, borderRadius: 6, backgroundColor: "#FFE28C", transform: [{ rotate: "-12deg" }] },
+  festivalWomanSoopFruit: { position: "absolute", top: 0, left: 8, width: 6, height: 6, borderRadius: 4, backgroundColor: "#F59E0B", borderWidth: 1, borderColor: "#FDE68A" },
+  festivalWomanSoopLeaf: { position: "absolute", top: -4, left: 24, width: 7, height: 9, borderTopLeftRadius: 8, borderBottomRightRadius: 8, backgroundColor: "#39834C", transform: [{ rotate: "28deg" }] },
+  festivalWomanFoot: { position: "absolute", left: 21, bottom: 0, width: 23, height: 5, borderRadius: 4, backgroundColor: "#7D2935" },
+  festivalArghyaSun: { position: "absolute", top: 67, right: "15%", width: 42, height: 42, alignItems: "center", justifyContent: "center", zIndex: 2 },
+  festivalArghyaSunHalo: { position: "absolute", width: 42, height: 42, borderRadius: 21, backgroundColor: "rgba(255,211,135,0.22)", shadowColor: "#FFD27E", shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.9, shadowRadius: 16, elevation: 5 },
+  festivalArghyaSunCore: { width: 25, height: 25, borderRadius: 13, backgroundColor: "#FFE8A3", borderWidth: 1, borderColor: "#FFF5CE", shadowColor: "#FFF3BF", shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.95, shadowRadius: 12, elevation: 6 },
   festivalGhatStepOne: { position: "absolute", right: "5%", bottom: 9, width: 72, height: 5, borderRadius: 2, backgroundColor: "rgba(151,91,50,0.9)", borderTopWidth: 1, borderTopColor: "rgba(255,218,157,0.86)", zIndex: 11 },
   festivalGhatStepTwo: { position: "absolute", right: "8%", bottom: 14, width: 58, height: 5, borderRadius: 2, backgroundColor: "rgba(175,112,62,0.88)", borderTopWidth: 1, borderTopColor: "rgba(255,221,163,0.84)", zIndex: 11 },
   festivalGhatStepThree: { position: "absolute", right: "11%", bottom: 19, width: 44, height: 5, borderRadius: 2, backgroundColor: "rgba(194,135,78,0.9)", borderTopWidth: 1, borderTopColor: "rgba(255,227,177,0.82)", zIndex: 11 },
