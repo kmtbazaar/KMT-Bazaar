@@ -31,6 +31,7 @@ on:
       - "frontend/components/BotHeader.tsx"
       - "frontend/src/components/RobotAvatar.tsx"
       - "frontend/src/components/RobotCompanion3D.tsx"
+      - "frontend/src/components/HomeRobotCompanion.tsx"
       - "frontend/app/(tabs)/_layout.tsx"
       - "frontend/src/api.ts"
       - ".github/workflows/deploy-product-size-pack-live.yml"
@@ -195,7 +196,7 @@ jobs:
 
       - name: Lint changed product and branding screens
         working-directory: frontend
-        run: npx eslint "app/vendor/store/[id].tsx" "app/vendor/products.tsx" "app/product/[id].tsx" "src/components/ProductCard.tsx" "src/components/AnimatedBrandLogo.tsx" "app/auth/login.tsx" "app/admin/index.tsx" "app/delivery/index.tsx" "app/vendor/holiday-dashboard.tsx" "app/vendor/car-rental-dashboard.tsx" "app/role/[role].tsx" "app/(tabs)/profile.tsx" "app/(tabs)/cart.tsx" "app/addresses.tsx" "app/checkout.tsx" "app/index.tsx" "app/search.tsx" "src/components/ParticleLogoSplash.tsx" "components/AIAssistant.tsx" "components/BotHeader.tsx" "src/components/RobotAvatar.tsx" "src/components/RobotCompanion3D.tsx" "app/(tabs)/_layout.tsx" "src/api.ts" --no-cache
+        run: npx eslint "app/vendor/store/[id].tsx" "app/vendor/products.tsx" "app/product/[id].tsx" "src/components/ProductCard.tsx" "src/components/AnimatedBrandLogo.tsx" "app/auth/login.tsx" "app/admin/index.tsx" "app/delivery/index.tsx" "app/vendor/holiday-dashboard.tsx" "app/vendor/car-rental-dashboard.tsx" "app/role/[role].tsx" "app/(tabs)/profile.tsx" "app/(tabs)/cart.tsx" "app/addresses.tsx" "app/checkout.tsx" "app/index.tsx" "app/search.tsx" "src/components/ParticleLogoSplash.tsx" "components/AIAssistant.tsx" "components/BotHeader.tsx" "src/components/RobotAvatar.tsx" "src/components/RobotCompanion3D.tsx" "src/components/HomeRobotCompanion.tsx" "app/(tabs)/_layout.tsx" "src/api.ts" --no-cache
 
       - name: Validate particle-forming splash and black-background removal
         working-directory: frontend
@@ -254,6 +255,7 @@ jobs:
           const assistant = fs.readFileSync("components/AIAssistant.tsx", "utf8");
           const robot = fs.readFileSync("src/components/RobotAvatar.tsx", "utf8");
           const robot3d = fs.readFileSync("src/components/RobotCompanion3D.tsx", "utf8");
+          const companion = fs.readFileSync("src/components/HomeRobotCompanion.tsx", "utf8");
           const tabs = fs.readFileSync("app/(tabs)/_layout.tsx", "utf8");
           const home = fs.readFileSync("app/(tabs)/home.tsx", "utf8");
           const index = fs.readFileSync("app/index.tsx", "utf8");
@@ -273,6 +275,10 @@ jobs:
           const tabOrder = ['name="home"', 'name="categories"', 'name="cart"', 'name="profile"', 'name="ai"'].map((name) => tabs.indexOf(name));
           assert.ok(tabOrder.every((position) => position >= 0) && tabOrder.every((position, i) => i === 0 || position > tabOrder[i - 1]), "Bottom tabs must be ordered Home, Categories, Cart, Profile, Assistant");
           assert.ok(tabs.includes("interactive") && tabs.includes('size={48}') && tabs.includes("height: 82") && tabs.includes("assistantTabIconActive") && tabs.includes('onActivate={() => router.push("/assistant")}'), "Far-right assistant tab must show the enlarged 3D robot with its glow, drag and tap controls");
+          assert.ok(home.includes("HomeRobotCompanion") && home.includes("!homeSearchOpen") && home.includes('router.push("/assistant"'), "Home must show the floating robot companion and hide it while the search overlay is open");
+          assert.ok(companion.includes("PanResponder") && companion.includes("Animated.ValueXY") && companion.includes("bottom: 88") && companion.includes("right: 3") && companion.includes("clampPosition"), "Home mascot must start at the right Assistant dock and be draggable across the screen");
+          assert.ok(companion.includes("idleGesture") && companion.includes("home-robot-return-to-dock") && companion.includes("onActivate"), "Home mascot must wave, blink, open Assistant on tap and return to dock after moving");
+          assert.ok(robot3d.includes("redArmor") && robot3d.includes("sneakerRed") && robot3d.includes("handPivots") && robot3d.includes("idleWave") && robot3d.includes("blinkPhase"), "3D mascot must match the red-jacket robot boy with articulated hands, eye blinking and periodic hand waves");
           assert.ok(robot.includes("talking") && robot.includes("orbitRotation") && robot.includes("mouthPulse") && robot.includes("#67E8F9"), "Robot avatar must animate its lights and talking indicator");
           assert.ok(index.includes("RobotAvatar") && !index.includes("AssistantChar") && !index.includes("assistant-char.png"), "Post-splash welcome screen must not render the old static assistant PNG");
           assert.ok(login.includes("googleButtonContainerRef") && login.includes("response.credential"), "Google sign-in must initialize against its mounted button container and handle the returned credential");

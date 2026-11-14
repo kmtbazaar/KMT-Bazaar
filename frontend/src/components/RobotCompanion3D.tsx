@@ -18,6 +18,7 @@ type RobotCompanion3DProps = {
   onActivate?: () => void;
   style?: StyleProp<ViewStyle>;
   interactive?: boolean;
+  idleGesture?: boolean;
 };
 
 function makeRoundedPanel(
@@ -71,6 +72,30 @@ function buildRobot() {
     metalness: 0.82,
     roughness: 0.3,
   });
+  const redArmor = new THREE.MeshPhysicalMaterial({
+    color: 0xd92732,
+    metalness: 0.38,
+    roughness: 0.28,
+    clearcoat: 0.82,
+    clearcoatRoughness: 0.2,
+  });
+  const shirtWhite = new THREE.MeshStandardMaterial({
+    color: 0xf8fbff,
+    metalness: 0.12,
+    roughness: 0.48,
+  });
+  const sneakerWhite = new THREE.MeshPhysicalMaterial({
+    color: 0xf4f7fa,
+    metalness: 0.28,
+    roughness: 0.34,
+    clearcoat: 0.45,
+  });
+  const sneakerRed = new THREE.MeshPhysicalMaterial({
+    color: 0xe11d2e,
+    metalness: 0.35,
+    roughness: 0.3,
+    clearcoat: 0.8,
+  });
   const dark = new THREE.MeshStandardMaterial({
     color: 0x101b2a,
     metalness: 0.52,
@@ -123,6 +148,26 @@ function buildRobot() {
   );
   torso.scale.set(1.02, 0.96, 0.83);
 
+  // Two glossy red jacket shells frame the white shirt like the supplied boy mascot.
+  const jacketLeft = makeRoundedPanel(0.18, 0.43, 0.055, redArmor, 0.045);
+  jacketLeft.position.set(-0.145, 1.05, 0.245);
+  jacketLeft.rotation.z = -0.045;
+  robot.add(jacketLeft);
+  const jacketRight = makeRoundedPanel(0.18, 0.43, 0.055, redArmor, 0.045);
+  jacketRight.position.set(0.145, 1.05, 0.245);
+  jacketRight.rotation.z = 0.045;
+  robot.add(jacketRight);
+  const shirt = makeRoundedPanel(0.16, 0.34, 0.025, shirtWhite, 0.035);
+  shirt.position.set(0, 1.03, 0.28);
+  robot.add(shirt);
+  const hoodieCollar = new THREE.Mesh(new THREE.TorusGeometry(0.19, 0.055, 10, 32), redArmor);
+  hoodieCollar.rotation.x = Math.PI / 2;
+  hoodieCollar.position.set(0, 1.43, 0.02);
+  robot.add(hoodieCollar);
+  const zipper = makeRoundedPanel(0.018, 0.35, 0.014, silver, 0.008);
+  zipper.position.set(0, 1.055, 0.31);
+  robot.add(zipper);
+
   const chest = makeRoundedPanel(0.34, 0.34, 0.06, dark, 0.075);
   chest.position.set(0, 1.08, 0.245);
   robot.add(chest);
@@ -166,11 +211,11 @@ function buildRobot() {
     roughness: 0.28,
   });
   const irisMaterial = new THREE.MeshStandardMaterial({
-    color: 0x2aafe3,
-    emissive: 0x0a719b,
-    emissiveIntensity: 0.7,
-    roughness: 0.24,
-    metalness: 0.12,
+    color: 0x754321,
+    emissive: 0x160b05,
+    emissiveIntensity: 0.28,
+    roughness: 0.22,
+    metalness: 0.08,
   });
   const pupilMaterial = new THREE.MeshStandardMaterial({
     color: 0x101b2a,
@@ -288,6 +333,14 @@ function buildRobot() {
     0.507
   );
   leftEye.scale.set(0.9, 1.05, 0.42);
+  const leftEyeRing = add(
+    new THREE.TorusGeometry(0.055, 0.006, 6, 24),
+    cyan,
+    head,
+    -0.125,
+    0.022,
+    0.512
+  );
   const rightEye = add(
     new THREE.SphereGeometry(0.041, 24, 18),
     irisMaterial,
@@ -297,6 +350,14 @@ function buildRobot() {
     0.507
   );
   rightEye.scale.set(0.9, 1.05, 0.42);
+  const rightEyeRing = add(
+    new THREE.TorusGeometry(0.055, 0.006, 6, 24),
+    cyan,
+    head,
+    0.125,
+    0.022,
+    0.512
+  );
   [-1, 1].forEach((side) => {
     const pupil = add(
       new THREE.SphereGeometry(0.018, 18, 14),
@@ -410,8 +471,9 @@ function buildRobot() {
     add(new THREE.SphereGeometry(0.035, 16, 12), orange, head, side * 0.505, -0.015, 0);
   });
 
-  // Articulated arms with shoulder caps and small hands.
+  // Articulated arms with jacket shoulders, silver forearms and jointed robot fingers.
   const armPivots: THREE.Group[] = [];
+  const handPivots: THREE.Group[] = [];
   [-1, 1].forEach((side) => {
     const arm = new THREE.Group();
     arm.position.set(side * 0.34, 1.31, 0);
@@ -420,7 +482,7 @@ function buildRobot() {
 
     const shoulder = add(
       new THREE.SphereGeometry(0.16, 24, 18),
-      pearl,
+      redArmor,
       arm,
       0,
       -0.025,
@@ -437,7 +499,7 @@ function buildRobot() {
     );
     const upperArm = add(
       new THREE.CapsuleGeometry(0.105, 0.25, 5, 14),
-      silver,
+      redArmor,
       arm,
       side * 0.025,
       -0.225,
@@ -454,17 +516,53 @@ function buildRobot() {
       0.025
     );
     forearm.rotation.z = side * 0.07;
-    add(
-      new THREE.SphereGeometry(0.105, 18, 14),
-      rubber,
+    const cuff = add(
+      new THREE.TorusGeometry(0.105, 0.014, 8, 24),
+      sneakerWhite,
       arm,
       side * 0.035,
-      -0.72,
-      0.055
+      -0.655,
+      0.045
     );
+    cuff.rotation.x = Math.PI / 2;
+
+    const hand = new THREE.Group();
+    hand.position.set(side * 0.035, -0.72, 0.055);
+    arm.add(hand);
+    const palm = add(
+      new THREE.SphereGeometry(0.092, 20, 16),
+      silver,
+      hand,
+      0,
+      0,
+      0
+    );
+    palm.scale.set(0.92, 1.08, 0.78);
+    [-1, 0, 1].forEach((fingerIndex) => {
+      const finger = add(
+        new THREE.CapsuleGeometry(0.022, 0.07, 4, 8),
+        pearl,
+        hand,
+        fingerIndex * 0.043,
+        -0.092,
+        0.01
+      );
+      finger.rotation.z = fingerIndex * -0.1;
+    });
+    const thumb = add(
+      new THREE.CapsuleGeometry(0.024, 0.065, 4, 8),
+      silver,
+      hand,
+      side * 0.084,
+      -0.005,
+      0.018
+    );
+    thumb.rotation.z = side * -0.72;
+    arm.userData.hand = hand;
+    handPivots.push(hand);
   });
 
-  // Short armored legs and grounded boots.
+  // Dark cargo-style robot trousers with red and white sneaker-inspired feet.
   const legPivots: THREE.Group[] = [];
   [-1, 1].forEach((side) => {
     const leg = new THREE.Group();
@@ -481,24 +579,40 @@ function buildRobot() {
     );
     add(
       new THREE.CapsuleGeometry(0.12, 0.31, 5, 14),
-      silver,
+      dark,
       leg,
       0,
       -0.22,
       0
     );
+    const kneeGuard = makeRoundedPanel(0.15, 0.105, 0.028, silver, 0.035);
+    kneeGuard.position.set(0, -0.22, 0.115);
+    leg.add(kneeGuard);
     const boot = add(
       new THREE.BoxGeometry(0.27, 0.17, 0.38),
-      rubber,
+      sneakerWhite,
       leg,
       0,
       -0.46,
       0.085
     );
     boot.rotation.x = -0.06;
-    const toe = makeRoundedPanel(0.19, 0.055, 0.018, orange, 0.025);
-    toe.position.set(0, -0.47, 0.279);
+    const sole = add(
+      new THREE.BoxGeometry(0.285, 0.045, 0.395),
+      rubber,
+      leg,
+      0,
+      -0.545,
+      0.085
+    );
+    sole.rotation.x = -0.06;
+    const toe = makeRoundedPanel(0.205, 0.095, 0.03, sneakerRed, 0.04);
+    toe.position.set(0, -0.435, 0.235);
+    toe.rotation.x = -0.05;
     leg.add(toe);
+    const sneakerStripe = makeRoundedPanel(0.12, 0.025, 0.018, sneakerWhite, 0.01);
+    sneakerStripe.position.set(0, -0.39, 0.259);
+    leg.add(sneakerStripe);
   });
 
   // Floating service-platform ring and a soft contact shadow.
@@ -529,8 +643,8 @@ function buildRobot() {
   platform.position.y = 0.065;
   robot.add(platform);
 
-  root.userData = { robot, head, armPivots, legPivots, leftEye, rightEye, eyeWhites, eyeIrises: [leftEye, rightEye], eyePupils, eyeHighlights, mouth, chestCore };
-  return { root, materials: [pearl, silver, dark, cyan, orange, rubber, faceSkin, hairMaterial, eyeWhite, irisMaterial, pupilMaterial, browMaterial, cheekMaterial, smileMaterial] };
+  root.userData = { robot, head, armPivots, handPivots, legPivots, leftEye, rightEye, eyeWhites, eyeIrises: [leftEye, rightEye], eyePupils, eyeHighlights, mouth, chestCore, eyeRings: [leftEyeRing, rightEyeRing] };
+  return { root, materials: [pearl, silver, redArmor, shirtWhite, sneakerWhite, sneakerRed, dark, cyan, orange, rubber, faceSkin, hairMaterial, eyeWhite, irisMaterial, pupilMaterial, browMaterial, cheekMaterial, smileMaterial] };
 }
 
 export default function RobotCompanion3D({
@@ -539,10 +653,12 @@ export default function RobotCompanion3D({
   onActivate,
   style,
   interactive = true,
+  idleGesture = false,
 }: RobotCompanion3DProps) {
   const hostRef = useRef<any>(null);
   const activateRef = useRef(onActivate);
   const talkingRef = useRef(talking);
+  const idleGestureRef = useRef(idleGesture);
   const [webglFailed, setWebglFailed] = useState(false);
 
   useEffect(() => {
@@ -552,6 +668,10 @@ export default function RobotCompanion3D({
   useEffect(() => {
     talkingRef.current = talking;
   }, [talking]);
+
+  useEffect(() => {
+    idleGestureRef.current = idleGesture;
+  }, [idleGesture]);
 
   useEffect(() => {
     if (Platform.OS !== "web" || webglFailed) return;
@@ -717,10 +837,19 @@ export default function RobotCompanion3D({
         head.rotation.x = greeting
           ? -0.17 + Math.sin(elapsed * 9) * 0.055
           : Math.sin(elapsed * 1.6) * 0.025;
-        arms[0].rotation.z = -0.08 + Math.sin(elapsed * 2.0) * 0.035;
+        const wavePhase = elapsed % 8.2;
+        const idleWave = idleGestureRef.current && wavePhase > 5.3 && wavePhase < 7.25;
+        arms[0].rotation.z = -0.08 + Math.sin(elapsed * 2.0) * 0.035 +
+          (idleWave ? Math.sin(elapsed * 4.5) * 0.1 : 0);
         arms[1].rotation.z = greeting
           ? 2.2 + Math.sin(elapsed * 14) * 0.24
-          : 0.08 - Math.sin(elapsed * 2.0) * 0.035;
+          : idleWave
+            ? 1.75 + Math.sin(elapsed * 12) * 0.22
+            : 0.08 - Math.sin(elapsed * 2.0) * 0.035;
+        const hands = state.handPivots as THREE.Group[];
+        hands[1].rotation.x = (greeting || idleWave) ? Math.sin(elapsed * 12) * 0.28 : 0;
+        hands[1].rotation.z = (greeting || idleWave) ? Math.sin(elapsed * 12) * 0.14 : 0;
+        hands[0].rotation.z = idleWave ? Math.sin(elapsed * 3.2) * 0.08 : 0;
         legs[0].rotation.x = Math.sin(elapsed * 1.6) * 0.025;
         legs[1].rotation.x = -Math.sin(elapsed * 1.6) * 0.025;
 
@@ -810,6 +939,7 @@ export default function RobotCompanion3D({
       talking={talking}
       onActivate={onActivate}
       interactive={interactive}
+      idleGesture={idleGesture}
       style={style}
     />
   );
@@ -828,6 +958,7 @@ type NativeRobotStageProps = {
   talking: boolean;
   onActivate?: () => void;
   interactive: boolean;
+  idleGesture: boolean;
   style?: StyleProp<ViewStyle>;
 };
 
@@ -836,12 +967,14 @@ function NativeRobotStage({
   talking,
   onActivate,
   interactive,
+  idleGesture,
   style,
 }: NativeRobotStageProps) {
   const [failed, setFailed] = useState(false);
   const resourcesRef = useRef<NativeRobotResources | null>(null);
   const activateRef = useRef(onActivate);
   const talkingRef = useRef(talking);
+  const idleGestureRef = useRef(idleGesture);
   const greetingUntilRef = useRef(0);
   const activationTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const controlsRef = useRef({
@@ -858,6 +991,10 @@ function NativeRobotStage({
   useEffect(() => {
     talkingRef.current = talking;
   }, [talking]);
+
+  useEffect(() => {
+    idleGestureRef.current = idleGesture;
+  }, [idleGesture]);
 
   useEffect(() => () => {
     const resources = resourcesRef.current;
@@ -968,10 +1105,19 @@ function NativeRobotStage({
         head.rotation.x = greeting
           ? -0.17 + Math.sin(elapsed * 9) * 0.055
           : Math.sin(elapsed * 1.6) * 0.025;
-        arms[0].rotation.z = -0.08 + Math.sin(elapsed * 2.0) * 0.035;
+        const wavePhase = elapsed % 8.2;
+        const idleWave = idleGestureRef.current && wavePhase > 5.3 && wavePhase < 7.25;
+        arms[0].rotation.z = -0.08 + Math.sin(elapsed * 2.0) * 0.035 +
+          (idleWave ? Math.sin(elapsed * 4.5) * 0.1 : 0);
         arms[1].rotation.z = greeting
           ? 2.2 + Math.sin(elapsed * 14) * 0.24
-          : 0.08 - Math.sin(elapsed * 2.0) * 0.035;
+          : idleWave
+            ? 1.75 + Math.sin(elapsed * 12) * 0.22
+            : 0.08 - Math.sin(elapsed * 2.0) * 0.035;
+        const hands = state.handPivots as THREE.Group[];
+        hands[1].rotation.x = (greeting || idleWave) ? Math.sin(elapsed * 12) * 0.28 : 0;
+        hands[1].rotation.z = (greeting || idleWave) ? Math.sin(elapsed * 12) * 0.14 : 0;
+        hands[0].rotation.z = idleWave ? Math.sin(elapsed * 3.2) * 0.08 : 0;
         legs[0].rotation.x = Math.sin(elapsed * 1.6) * 0.025;
         legs[1].rotation.x = -Math.sin(elapsed * 1.6) * 0.025;
 
