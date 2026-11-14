@@ -438,15 +438,18 @@ export default function AssistantScreen() {
         {/* Single retained shortcut, styled as a glass hologram control */}
         <View style={styles.quickActionsContainer}>
           <TouchableOpacity
-            style={[styles.guideButton, styles.roojgarButton]}
+            style={styles.shiftKeyButton}
             onPress={() => router.push("/RoojgarForm")}
             activeOpacity={0.82}
             accessibilityRole="button"
-            accessibilityLabel="Open Roojgar and jobs"
+            accessibilityLabel="Open Roojgar and jobs, Shift key"
             testID="assistant-roojgar-link"
           >
-            <MaterialCommunityIcons name="briefcase-outline" size={15} color="#FFFFFF" />
-            <Text style={styles.guideButtonText}>Roojgar / Jobs</Text>
+            <MaterialCommunityIcons name="arrow-up-bold" size={17} color="#F0F9FF" />
+            <View style={styles.shiftKeyLabelWrap}>
+              <Text style={styles.shiftKeyLabel}>SHIFT</Text>
+              <Text style={styles.shiftKeyCaption}>ROOJGAAR / JOBS</Text>
+            </View>
           </TouchableOpacity>
           {!!voiceStatus && (
             <Text style={styles.voiceStatus} numberOfLines={2}>
@@ -560,32 +563,45 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: "rgba(34,211,238,0.28)",
   },
-  guideButton: {
+  shiftKeyButton: {
     alignSelf: "flex-start",
-    minWidth: 0,
-    minHeight: 32,
+    minWidth: 138,
+    height: 42,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: 6,
-    paddingHorizontal: 11,
-    borderRadius: 10,
+    gap: 9,
+    paddingHorizontal: 12,
+    borderRadius: 8,
     borderWidth: 1,
+    borderColor: "rgba(210,235,250,0.82)",
+    borderBottomWidth: 4,
+    borderBottomColor: "#253E52",
+    backgroundColor: "#526D80",
+    shadowColor: "#020B15",
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.42,
+    shadowRadius: 5,
+    elevation: 5,
   },
-  roojgarButton: {
-    backgroundColor: "#F97316",
-    borderColor: "#FDBA74",
-    shadowColor: "#FB923C",
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.32,
-    shadowRadius: 10,
-    elevation: 4,
+  shiftKeyLabelWrap: {
+    alignItems: "flex-start",
+    justifyContent: "center",
+    gap: 1,
   },
-  guideButtonText: {
-    color: "#FFFFFF",
+  shiftKeyLabel: {
+    color: "#F8FCFF",
     fontSize: 11,
+    fontWeight: "900",
+    letterSpacing: 1.1,
+    lineHeight: 13,
+  },
+  shiftKeyCaption: {
+    color: "#FDD38A",
+    fontSize: 7,
     fontWeight: "800",
-    letterSpacing: 0.35,
+    letterSpacing: 0.45,
+    lineHeight: 9,
   },
   voiceStatus: {
     color: "#A5F3FC",

@@ -826,7 +826,7 @@ export default function RobotCompanion3D({
         if (disposed || !renderer) return;
         frameId = window.requestAnimationFrame(animate);
         const frameNow = performance.now();
-        if (frameNow - lastRenderedAt < 1000 / 30) return;
+        if (frameNow - lastRenderedAt < 1000 / 60) return;
         lastRenderedAt = frameNow;
         const elapsed = clock.getElapsedTime();
         const robot = state.robot as THREE.Group;
@@ -1097,7 +1097,7 @@ function NativeRobotStage({
         if (!current) return;
         current.frameId = requestAnimationFrame(animate);
         const frameNow = performance.now();
-        if (frameNow - lastRenderedAt < 1000 / 30) return;
+        if (frameNow - lastRenderedAt < 1000 / 60) return;
         lastRenderedAt = frameNow;
         const elapsed = clock.getElapsedTime();
         const robot = state.robot as THREE.Group;

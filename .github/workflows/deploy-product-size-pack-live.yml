@@ -136,6 +136,7 @@ jobs:
           const fs = require("node:fs");
           const home = fs.readFileSync("app/(tabs)/home.tsx", "utf8");
           const robot = fs.readFileSync("src/components/RobotCompanion3D.tsx", "utf8");
+          const assistant = fs.readFileSync("app/assistant.tsx", "utf8");
           assert.ok(home.includes("function NightSky()") && home.includes("<FestivalDecor />"), "The animated Chhath–Diwali festival scene must render in the home hero");
           assert.ok(home.includes("function FestivalDecor()") && home.includes("FESTIVAL_BULBS"), "Festival lighting and atmospheric backdrop must be present");
           assert.ok(home.includes("FESTIVAL_LANTERNS") && home.includes("FESTIVAL_FIREWORKS") && home.includes("function FestivalLantern") && home.includes("function FestivalFirework"), "Floating lanterns and animated fireworks must be present");
@@ -181,7 +182,9 @@ jobs:
           assert.ok(home.includes('festivalLightWireLeft: { left: 0, width: "22%" }') && home.includes('festivalLightWireRight: { right: 0, width: "22%" }') && !home.includes("HERO_BRAND_CLEAR_STAR_INDICES"), "Festival fairy-light wires must stay at the sides instead of crossing the KMT wordmark");
           assert.ok(home.includes('heroBrandNeon: { color: "#FFFBEA", fontSize: 21') && home.includes("zIndex: 30, elevation: 30") && home.includes("textShadowRadius: 11"), "KMT Bazaar hero wordmark must be bright, elevated and clearly visible");
           assert.ok(home.includes("api.products({ trending: true, limit: 12 })") && !home.includes("api.vendorServices()") && home.includes("sections independently"), "Home first paint must use a limited trending payload and avoid the unused vendor-services request");
-          assert.ok(robot.includes("1000 / 30") && robot.includes("lastRenderedAt") && robot.includes("1.15"), "3D taskbar robot idle rendering must be capped at 30 FPS with a lower render pixel ratio");
+          assert.ok(robot.includes("1000 / 60") && robot.includes("lastRenderedAt") && robot.includes("1.15"), "3D taskbar robot idle rendering must be capped at 60 FPS with a lower render pixel ratio");
+          assert.ok(home.includes('testID="home-festival-lantern"') && home.includes("festivalLanternLowerFrame:") && home.includes("festivalLanternFlameInner:") && home.includes('left: "74%"'), "Festival lanterns must have realistic paper, inner flame/frame details and float beside the brand wordmark");
+          assert.ok(assistant.includes("shiftKeyButton") && assistant.includes("shiftKeyLabel") && assistant.includes("SHIFT") && assistant.includes('name="arrow-up-bold"') && assistant.includes('onPress={() => router.push("/RoojgarForm")}'), "Roojgar and Jobs shortcut must look like a laptop Shift key and keep its existing navigation");
           assert.ok(home.includes("function FestivalChhathWoman()") && home.includes('testID="home-chhath-woman"') && home.includes("FestivalChhathWoman />"), "Home festival animation must show the Chhath woman on the left side of the ghat");
           assert.ok(home.includes("festivalWomanSoop:") && home.includes("festivalWomanHandTop:") && home.includes("festivalWomanHandBottom:") && home.includes("festivalWomanSariDrape:"), "Chhath woman must be dressed in a traditional sari and visibly holding the offering soop");
           assert.ok(home.includes("offeringLift.value") && home.includes("festivalWomanOffering") && home.includes('testID="home-chhath-arghya-sun"'), "The woman must gently lift the soop towards a visible sun during the arghya animation");

@@ -80,9 +80,10 @@ const FESTIVAL_BULBS = [
 ];
 
 const FESTIVAL_LANTERNS = [
-  { left: "13%", bottom: 22, delay: 0, duration: 6200, size: 0.82 },
-  { left: "79%", bottom: 18, delay: 1400, duration: 7100, size: 0.96 },
-  { left: "56%", bottom: 12, delay: 2800, duration: 7600, size: 0.68 },
+  { left: "12%", bottom: 22, delay: 0, duration: 6200, size: 0.82 },
+  { left: "88%", bottom: 18, delay: 1400, duration: 7100, size: 0.96 },
+  // Float beside the right edge of the wordmark, not over the letters.
+  { left: "74%", bottom: 38, delay: 2800, duration: 7600, size: 0.78 },
 ];
 
 const FESTIVAL_FIREWORKS = [
@@ -120,27 +121,42 @@ function FestivalLantern({
   }, [delay, duration]);
 
   const floatStyle = useAnimatedStyle(() => ({
-    opacity: 0.3 + floatProgress.value * 0.7,
+    opacity: 0.72 + floatProgress.value * 0.28,
     transform: [
-      { translateY: -floatProgress.value * 82 },
-      { translateX: Math.sin(floatProgress.value * Math.PI * 2) * 7 },
+      { translateY: -floatProgress.value * 68 },
+      { translateX: Math.sin(floatProgress.value * Math.PI * 2) * 4 },
+      { rotate: `${-1.8 + floatProgress.value * 3.6}deg` },
       { scale: size },
     ],
   }));
 
   return (
-    <Animated.View style={[s.festivalLantern, { left, bottom }, floatStyle]}>
+    <Animated.View
+      pointerEvents="none"
+      testID="home-festival-lantern"
+      style={[s.festivalLantern, { left, bottom }, floatStyle]}
+    >
       <View style={s.festivalLanternGlow} />
       <View style={s.festivalLanternString} />
+      <View style={s.festivalLanternHook} />
       <View style={s.festivalLanternCap} />
       <LinearGradient
-        colors={["#FFF0B8", "#F59E0B", "#C2410C"]}
-        locations={[0, 0.48, 1]}
+        colors={["#FFF9DE", "#FFE09A", "#F5A33B", "#B94C1F"]}
+        locations={[0, 0.24, 0.68, 1]}
         style={s.festivalLanternBody}
       >
+        <View style={s.festivalLanternInnerGlow} />
         <View style={s.festivalLanternRib} />
-        <View style={s.festivalLanternFlame} />
+        <View style={s.festivalLanternCenterSeam} />
+        <View style={s.festivalLanternPaperFoldTop} />
+        <View style={s.festivalLanternPaperFoldBottom} />
       </LinearGradient>
+      <View style={s.festivalLanternLowerFrame}>
+        <View style={s.festivalLanternBurner} />
+        <View style={s.festivalLanternFlame}>
+          <View style={s.festivalLanternFlameInner} />
+        </View>
+      </View>
       <View style={s.festivalLanternBase} />
     </Animated.View>
   );
@@ -1624,14 +1640,22 @@ const s = StyleSheet.create({
   festivalLightWireLeft: { left: 0, width: "22%" },
   festivalLightWireRight: { right: 0, width: "22%" },
   festivalBulb: { position: "absolute", width: 5, height: 5, borderRadius: 3, borderWidth: 0.5, borderColor: "rgba(255,255,255,0.72)", shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.9, shadowRadius: 7, elevation: 5 },
-  festivalLantern: { position: "absolute", width: 28, height: 44, alignItems: "center", zIndex: 10 },
-  festivalLanternGlow: { position: "absolute", top: 7, width: 30, height: 30, borderRadius: 15, backgroundColor: "rgba(255,181,64,0.18)", shadowColor: "#FBBF24", shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.65, shadowRadius: 12, elevation: 5 },
-  festivalLanternString: { position: "absolute", top: -7, width: 1, height: 8, backgroundColor: "#FDE68A" },
-  festivalLanternCap: { width: 15, height: 3, borderRadius: 2, backgroundColor: "#FDE68A" },
-  festivalLanternBody: { width: 18, height: 27, borderRadius: 5, borderWidth: 1, borderColor: "#FFF1C1", overflow: "hidden", alignItems: "center", justifyContent: "center" },
-  festivalLanternRib: { position: "absolute", left: 3, right: 3, top: 1, bottom: 1, borderLeftWidth: 0.8, borderRightWidth: 0.8, borderColor: "rgba(255,244,201,0.65)" },
-  festivalLanternFlame: { width: 4, height: 8, borderRadius: 4, backgroundColor: "#FFF9D5", shadowColor: "#FFF2A6", shadowOffset: { width: 0, height: 0 }, shadowOpacity: 1, shadowRadius: 5, elevation: 4 },
-  festivalLanternBase: { width: 8, height: 2, borderRadius: 2, backgroundColor: "#FDE68A" },
+  festivalLantern: { position: "absolute", width: 38, height: 62, alignItems: "center", zIndex: 10, overflow: "visible" },
+  festivalLanternGlow: { position: "absolute", top: 5, width: 44, height: 49, borderRadius: 24, backgroundColor: "rgba(255,172,55,0.16)", shadowColor: "#FFB33F", shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.9, shadowRadius: 18, elevation: 6 },
+  festivalLanternString: { position: "absolute", top: -9, width: 1, height: 10, backgroundColor: "rgba(255,225,166,0.84)" },
+  festivalLanternHook: { position: "absolute", top: -11, width: 5, height: 5, borderRadius: 3, borderWidth: 1, borderColor: "#F7D995", backgroundColor: "#8C552B" },
+  festivalLanternCap: { width: 21, height: 4, borderRadius: 3, backgroundColor: "#E6A74D", borderWidth: 0.7, borderColor: "#FFE7B5", zIndex: 2 },
+  festivalLanternBody: { width: 25, height: 37, marginTop: -1, borderTopLeftRadius: 13, borderTopRightRadius: 13, borderBottomLeftRadius: 7, borderBottomRightRadius: 7, borderWidth: 1, borderColor: "#FFE6B0", overflow: "hidden", alignItems: "center", justifyContent: "center", shadowColor: "#FFB84F", shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.52, shadowRadius: 8, elevation: 4 },
+  festivalLanternInnerGlow: { position: "absolute", top: 5, width: 11, height: 24, borderRadius: 8, backgroundColor: "rgba(255,255,225,0.32)", shadowColor: "#FFF7C2", shadowOpacity: 0.7, shadowRadius: 8 },
+  festivalLanternRib: { position: "absolute", left: 3, right: 3, top: 1, bottom: 1, borderLeftWidth: 1, borderRightWidth: 1, borderColor: "rgba(255,246,213,0.7)", borderRadius: 10 },
+  festivalLanternCenterSeam: { position: "absolute", top: 2, bottom: 2, left: "50%", width: 0.8, backgroundColor: "rgba(132,66,27,0.36)" },
+  festivalLanternPaperFoldTop: { position: "absolute", left: 2, right: 2, top: 8, height: 1, backgroundColor: "rgba(255,246,213,0.48)" },
+  festivalLanternPaperFoldBottom: { position: "absolute", left: 3, right: 3, bottom: 8, height: 1, backgroundColor: "rgba(112,55,23,0.32)" },
+  festivalLanternLowerFrame: { width: 15, height: 8, marginTop: -2, alignItems: "center", justifyContent: "center", borderBottomLeftRadius: 4, borderBottomRightRadius: 4, borderWidth: 0.8, borderTopWidth: 0, borderColor: "#F2C47D", backgroundColor: "rgba(91,49,28,0.68)" },
+  festivalLanternBurner: { position: "absolute", top: 1, width: 9, height: 2, borderRadius: 2, backgroundColor: "#7C4A2A" },
+  festivalLanternFlame: { position: "absolute", bottom: 0, width: 7, height: 9, borderRadius: 7, backgroundColor: "#FF9B32", shadowColor: "#FFE58A", shadowOffset: { width: 0, height: 0 }, shadowOpacity: 1, shadowRadius: 7, elevation: 5, alignItems: "center", justifyContent: "center" },
+  festivalLanternFlameInner: { width: 3, height: 6, borderRadius: 4, backgroundColor: "#FFF9D5", shadowColor: "#FFF5B5", shadowOpacity: 1, shadowRadius: 4 },
+  festivalLanternBase: { width: 13, height: 2, marginTop: -1, borderRadius: 2, backgroundColor: "#DDAA59", borderWidth: 0.5, borderColor: "#FFE4A8" },
   festivalFirework: { position: "absolute", width: 38, height: 38, zIndex: 9 },
   festivalFireworkRay: { position: "absolute", left: 18, top: 12, width: 2, height: 14, borderRadius: 2, backgroundColor: "#FFE6A3", shadowColor: "#FDBA74", shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.9, shadowRadius: 5, elevation: 3 },
   festivalFireworkSpark: { position: "absolute", width: 3, height: 3, borderRadius: 2, backgroundColor: "#FFF6D6", shadowColor: "#FDE68A", shadowOffset: { width: 0, height: 0 }, shadowOpacity: 1, shadowRadius: 4, elevation: 3 },
