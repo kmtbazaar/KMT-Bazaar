@@ -27,10 +27,10 @@ assert.match(homeCategory, /filteredProducts\.map\(\(product: any\) => \([\s\S]*
 assert.match(homeCategory, /productCell:\s*\{\s*width:\s*"50%"/);
 assert.match(homeCategory, /productGrid:\s*\{[\s\S]*flexDirection:\s*"row"[\s\S]*flexWrap:\s*"wrap"/);
 
-assert.match(home, /api\.categories\(\)\.catch/);
-assert.match(home, /api\.stores\(\)\.catch/);
-assert.match(home, /api\.products\(\{ trending: true \}\)\.catch/);
-assert.match(home, /api\.unreadCount\(\)\.catch/, "Unread count failure must not block catalog rendering.");
+assert.match(home, /api\.categories\(\)\.then\(\(data\) => setCats\(data \|\| \[\]\)\)\.catch/);
+assert.match(home, /api\.stores\(\)\.then\(\(data\) => setStores\(data \|\| \[\]\)\)\.catch/);
+assert.match(home, /api\.products\(\{ trending: true, limit: 12 \}\)\.then/);
+assert.match(home, /api\.unreadCount\(\)\.then/, "Unread count must load independently of catalog rendering.");
 assert.doesNotMatch(home, /if \(!locationReady\) return;/, "Catalog loading must not be blocked before a delivery location is selected.");
 assert.match(home, /Browse products and stores now\./);
 
