@@ -42,34 +42,36 @@ const styles = StyleSheet.create({
     marginVertical: 8,
     width: "100%",
   },
-
   botContainer: {
     alignItems: "flex-start",
   },
-
   userContainer: {
     alignItems: "flex-end",
   },
-
   bubble: {
     maxWidth: "82%",
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderRadius: 18,
+    borderWidth: 1,
+    borderColor: "rgba(226,245,255,0.24)",
+    shadowColor: "#A5F3FC",
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.07,
+    shadowRadius: 8,
+    elevation: 1,
   },
-
   botBubble: {
-    backgroundColor: "#1f2937",
+    backgroundColor: "rgba(226,245,255,0.095)",
     borderTopLeftRadius: 6,
   },
-
   userBubble: {
-    backgroundColor: "#ff6b00",
+    backgroundColor: "rgba(186,230,253,0.19)",
+    borderColor: "rgba(207,250,254,0.40)",
     borderTopRightRadius: 6,
   },
-
   text: {
-    color: "#ffffff",
+    color: "#F4FBFF",
     fontSize: 15,
     lineHeight: 22,
   },

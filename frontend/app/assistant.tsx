@@ -8,11 +8,12 @@ import {
   ScrollView,
   KeyboardAvoidingView,
   Platform,
-  Image,
   TouchableOpacity,
   } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { BlurView } from "expo-blur";
+import { LinearGradient } from "expo-linear-gradient";
 
 import BotHeader from "../components/BotHeader";
 import ChatBubble from "../components/ChatBubble";
@@ -52,7 +53,7 @@ export default function AssistantScreen() {
   const [messages, setMessages] = useState<Message[]>([
     {
       id: 1,
-      text: "🙏 Namaste! Main KMT Bazaar ka live guide hoon. Home banner ke offers aur Roojgar / Jobs ke baare mein mujhse poochhiye.",
+      text: "🙏 Namaste! Main KMT Bazaar ka live guide hoon. Products, stores, orders aur Roojgar / Jobs se judi help ke liye poochhiye.",
       isUser: false,
     },
   ]);
@@ -391,8 +392,21 @@ export default function AssistantScreen() {
 
   return (
     <SafeAreaView style={[styles.container, { paddingTop: insets.top + 10, paddingBottom: insets.bottom + 10 }]} edges={[]}>
+      <LinearGradient
+        pointerEvents="none"
+        colors={["rgba(3,10,24,0.62)", "rgba(13,31,49,0.42)", "rgba(4,9,22,0.66)"]}
+        style={StyleSheet.absoluteFillObject}
+      />
       <Animated.View entering={ZoomIn.duration(320).springify()} style={styles.panel}>
-      {/* 1. PATLA HEADER */}
+      <BlurView intensity={52} tint="dark" style={StyleSheet.absoluteFillObject} />
+      <LinearGradient
+        pointerEvents="none"
+        colors={["rgba(255,255,255,0.14)", "rgba(186,230,253,0.055)", "rgba(255,255,255,0.025)"]}
+        locations={[0, 0.48, 1]}
+        style={styles.panelGlassTint}
+      />
+      <View pointerEvents="none" style={styles.panelTopGlow} />
+      {/* Holographic live assistant header */}
       <BotHeader
         talking={typing || listening || speaking}
         onRobotPress={handleActionPress}
@@ -412,15 +426,6 @@ export default function AssistantScreen() {
             scrollRef.current?.scrollToEnd({ animated: true })
           }
         >
-          {/* 2. CHOTA BANNER */}
-          <View style={styles.bannerContainer}>
-            <Image
-              source={require("../assets/ai/assistant-banner.png")}
-              style={styles.banner}
-              resizeMode="cover"
-            />
-          </View>
-
           {/* MESSAGES */}
           <View style={styles.messagesContainer}>
             {messages.map((item) => (
@@ -430,32 +435,19 @@ export default function AssistantScreen() {
           </View>
         </ScrollView>
 
-        {/* KMT MASCOT DESTINATIONS: HOME BANNER + ROOJGAR */}
+        {/* Single retained shortcut, styled as a glass hologram control */}
         <View style={styles.quickActionsContainer}>
-          <View style={styles.quickActionsRow}>
-            <TouchableOpacity
-              style={[styles.guideButton, styles.bannerGuideButton]}
-              onPress={() => router.replace("/(tabs)/home" as any)}
-              activeOpacity={0.82}
-              accessibilityRole="button"
-              accessibilityLabel="Explore Home banners and offers"
-              testID="assistant-home-banner-link"
-            >
-              <MaterialCommunityIcons name="image-multiple-outline" size={16} color="#BAE6FD" />
-              <Text style={styles.guideButtonText}>Home Offers</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.guideButton, styles.roojgarButton]}
-              onPress={() => router.push("/RoojgarForm")}
-              activeOpacity={0.82}
-              accessibilityRole="button"
-              accessibilityLabel="Open Roojgar and jobs"
-              testID="assistant-roojgar-link"
-            >
-              <MaterialCommunityIcons name="briefcase-outline" size={16} color="#DCFCE7" />
-              <Text style={styles.guideButtonText}>Roojgar / Jobs</Text>
-            </TouchableOpacity>
-          </View>
+          <TouchableOpacity
+            style={[styles.guideButton, styles.roojgarButton]}
+            onPress={() => router.push("/RoojgarForm")}
+            activeOpacity={0.82}
+            accessibilityRole="button"
+            accessibilityLabel="Open Roojgar and jobs"
+            testID="assistant-roojgar-link"
+          >
+            <MaterialCommunityIcons name="briefcase-outline" size={17} color="#E8FBFF" />
+            <Text style={styles.guideButtonText}>Roojgar / Jobs</Text>
+          </TouchableOpacity>
           {!!voiceStatus && (
             <Text style={styles.voiceStatus} numberOfLines={2}>
               {listening ? "Listening… " + voiceStatus : speaking ? "Speaking… " + voiceStatus : voiceStatus}
@@ -510,129 +502,145 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     paddingHorizontal: 14,
-    backgroundColor: "rgba(2, 6, 23, 0.72)",
+    backgroundColor: "rgba(2, 8, 22, 0.28)",
   },
   panel: {
     width: "100%",
     maxWidth: 620,
-    height: Platform.OS === "web" ? "82%" : "88%",
-    maxHeight: 740,
-    borderRadius: 24,
+    height: Platform.OS === "web" ? "90%" : "92%",
+    maxHeight: 820,
+    borderRadius: 26,
     borderWidth: 1,
-    borderColor: "#334155",
+    borderColor: "rgba(230,248,255,0.52)",
     overflow: "hidden",
-    backgroundColor: "#0F172A",
-    shadowColor: "#000000",
+    backgroundColor: "rgba(13,25,39,0.58)",
+    shadowColor: "#A5F3FC",
     shadowOffset: { width: 0, height: 12 },
-    shadowOpacity: 0.36,
-    shadowRadius: 28,
+    shadowOpacity: 0.2,
+    shadowRadius: 30,
     elevation: 18,
+  },
+  panelGlassTint: {
+    ...StyleSheet.absoluteFillObject,
+    borderRadius: 26,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.13)",
+  },
+  panelTopGlow: {
+    position: "absolute",
+    top: -55,
+    left: "16%",
+    right: "16%",
+    height: 110,
+    borderRadius: 60,
+    backgroundColor: "rgba(186,230,253,0.12)",
+    shadowColor: "#CFFAFE",
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.36,
+    shadowRadius: 34,
+    elevation: 8,
   },
   chat: {
     flex: 1,
+    backgroundColor: "transparent",
   },
   scrollContent: {
-    paddingBottom: 8,
-  },
-  // Chota Banner Style
-  bannerContainer: {
-    marginHorizontal: 12,
-    marginTop: 6,
-    height: 112, // Compact banner fits the centered AI panel better
-    borderRadius: 10,
-    overflow: "hidden",
-  },
-  banner: {
-    width: "100%",
-    height: "100%",
+    paddingBottom: 12,
   },
   messagesContainer: {
     paddingHorizontal: 16,
-    paddingTop: 8,
+    paddingTop: 12,
   },
   quickActionsContainer: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    backgroundColor: "#0F172A",
-  },
-  quickActionsRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    backgroundColor: "rgba(255,255,255,0.045)",
+    borderTopWidth: 1,
+    borderTopColor: "rgba(226,245,255,0.16)",
   },
   guideButton: {
-    flex: 1,
+    width: "100%",
     minWidth: 0,
-    minHeight: 38,
+    minHeight: 42,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: 6,
-    paddingHorizontal: 8,
-    borderRadius: 12,
+    gap: 8,
+    paddingHorizontal: 12,
+    borderRadius: 14,
     borderWidth: 1,
   },
-  bannerGuideButton: {
-    backgroundColor: "rgba(3,105,161,0.32)",
-    borderColor: "#0EA5E9",
-  },
   roojgarButton: {
-    backgroundColor: "rgba(21,128,61,0.34)",
-    borderColor: "#22C55E",
+    backgroundColor: "rgba(210,240,255,0.085)",
+    borderColor: "rgba(207,250,254,0.58)",
+    shadowColor: "#A5F3FC",
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.14,
+    shadowRadius: 12,
+    elevation: 3,
   },
   guideButtonText: {
-    color: "#FFFFFF",
-    fontSize: 11,
+    color: "#F0FAFF",
+    fontSize: 12,
     fontWeight: "800",
+    letterSpacing: 0.25,
   },
   voiceStatus: {
-    color: "#CBD5E1",
+    color: "#D7EDF7",
     fontSize: 10,
     lineHeight: 14,
-    marginTop: 4,
+    marginTop: 7,
     marginHorizontal: 4,
   },
-  // Mota/Spacious Bottom Input Area Style
   bottomContainer: {
     paddingHorizontal: 12,
-    paddingTop: 8,
+    paddingTop: 10,
     paddingBottom: Platform.OS === "ios" ? 10 : 14,
-    backgroundColor: "#0F172A",
+    backgroundColor: "rgba(255,255,255,0.045)",
     borderTopWidth: 1,
-    borderTopColor: "#1E293B",
+    borderTopColor: "rgba(226,245,255,0.17)",
   },
   motaInputWrapper: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#1E293B",
-    borderRadius: 28, // 🔥 Thoda aur rounded aur mota feel dene ke liye
+    backgroundColor: "rgba(229,246,255,0.10)",
+    borderRadius: 24,
     paddingHorizontal: 14,
-    paddingVertical: 6,   // 🔥 Thoda mota height padding
-    borderWidth: 1.5,
-    borderColor: "#334155",
+    paddingVertical: 6,
+    borderWidth: 1,
+    borderColor: "rgba(224,242,254,0.52)",
+    shadowColor: "#A5F3FC",
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.10,
+    shadowRadius: 10,
+    elevation: 2,
   },
   motaInput: {
     flex: 1,
-    color: "#FFFFFF",
+    color: "#F8FCFF",
     fontSize: 15,
-    height: 44, // 🔥 Input box ki height thoda moti/badi ki hai
+    height: 44,
     paddingHorizontal: 4,
   },
   actionBtn: {
-    width: 38,  // 🔥 Button bhi thoda bada/mota kiya hai
-    height: 38,
-    borderRadius: 19,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     justifyContent: "center",
     alignItems: "center",
     marginLeft: 8,
+    borderWidth: 1,
+    borderColor: "rgba(240,252,255,0.62)",
   },
   voiceBtnBg: {
-    backgroundColor: "#3B82F6",
+    backgroundColor: "rgba(235,248,255,0.17)",
   },
   voiceModeActiveBtn: {
-    backgroundColor: "#0891B2",
+    backgroundColor: "rgba(34,211,238,0.32)",
+    borderColor: "rgba(165,243,252,0.9)",
   },
   sendBtnBg: {
-    backgroundColor: "#10B981", // Green for Send
+    backgroundColor: "rgba(14,116,144,0.80)",
+    borderColor: "rgba(186,230,253,0.84)",
   },
 });
