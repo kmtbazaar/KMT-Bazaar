@@ -26,7 +26,7 @@ import CheckoutBar from "@/src/components/CheckoutBar";
 import { BrandingFooter } from "@/src/components/AnimatedBrandLogo";
 
 const { width } = Dimensions.get("window");
-const BANNER_W = width - 32;
+const BANNER_W = Math.max(0, width - 24);
 const HERO_BACKDROP_HEIGHT = 182; // Extend animated sky to the banner line without moving page content
 const HERO_COLLAPSE_SCROLL_THRESHOLD = 120; // Collapse when banner CTA reaches the top; keep categories clear
 
@@ -409,6 +409,7 @@ export default function Home() {
   const [voiceListening, setVoiceListening] = useState(false);
   const [heroCollapsed, setHeroCollapsed] = useState(false);
   const bannerListRef = useRef<FlatList<any>>(null);
+  const bannerScrollOffsetRef = useRef(0);
   const voiceRecognitionRef = useRef<any>(null);
 
   const [homeSearchOpen, setHomeSearchOpen] = useState(false);
@@ -702,9 +703,12 @@ export default function Home() {
 
   useEffect(() => {
     if (banners.length > 1) {
-      try {
-        bannerListRef.current?.scrollToOffset({ offset: bannerIndex * (BANNER_W + 12), animated: true });
-      } catch {}
+      const targetOffset = bannerIndex * (BANNER_W + 12);
+      if (Math.abs(bannerScrollOffsetRef.current - targetOffset) > 2) {
+        try {
+          bannerListRef.current?.scrollToOffset({ offset: targetOffset, animated: true });
+        } catch {}
+      }
     }
   }, [bannerIndex, banners.length]);
 
@@ -1141,19 +1145,20 @@ export default function Home() {
         {/* Smooth banner carousel; dots are overlaid inside the banner bottom edge */}
         <View style={s.bannerCarouselShell}>
           <FlatList
+            ref={bannerListRef}
             horizontal
-            style={Platform.OS === 'web' ? { overflowX: 'auto' } : {}}
+            style={Platform.OS === "web"
+              ? ({ width: "100%", flexGrow: 0, overflowX: "auto", overflowY: "hidden" } as any)
+              : { width: "100%", flexGrow: 0 }}
             data={banners}
             showsHorizontalScrollIndicator={false}
             snapToInterval={BANNER_W + 12}
-            decelerationRate={0.98}
-            contentContainerStyle={{ paddingHorizontal: SPACING.lg, paddingTop: SPACING.lg, paddingBottom: SPACING.xs, gap: 12 }}
+            snapToAlignment="start"
+            decelerationRate="fast"
+            disableIntervalMomentum
+            scrollEventThrottle={16}
+            contentContainerStyle={{ paddingHorizontal: SPACING.md, paddingTop: SPACING.lg, paddingBottom: SPACING.xs, gap: 12 }}
             keyExtractor={(it) => String(it.id)}
-            ref={(ref) => {
-              if (banners.length > 1 && ref && typeof (ref as any).scrollToIndex === "function") {
-                try { (ref as any).scrollToIndex({ index: bannerIndex, animated: true, viewPosition: 0 }); } catch {}
-              }
-            }}
             renderItem={({ item }) => (
               <View style={s.bannerItemWrap}>
                 <View testID={`banner-${item.id}`} style={s.banner}>
@@ -1182,8 +1187,12 @@ export default function Home() {
                 )}
               </View>
             )}
+            onScroll={(event) => {
+              bannerScrollOffsetRef.current = event.nativeEvent.contentOffset.x;
+            }}
             onMomentumScrollEnd={(event) => {
               const offsetX = event.nativeEvent.contentOffset.x;
+              bannerScrollOffsetRef.current = offsetX;
               const nextIndex = Math.round(offsetX / (BANNER_W + 12));
               if (nextIndex >= 0 && nextIndex < banners.length) setBannerIndex(nextIndex);
             }}
@@ -1678,8 +1687,8 @@ const s = StyleSheet.create({
   banner: { width: BANNER_W, height: 145, borderRadius: 20, overflow: "hidden", backgroundColor: THEME.white, position: "relative", borderWidth: 1, borderColor: "rgba(255,107,0,0.22)", shadowColor: THEME.orange, shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.12, shadowRadius: 14, elevation: 6 },
   bannerImg: { width: "100%", height: "100%" },
   bannerFlashBorder: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, borderRadius: RADIUS.lg, borderWidth: 2.5, borderColor: THEME.orangeBright, pointerEvents: "none" },
-  bannerCarouselShell: { position: "relative" },
-  bannerItemWrap: { width: BANNER_W, position: "relative" },
+  bannerCarouselShell: { position: "relative", width: "100%", alignSelf: "stretch", minWidth: 0, overflow: "hidden" },
+  bannerItemWrap: { width: BANNER_W, flexShrink: 0, position: "relative" },
   bannerRopeConnector: { position: "absolute", right: -1, top: "50%", width: 10, height: 52, transform: [{ translateY: -26 }], alignItems: "center", justifyContent: "center", zIndex: 5 },
   bannerRopeLine: { width: 3, height: 44, borderRadius: 3, backgroundColor: "#8B6B45", opacity: 0.95 },
   bannerRopeKnot: { position: "absolute", width: 8, height: 8, borderRadius: 4, backgroundColor: "#6B4F32", top: 2 },
