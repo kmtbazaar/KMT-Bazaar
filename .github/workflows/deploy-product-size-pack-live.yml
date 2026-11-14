@@ -29,6 +29,7 @@ on:
       - "frontend/src/components/ParticleLogoSplash.tsx"
       - "frontend/components/AIAssistant.tsx"
       - "frontend/components/BotHeader.tsx"
+      - "frontend/app/assistant.tsx"
       - "frontend/src/components/RobotAvatar.tsx"
       - "frontend/src/components/RobotCompanion3D.tsx"
       - "frontend/app/(tabs)/_layout.tsx"
@@ -195,7 +196,7 @@ jobs:
 
       - name: Lint changed product and branding screens
         working-directory: frontend
-        run: npx eslint "app/vendor/store/[id].tsx" "app/vendor/products.tsx" "app/product/[id].tsx" "src/components/ProductCard.tsx" "src/components/AnimatedBrandLogo.tsx" "app/auth/login.tsx" "app/admin/index.tsx" "app/delivery/index.tsx" "app/vendor/holiday-dashboard.tsx" "app/vendor/car-rental-dashboard.tsx" "app/role/[role].tsx" "app/(tabs)/profile.tsx" "app/(tabs)/cart.tsx" "app/addresses.tsx" "app/checkout.tsx" "app/index.tsx" "app/search.tsx" "src/components/ParticleLogoSplash.tsx" "components/AIAssistant.tsx" "components/BotHeader.tsx" "components/ChatBubble.tsx" "components/TypingIndicator.tsx" "src/components/RobotAvatar.tsx" "src/components/RobotCompanion3D.tsx" "app/(tabs)/_layout.tsx" "src/api.ts" --no-cache
+        run: npx eslint "app/vendor/store/[id].tsx" "app/vendor/products.tsx" "app/product/[id].tsx" "src/components/ProductCard.tsx" "src/components/AnimatedBrandLogo.tsx" "app/auth/login.tsx" "app/admin/index.tsx" "app/delivery/index.tsx" "app/vendor/holiday-dashboard.tsx" "app/vendor/car-rental-dashboard.tsx" "app/role/[role].tsx" "app/(tabs)/profile.tsx" "app/(tabs)/cart.tsx" "app/addresses.tsx" "app/checkout.tsx" "app/index.tsx" "app/search.tsx" "src/components/ParticleLogoSplash.tsx" "components/AIAssistant.tsx" "components/BotHeader.tsx" "app/assistant.tsx" "components/ChatBubble.tsx" "components/TypingIndicator.tsx" "src/components/RobotAvatar.tsx" "src/components/RobotCompanion3D.tsx" "app/(tabs)/_layout.tsx" "src/api.ts" --no-cache
 
       - name: Validate particle-forming splash and black-background removal
         working-directory: frontend
@@ -282,6 +283,10 @@ jobs:
           assert.ok(robot3d.includes("redArmor") && robot3d.includes("sneakerRed") && robot3d.includes("handPivots") && robot3d.includes("idleWave") && robot3d.includes("blinkPhase"), "3D mascot must match the red-jacket robot boy with articulated hands, eye blinking and periodic hand waves");
           assert.ok(!assistantScreen.includes("assistant-banner.png") && !assistantScreen.includes("bannerContainer") && !assistantScreen.includes("Home Offers") && !assistantScreen.includes("assistant-home-banner-link") && !fs.existsSync("assets/ai/assistant-banner.png"), "Assistant banner system and Home Offers shortcut must be removed, including the unused banner asset");
           assert.ok(assistantScreen.includes("BlurView") && assistantScreen.includes("LinearGradient") && assistantScreen.includes("panelGlassTint") && assistantScreen.includes("Roojgar / Jobs"), "Assistant screen must use transparent glass holographic surfaces and retain Roojgar/Jobs");
+          assert.ok(botHeader.includes("KMT Bazaar Live AI") && botHeader.includes("RobotCompanion3D") && botHeader.includes("size={54}"), "Assistant header must show KMT Bazaar Live AI beside the retained robot");
+          assert.ok(assistantScreen.includes('testID="assistant-enter-button"') && assistantScreen.includes('name="keyboard-return"') && assistantScreen.includes("onSubmitEditing={onSend}") && assistantScreen.includes("disabled={!input.trim() || typing}"), "Assistant composer must use a laptop-style Enter key and keep keyboard Enter submission");
+          assert.ok(assistantScreen.includes('backgroundColor: "#F97316"') && assistantScreen.includes('minHeight: 32') && assistantScreen.includes('alignSelf: "flex-start"'), "Roojgar/Jobs shortcut must be compact and orange");
+          assert.ok(assistantScreen.includes('borderColor: "rgba(34,211,238,0.58)"') && assistantScreen.includes('backgroundColor: "rgba(5,15,29,0.66)"'), "Assistant panel must retain the transparent sci-fi hologram frame");
           assert.ok(botHeader.includes("BlurView") && botHeader.includes("rgba(224,242,254,0.075)") && chatBubble.includes("rgba(226,245,255,0.095)") && typingIndicator.includes("rgba(226,245,255,0.12)"), "Assistant header, messages and typing indicator must share the frosted hologram theme");
           assert.ok(tabs.includes('backgroundColor: "#FFFFFF"') && tabs.includes('borderColor: "#FFFFFF"'), "Assistant taskbar robot halo must be white");
           assert.ok(robot.includes("talking") && robot.includes("orbitRotation") && robot.includes("mouthPulse") && robot.includes("#67E8F9"), "Robot avatar must animate its lights and talking indicator");
