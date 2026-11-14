@@ -33,7 +33,7 @@ export default function BotHeader({ talking = false, onRobotPress }: BotHeaderPr
       </View>
 
       <View style={styles.info}>
-        <Text style={styles.title}>KMT Bazaar Live Guide</Text>
+        <Text style={styles.title}>KMT Bazaar Live AI</Text>
         <View style={styles.statusRow}>
           <View style={styles.dot} />
           <Text style={styles.status}>{talking ? "Listening / Speaking" : "Online · Tap robot to talk"}</Text>
@@ -71,9 +71,14 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     borderRadius: 24,
-    backgroundColor: "rgba(255,255,255,0.055)",
+    backgroundColor: "rgba(4,24,40,0.52)",
     borderWidth: 1,
-    borderColor: "rgba(207,250,254,0.25)",
+    borderColor: "rgba(34,211,238,0.42)",
+    shadowColor: "#22D3EE",
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.18,
+    shadowRadius: 10,
+    elevation: 3,
   },
   info: {
     flex: 1,
@@ -81,10 +86,10 @@ const styles = StyleSheet.create({
     marginLeft: 10,
   },
   title: {
-    color: "#F4FBFF",
+    color: "#F0FDFF",
     fontSize: 14,
-    fontWeight: "800",
-    letterSpacing: 0.2,
+    fontWeight: "900",
+    letterSpacing: 0.65,
   },
   statusRow: {
     flexDirection: "row",
