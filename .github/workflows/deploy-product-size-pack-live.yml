@@ -176,6 +176,10 @@ jobs:
           assert.ok(home.includes("ref={bannerListRef}") && !home.includes("ref={(ref) =>") && home.includes("bannerScrollOffsetRef.current") && home.includes("Math.abs(bannerScrollOffsetRef.current - targetOffset) > 2"), "Carousel must use one stable list ref and avoid duplicate scroll animations during re-renders");
           assert.ok(home.includes('decelerationRate="fast"') && home.includes("disableIntervalMomentum") && home.includes('snapToAlignment="start"'), "Home banner swipes must snap cleanly and smoothly to one banner");
           assert.ok(home.includes("sectionIndicator: { width: 4, height: 16, backgroundColor: THEME.orange"), "The orange Shop by Category indicator must remain in its original position and styling");
+          assert.ok(home.includes("const HERO_BRAND_CLEAR_STAR_INDICES = new Set([1, 4, 6, 9, 11, 12, 16]);") && home.includes("HERO_BRAND_CLEAR_STAR_INDICES.has(index)") && home.includes("HERO_BRAND_CLEAR_STAR_INDICES.size === 7"), "Exactly seven small sky dots must be removed from the KMT Bazaar wordmark area");
+          assert.ok(home.includes("function FestivalChhathWoman()") && home.includes('testID="home-chhath-woman"') && home.includes("FestivalChhathWoman />"), "Home festival animation must show the Chhath woman on the left side of the ghat");
+          assert.ok(home.includes("festivalWomanSoop:") && home.includes("festivalWomanHandTop:") && home.includes("festivalWomanHandBottom:") && home.includes("festivalWomanSariDrape:"), "Chhath woman must be dressed in a traditional sari and visibly holding the offering soop");
+          assert.ok(home.includes("offeringLift.value") && home.includes("festivalWomanOffering") && home.includes('testID="home-chhath-arghya-sun"'), "The woman must gently lift the soop towards a visible sun during the arghya animation");
           console.log("HOME_HERO_NEON_AND_SEARCH_SUGGESTIONS_VALIDATION_PASS");
           console.log("CHHATH_DIWALI_GHAT_HERO_VALIDATION_PASS");
           console.log("HOME_SEARCH_GREEN_TRANSPARENT_BELOW_HERO_VALIDATION_PASS");
