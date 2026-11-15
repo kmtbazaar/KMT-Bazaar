@@ -82,15 +82,16 @@ export default function AIAssistant() {
         </View>
       </Animated.View>
 
-      <Animated.View pointerEvents="none" style={[styles.scanBeam, scanStyle]} />
-
       <Animated.View pointerEvents="box-none" style={[styles.robotFloat, robotStyle]}>
         <RobotCompanion3D
           size={76}
           interactive={true}
+          fallbackOrbit={false}
           onActivate={() => router.push("/assistant")}
         />
       </Animated.View>
+
+      <Animated.View pointerEvents="none" style={[styles.scanBeam, scanStyle]} />
     </View>
   );
 }
