@@ -518,19 +518,13 @@ export default function Login() {
             entering={ZoomIn.duration(700).springify()}
             style={s.topLogoContainer}
           >
-            <AnimatedBrandLogo size={104} intensity="hero" testID="login-animated-brand-logo" />
+            <AnimatedBrandLogo size={144} intensity="hero" testID="login-animated-brand-logo" />
           </Animated.View>
           <Animated.Text
             entering={FadeInDown.delay(200).springify()}
             style={[s.appName, appNameFlashStyle]}
           >
             KMT BAZAAR
-          </Animated.Text>
-          <Animated.Text
-            entering={FadeInDown.delay(350).springify()}
-            style={s.welcome}
-          >
-            Login or Sign up
           </Animated.Text>
         </View>
 
@@ -550,6 +544,13 @@ export default function Login() {
               </View>
             )}
 
+            <Animated.Text
+              entering={FadeInDown.delay(280).springify()}
+              style={s.loginWelcome}
+              testID="login-signup-heading"
+            >
+              Login or Sign up
+            </Animated.Text>
             <View style={s.tabsRow}>
               <Pressable
                 testID="login-type-email"
@@ -842,19 +843,19 @@ const s = StyleSheet.create({
   loginContent: {
     flex: 1,
     zIndex: 2,
-    paddingTop: 18,
+    paddingTop: 4,
   },
 
   topContent: {
     alignItems: "center",
-    paddingTop: 22,
+    paddingTop: 4,
     paddingBottom: 0,
     zIndex: 2,
   },
 
   topLogoContainer: {
-    width: 108,
-    height: 108,
+    width: 150,
+    height: 150,
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 2,
@@ -1134,11 +1135,13 @@ const s = StyleSheet.create({
     textShadowRadius: 16,
   },
 
-  welcome: {
+  loginWelcome: {
     color: "#00B4D8",
-    marginTop: 4,
-    marginBottom: SPACING.lg,
+    marginTop: 0,
+    marginBottom: SPACING.md,
     fontSize: 14,
-    fontWeight: "600",
+    fontWeight: "700",
+    textAlign: "center",
+    letterSpacing: 0.35,
   },
 });
