@@ -3733,7 +3733,7 @@ async def admin_create_product(data: ProductIn, _=Depends(require_roles("admin")
 
     store = await db.stores.find_one(
         {"id": store_id},
-        {"_id": 0, "id": 1, "category_id": 1}
+        {"_id": 0, "id": 1, "category_id": 1, "vendor_id": 1}
     )
     if not store:
         raise HTTPException(400, "Selected store was not found")
@@ -3751,7 +3751,7 @@ async def admin_create_product(data: ProductIn, _=Depends(require_roles("admin")
         product_data.pop("variants", None)
     product_data["store_id"] = store_id
     product_data["category_id"] = category_id
-    doc = {"id": pid, **product_data, "vendor_id": None}
+    doc = {"id": pid, **product_data, "vendor_id": store.get("vendor_id")}
     if doc.get("images") is None:
         doc["images"] = [doc["image"]] if doc.get("image") else []
     if doc.get("mrp") is None: doc["mrp"] = doc["price"]
@@ -3786,7 +3786,7 @@ async def admin_update_product(pid: str, data: ProductIn, _=Depends(require_role
 
     store = await db.stores.find_one(
         {"id": store_id},
-        {"_id": 0, "id": 1, "category_id": 1}
+        {"_id": 0, "id": 1, "category_id": 1, "vendor_id": 1}
     )
     if not store:
         raise HTTPException(400, "Selected store was not found")
@@ -3798,6 +3798,7 @@ async def admin_update_product(pid: str, data: ProductIn, _=Depends(require_role
 
     upd["store_id"] = store_id
     upd["category_id"] = category_id
+    upd["vendor_id"] = store.get("vendor_id")
     if upd.get("mrp") is None: upd["mrp"] = upd["price"]
     res = await db.products.update_one({"id": pid}, {"$set": upd})
     if res.matched_count == 0: raise HTTPException(404, "Not found")

@@ -305,6 +305,50 @@ jobs:
               )
               source = source.replace(old_update, new_update, 1)
 
+          # Keep admin-created and admin-edited products linked to the vendor that owns the selected store.
+          def patch_route_block(current_source, function_name, replacements):
+              marker = f"async def {function_name}("
+              start = current_source.find(marker)
+              if start < 0:
+                  raise SystemExit(f"STOP: Could not locate {function_name}; no VPS changes made.")
+              route_end = current_source.find("\\n@api.", start + len(marker))
+              end = route_end if route_end >= 0 else len(current_source)
+              block = current_source[start:end]
+              for old_text, new_text, label in replacements:
+                  count = block.count(old_text)
+                  if count == 1:
+                      block = block.replace(old_text, new_text, 1)
+                  elif count == 0 and new_text in block:
+                      continue
+                  else:
+                      raise SystemExit(f"STOP: Could not safely patch {function_name} {label}; no VPS changes made.")
+              return current_source[:start] + block + current_source[end:]
+
+          source = patch_route_block(source, "admin_create_product", [
+              (
+                  '{"_id": 0, "id": 1, "category_id": 1}',
+                  '{"_id": 0, "id": 1, "category_id": 1, "vendor_id": 1}',
+                  "store projection",
+              ),
+              (
+                  'doc = {"id": pid, **product_data, "vendor_id": None}',
+                  'doc = {"id": pid, **product_data, "vendor_id": store.get("vendor_id")}',
+                  "vendor ownership assignment",
+              ),
+          ])
+          source = patch_route_block(source, "admin_update_product", [
+              (
+                  '{"_id": 0, "id": 1, "category_id": 1}',
+                  '{"_id": 0, "id": 1, "category_id": 1, "vendor_id": 1}',
+                  "store projection",
+              ),
+              (
+                  '    upd["category_id"] = category_id\\n',
+                  '    upd["category_id"] = category_id\\n    upd["vendor_id"] = store.get("vendor_id")\\n',
+                  "vendor ownership assignment",
+              ),
+          ])
+
           if source != original:
               mode = path.stat().st_mode & 0o777
               temporary = path.with_suffix(path.suffix + ".targeted-backend.tmp")
@@ -335,6 +379,13 @@ jobs:
             || ! grep -Fq 'WEB_SESSION_TIMEOUT_MIN = 60 * 24 * AUTH_SESSION_DAYS' "$TARGET" \
             || ! grep -Fq 'AUTH_COOKIE_MAX_AGE = WEB_SESSION_TIMEOUT_MIN * 60' "$TARGET"; then
             echo "BACKEND_30_DAY_AUTH_SESSION_PATCH_MISSING"
+            rollback
+            exit 1
+          fi
+
+          if ! grep -Fq 'doc = {"id": pid, **product_data, "vendor_id": store.get("vendor_id")}' "$TARGET" \\
+            || ! grep -Fq 'upd["vendor_id"] = store.get("vendor_id")' "$TARGET"; then
+            echo "BACKEND_ADMIN_VENDOR_PRODUCT_OWNERSHIP_PATCH_MISSING"
             rollback
             exit 1
           fi

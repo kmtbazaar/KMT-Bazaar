@@ -143,10 +143,23 @@ class TestAdminProducts:
         # create
         payload = {"name": "TEST_AdminProd", "price": 99.0, "store_id": "st-1",
                    "category_id": "cat-grocery", "image": "https://x.test/x.jpg"}
+        admin_stores = requests.get(f"{API}/admin/stores", headers=H(tokens["admin"]), timeout=15)
+        assert admin_stores.status_code == 200, admin_stores.text
+        selected_store = next((store for store in admin_stores.json() if store.get("id") == "st-1"), None)
+        assert selected_store, "Seeded store st-1 must exist"
+        expected_vendor_id = selected_store.get("vendor_id")
+        vendor_me = requests.get(f"{API}/auth/me", headers=H(tokens["vendor"]), timeout=10)
+        assert vendor_me.status_code == 200, vendor_me.text
+        assert expected_vendor_id == vendor_me.json()["id"], "Seeded store must belong to the vendor test account"
+
         r = requests.post(f"{API}/admin/products", headers=H(tokens["admin"]), json=payload, timeout=15)
         assert r.status_code == 200, r.text
         pid = r.json()["id"]
         assert r.json()["mrp"] == 99.0  # mrp fallback
+        assert r.json().get("vendor_id") == expected_vendor_id, "Admin-created product must retain the selected store's vendor owner"
+        vendor_products = requests.get(f"{API}/vendor/products", headers=H(tokens["vendor"]), timeout=15)
+        assert vendor_products.status_code == 200, vendor_products.text
+        assert any(product.get("id") == pid for product in vendor_products.json()), "Vendor must see a product added by admin to their store"
         # verify via public products
         r = requests.get(f"{API}/products/{pid}", timeout=10)
         assert r.status_code == 200
@@ -156,6 +169,7 @@ class TestAdminProducts:
                          json={**payload, "name": "TEST_AdminProdUpdated", "price": 120.0}, timeout=10)
         assert r.status_code == 200
         assert r.json()["name"] == "TEST_AdminProdUpdated"
+        assert r.json().get("vendor_id") == expected_vendor_id, "Editing an admin-managed vendor product must preserve its store owner"
         # delete
         r = requests.delete(f"{API}/admin/products/{pid}", headers=H(tokens["admin"]), timeout=10)
         assert r.status_code == 200
