@@ -19,6 +19,8 @@ import * as Haptics from "expo-haptics";
 import Animated, {
   FadeInDown,
   ZoomIn,
+  interpolate,
+  interpolateColor,
   useSharedValue,
   useAnimatedStyle,
   withRepeat,
@@ -109,7 +111,7 @@ export default function Login() {
   const [emailOtp, setEmailOtp] = useState("");
   const [otpLoading, setOtpLoading] = useState(false);
   const keyboardShift = useSharedValue(0);
-  const brandFlashOpacity = useSharedValue(1);
+  const brandGlow = useSharedValue(0);
 
   // Returning from registration must restore the initial login form.
   // This prevents the previous "account not found" state from hiding Continue.
@@ -130,10 +132,10 @@ export default function Login() {
   );
 
   useEffect(() => {
-    brandFlashOpacity.value = withRepeat(
+    brandGlow.value = withRepeat(
       withSequence(
-        withTiming(0.86, { duration: 1500, easing: Easing.inOut(Easing.ease) }),
-        withTiming(1, { duration: 1500, easing: Easing.inOut(Easing.ease) })
+        withTiming(1, { duration: 1800, easing: Easing.inOut(Easing.ease) }),
+        withTiming(0, { duration: 1800, easing: Easing.inOut(Easing.ease) })
       ),
       -1,
       false
@@ -141,7 +143,13 @@ export default function Login() {
   }, []);
 
   const appNameFlashStyle = useAnimatedStyle(() => ({
-    opacity: brandFlashOpacity.value,
+    opacity: interpolate(brandGlow.value, [0, 1], [0.9, 1]),
+    transform: [
+      { translateY: interpolate(brandGlow.value, [0, 1], [0, -2]) },
+      { scale: interpolate(brandGlow.value, [0, 1], [1, 1.035]) },
+    ],
+    textShadowColor: interpolateColor(brandGlow.value, [0, 1], ["#00D9FF", "#FF7A18"]),
+    textShadowRadius: interpolate(brandGlow.value, [0, 1], [10, 26]),
   }));
 
   useEffect(() => {
@@ -840,7 +848,8 @@ const s = StyleSheet.create({
 
   topContent: {
     alignItems: "center",
-    paddingTop: 150,
+    paddingTop: 34,
+    paddingBottom: 0,
     zIndex: 2,
   },
 
@@ -1117,11 +1126,14 @@ const s = StyleSheet.create({
   },
 
   appName: {
-    color: "#FFFFFF",
-    fontSize: 26,
+    color: "#F2FDFF",
+    fontSize: 29,
     fontWeight: "900",
-    letterSpacing: 3,
-    marginTop: 10,
+    letterSpacing: 3.2,
+    marginTop: 6,
+    textShadowColor: "#00D9FF",
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 16,
   },
 
   welcome: {
