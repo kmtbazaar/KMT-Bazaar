@@ -518,7 +518,7 @@ export default function Login() {
             entering={ZoomIn.duration(700).springify()}
             style={s.topLogoContainer}
           >
-            <AnimatedBrandLogo size={144} intensity="hero" testID="login-animated-brand-logo" />
+            <AnimatedBrandLogo size={288} intensity="hero" testID="login-animated-brand-logo" />
           </Animated.View>
           <Animated.Text
             entering={FadeInDown.delay(200).springify()}
@@ -849,20 +849,21 @@ const s = StyleSheet.create({
   topContent: {
     alignItems: "center",
     paddingTop: 4,
-    paddingBottom: 0,
+    paddingBottom: 8,
     zIndex: 2,
   },
 
   topLogoContainer: {
-    width: 150,
-    height: 150,
+    width: 296,
+    height: 296,
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 2,
+    marginBottom: 4,
   },
 
   cardWrapper: {
     paddingHorizontal: SPACING.lg,
+    paddingTop: 16,
     paddingBottom: 8,
   },
 
@@ -1129,7 +1130,8 @@ const s = StyleSheet.create({
     fontSize: 29,
     fontWeight: "900",
     letterSpacing: 3.2,
-    marginTop: 6,
+    marginTop: 8,
+    textAlign: "center",
     textShadowColor: "#00D9FF",
     textShadowOffset: { width: 0, height: 0 },
     textShadowRadius: 16,
