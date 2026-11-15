@@ -19,6 +19,7 @@ type RobotCompanion3DProps = {
   style?: StyleProp<ViewStyle>;
   interactive?: boolean;
   idleGesture?: boolean;
+  fallbackOrbit?: boolean;
 };
 
 function makeRoundedPanel(
@@ -654,6 +655,7 @@ export default function RobotCompanion3D({
   style,
   interactive = true,
   idleGesture = false,
+  fallbackOrbit = true,
 }: RobotCompanion3DProps) {
   const hostRef = useRef<any>(null);
   const activateRef = useRef(onActivate);
@@ -921,7 +923,7 @@ export default function RobotCompanion3D({
           pointerEvents={interactive ? "auto" : "none"}
           style={[styles.fallback, { width: size, height: size }, style]}
         >
-          <RobotAvatar size={Math.round(size * 0.82)} talking={talking} showOrbit />
+          <RobotAvatar size={Math.round(size * 0.82)} talking={talking} showOrbit={fallbackOrbit} />
         </Pressable>
       );
     }
@@ -1179,7 +1181,7 @@ function NativeRobotStage({
         accessibilityLabel="Open KMT Bazaar AI assistant"
         style={[styles.fallback, { width: size, height: Math.round(size * 1.22) }, style]}
       >
-        <RobotAvatar size={Math.round(size * 0.82)} talking={talking} showOrbit />
+        <RobotAvatar size={Math.round(size * 0.82)} talking={talking} showOrbit={fallbackOrbit} />
       </Pressable>
     );
   }
