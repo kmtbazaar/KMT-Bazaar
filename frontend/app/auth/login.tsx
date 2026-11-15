@@ -514,6 +514,12 @@ export default function Login() {
 
       <Animated.View style={[s.loginContent, keyboardContentStyle]}>
         <View style={s.topContent}>
+          <Animated.View
+            entering={ZoomIn.duration(700).springify()}
+            style={s.topLogoContainer}
+          >
+            <AnimatedBrandLogo size={104} intensity="hero" testID="login-animated-brand-logo" />
+          </Animated.View>
           <Animated.Text
             entering={FadeInDown.delay(200).springify()}
             style={[s.appName, appNameFlashStyle]}
@@ -788,13 +794,6 @@ export default function Login() {
         </View>
       </Animated.View>
 
-      <Animated.View
-        entering={ZoomIn.duration(700).springify()}
-        style={s.bottomLeftLogoContainer}
-      >
-        <AnimatedBrandLogo size={88} intensity="hero" testID="login-animated-brand-logo" />
-      </Animated.View>
-
       <AIAssistant />
     </SafeAreaView>
   );
@@ -848,9 +847,17 @@ const s = StyleSheet.create({
 
   topContent: {
     alignItems: "center",
-    paddingTop: 34,
+    paddingTop: 22,
     paddingBottom: 0,
     zIndex: 2,
+  },
+
+  topLogoContainer: {
+    width: 108,
+    height: 108,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 2,
   },
 
   cardWrapper: {
@@ -1099,15 +1106,6 @@ const s = StyleSheet.create({
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.9,
     shadowRadius: 10,
-  },
-
-  bottomLeftLogoContainer: {
-    position: "absolute",
-    bottom: 12,
-    left: 12,
-    zIndex: 10,
-    width: 88,
-    height: 88,
   },
 
   logoGlowContainer: {
