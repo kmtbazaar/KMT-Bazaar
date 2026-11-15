@@ -57,9 +57,9 @@ jobs:
           assert "export const AUTH_SESSION_DAYS = 30" in frontend_api
           assert "WEB_SESSION_TIMEOUT_MS = AUTH_SESSION_DAYS * 24 * 60 * 60 * 1000" in frontend_api
           assert "window.localStorage.getItem(WEB_TAB_ID_KEY)" in frontend_api
-          assert "window.localStorage.setItem(WEB_TAB_ID_KEY, legacySessionId)" in frontend_api
+          assert "window.sessionStorage.setItem(WEB_TAB_ID_KEY, tabId)" in frontend_api
           assert "api.refreshWebSession()" in auth_context
-          assert "adopting the active server session" in auth_context
+          assert "retryTransientSessionRequest(() => api.refreshWebSession())" in auth_context
           for route_name in ("login", "verify_email_login_otp", "verify_email_signup_otp", "google_login", "verify_otp"):
               route_start = source.find("async def " + route_name + "(")
               assert route_start >= 0, f"Missing auth route: {route_name}"
@@ -311,7 +311,7 @@ jobs:
               start = current_source.find(marker)
               if start < 0:
                   raise SystemExit(f"STOP: Could not locate {function_name}; no VPS changes made.")
-              route_end = current_source.find("\\n@api.", start + len(marker))
+              route_end = current_source.find("\n@api.", start + len(marker))
               end = route_end if route_end >= 0 else len(current_source)
               block = current_source[start:end]
               for old_text, new_text, label in replacements:
@@ -343,8 +343,8 @@ jobs:
                   "store projection",
               ),
               (
-                  '    upd["category_id"] = category_id\\n',
-                  '    upd["category_id"] = category_id\\n    upd["vendor_id"] = store.get("vendor_id")\\n',
+                  '    upd["category_id"] = category_id\n',
+                  '    upd["category_id"] = category_id\n    upd["vendor_id"] = store.get("vendor_id")\n',
                   "vendor ownership assignment",
               ),
           ])
