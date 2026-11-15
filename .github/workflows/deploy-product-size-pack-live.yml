@@ -18,6 +18,7 @@ on:
       - "frontend/app/admin/vendor/**"
       - "frontend/app/admin/products.tsx"
       - "frontend/src/components/AdminVendorProducts.tsx"
+      # Build and deploy admin vendor product management with the same production bundle.
       - "frontend/src/components/ProductImagesUploader.tsx"
       - "frontend/app/vendor/index.tsx"
       - "frontend/app/delivery/index.tsx"
