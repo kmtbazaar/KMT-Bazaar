@@ -383,8 +383,7 @@ jobs:
             exit 1
           fi
 
-          if ! grep -Fq 'doc = {"id": pid, **product_data, "vendor_id": store.get("vendor_id")}' "$TARGET" \\
-            || ! grep -Fq 'upd["vendor_id"] = store.get("vendor_id")' "$TARGET"; then
+          if ! grep -Fq 'doc = {"id": pid, **product_data, "vendor_id": store.get("vendor_id")}' "$TARGET" || ! grep -Fq 'upd["vendor_id"] = store.get("vendor_id")' "$TARGET"; then
             echo "BACKEND_ADMIN_VENDOR_PRODUCT_OWNERSHIP_PATCH_MISSING"
             rollback
             exit 1
