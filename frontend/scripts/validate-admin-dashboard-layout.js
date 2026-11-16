@@ -34,7 +34,7 @@ requireRules("kpiCardWrap", ["flex: 1", "minWidth: 0"]);
 requireRules("kpiCard", ['width: "100%"', "height: 164", "minHeight: 164", "maxHeight: 164", "flexShrink: 0"]);
 requireRules("kpiCardCompact", ["height: 96", "minHeight: 96", "maxHeight: 96", "padding: 7"]);
 requireRules("kpiIconCompact", ["width: 24", "height: 24"]);
-requireRules("kpiValueCompact", ["fontSize: 15", "marginTop: 5"]);
+requireRules("kpiValueCompact", ["fontSize: 15", "marginTop: 4"]);
 requireRules("kpiLabelCompact", ["fontSize: 8"]);
 requireRules("kpiSubCompact", ["fontSize: 8"]);
 requireRules("kpiTapHintCompact", ["marginTop: 3"]);
