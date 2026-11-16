@@ -1,0 +1,76 @@
+name: Temporary Hostinger disk usage recheck
+
+on:
+  push:
+    branches:
+      - customer-live
+    paths:
+      - ".github/workflows/hostinger-disk-usage-recheck.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Configure SSH
+        id: ssh
+        env:
+          HOSTINGER_HOST: ${{ secrets.HOSTINGER_HOST }}
+          HOSTINGER_USER: ${{ secrets.HOSTINGER_USER }}
+          HOSTINGER_SSH_KEY: ${{ secrets.HOSTINGER_SSH_KEY }}
+          HOSTINGER_PORT: ${{ secrets.HOSTINGER_PORT }}
+        run: |
+          set -euo pipefail
+          PORT="${HOSTINGER_PORT:-22}"
+          mkdir -p "$HOME/.ssh"
+          chmod 700 "$HOME/.ssh"
+          printf '%s\n' "$HOSTINGER_SSH_KEY" > "$HOME/.ssh/kmt_bazaar_recheck_key"
+          chmod 600 "$HOME/.ssh/kmt_bazaar_recheck_key"
+          ssh-keyscan -p "$PORT" -H "$HOSTINGER_HOST" >> "$HOME/.ssh/known_hosts" 2>/dev/null
+          echo "port=$PORT" >> "$GITHUB_OUTPUT"
+      - name: Read-only disk and quota audit
+        env:
+          HOSTINGER_HOST: ${{ secrets.HOSTINGER_HOST }}
+          HOSTINGER_USER: ${{ secrets.HOSTINGER_USER }}
+          HOSTINGER_PORT: ${{ steps.ssh.outputs.port }}
+        run: |
+          set -euo pipefail
+          DEST="${HOSTINGER_USER}@${HOSTINGER_HOST}"
+          ssh -T -o BatchMode=yes -o ConnectTimeout=15 -o ServerAliveInterval=15 -o ServerAliveCountMax=3 -i "$HOME/.ssh/kmt_bazaar_recheck_key" -p "$HOSTINGER_PORT" "$DEST" "bash -s" <<'REMOTE'
+          set +e
+          echo '=== DATE AND USER ==='
+          date -u
+          id
+          echo '=== FILESYSTEMS ==='
+          df -hT
+          echo '=== INODES ==='
+          df -ih
+          echo '=== FINDMNT ==='
+          findmnt -T /
+          findmnt -T /var/www
+          echo '=== ROOT DIRECTORY USAGE ==='
+          timeout 180s du -xhd1 / 2>/dev/null | sort -h
+          echo '=== VAR DIRECTORY USAGE ==='
+          timeout 180s du -xhd1 /var 2>/dev/null | sort -h
+          echo '=== VAR WWW DIRECTORY USAGE ==='
+          timeout 180s du -xhd1 /var/www 2>/dev/null | sort -h
+          echo '=== SELECTED DIRECTORY USAGE ==='
+          for p in /root /home /opt /tmp /usr/local /var/lib /var/log /var/cache; do
+            if [ -d "$p" ]; then echo "--- $p ---"; timeout 120s du -xhd1 "$p" 2>/dev/null | sort -h | tail -25; fi
+          done
+          echo '=== BACKUP COUNT AND SPACE ==='
+          find /var/www -mindepth 1 -maxdepth 1 -type d \( -name 'kmt-bazaar-com-backup-*' -o -name 'kmt-bazaar-backup-*' \) -printf '%f %k KB\n' 2>/dev/null
+          echo '=== OPEN DELETED FILES ==='
+          if command -v lsof >/dev/null 2>&1; then
+            lsof -nP +L1 2>/dev/null | head -80
+            lsof -nP +L1 2>/dev/null | awk 'NR>1 && $7 ~ /^[0-9]+$/ {s+=$7} END {printf "DELETED_OPEN_BYTES=%d\n",s}'
+          else echo 'lsof not installed'; fi
+          echo '=== QUOTAS ==='
+          command -v quota >/dev/null 2>&1 && quota -s 2>&1 || echo 'quota command unavailable'
+          command -v repquota >/dev/null 2>&1 && repquota -a 2>&1 || echo 'repquota unavailable'
+          echo '=== LARGE FILES OVER 500MB ==='
+          timeout 180s find / -xdev -type f -size +500M -printf '%s %p\n' 2>/dev/null | sort -nr | head -60
+          echo '=== END AUDIT ==='
+          REMOTE
