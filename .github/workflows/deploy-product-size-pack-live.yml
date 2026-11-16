@@ -425,6 +425,14 @@ jobs:
 
           mkdir -p "$BACKUP"
           cp -a "$WEBROOT"/. "$BACKUP"/
+          # Verify the rollback copy is byte-for-byte identical before touching the live webroot.
+          if ! diff -qr "$WEBROOT" "$BACKUP" >/dev/null 2>&1; then
+            echo "BACKUP_VERIFICATION_FAIL"
+            rm -rf -- "$BACKUP"
+            exit 1
+          fi
+          test -s "$BACKUP/index.html"
+          echo "BACKUP_VERIFIED=$BACKUP"
 
           rollback() {
             echo "ROLLBACK_START"
@@ -473,6 +481,30 @@ jobs:
           fi
 
           rm -rf "$STAGING" "$ARCHIVE"
+
+          # Keep exactly one full-site rollback snapshot: the verified copy of the
+          # live webroot made immediately before this successful deployment.
+          case "$BACKUP" in
+            /var/www/kmt-bazaar-com-backup-size-pack-"${DEPLOY_SHA:0:12}"-*) ;;
+            *) echo "UNSAFE_BACKUP_PATH=$BACKUP"; exit 1 ;;
+          esac
+          test -d "$BACKUP"
+          test -s "$BACKUP/index.html"
+          REMOVED_BACKUP_COUNT=0
+          while IFS= read -r -d '' OLD_BACKUP; do
+            [ "$OLD_BACKUP" = "$BACKUP" ] && continue
+            rm -rf -- "$OLD_BACKUP"
+            REMOVED_BACKUP_COUNT=$((REMOVED_BACKUP_COUNT + 1))
+          done < <(find /var/www -mindepth 1 -maxdepth 1 -type d \( -name 'kmt-bazaar-com-backup-*' -o -name 'kmt-bazaar-backup-*' \) -print0)
+
+          REMAINING_BACKUP_COUNT=$(find /var/www -mindepth 1 -maxdepth 1 -type d \( -name 'kmt-bazaar-com-backup-*' -o -name 'kmt-bazaar-backup-*' \) -print | wc -l)
+          if [ "$REMAINING_BACKUP_COUNT" -ne 1 ]; then
+            echo "BACKUP_RETENTION_VERIFY_FAIL count=$REMAINING_BACKUP_COUNT"
+            exit 1
+          fi
+          echo "BACKUPS_REMOVED=$REMOVED_BACKUP_COUNT"
+          echo "BACKUPS_RETAINED=1"
+          echo "RETAINED_BACKUP=$BACKUP"
           echo "DEPLOYMENT_HEALTH_CHECK_PASS"
           echo "DEPLOYED_COMMIT=$DEPLOY_SHA"
           REMOTE
