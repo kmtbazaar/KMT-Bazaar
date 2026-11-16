@@ -460,7 +460,7 @@ export default function Login() {
         <View
           style={[s.stationSketch, isWideScreen && s.stationSketchWide]}
           testID="login-vidyasagar-station-sketch"
-          accessibilityLabel="Soft blue carbon-pencil sketch of Vidyasagar Railway Station, Karmatar"
+          accessibilityLabel="Electric-blue neon outline sketch of Vidyasagar Railway Station, Karmatar"
         >
           <Image
             source={require("../../assets/images/vidyasagar-station-sketch.webp")}
@@ -847,6 +847,7 @@ const s = StyleSheet.create({
 
   stationSketch: {
     position: "relative",
+    alignSelf: "stretch",
     height: 38,
     marginHorizontal: SPACING.lg,
     marginBottom: 2,
