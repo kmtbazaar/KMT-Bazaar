@@ -13,7 +13,7 @@ import Animated, {
   withSequence,
 } from "react-native-reanimated";
 
-export default function AIAssistant({ embedded = false }: { embedded?: boolean }) {
+export default function AIAssistant({ embedded = false, compact = false }: { embedded?: boolean; compact?: boolean }) {
   const router = useRouter();
   const scanPosition = useSharedValue(0);
   const framePulse = useSharedValue(0.55);
@@ -51,25 +51,25 @@ export default function AIAssistant({ embedded = false }: { embedded?: boolean }
 
   const scanStyle = useAnimatedStyle(() => ({
     opacity: interpolate(scanPosition.value, [0, 0.18, 0.82, 1], [0, 0.9, 0.9, 0]),
-    transform: [{ translateY: interpolate(scanPosition.value, [0, 1], [-27, 27]) * (embedded ? 2 : 1) }, ...(embedded ? [{ scaleX: 2 }] : [])],
+    transform: [{ translateY: interpolate(scanPosition.value, [0, 1], [-27, 27]) * (embedded ? 2 : compact ? 0.72 : 1) }, ...(embedded ? [{ scaleX: 2 }] : compact ? [{ scaleX: 0.78 }] : [])],
   }), [embedded]);
 
   const frameStyle = useAnimatedStyle(() => ({
     opacity: 0.58 + framePulse.value * 0.4,
-    transform: [{ scale: 0.98 + framePulse.value * 0.025 }, ...(embedded ? [{ scale: 2 }] : [])],
+    transform: [{ scale: (0.98 + framePulse.value * 0.025) * (embedded ? 2 : compact ? 0.76 : 1)],
   }), [embedded]);
 
   const robotStyle = useAnimatedStyle(() => ({
-    transform: [{ translateY: floatOffset.value }, ...(embedded ? [{ scale: 2 }] : [])],
+    transform: [{ translateY: floatOffset.value }, ...(embedded ? [{ scale: 2 }] : compact ? [{ scale: 0.92 }] : [])],
   }), [embedded]);
 
   return (
     <View
       pointerEvents="box-none"
-      style={[styles.container, embedded && styles.embeddedContainer]}
+      style={[compact ? styles.compactContainer : styles.container, embedded && styles.embeddedContainer]}
       testID="login-ai-assistant-hud"
     >
-      <Animated.View pointerEvents="none" style={[styles.hudFrame, frameStyle]}>
+      <Animated.View pointerEvents="none" style={[styles.hudFrame, compact && styles.compactHudFrame, frameStyle]}>
         <View style={[styles.bracket, styles.topLeft]} />
         <View style={[styles.bracket, styles.topRight]} />
         <View style={[styles.bracket, styles.bottomLeft]} />
@@ -88,8 +88,8 @@ export default function AIAssistant({ embedded = false }: { embedded?: boolean }
 
       <Animated.View pointerEvents="box-none" style={[styles.robotFloat, robotStyle]}>
         <RobotCompanion3D
-          size={76}
-          style={embedded ? styles.embeddedRobot : undefined}
+          size={compact ? 58 : 76}
+          style={embedded ? styles.embeddedRobot : compact ? styles.compactRobot : undefined}
           interactive={true}
           fallbackOrbit={false}
           onActivate={() => router.push("/assistant")}
@@ -111,6 +111,24 @@ const styles = StyleSheet.create({
     height: 116,
     alignItems: "center",
     justifyContent: "center",
+  },
+  compactContainer: {
+    position: "relative",
+    right: 0,
+    bottom: 0,
+    width: 108,
+    height: 112,
+    alignItems: "center",
+    justifyContent: "center",
+    alignSelf: "center",
+    overflow: "visible",
+  },
+  compactHudFrame: {
+    width: 108,
+    height: 116,
+  },
+  compactRobot: {
+    transform: [{ translateY: 2 }],
   },
   embeddedContainer: {
     position: "relative",
