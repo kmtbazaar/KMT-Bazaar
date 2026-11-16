@@ -8,7 +8,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useAuth } from "@/src/AuthContext";
-import { COLORS, RADIUS, SPACING, shadow } from "@/src/theme";
+import { COLORS, LOGO_URL, RADIUS, SPACING, shadow } from "@/src/theme";
 
 const FEATURES: Record<string, { title: string; sub: string; items: { icon: string; label: string }[] }> = {
   vendor: {
@@ -63,7 +63,7 @@ export default function RolePanel() {
         <View style={s.headerTop}>
           <View style={s.crystalLogoFrame} testID="role-panel-crystal-logo">
             <Image
-              source={require("../../assets/images/splash-icon.png")}
+              source={{ uri: LOGO_URL }}
               style={s.crystalLogo}
               contentFit="contain"
               cachePolicy="memory-disk"
@@ -124,10 +124,10 @@ const s = StyleSheet.create({
   header: { padding: SPACING.lg, paddingBottom: SPACING.xl, borderBottomLeftRadius: 24, borderBottomRightRadius: 24 },
   headerTop: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
   crystalLogoFrame: {
-    width: 52,
-    height: 52,
-    padding: 3,
-    borderRadius: 12,
+    width: 128,
+    height: 128,
+    padding: 6,
+    borderRadius: 22,
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: "#FFFFFF",
@@ -142,6 +142,7 @@ const s = StyleSheet.create({
   crystalLogo: {
     width: "100%",
     height: "100%",
+    borderRadius: 16,
   },
   title: { fontSize: 24, fontWeight: "800", color: "#fff", marginTop: SPACING.md },
   sub: { color: "rgba(255,255,255,0.85)", marginTop: 4 },
