@@ -7,6 +7,7 @@ import {
   clearWebSessionExpiredNotice,
   clearWebSessionLogoutFlag,
   clearWebSessionMarkers,
+  ensureUniqueWebTabId,
   getToken,
   getUser,
   getWebSessionLastActivity,
@@ -129,6 +130,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setLoading(true);
     try {
       if (Platform.OS === "web") {
+        // Verify the tab selector before reading tab-scoped login/expiry state.
+        await ensureUniqueWebTabId();
         setSessionExpired(hasWebSessionExpiredNotice());
         if (hasWebSessionExplicitlyLoggedOut()) {
           setSessionExpired(false);
