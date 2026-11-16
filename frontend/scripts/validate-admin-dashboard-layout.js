@@ -32,7 +32,7 @@ requireRules("kpiGrid", ['width: "100%"', 'flexDirection: "column"']);
 requireRules("kpiRow", ['width: "100%"', 'flexDirection: "row"', "gap: 10"]);
 requireRules("kpiCardWrap", ["flex: 1", "minWidth: 0"]);
 requireRules("kpiCard", ['width: "100%"', "height: 164", "minHeight: 164", "maxHeight: 164", "flexShrink: 0"]);
-requireRules("kpiCardCompact", ["height: 96", "minHeight: 96", "maxHeight: 96", "padding: 8"]);
+requireRules("kpiCardCompact", ["height: 96", "minHeight: 96", "maxHeight: 96", "padding: 7"]);
 requireRules("kpiIconCompact", ["width: 24", "height: 24"]);
 requireRules("kpiValueCompact", ["fontSize: 15", "marginTop: 5"]);
 requireRules("kpiLabelCompact", ["fontSize: 8"]);
