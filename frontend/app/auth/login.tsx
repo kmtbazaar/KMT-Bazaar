@@ -460,14 +460,14 @@ export default function Login() {
         <View
           style={[s.stationSketch, isWideScreen && s.stationSketchWide]}
           testID="login-vidyasagar-station-sketch"
-          accessibilityLabel="Electric-blue neon outline sketch of Vidyasagar Railway Station, Karmatar"
+          accessibilityLabel="Warm white neon outline sketch of Vidyasagar Railway Station, Karmatar"
         >
           <Image
             source={require("../../assets/images/vidyasagar-station-sketch.webp")}
             style={[s.stationSketchImage, s.stationSketchGlowOuter]}
             contentFit="fill"
             blurRadius={8}
-            tintColor="#006BFF"
+            tintColor="#FFE2B2"
             cachePolicy="memory-disk"
           />
           <Image
@@ -475,39 +475,21 @@ export default function Login() {
             style={[s.stationSketchImage, s.stationSketchGlowInner]}
             contentFit="fill"
             blurRadius={3}
-            tintColor="#00CFFF"
+            tintColor="#FFF0D2"
             cachePolicy="memory-disk"
           />
           <Image
             source={require("../../assets/images/vidyasagar-station-sketch.webp")}
             style={s.stationSketchImage}
             contentFit="fill"
-            tintColor="#C5F6FF"
+            tintColor="#FFFEF6"
             cachePolicy="memory-disk"
             transition={100}
           />
         </View>
         <View style={[s.cardWrapper, isWideScreen && s.cardWrapperWide]}>
-          <View
-            pointerEvents="none"
-            style={s.boatMascot}
-            accessible={false}
-            testID="login-card-boat"
-          >
-            <View style={s.boatPaddle} />
-            <View style={s.boatLegs}>
-              <View style={s.boatLeg}>
-                <View style={s.boatFoot} />
-              </View>
-              <View style={[s.boatLeg, s.boatLegRight]}>
-                <View style={[s.boatFoot, s.boatFootRight]} />
-              </View>
-            </View>
-            <View style={s.boatHull}>
-              <View style={s.boatSeat} />
-              <View style={s.boatRim} />
-              <View style={s.boatHullHighlight} />
-            </View>
+          <View style={s.cardAssistant} testID="login-card-assistant">
+            <AIAssistant compact />
           </View>
           <View style={s.card}>
             <LinearGradient
@@ -773,9 +755,6 @@ export default function Login() {
             />
           </View>
         </View>
-          <View style={[s.assistantSlot, isWideScreen && s.assistantSlotWide]}>
-            <AIAssistant embedded />
-          </View>
         </View>
       </Animated.ScrollView>
     </SafeAreaView>
@@ -900,122 +879,18 @@ const s = StyleSheet.create({
     paddingHorizontal: 0,
     paddingTop: 0,
   },
-  boatMascot: {
+  cardAssistant: {
     position: "absolute",
-    top: -28,
-    right: 18,
-    width: 76,
-    height: 42,
-    zIndex: 30,
-    alignItems: "center",
-    overflow: "visible",
-  },
-  boatPaddle: {
-    position: "absolute",
-    top: 17,
-    left: 5,
-    width: 24,
-    height: 2,
-    borderRadius: 2,
-    backgroundColor: "#FDE68A",
-    transform: [{ rotate: "-35deg" }],
-    zIndex: 3,
-  },
-  boatLegs: {
-    position: "absolute",
-    top: 26,
-    left: 24,
-    right: 23,
-    height: 15,
-    flexDirection: "row",
-    justifyContent: "space-between",
-    zIndex: 1,
-  },
-  boatLeg: {
-    width: 5,
-    height: 13,
-    borderRadius: 4,
-    backgroundColor: "#EAB68C",
-    borderWidth: 0.5,
-    borderColor: "#FFE0C2",
-  },
-  boatLegRight: {
-    transform: [{ rotate: "7deg" }],
-  },
-  boatFoot: {
-    position: "absolute",
-    left: -2,
-    bottom: -1,
-    width: 10,
-    height: 5,
-    borderRadius: 4,
-    backgroundColor: "#183C60",
-    borderWidth: 1,
-    borderColor: "#8BE9FF",
-  },
-  boatFootRight: {
-    left: -3,
-  },
-  boatHull: {
-    position: "absolute",
-    bottom: 14,
-    width: 72,
-    height: 16,
-    borderWidth: 1.5,
-    borderColor: "#F7C56B",
-    borderTopLeftRadius: 6,
-    borderTopRightRadius: 6,
-    borderBottomLeftRadius: 28,
-    borderBottomRightRadius: 28,
-    backgroundColor: "#8F4E2A",
-    overflow: "hidden",
-    shadowColor: "#F59E0B",
-    shadowOpacity: 0.8,
-    shadowRadius: 7,
-    elevation: 5,
-    transform: [{ skewX: "-5deg" }],
-    zIndex: 2,
-  },
-  boatSeat: {
-    position: "absolute",
-    top: -3,
-    left: 23,
-    width: 25,
-    height: 5,
-    borderRadius: 3,
-    backgroundColor: "#E6B86A",
-  },
-  boatRim: {
-    position: "absolute",
-    top: 2,
-    left: 4,
-    right: 4,
-    height: 2,
-    borderRadius: 2,
-    backgroundColor: "#FFE8A6",
-  },
-  boatHullHighlight: {
-    position: "absolute",
-    bottom: 3,
-    left: 19,
-    width: 31,
-    height: 2,
-    borderRadius: 2,
-    backgroundColor: "#F5C87A",
-    opacity: 0.85,
-  },
-
-  assistantSlot: {
-    width: "100%",
-    minHeight: 286,
+    top: -74,
+    right: 6,
+    width: 108,
+    height: 112,
+    zIndex: 40,
     alignItems: "center",
     justifyContent: "center",
-    marginTop: 4,
+    overflow: "visible",
   },
-  assistantSlotWide: {
-    marginTop: 0,
-    minHeight: 286,
-  },
+
 
   card: {
     backgroundColor: "#FFFFFF",
