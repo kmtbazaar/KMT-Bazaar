@@ -9,9 +9,11 @@ import {
   Platform,
   ActivityIndicator,
   Dimensions,
+  Linking,
   useWindowDimensions,
 } from "react-native";
 import AnimatedBrandLogo from "@/src/components/AnimatedBrandLogo";
+import { Image } from "expo-image";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
@@ -40,7 +42,7 @@ export default function Login() {
   const { login, requestEmailLoginOtp, verifyEmailLoginOtp, googleLogin, sessionExpired } = useAuth();
   const insets = useSafeAreaInsets();
   const { width: viewportWidth, height: viewportHeight } = useWindowDimensions();
-  const isWideScreen = viewportWidth >= 960;
+  const isWideScreen = viewportWidth >= 1180;
 
   const goToDashboard = (user: any) => {
     if (user?.role === "customer") return router.replace("/(tabs)/home" as any);
@@ -437,7 +439,7 @@ export default function Login() {
       />
 
       <Animated.ScrollView
-        style={s.loginScroll}
+        style={[s.loginScroll, keyboardContentStyle]}
         contentContainerStyle={[s.loginContent, isWideScreen && s.loginContentWide]}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
@@ -448,11 +450,51 @@ export default function Login() {
             style={[s.topLogoContainer, isWideScreen && s.topLogoContainerWide]}
           >
             <AnimatedBrandLogo
-              size={isWideScreen ? Math.min(420, Math.max(320, viewportHeight * 0.46)) : 260}
+              size={isWideScreen ? Math.min(380, Math.max(280, viewportHeight * 0.44)) : 260}
               intensity="hero"
               testID="login-animated-brand-logo"
             />
           </Animated.View>
+        </View>
+
+        <View style={[s.stationPanel, isWideScreen && s.stationPanelWide]} testID="login-vidyasagar-station-panel">
+          <LinearGradient
+            colors={["#39E8FF", "#FF8A3D", "#39E8FF"]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={s.stationNeonFrame}
+          >
+            <View style={s.stationImageWindow}>
+              <Image
+                source={{ uri: "https://upload.wikimedia.org/wikipedia/commons/5/5b/Vidyasagar_Entrance_gate.jpg" }}
+                style={s.stationPhoto}
+                contentFit="cover"
+                cachePolicy="memory-disk"
+                transition={140}
+                accessibilityLabel="Front entrance of Vidyasagar Railway Station, Karmatar"
+              />
+              <LinearGradient
+                pointerEvents="none"
+                colors={["transparent", "rgba(2,8,20,0.88)"]}
+                locations={[0.34, 1]}
+                style={s.stationPhotoShade}
+              />
+              <View pointerEvents="none" style={s.stationPhotoCaption}>
+                <Text style={s.stationPhotoTitle}>VIDYASAGAR RAILWAY STATION</Text>
+                <Text style={s.stationPhotoSubtitle}>KARMATAR · JHARKHAND</Text>
+              </View>
+            </View>
+          </LinearGradient>
+          <Pressable
+            accessibilityRole="link"
+            accessibilityLabel="Photo credit: Charlie Kumar, Creative Commons Attribution Share Alike 4.0"
+            onPress={() => {
+              void Linking.openURL("https://commons.wikimedia.org/wiki/File:Vidyasagar_Entrance_gate.jpg").catch(() => undefined);
+            }}
+            hitSlop={6}
+          >
+            <Text style={s.stationPhotoCredit}>Photo: Charlie Kumar · CC BY-SA 4.0</Text>
+          </Pressable>
         </View>
 
         <View style={[s.rightColumn, isWideScreen && s.rightColumnWide]}>
@@ -760,11 +802,11 @@ const s = StyleSheet.create({
   },
   loginContentWide: {
     flexDirection: "row",
-    alignItems: "stretch",
+    alignItems: "center",
     justifyContent: "space-between",
-    paddingHorizontal: 28,
+    paddingHorizontal: 24,
     paddingVertical: 12,
-    gap: 24,
+    gap: 18,
   },
 
   topContent: {
@@ -776,6 +818,7 @@ const s = StyleSheet.create({
   },
   topContentWide: {
     flex: 1,
+    minWidth: 280,
     minHeight: 420,
     justifyContent: "center",
   },
@@ -788,8 +831,80 @@ const s = StyleSheet.create({
     marginBottom: 0,
   },
   topLogoContainerWide: {
-    width: 440,
-    height: 440,
+    width: 420,
+    height: 420,
+  },
+
+  stationPanel: {
+    width: "92%",
+    maxWidth: 560,
+    alignSelf: "center",
+    alignItems: "center",
+    gap: 5,
+    marginTop: 8,
+    marginBottom: 16,
+  },
+  stationPanelWide: {
+    width: 260,
+    maxWidth: 260,
+    flexShrink: 0,
+    marginTop: 0,
+    marginBottom: 0,
+  },
+  stationNeonFrame: {
+    width: "100%",
+    padding: 2,
+    borderRadius: 18,
+    shadowColor: "#22D3EE",
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.58,
+    shadowRadius: 12,
+    elevation: 6,
+  },
+  stationImageWindow: {
+    width: "100%",
+    height: 168,
+    borderRadius: 16,
+    overflow: "hidden",
+    backgroundColor: "#071522",
+  },
+  stationPhoto: {
+    width: "100%",
+    height: "100%",
+  },
+  stationPhotoShade: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: "56%",
+  },
+  stationPhotoCaption: {
+    position: "absolute",
+    left: 11,
+    right: 8,
+    bottom: 9,
+  },
+  stationPhotoTitle: {
+    color: "#FFFFFF",
+    fontSize: 11,
+    fontWeight: "900",
+    letterSpacing: 0.7,
+    textShadowColor: "rgba(0,0,0,0.9)",
+    textShadowRadius: 5,
+  },
+  stationPhotoSubtitle: {
+    color: "#A5F3FC",
+    fontSize: 9,
+    fontWeight: "800",
+    letterSpacing: 1.8,
+    marginTop: 3,
+  },
+  stationPhotoCredit: {
+    color: "#94A3B8",
+    fontSize: 9,
+    fontWeight: "600",
+    textAlign: "center",
   },
 
   rightColumn: {
@@ -797,8 +912,8 @@ const s = StyleSheet.create({
     alignItems: "center",
   },
   rightColumnWide: {
-    width: 460,
-    maxWidth: 460,
+    width: 420,
+    maxWidth: 420,
     flexShrink: 0,
     alignItems: "stretch",
     justifyContent: "flex-start",
@@ -818,14 +933,14 @@ const s = StyleSheet.create({
   },
   assistantSlot: {
     width: "100%",
-    minHeight: 132,
+    minHeight: 146,
     alignItems: "center",
     justifyContent: "center",
     marginTop: 4,
   },
   assistantSlotWide: {
     marginTop: 0,
-    minHeight: 132,
+    minHeight: 146,
   },
 
   card: {
