@@ -13,7 +13,7 @@ import Animated, {
   withSequence,
 } from "react-native-reanimated";
 
-export default function AIAssistant() {
+export default function AIAssistant({ embedded = false }: { embedded?: boolean }) {
   const router = useRouter();
   const scanPosition = useSharedValue(0);
   const framePulse = useSharedValue(0.55);
@@ -64,7 +64,11 @@ export default function AIAssistant() {
   }));
 
   return (
-    <View pointerEvents="box-none" style={styles.container} testID="login-ai-assistant-hud">
+    <View
+      pointerEvents="box-none"
+      style={[styles.container, embedded && styles.embeddedContainer]}
+      testID="login-ai-assistant-hud"
+    >
       <Animated.View pointerEvents="none" style={[styles.hudFrame, frameStyle]}>
         <View style={[styles.bracket, styles.topLeft]} />
         <View style={[styles.bracket, styles.topRight]} />
@@ -106,6 +110,14 @@ const styles = StyleSheet.create({
     height: 116,
     alignItems: "center",
     justifyContent: "center",
+  },
+  embeddedContainer: {
+    position: "relative",
+    right: 0,
+    bottom: 0,
+    width: 120,
+    height: 124,
+    alignSelf: "center",
   },
   hudFrame: {
     position: "absolute",

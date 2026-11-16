@@ -9,6 +9,7 @@ import {
   Platform,
   ActivityIndicator,
   Dimensions,
+  useWindowDimensions,
 } from "react-native";
 import AnimatedBrandLogo from "@/src/components/AnimatedBrandLogo";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
@@ -38,6 +39,8 @@ export default function Login() {
   const fromCart = params.source === "cart";
   const { login, requestEmailLoginOtp, verifyEmailLoginOtp, googleLogin, sessionExpired } = useAuth();
   const insets = useSafeAreaInsets();
+  const { width: viewportWidth, height: viewportHeight } = useWindowDimensions();
+  const isWideScreen = viewportWidth >= 960;
 
   const goToDashboard = (user: any) => {
     if (user?.role === "customer") return router.replace("/(tabs)/home" as any);
@@ -433,17 +436,27 @@ export default function Login() {
         style={s.headerBg}
       />
 
-      <Animated.View style={[s.loginContent, keyboardContentStyle]}>
-        <View style={s.topContent}>
+      <Animated.ScrollView
+        style={s.loginScroll}
+        contentContainerStyle={[s.loginContent, isWideScreen && s.loginContentWide]}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={[s.topContent, isWideScreen && s.topContentWide]}>
           <Animated.View
             entering={ZoomIn.duration(700).springify()}
-            style={s.topLogoContainer}
+            style={[s.topLogoContainer, isWideScreen && s.topLogoContainerWide]}
           >
-            <AnimatedBrandLogo size={240} intensity="hero" testID="login-animated-brand-logo" />
+            <AnimatedBrandLogo
+              size={isWideScreen ? Math.min(420, Math.max(320, viewportHeight * 0.46)) : 260}
+              intensity="hero"
+              testID="login-animated-brand-logo"
+            />
           </Animated.View>
         </View>
 
-        <View style={s.cardWrapper}>
+        <View style={[s.rightColumn, isWideScreen && s.rightColumnWide]}>
+        <View style={[s.cardWrapper, isWideScreen && s.cardWrapperWide]}>
           <View style={s.card}>
             <LinearGradient
               colors={["#00B4D8", "#FF6E00"]}
@@ -708,9 +721,11 @@ export default function Login() {
             />
           </View>
         </View>
-      </Animated.View>
-
-      <AIAssistant />
+          <View style={[s.assistantSlot, isWideScreen && s.assistantSlotWide]}>
+            <AIAssistant embedded />
+          </View>
+        </View>
+      </Animated.ScrollView>
     </SafeAreaView>
   );
 }
@@ -734,32 +749,83 @@ function Field({ icon, secure, testID, ...rest }: any) {
 const s = StyleSheet.create({
   root: { flex: 1, backgroundColor: "#050B14" },
   headerBg: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0 },
+  loginScroll: { flex: 1 },
 
   loginContent: {
-    flex: 1,
+    flexGrow: 1,
     zIndex: 2,
     paddingTop: 0,
+    paddingBottom: 16,
+    alignItems: "center",
+  },
+  loginContentWide: {
+    flexDirection: "row",
+    alignItems: "stretch",
+    justifyContent: "space-between",
+    paddingHorizontal: 28,
+    paddingVertical: 12,
+    gap: 24,
   },
 
   topContent: {
+    width: "100%",
     alignItems: "center",
     paddingTop: 0,
     paddingBottom: 0,
     zIndex: 2,
   },
+  topContentWide: {
+    flex: 1,
+    minHeight: 420,
+    justifyContent: "center",
+  },
 
   topLogoContainer: {
-    width: 248,
-    height: 248,
+    width: 280,
+    height: 280,
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 0,
   },
+  topLogoContainerWide: {
+    width: 440,
+    height: 440,
+  },
 
+  rightColumn: {
+    width: "100%",
+    alignItems: "center",
+  },
+  rightColumnWide: {
+    width: 460,
+    maxWidth: 460,
+    flexShrink: 0,
+    alignItems: "stretch",
+    justifyContent: "flex-start",
+    paddingTop: 10,
+    paddingRight: 8,
+  },
   cardWrapper: {
+    width: "100%",
+    alignSelf: "stretch",
     paddingHorizontal: SPACING.lg,
     paddingTop: 0,
     paddingBottom: 8,
+  },
+  cardWrapperWide: {
+    paddingHorizontal: 0,
+    paddingTop: 0,
+  },
+  assistantSlot: {
+    width: "100%",
+    minHeight: 132,
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 4,
+  },
+  assistantSlotWide: {
+    marginTop: 0,
+    minHeight: 132,
   },
 
   card: {
