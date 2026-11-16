@@ -12,6 +12,7 @@ on:
       - "frontend/app/(tabs)/home.tsx"
       - "frontend/app/search.tsx"
       - "frontend/src/api.ts"
+      - "frontend/src/AuthContext.tsx"
       - "frontend/src/components/AnimatedBrandLogo.tsx"
       - "frontend/app/auth/login.tsx"
       - "frontend/app/admin/index.tsx"
