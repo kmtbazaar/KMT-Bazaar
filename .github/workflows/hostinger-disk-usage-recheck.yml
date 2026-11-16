@@ -52,6 +52,18 @@ jobs:
           findmnt -T /var/www
           echo '=== ROOT DIRECTORY USAGE ==='
           timeout 180s du -xhd1 / 2>/dev/null | sort -h
+          echo '=== ROOT TOP-LEVEL DIRECTORIES FULL ==='
+          timeout 180s du -xhd1 /root 2>/dev/null | sort -h
+          echo '=== ROOT TOP-LEVEL ITEM METADATA ==='
+          find /root -mindepth 1 -maxdepth 1 -printf '%TY-%Tm-%Td %TH:%TM %y %f\\n' 2>/dev/null | sort
+          echo '=== ROOT DATE-STAMPED SNAPSHOT SUMMARY ==='
+          find /root -mindepth 1 -maxdepth 1 -type d \\( -name 'kmtbazaar-*' -o -name '*backup*' -o -name '*rollback*' \\) -print0 2>/dev/null | xargs -0 -r du -sh 2>/dev/null | sort -h
+          echo '=== ROOT SNAPSHOT CONTENT SAMPLES ==='
+          for d in /root/kmtbazaar-*; do
+            [ -d "$d" ] || continue
+            echo "--- $d ---"
+            find "$d" -mindepth 1 -maxdepth 1 -printf '%y %f\\n' 2>/dev/null | head -18
+          done
           echo '=== VAR DIRECTORY USAGE ==='
           timeout 180s du -xhd1 /var 2>/dev/null | sort -h
           echo '=== VAR WWW DIRECTORY USAGE ==='
