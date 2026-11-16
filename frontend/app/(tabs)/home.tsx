@@ -619,9 +619,9 @@ export default function Home() {
                 position: "absolute",
                 borderTopColor: THEME.borderSoft,
                 backgroundColor: "#FFFFFF",
-                height: 65,
-                paddingTop: 4,
-                paddingBottom: 12,
+                height: 82,
+                paddingTop: 1,
+                paddingBottom: 8,
                 transform: [{ translateY: 100 }],
               },
             });
@@ -634,9 +634,9 @@ export default function Home() {
             position: "absolute",
             borderTopColor: THEME.borderSoft,
             backgroundColor: "#FFFFFF",
-            height: 65,
-            paddingTop: 4,
-            paddingBottom: 12,
+            height: 82,
+            paddingTop: 1,
+            paddingBottom: 8,
             transform: [{ translateY: tabBarTranslateY }],
           },
         });
@@ -663,9 +663,9 @@ export default function Home() {
           position: "absolute",
           borderTopColor: THEME.borderSoft,
           backgroundColor: "#FFFFFF",
-          height: 65,
-          paddingTop: 4,
-          paddingBottom: 12,
+          height: 82,
+          paddingTop: 1,
+          paddingBottom: 8,
         },
       });
 
@@ -674,6 +674,16 @@ export default function Home() {
         setHeroCollapsed(false);
         heroCollapseProgress.setValue(0);
         tabBarTranslateY.setValue(0);
+        navigation.setOptions({
+          tabBarStyle: {
+            position: "absolute",
+            borderTopColor: THEME.borderSoft,
+            backgroundColor: "#FFFFFF",
+            height: 82,
+            paddingTop: 1,
+            paddingBottom: 8,
+          },
+        });
       };
     }, [navigation, tabBarTranslateY, heroCollapseProgress])
   );
