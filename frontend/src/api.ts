@@ -28,6 +28,127 @@ const WEB_SESSION_EXPIRED_KEY = "kmt_web_session_expired";
 const WEB_SESSION_LOGGED_OUT_KEY = "kmt_web_session_logged_out";
 const WEB_TAB_ID_KEY = "kmt_web_tab_id";
 
+const WEB_TAB_CHANNEL_NAME = "kmt-bazaar-auth-tab-isolation-v1";
+let authTabChannel: BroadcastChannel | null = null;
+let authTabInstanceId: string | null = null;
+let ensureAuthTabPromise: Promise<string | null> | null = null;
+const verifiedAuthTabIds = new Set<string>();
+const pendingAuthTabClaims = new Map<string, () => void>();
+
+function createWebTabNonce(): string {
+  const bytes = new Uint8Array(16);
+  try {
+    if (typeof window !== "undefined" && window.crypto?.getRandomValues) {
+      window.crypto.getRandomValues(bytes);
+    } else {
+      for (let i = 0; i < bytes.length; i += 1) bytes[i] = Math.floor(Math.random() * 256);
+    }
+  } catch {
+    for (let i = 0; i < bytes.length; i += 1) bytes[i] = Math.floor(Math.random() * 256);
+  }
+  return Array.from(bytes, (value) => value.toString(16).padStart(2, "0")).join("");
+}
+
+function getAuthTabInstanceId(): string {
+  if (!authTabInstanceId) authTabInstanceId = createWebTabNonce();
+  return authTabInstanceId;
+}
+
+function getAuthTabChannel(): BroadcastChannel | null {
+  if (authTabChannel) return authTabChannel;
+  if (typeof window === "undefined" || typeof BroadcastChannel === "undefined") return null;
+
+  try {
+    const channel = new BroadcastChannel(WEB_TAB_CHANNEL_NAME);
+    channel.onmessage = (event: MessageEvent) => {
+      const message = event?.data;
+      if (!message || message.instanceId === getAuthTabInstanceId()) return;
+
+      if (message.type === "claim" && message.tabId === getWebTabId()) {
+        channel.postMessage({
+          type: "claimed",
+          requestId: message.requestId,
+          instanceId: getAuthTabInstanceId(),
+        });
+        return;
+      }
+
+      if (message.type === "claimed" && typeof message.requestId === "string") {
+        pendingAuthTabClaims.get(message.requestId)?.();
+      }
+    };
+    authTabChannel = channel;
+    return channel;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Chrome can copy sessionStorage when a tab is duplicated or opened with an
+ * opener. Detect an already-active owner before using the tab ID as a cookie
+ * selector; the newly opened tab receives a fresh selector and its own login.
+ */
+export function ensureUniqueWebTabId(): Promise<string | null> {
+  if (Platform.OS !== "web" || typeof window === "undefined") return Promise.resolve(null);
+  if (ensureAuthTabPromise) return ensureAuthTabPromise;
+
+  ensureAuthTabPromise = (async () => {
+    let tabId = getWebTabId();
+    if (!tabId) return null;
+    if (verifiedAuthTabIds.has(tabId)) return tabId;
+
+    const channel = getAuthTabChannel();
+    if (!channel) {
+      verifiedAuthTabIds.add(tabId);
+      return tabId;
+    }
+
+    let collisionDetected = false;
+    const requestId = createWebTabNonce();
+    await new Promise<void>((resolve) => {
+      const timeout = setTimeout(resolve, 120);
+      pendingAuthTabClaims.set(requestId, () => {
+        collisionDetected = true;
+        clearTimeout(timeout);
+        resolve();
+      });
+      channel.postMessage({
+        type: "claim",
+        tabId,
+        requestId,
+        instanceId: getAuthTabInstanceId(),
+      });
+    });
+    pendingAuthTabClaims.delete(requestId);
+
+    if (collisionDetected) {
+      tabId = createWebTabNonce();
+      try {
+        window.sessionStorage.setItem(WEB_TAB_ID_KEY, tabId);
+        // A duplicated tab must not briefly display the opener's cached user.
+        window.sessionStorage.removeItem(USER_KEY);
+      } catch {
+        return null;
+      }
+    }
+
+    verifiedAuthTabIds.add(tabId);
+    channel.postMessage({
+      type: "register",
+      tabId,
+      instanceId: getAuthTabInstanceId(),
+    });
+    return tabId;
+  })().catch((error) => {
+    console.warn("[auth] Could not verify the browser tab session ID", error);
+    return getWebTabId();
+  });
+
+  return ensureAuthTabPromise;
+}
+
+
 // A tab-scoped cookie selector: sessionStorage survives refreshes but is not shared
 // by separately opened tabs. Never store this selector in localStorage.
 export function getWebTabId(): string | null {
@@ -262,6 +383,7 @@ export async function apiFetch<T = any>(
   options: RequestInit = {}
 ): Promise<T> {
   const token = await getToken();
+  if (Platform.OS === "web") await ensureUniqueWebTabId();
 
   const headers: any = {
     "Content-Type": "application/json",
@@ -339,6 +461,7 @@ export async function uploadImageAsset(
   purpose?: "product" | "general"
 ): Promise<string> {
   const token = await getToken();
+  if (Platform.OS === "web") await ensureUniqueWebTabId();
   const formData = new FormData();
 
   if (Platform.OS === "web") {
