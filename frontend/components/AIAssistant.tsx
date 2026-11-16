@@ -52,16 +52,16 @@ export default function AIAssistant({ embedded = false, compact = false }: { emb
   const scanStyle = useAnimatedStyle(() => ({
     opacity: interpolate(scanPosition.value, [0, 0.18, 0.82, 1], [0, 0.9, 0.9, 0]),
     transform: [{ translateY: interpolate(scanPosition.value, [0, 1], [-27, 27]) * (embedded ? 2 : compact ? 0.72 : 1) }, ...(embedded ? [{ scaleX: 2 }] : compact ? [{ scaleX: 0.78 }] : [])],
-  }), [embedded]);
+  }), [embedded, compact]);
 
   const frameStyle = useAnimatedStyle(() => ({
     opacity: 0.58 + framePulse.value * 0.4,
-    transform: [{ scale: (0.98 + framePulse.value * 0.025) * (embedded ? 2 : compact ? 0.76 : 1)],
-  }), [embedded]);
+    transform: [{ scale: (0.98 + framePulse.value * 0.025) * (embedded ? 2 : compact ? 0.76 : 1) }],
+  }), [embedded, compact]);
 
   const robotStyle = useAnimatedStyle(() => ({
     transform: [{ translateY: floatOffset.value }, ...(embedded ? [{ scale: 2 }] : compact ? [{ scale: 0.92 }] : [])],
-  }), [embedded]);
+  }), [embedded, compact]);
 
   return (
     <View
