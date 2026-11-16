@@ -12,7 +12,6 @@ import {
   useWindowDimensions,
 } from "react-native";
 import AnimatedBrandLogo from "@/src/components/AnimatedBrandLogo";
-import { Image } from "expo-image";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
@@ -460,32 +459,38 @@ export default function Login() {
         <View
           style={[s.stationSketch, isWideScreen && s.stationSketchWide]}
           testID="login-vidyasagar-station-sketch"
-          accessibilityLabel="Warm white neon outline sketch of Vidyasagar Railway Station, Karmatar"
+          accessibilityLabel="Warm white neon vector sketch of the real Karmatar Vidyasagar Railway Station entrance arch, ramp and stairs"
         >
-          <Image
-            source={require("../../assets/images/vidyasagar-station-sketch.webp")}
-            style={[s.stationSketchImage, s.stationSketchGlowOuter]}
-            contentFit="fill"
-            blurRadius={8}
-            tintColor="#FFE2B2"
-            cachePolicy="memory-disk"
-          />
-          <Image
-            source={require("../../assets/images/vidyasagar-station-sketch.webp")}
-            style={[s.stationSketchImage, s.stationSketchGlowInner]}
-            contentFit="fill"
-            blurRadius={3}
-            tintColor="#FFF0D2"
-            cachePolicy="memory-disk"
-          />
-          <Image
-            source={require("../../assets/images/vidyasagar-station-sketch.webp")}
-            style={s.stationSketchImage}
-            contentFit="fill"
-            tintColor="#FFFEF6"
-            cachePolicy="memory-disk"
-            transition={100}
-          />
+          <View style={s.stationCanopyLeft} />
+          <View style={s.stationCanopyRight} />
+          <View style={s.stationWingLeft}>
+            <View style={s.stationWingPost} />
+            <View style={[s.stationWingPost, s.stationWingPostMid]} />
+          </View>
+          <View style={s.stationWingRight}>
+            <View style={s.stationWingPost} />
+            <View style={[s.stationWingPost, s.stationWingPostMid]} />
+          </View>
+          <View style={s.stationEntranceGate}>
+            <View style={s.stationArchOuter} />
+            <View style={s.stationArchInner} />
+            <View style={s.stationGateSign}>
+              <Text numberOfLines={1} style={s.stationGateLabel}>
+                VIDYA SAGAR RAILWAY STATION
+              </Text>
+            </View>
+            <View style={s.stationGateOpening}>
+              <View style={s.stationPlatformGlow} />
+              <View style={s.stationStepTop} />
+              <View style={s.stationStepMiddle} />
+              <View style={s.stationStepBottom} />
+            </View>
+            <View style={s.stationGatePillarLeft} />
+            <View style={s.stationGatePillarRight} />
+          </View>
+          <View style={s.stationRampRailLeft} />
+          <View style={s.stationRampRailRight} />
+          <View style={s.stationGroundLine} />
         </View>
         <View style={[s.cardWrapper, isWideScreen && s.cardWrapperWide]}>
           <View style={s.cardAssistant} testID="login-card-assistant">
@@ -827,29 +832,239 @@ const s = StyleSheet.create({
   stationSketch: {
     position: "relative",
     alignSelf: "stretch",
-    height: 38,
+    height: 42,
     marginHorizontal: SPACING.lg,
     marginBottom: 2,
     overflow: "visible",
-    opacity: 1,
   },
   stationSketchWide: {
     marginHorizontal: 0,
   },
-  stationSketchImage: {
+  stationCanopyLeft: {
     position: "absolute",
+    left: 7,
+    top: 12,
+    width: "24%",
+    height: 1,
+    backgroundColor: "#FFF7E7",
+    opacity: 0.82,
+    transform: [{ rotate: "-5deg" }],
+    shadowColor: "#FFF0CE",
+    shadowOpacity: 1,
+    shadowRadius: 5,
+  },
+  stationCanopyRight: {
+    position: "absolute",
+    right: 7,
+    top: 13,
+    width: "22%",
+    height: 1,
+    backgroundColor: "#FFF7E7",
+    opacity: 0.82,
+    transform: [{ rotate: "4deg" }],
+    shadowColor: "#FFF0CE",
+    shadowOpacity: 1,
+    shadowRadius: 5,
+  },
+  stationWingLeft: {
+    position: "absolute",
+    left: 5,
+    bottom: 5,
+    width: "26%",
+    height: 10,
+    borderTopWidth: 1,
+    borderColor: "#E8C58E",
+    opacity: 0.88,
+  },
+  stationWingRight: {
+    position: "absolute",
+    right: 5,
+    bottom: 5,
+    width: "24%",
+    height: 10,
+    borderTopWidth: 1,
+    borderColor: "#E8C58E",
+    opacity: 0.88,
+  },
+  stationWingPost: {
+    position: "absolute",
+    left: "22%",
     top: 0,
+    width: 1,
+    height: 9,
+    backgroundColor: "#FFF5DF",
+    shadowColor: "#FFF0D2",
+    shadowOpacity: 0.9,
+    shadowRadius: 4,
+  },
+  stationWingPostMid: {
+    left: "76%",
+    height: 7,
+  },
+  stationEntranceGate: {
+    position: "absolute",
+    alignSelf: "center",
+    bottom: 1,
+    width: 146,
+    height: 40,
+    alignItems: "center",
+    justifyContent: "flex-end",
+  },
+  stationArchOuter: {
+    position: "absolute",
     left: 0,
-    width: "100%",
-    height: 38,
+    right: 0,
+    top: 0,
+    bottom: 0,
+    borderTopWidth: 2,
+    borderLeftWidth: 2,
+    borderRightWidth: 2,
+    borderTopLeftRadius: 74,
+    borderTopRightRadius: 74,
+    borderColor: "#FFFEF4",
+    shadowColor: "#FFF0CE",
+    shadowOpacity: 1,
+    shadowRadius: 8,
+    elevation: 5,
   },
-  stationSketchGlowOuter: {
-    opacity: 0.52,
-    transform: [{ scaleX: 1.018 }, { scaleY: 1.2 }],
+  stationArchInner: {
+    position: "absolute",
+    left: 6,
+    right: 6,
+    top: 5,
+    bottom: 0,
+    borderTopWidth: 1.2,
+    borderLeftWidth: 1.2,
+    borderRightWidth: 1.2,
+    borderTopLeftRadius: 67,
+    borderTopRightRadius: 67,
+    borderColor: "#EBCB98",
+    shadowColor: "#F8DDB1",
+    shadowOpacity: 0.85,
+    shadowRadius: 5,
   },
-  stationSketchGlowInner: {
-    opacity: 0.78,
-    transform: [{ scaleX: 1.01 }, { scaleY: 1.1 }],
+  stationGateSign: {
+    position: "absolute",
+    top: 6,
+    width: 92,
+    height: 7,
+    alignItems: "center",
+    justifyContent: "center",
+    borderTopWidth: 0.6,
+    borderBottomWidth: 0.6,
+    borderColor: "rgba(255,242,216,0.8)",
+    backgroundColor: "rgba(255,246,228,0.08)",
+  },
+  stationGateLabel: {
+    color: "#FFFEF6",
+    fontSize: 4.8,
+    lineHeight: 5.4,
+    fontWeight: "800",
+    letterSpacing: 0.36,
+    textAlign: "center",
+    textShadowColor: "#FFF0CE",
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 4,
+  },
+  stationGateOpening: {
+    position: "absolute",
+    bottom: 0,
+    left: 43,
+    width: 60,
+    height: 18,
+    alignItems: "center",
+    justifyContent: "flex-end",
+  },
+  stationPlatformGlow: {
+    position: "absolute",
+    top: 1,
+    width: 42,
+    height: 1,
+    backgroundColor: "#FFF8E8",
+    opacity: 0.8,
+    shadowColor: "#FFF1D4",
+    shadowOpacity: 1,
+    shadowRadius: 4,
+  },
+  stationStepTop: {
+    width: 34,
+    height: 1,
+    marginBottom: 2,
+    backgroundColor: "#FFF7E8",
+    shadowColor: "#FFF0D2",
+    shadowOpacity: 1,
+    shadowRadius: 3,
+  },
+  stationStepMiddle: {
+    width: 43,
+    height: 1,
+    marginBottom: 2,
+    backgroundColor: "#EBCB98",
+  },
+  stationStepBottom: {
+    width: 53,
+    height: 1,
+    marginBottom: 1,
+    backgroundColor: "#FFF7E8",
+  },
+  stationGatePillarLeft: {
+    position: "absolute",
+    left: 3,
+    bottom: 0,
+    width: 2,
+    height: 12,
+    backgroundColor: "#FFF8EA",
+    shadowColor: "#FFF0CE",
+    shadowOpacity: 1,
+    shadowRadius: 4,
+  },
+  stationGatePillarRight: {
+    position: "absolute",
+    right: 3,
+    bottom: 0,
+    width: 2,
+    height: 12,
+    backgroundColor: "#FFF8EA",
+    shadowColor: "#FFF0CE",
+    shadowOpacity: 1,
+    shadowRadius: 4,
+  },
+  stationRampRailLeft: {
+    position: "absolute",
+    left: "29%",
+    bottom: 10,
+    width: "18%",
+    height: 1,
+    backgroundColor: "#FFF7E7",
+    opacity: 0.9,
+    transform: [{ rotate: "-9deg" }],
+    shadowColor: "#FFF0CE",
+    shadowOpacity: 0.9,
+    shadowRadius: 4,
+  },
+  stationRampRailRight: {
+    position: "absolute",
+    right: "29%",
+    bottom: 10,
+    width: "18%",
+    height: 1,
+    backgroundColor: "#FFF7E7",
+    opacity: 0.9,
+    transform: [{ rotate: "9deg" }],
+    shadowColor: "#FFF0CE",
+    shadowOpacity: 0.9,
+    shadowRadius: 4,
+  },
+  stationGroundLine: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    bottom: 2,
+    height: 1,
+    backgroundColor: "rgba(255,248,230,0.72)",
+    shadowColor: "#FFF0CE",
+    shadowOpacity: 0.9,
+    shadowRadius: 4,
   },
 
   rightColumn: {
@@ -881,10 +1096,10 @@ const s = StyleSheet.create({
   },
   cardAssistant: {
     position: "absolute",
-    top: -74,
-    right: 6,
-    width: 108,
-    height: 112,
+    top: -94,
+    right: 0,
+    width: 132,
+    height: 138,
     zIndex: 40,
     alignItems: "center",
     justifyContent: "center",
