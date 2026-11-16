@@ -152,8 +152,11 @@ export default function TabsLayout() {
             />
           ) : null,
         tabBarLabelStyle: {
-          fontSize: 10,
-          fontWeight: "600",
+          fontSize: 12,
+          lineHeight: 16,
+          fontWeight: "700",
+          marginTop: 0,
+          marginBottom: 1,
         },
       }}
     >
@@ -163,7 +166,7 @@ export default function TabsLayout() {
         options={{
           title: t("Home"),
           tabBarIcon: ({ color, size, focused }) => (
-            <TabIcon3D name="home-variant" color={color} size={size} focused={focused} />
+            <TabIcon3D name="home-variant" color={color} size={size + 6} focused={focused} />
           ),
         }}
       />
@@ -174,7 +177,7 @@ export default function TabsLayout() {
         options={{
           title: t("Categories"),
           tabBarIcon: ({ color, size, focused }) => (
-            <TabIcon3D name="view-grid" color={color} size={size} focused={focused} />
+            <TabIcon3D name="view-grid" color={color} size={size + 6} focused={focused} />
           ),
         }}
       />
@@ -185,7 +188,7 @@ export default function TabsLayout() {
         options={{
           title: t("Cart"),
           tabBarIcon: ({ color, size, focused }) => (
-            <CartIcon color={color} size={size} focused={focused} />
+            <CartIcon color={color} size={size + 6} focused={focused} />
           ),
         }}
       />
@@ -196,7 +199,7 @@ export default function TabsLayout() {
         options={{
           title: t("Profile"),
           tabBarIcon: ({ color, size, focused }) => (
-            <TabIcon3D name="account-circle" color={color} size={size} focused={focused} />
+            <TabIcon3D name="account-circle" color={color} size={size + 6} focused={focused} />
           ),
         }}
       />
@@ -229,15 +232,15 @@ export default function TabsLayout() {
 
 const s = StyleSheet.create({
   navIconStage: {
-    width: 46,
-    height: 42,
+    width: 54,
+    height: 48,
     alignItems: "center",
     justifyContent: "center",
     overflow: "visible",
   },
   navIconSurface: {
-    width: 40,
-    height: 36,
+    width: 48,
+    height: 44,
     borderRadius: 12,
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.9)",
@@ -277,8 +280,8 @@ const s = StyleSheet.create({
     backgroundColor: "rgba(255,255,255,0.48)",
   },
   navGlyphStack: {
-    width: 28,
-    height: 28,
+    width: 34,
+    height: 34,
     alignItems: "center",
     justifyContent: "center",
   },
