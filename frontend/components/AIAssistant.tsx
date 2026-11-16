@@ -88,7 +88,8 @@ export default function AIAssistant({ embedded = false }: { embedded?: boolean }
 
       <Animated.View pointerEvents="box-none" style={[styles.robotFloat, robotStyle]}>
         <RobotCompanion3D
-          size={88}
+          size={76}
+          style={embedded ? styles.embeddedRobot : undefined}
           interactive={true}
           fallbackOrbit={false}
           onActivate={() => router.push("/assistant")}
@@ -118,6 +119,9 @@ const styles = StyleSheet.create({
     width: 130,
     height: 140,
     alignSelf: "center",
+  },
+  embeddedRobot: {
+    transform: [{ scale: 1.16 }],
   },
   hudFrame: {
     position: "absolute",
