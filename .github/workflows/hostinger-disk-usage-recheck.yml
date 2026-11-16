@@ -56,14 +56,20 @@ jobs:
           timeout 180s du -xhd1 /root 2>/dev/null | sort -h
           echo '=== ROOT TOP-LEVEL ITEM METADATA ==='
           find /root -mindepth 1 -maxdepth 1 -printf '%TY-%Tm-%Td %TH:%TM %y %f\\n' 2>/dev/null | sort
-          echo '=== ROOT DATE-STAMPED SNAPSHOT SUMMARY ==='
-          find /root -mindepth 1 -maxdepth 1 -type d \\( -name 'kmtbazaar-*' -o -name '*backup*' -o -name '*rollback*' \\) -print0 2>/dev/null | xargs -0 -r du -sh 2>/dev/null | sort -h
+          echo '=== ROOT KMT SNAPSHOT DIRECTORIES AND TOTAL ==='
+          find /root -mindepth 1 -maxdepth 1 -type d -name 'kmtbazaar-*' -print0 2>/dev/null | xargs -0 -r du -sh 2>/dev/null | sort -h
           echo '=== ROOT SNAPSHOT CONTENT SAMPLES ==='
           for d in /root/kmtbazaar-*; do
             [ -d "$d" ] || continue
             echo "--- $d ---"
-            find "$d" -mindepth 1 -maxdepth 1 -printf '%y %f\\n' 2>/dev/null | head -18
+            find "$d" -mindepth 1 -maxdepth 1 -printf '%y %f\n' 2>/dev/null | head -18
           done
+          echo '=== ACTIVE SERVICE AND PATH REFERENCES ==='
+          systemctl cat kmt-bazaar-com.service 2>&1
+          systemctl show kmt-bazaar-com.service -p MainPID -p ActiveState -p SubState 2>&1
+          nginx -T 2>&1 | grep -E 'root /var/www/kmt-bazaar-com;|proxy_pass http://127.0.0.1:8001;'
+          echo '=== ROOT BACKUP ARCHIVES AND SCRIPT FILES ==='
+          find /root -mindepth 1 -maxdepth 1 -type f \( -name '*backup*.tar.gz' -o -name '*backup*.py' -o -name '*backup*.json' \) -printf '%s %f\n' 2>/dev/null | sort -n
           echo '=== VAR DIRECTORY USAGE ==='
           timeout 180s du -xhd1 /var 2>/dev/null | sort -h
           echo '=== VAR WWW DIRECTORY USAGE ==='
