@@ -19,14 +19,9 @@ import * as Haptics from "expo-haptics";
 import Animated, {
   FadeInDown,
   ZoomIn,
-  interpolate,
-  interpolateColor,
   useSharedValue,
   useAnimatedStyle,
-  withRepeat,
   withTiming,
-  withSequence,
-  Easing,
 } from "react-native-reanimated";
 import { useAuth } from "@/src/AuthContext";
 import { api } from "@/src/api";
@@ -36,49 +31,6 @@ const { width } = Dimensions.get("window");
 
 const GOOGLE_CUSTOMER_ONLY_MESSAGE =
   "Google sign-in is only for existing customer accounts. Please enter your KMT Bazaar login details manually.";
-
-function AnimatedTile({
-  delay = 0,
-  color = "#00B4D8",
-}: {
-  delay?: number;
-  color?: string;
-}) {
-  const opacity = useSharedValue(0.15);
-  const scale = useSharedValue(0.95);
-
-  useEffect(() => {
-    opacity.value = withSequence(
-      withTiming(0.15, { duration: delay }),
-      withRepeat(
-        withSequence(
-          withTiming(0.7, { duration: 2000, easing: Easing.inOut(Easing.ease) }),
-          withTiming(0.15, { duration: 2000, easing: Easing.inOut(Easing.ease) })
-        ),
-        -1,
-        true
-      )
-    );
-    scale.value = withSequence(
-      withTiming(0.95, { duration: delay }),
-      withRepeat(
-        withSequence(
-          withTiming(1.1, { duration: 2000, easing: Easing.inOut(Easing.ease) }),
-          withTiming(0.95, { duration: 2000, easing: Easing.inOut(Easing.ease) })
-        ),
-        -1,
-        true
-      )
-    );
-  }, []);
-
-  const animatedStyle = useAnimatedStyle(() => ({
-    opacity: opacity.value,
-    transform: [{ scale: scale.value }],
-  }));
-
-  return <Animated.View style={[s.tile, { backgroundColor: color }, animatedStyle]} />;
-}
 
 export default function Login() {
   const router = useRouter();
@@ -111,7 +63,6 @@ export default function Login() {
   const [emailOtp, setEmailOtp] = useState("");
   const [otpLoading, setOtpLoading] = useState(false);
   const keyboardShift = useSharedValue(0);
-  const brandGlow = useSharedValue(0);
 
   // Returning from registration must restore the initial login form.
   // This prevents the previous "account not found" state from hiding Continue.
@@ -130,27 +81,6 @@ export default function Login() {
       setOtpLoading(false);
     }, [])
   );
-
-  useEffect(() => {
-    brandGlow.value = withRepeat(
-      withSequence(
-        withTiming(1, { duration: 1800, easing: Easing.inOut(Easing.ease) }),
-        withTiming(0, { duration: 1800, easing: Easing.inOut(Easing.ease) })
-      ),
-      -1,
-      false
-    );
-  }, []);
-
-  const appNameFlashStyle = useAnimatedStyle(() => ({
-    opacity: interpolate(brandGlow.value, [0, 1], [0.9, 1]),
-    transform: [
-      { translateY: interpolate(brandGlow.value, [0, 1], [0, -2]) },
-      { scale: interpolate(brandGlow.value, [0, 1], [1, 1.035]) },
-    ],
-    textShadowColor: interpolateColor(brandGlow.value, [0, 1], ["#00D9FF", "#FF7A18"]),
-    textShadowRadius: interpolate(brandGlow.value, [0, 1], [10, 26]),
-  }));
 
   useEffect(() => {
     const showEvent = Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow";
@@ -503,15 +433,6 @@ export default function Login() {
         style={s.headerBg}
       />
 
-      <View style={s.tilesWrapper} pointerEvents="none">
-        <AnimatedTile delay={0} color="#00B4D8" />
-        <AnimatedTile delay={600} color="#FF6E00" />
-        <AnimatedTile delay={1200} color="#00B4D8" />
-        <AnimatedTile delay={400} color="#FF6E00" />
-        <AnimatedTile delay={1000} color="#00B4D8" />
-        <AnimatedTile delay={1500} color="#FF6E00" />
-      </View>
-
       <Animated.View style={[s.loginContent, keyboardContentStyle]}>
         <View style={s.topContent}>
           <Animated.View
@@ -520,12 +441,6 @@ export default function Login() {
           >
             <AnimatedBrandLogo size={288} intensity="hero" testID="login-animated-brand-logo" />
           </Animated.View>
-          <Animated.Text
-            entering={FadeInDown.delay(200).springify()}
-            style={[s.appName, appNameFlashStyle]}
-          >
-            KMT BAZAAR
-          </Animated.Text>
         </View>
 
         <View style={s.cardWrapper}>
@@ -820,50 +735,30 @@ const s = StyleSheet.create({
   root: { flex: 1, backgroundColor: "#050B14" },
   headerBg: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0 },
 
-  tilesWrapper: {
-    position: "absolute",
-    top: Platform.OS === "web" ? 0 : 52,
-    left: 0,
-    right: 0,
-    height: 330,
-    flexDirection: "row",
-    flexWrap: "wrap",
-    justifyContent: "space-around",
-    alignItems: "center",
-    padding: 10,
-    zIndex: 1,
-  },
-  tile: {
-    width: (width - 60) / 3,
-    height: 70,
-    borderRadius: 16,
-    marginVertical: 8,
-  },
-
   loginContent: {
     flex: 1,
     zIndex: 2,
-    paddingTop: 4,
+    paddingTop: 0,
   },
 
   topContent: {
     alignItems: "center",
-    paddingTop: 4,
-    paddingBottom: 8,
+    paddingTop: 0,
+    paddingBottom: 0,
     zIndex: 2,
   },
 
   topLogoContainer: {
-    width: 296,
-    height: 296,
+    width: 288,
+    height: 288,
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 4,
+    marginBottom: 0,
   },
 
   cardWrapper: {
     paddingHorizontal: SPACING.lg,
-    paddingTop: 16,
+    paddingTop: 0,
     paddingBottom: 8,
   },
 
@@ -1123,18 +1018,6 @@ const s = StyleSheet.create({
   logo: {
     width: 56,
     height: 56,
-  },
-
-  appName: {
-    color: "#F2FDFF",
-    fontSize: 29,
-    fontWeight: "900",
-    letterSpacing: 3.2,
-    marginTop: 8,
-    textAlign: "center",
-    textShadowColor: "#00D9FF",
-    textShadowOffset: { width: 0, height: 0 },
-    textShadowRadius: 16,
   },
 
   loginWelcome: {
