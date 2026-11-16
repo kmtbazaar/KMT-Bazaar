@@ -261,8 +261,8 @@ export default function AdminDashboard() {
     (_, rowIndex) => quickActions.slice(rowIndex * 3, rowIndex * 3 + 3)
   );
 
-  // Desktop: compact 4 × 2 overview. Smaller screens keep two readable columns.
-  const kpiColumnCount = Platform.OS === "web" && screenWidth >= 980 ? 4 : 2;
+  // Desktop web: keep all eight overview tiles in a compact 4 × 2 grid, including zoomed browser windows.
+  const kpiColumnCount = Platform.OS === "web" && screenWidth >= 768 ? 4 : 2;
   const kpiCards = [
     <KPI key="revenue" label="Revenue" value={`₹${stats?.revenue ?? 0}`} icon="cash-multiple" color={THEME.success} route="/admin/orders" delay={150} dark={adminSettings?.themeMode === "night"} compact={kpiColumnCount === 4} />,
     <KPI key="orders" label="Orders" value={stats?.orders ?? 0} icon="package-variant" color={THEME.orange} route="/admin/orders" delay={200} dark={adminSettings?.themeMode === "night"} compact={kpiColumnCount === 4} />,
@@ -1053,10 +1053,10 @@ const s = StyleSheet.create({
   },
 
   kpiCardCompact: {
-    height: 112,
-    minHeight: 112,
-    maxHeight: 112,
-    padding: 8,
+    height: 96,
+    minHeight: 96,
+    maxHeight: 96,
+    padding: 7,
     borderRadius: 14,
     shadowRadius: 7,
     shadowOffset: { width: 0, height: 3 },
@@ -1118,9 +1118,9 @@ const s = StyleSheet.create({
   },
 
   kpiIconCompact: {
-    width: 28,
-    height: 28,
-    borderRadius: 9,
+    width: 24,
+    height: 24,
+    borderRadius: 8,
   },
 
   kpiValue: {
@@ -1131,8 +1131,8 @@ const s = StyleSheet.create({
   },
 
   kpiValueCompact: {
-    fontSize: 16,
-    marginTop: 5,
+    fontSize: 15,
+    marginTop: 4,
   },
 
   kpiLabel: {
@@ -1143,7 +1143,7 @@ const s = StyleSheet.create({
   },
 
   kpiLabelCompact: {
-    fontSize: 9,
+    fontSize: 8,
     marginTop: 1,
   },
 
