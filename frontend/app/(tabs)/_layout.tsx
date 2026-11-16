@@ -3,6 +3,7 @@ import React from "react";
 import { Tabs, router } from "expo-router";;
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { View, Text, StyleSheet, Platform } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
 import { BlurView } from "expo-blur";
 import Animated, {
   useAnimatedStyle,
@@ -15,7 +16,70 @@ import { COLORS } from "@/src/theme";
 import { useCart } from "@/src/CartContext";
 import RobotCompanion3D from "@/src/components/RobotCompanion3D";
 
-function CartIcon({ color, size }: { color: string; size: number }) {
+function TabIconShell({
+  focused,
+  children,
+}: {
+  focused: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <View style={s.navIconStage}>
+      <LinearGradient
+        colors={focused ? ["#FFF0DA", "#F97316", "#B94B0A"] : ["#FFFFFF", "#E9EEF5", "#C9D4E0"]}
+        locations={[0, 0.58, 1]}
+        start={{ x: 0.18, y: 0 }}
+        end={{ x: 0.82, y: 1 }}
+        style={[s.navIconSurface, focused && s.navIconSurfaceActive]}
+      >
+        <View pointerEvents="none" style={s.navIconGloss} />
+        <View pointerEvents="none" style={s.navIconLowerBevel} />
+        {children}
+      </LinearGradient>
+    </View>
+  );
+}
+
+function TabIcon3D({
+  name,
+  color,
+  size,
+  focused,
+}: {
+  name: string;
+  color: string;
+  size: number;
+  focused: boolean;
+}) {
+  return (
+    <TabIconShell focused={focused}>
+      <View style={s.navGlyphStack}>
+        <MaterialCommunityIcons
+          name={name as any}
+          size={size + 1}
+          color={focused ? "#8D3B08" : "#A8B4C1"}
+          style={s.navGlyphShadow}
+        />
+        <MaterialCommunityIcons
+          name={name as any}
+          size={size}
+          color={focused ? "#FFFFFF" : color}
+          style={s.navGlyphFace}
+        />
+      </View>
+    </TabIconShell>
+  );
+}
+
+function CartIcon({
+  color,
+  size,
+  focused,
+}: {
+  color: string;
+  size: number;
+  focused: boolean;
+}) {
   const { itemCount, badgePulse } = useCart();
   const scale = useSharedValue(1);
 
@@ -33,20 +97,32 @@ function CartIcon({ color, size }: { color: string; size: number }) {
   }));
 
   return (
-    <View testID="cart-tab-icon">
-      <MaterialCommunityIcons
-        name="cart-outline"
-        size={size}
-        color={color}
-      />
+    <TabIconShell focused={focused}>
+      <Animated.View style={[s.navGlyphStack, animStyle]} testID="cart-tab-icon">
+        <MaterialCommunityIcons
+          name="cart"
+          size={size + 1}
+          color={focused ? "#8D3B08" : "#A8B4C1"}
+          style={s.navGlyphShadow}
+        />
+        <MaterialCommunityIcons
+          name="cart"
+          size={size}
+          color={focused ? "#FFFFFF" : color}
+          style={s.navGlyphFace}
+        />
+      </Animated.View>
       {itemCount > 0 && (
-        <Animated.View style={[s.badge, animStyle]} testID="cart-badge">
+        <Animated.View
+          style={[s.badge, animStyle]}
+          testID="cart-badge"
+        >
           <Text style={s.badgeText}>
             {itemCount > 99 ? "99+" : itemCount}
           </Text>
         </Animated.View>
       )}
-    </View>
+    </TabIconShell>
   );
 }
 
@@ -86,12 +162,8 @@ export default function TabsLayout() {
         name="home"
         options={{
           title: t("Home"),
-          tabBarIcon: ({ color, size }) => (
-            <MaterialCommunityIcons
-              name="home-variant"
-              size={size}
-              color={color}
-            />
+          tabBarIcon: ({ color, size, focused }) => (
+            <TabIcon3D name="home-variant" color={color} size={size} focused={focused} />
           ),
         }}
       />
@@ -101,12 +173,8 @@ export default function TabsLayout() {
         name="categories"
         options={{
           title: t("Categories"),
-          tabBarIcon: ({ color, size }) => (
-            <MaterialCommunityIcons
-              name="view-grid-outline"
-              size={size}
-              color={color}
-            />
+          tabBarIcon: ({ color, size, focused }) => (
+            <TabIcon3D name="view-grid" color={color} size={size} focused={focused} />
           ),
         }}
       />
@@ -116,8 +184,8 @@ export default function TabsLayout() {
         name="cart"
         options={{
           title: t("Cart"),
-          tabBarIcon: ({ color, size }) => (
-            <CartIcon color={color} size={size} />
+          tabBarIcon: ({ color, size, focused }) => (
+            <CartIcon color={color} size={size} focused={focused} />
           ),
         }}
       />
@@ -127,12 +195,8 @@ export default function TabsLayout() {
         name="profile"
         options={{
           title: t("Profile"),
-          tabBarIcon: ({ color, size }) => (
-            <MaterialCommunityIcons
-              name="account-circle-outline"
-              size={size}
-              color={color}
-            />
+          tabBarIcon: ({ color, size, focused }) => (
+            <TabIcon3D name="account-circle" color={color} size={size} focused={focused} />
           ),
         }}
       />
@@ -164,6 +228,76 @@ export default function TabsLayout() {
 }
 
 const s = StyleSheet.create({
+  navIconStage: {
+    width: 46,
+    height: 42,
+    alignItems: "center",
+    justifyContent: "center",
+    overflow: "visible",
+  },
+  navIconSurface: {
+    width: 40,
+    height: 36,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.9)",
+    alignItems: "center",
+    justifyContent: "center",
+    overflow: "visible",
+    shadowColor: "#64748B",
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.22,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  navIconSurfaceActive: {
+    borderColor: "rgba(255,239,215,0.98)",
+    shadowColor: "#F97316",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.36,
+    shadowRadius: 6,
+    elevation: 7,
+  },
+  navIconGloss: {
+    position: "absolute",
+    top: 2,
+    left: 6,
+    right: 6,
+    height: 6,
+    borderRadius: 5,
+    backgroundColor: "rgba(255,255,255,0.52)",
+  },
+  navIconLowerBevel: {
+    position: "absolute",
+    left: 7,
+    right: 7,
+    bottom: 2,
+    height: 1,
+    borderRadius: 1,
+    backgroundColor: "rgba(255,255,255,0.48)",
+  },
+  navGlyphStack: {
+    width: 28,
+    height: 28,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  navGlyphShadow: {
+    position: "absolute",
+    top: 2,
+    left: 1,
+    textShadowColor: "rgba(55,30,12,0.32)",
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
+  },
+  navGlyphFace: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    textShadowColor: "rgba(255,255,255,0.28)",
+    textShadowOffset: { width: 0, height: -1 },
+    textShadowRadius: 1,
+  },
   assistantTabIcon: {
     width: 62,
     height: 62,
