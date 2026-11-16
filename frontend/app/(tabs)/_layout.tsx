@@ -100,13 +100,13 @@ function CartIcon({
     <TabIconShell focused={focused}>
       <Animated.View style={[s.navGlyphStack, animStyle]} testID="cart-tab-icon">
         <MaterialCommunityIcons
-          name="cart"
+          name="cart-variant"
           size={size + 1}
           color={focused ? "#8D3B08" : "#A8B4C1"}
           style={s.navGlyphShadow}
         />
         <MaterialCommunityIcons
-          name="cart"
+          name="cart-variant"
           size={size}
           color={focused ? "#FFFFFF" : color}
           style={s.navGlyphFace}
