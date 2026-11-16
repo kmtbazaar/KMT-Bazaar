@@ -60,7 +60,7 @@ export default function AIAssistant({ embedded = false, compact = false }: { emb
   }), [embedded, compact]);
 
   const robotStyle = useAnimatedStyle(() => ({
-    transform: [{ translateY: floatOffset.value }, ...(embedded ? [{ scale: 2 }] : compact ? [{ scale: 0.92 }] : [])],
+    transform: [{ translateY: floatOffset.value }, ...(embedded ? [{ scale: 2 }] : [])],
   }), [embedded, compact]);
 
   return (
@@ -69,22 +69,24 @@ export default function AIAssistant({ embedded = false, compact = false }: { emb
       style={[compact ? styles.compactContainer : styles.container, embedded && styles.embeddedContainer]}
       testID="login-ai-assistant-hud"
     >
-      <Animated.View pointerEvents="none" style={[styles.hudFrame, compact && styles.compactHudFrame, frameStyle]}>
-        <View style={[styles.bracket, styles.topLeft]} />
-        <View style={[styles.bracket, styles.topRight]} />
-        <View style={[styles.bracket, styles.bottomLeft]} />
-        <View style={[styles.bracket, styles.bottomRight]} />
-        <View style={styles.leftTelemetry}>
-          <View style={styles.telemetryBright} />
-          <View style={styles.telemetryDim} />
-          <View style={styles.telemetryBrightShort} />
-        </View>
-        <View style={styles.rightTelemetry}>
-          <View style={styles.telemetryDim} />
-          <View style={styles.telemetryBright} />
-          <View style={styles.telemetryBrightShort} />
-        </View>
-      </Animated.View>
+      {!compact && (
+        <Animated.View pointerEvents="none" style={[styles.hudFrame, frameStyle]}>
+          <View style={[styles.bracket, styles.topLeft]} />
+          <View style={[styles.bracket, styles.topRight]} />
+          <View style={[styles.bracket, styles.bottomLeft]} />
+          <View style={[styles.bracket, styles.bottomRight]} />
+          <View style={styles.leftTelemetry}>
+            <View style={styles.telemetryBright} />
+            <View style={styles.telemetryDim} />
+            <View style={styles.telemetryBrightShort} />
+          </View>
+          <View style={styles.rightTelemetry}>
+            <View style={styles.telemetryDim} />
+            <View style={styles.telemetryBright} />
+            <View style={styles.telemetryBrightShort} />
+          </View>
+        </Animated.View>
+      )}
 
       <Animated.View pointerEvents="box-none" style={[styles.robotFloat, robotStyle]}>
         <RobotCompanion3D
@@ -96,7 +98,7 @@ export default function AIAssistant({ embedded = false, compact = false }: { emb
         />
       </Animated.View>
 
-      <Animated.View pointerEvents="none" style={[styles.scanBeam, scanStyle]} />
+      {!compact && <Animated.View pointerEvents="none" style={[styles.scanBeam, scanStyle]} />}
     </View>
   );
 }
@@ -116,19 +118,15 @@ const styles = StyleSheet.create({
     position: "relative",
     right: 0,
     bottom: 0,
-    width: 108,
-    height: 112,
+    width: 132,
+    height: 138,
     alignItems: "center",
     justifyContent: "center",
     alignSelf: "center",
     overflow: "visible",
   },
-  compactHudFrame: {
-    width: 108,
-    height: 116,
-  },
   compactRobot: {
-    transform: [{ translateY: 2 }, { scale: 0.72 }],
+    transform: [{ translateY: 2 }, { scale: 1.12 }],
   },
   embeddedContainer: {
     position: "relative",
