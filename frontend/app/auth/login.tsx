@@ -9,7 +9,6 @@ import {
   Platform,
   ActivityIndicator,
   Dimensions,
-  Linking,
   useWindowDimensions,
 } from "react-native";
 import AnimatedBrandLogo from "@/src/components/AnimatedBrandLogo";
@@ -457,47 +456,20 @@ export default function Login() {
           </Animated.View>
         </View>
 
-        <View style={[s.stationPanel, isWideScreen && s.stationPanelWide]} testID="login-vidyasagar-station-panel">
-          <LinearGradient
-            colors={["#39E8FF", "#FF8A3D", "#39E8FF"]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={s.stationNeonFrame}
-          >
-            <View style={s.stationImageWindow}>
-              <Image
-                source={{ uri: "https://upload.wikimedia.org/wikipedia/commons/5/5b/Vidyasagar_Entrance_gate.jpg" }}
-                style={s.stationPhoto}
-                contentFit="cover"
-                cachePolicy="memory-disk"
-                transition={140}
-                accessibilityLabel="Front entrance of Vidyasagar Railway Station, Karmatar"
-              />
-              <LinearGradient
-                pointerEvents="none"
-                colors={["transparent", "rgba(2,8,20,0.88)"]}
-                locations={[0.34, 1]}
-                style={s.stationPhotoShade}
-              />
-              <View pointerEvents="none" style={s.stationPhotoCaption}>
-                <Text style={s.stationPhotoTitle}>VIDYASAGAR RAILWAY STATION</Text>
-                <Text style={s.stationPhotoSubtitle}>KARMATAR · JHARKHAND</Text>
-              </View>
-            </View>
-          </LinearGradient>
-          <Pressable
-            accessibilityRole="link"
-            accessibilityLabel="Photo credit: Charlie Kumar, Creative Commons Attribution Share Alike 4.0"
-            onPress={() => {
-              void Linking.openURL("https://commons.wikimedia.org/wiki/File:Vidyasagar_Entrance_gate.jpg").catch(() => undefined);
-            }}
-            hitSlop={6}
-          >
-            <Text style={s.stationPhotoCredit}>Photo: Charlie Kumar · CC BY-SA 4.0</Text>
-          </Pressable>
-        </View>
-
         <View style={[s.rightColumn, isWideScreen && s.rightColumnWide]}>
+        <View
+          style={[s.stationSketch, isWideScreen && s.stationSketchWide]}
+          testID="login-vidyasagar-station-sketch"
+          accessibilityLabel="Soft blue carbon-pencil sketch of Vidyasagar Railway Station, Karmatar"
+        >
+          <Image
+            source={require("../../assets/images/vidyasagar-station-sketch.webp")}
+            style={s.stationSketchImage}
+            contentFit="fill"
+            cachePolicy="memory-disk"
+            transition={100}
+          />
+        </View>
         <View style={[s.cardWrapper, isWideScreen && s.cardWrapperWide]}>
           <View style={s.card}>
             <LinearGradient
@@ -835,76 +807,19 @@ const s = StyleSheet.create({
     height: 420,
   },
 
-  stationPanel: {
-    width: "92%",
-    maxWidth: 560,
-    alignSelf: "center",
-    alignItems: "center",
-    gap: 5,
-    marginTop: 8,
-    marginBottom: 16,
-  },
-  stationPanelWide: {
-    width: 260,
-    maxWidth: 260,
-    flexShrink: 0,
-    marginTop: 0,
-    marginBottom: 0,
-  },
-  stationNeonFrame: {
-    width: "100%",
-    padding: 2,
-    borderRadius: 18,
-    shadowColor: "#22D3EE",
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.58,
-    shadowRadius: 12,
-    elevation: 6,
-  },
-  stationImageWindow: {
-    width: "100%",
-    height: 168,
-    borderRadius: 16,
+  stationSketch: {
+    height: 38,
+    marginHorizontal: SPACING.lg,
+    marginBottom: 2,
     overflow: "hidden",
-    backgroundColor: "#071522",
+    opacity: 0.68,
   },
-  stationPhoto: {
+  stationSketchWide: {
+    marginHorizontal: 0,
+  },
+  stationSketchImage: {
     width: "100%",
-    height: "100%",
-  },
-  stationPhotoShade: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    bottom: 0,
-    height: "56%",
-  },
-  stationPhotoCaption: {
-    position: "absolute",
-    left: 11,
-    right: 8,
-    bottom: 9,
-  },
-  stationPhotoTitle: {
-    color: "#FFFFFF",
-    fontSize: 11,
-    fontWeight: "900",
-    letterSpacing: 0.7,
-    textShadowColor: "rgba(0,0,0,0.9)",
-    textShadowRadius: 5,
-  },
-  stationPhotoSubtitle: {
-    color: "#A5F3FC",
-    fontSize: 9,
-    fontWeight: "800",
-    letterSpacing: 1.8,
-    marginTop: 3,
-  },
-  stationPhotoCredit: {
-    color: "#94A3B8",
-    fontSize: 9,
-    fontWeight: "600",
-    textAlign: "center",
+    height: 38,
   },
 
   rightColumn: {
@@ -933,14 +848,14 @@ const s = StyleSheet.create({
   },
   assistantSlot: {
     width: "100%",
-    minHeight: 146,
+    minHeight: 286,
     alignItems: "center",
     justifyContent: "center",
     marginTop: 4,
   },
   assistantSlotWide: {
     marginTop: 0,
-    minHeight: 146,
+    minHeight: 286,
   },
 
   card: {

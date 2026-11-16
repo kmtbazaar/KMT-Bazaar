@@ -51,17 +51,17 @@ export default function AIAssistant({ embedded = false }: { embedded?: boolean }
 
   const scanStyle = useAnimatedStyle(() => ({
     opacity: interpolate(scanPosition.value, [0, 0.18, 0.82, 1], [0, 0.9, 0.9, 0]),
-    transform: [{ translateY: interpolate(scanPosition.value, [0, 1], [-27, 27]) }],
-  }));
+    transform: [{ translateY: interpolate(scanPosition.value, [0, 1], [-27, 27]) * (embedded ? 2 : 1) }, ...(embedded ? [{ scaleX: 2 }] : [])],
+  }), [embedded]);
 
   const frameStyle = useAnimatedStyle(() => ({
     opacity: 0.58 + framePulse.value * 0.4,
-    transform: [{ scale: 0.98 + framePulse.value * 0.025 }],
-  }));
+    transform: [{ scale: 0.98 + framePulse.value * 0.025 }, ...(embedded ? [{ scale: 2 }] : [])],
+  }), [embedded]);
 
   const robotStyle = useAnimatedStyle(() => ({
-    transform: [{ translateY: floatOffset.value }],
-  }));
+    transform: [{ translateY: floatOffset.value }, ...(embedded ? [{ scale: 2 }] : [])],
+  }), [embedded]);
 
   return (
     <View
@@ -116,8 +116,8 @@ const styles = StyleSheet.create({
     position: "relative",
     right: 0,
     bottom: 0,
-    width: 130,
-    height: 140,
+    width: 260,
+    height: 280,
     alignSelf: "center",
   },
   embeddedRobot: {
