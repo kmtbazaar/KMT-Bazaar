@@ -439,7 +439,7 @@ export default function Login() {
             entering={ZoomIn.duration(700).springify()}
             style={s.topLogoContainer}
           >
-            <AnimatedBrandLogo size={288} intensity="hero" testID="login-animated-brand-logo" />
+            <AnimatedBrandLogo size={240} intensity="hero" testID="login-animated-brand-logo" />
           </Animated.View>
         </View>
 
@@ -749,8 +749,8 @@ const s = StyleSheet.create({
   },
 
   topLogoContainer: {
-    width: 288,
-    height: 288,
+    width: 248,
+    height: 248,
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 0,
@@ -765,8 +765,8 @@ const s = StyleSheet.create({
   card: {
     backgroundColor: "#FFFFFF",
     borderRadius: 24,
-    padding: SPACING.xl,
-    paddingBottom: 18,
+    padding: 18,
+    paddingBottom: 12,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 12 },
     shadowOpacity: 0.25,
@@ -808,7 +808,7 @@ const s = StyleSheet.create({
     backgroundColor: "#F1F5F9",
     borderRadius: RADIUS.pill,
     padding: 4,
-    marginBottom: SPACING.lg,
+    marginBottom: SPACING.md,
     borderWidth: 1,
     borderColor: "#E2E8F0",
   },
@@ -890,7 +890,7 @@ const s = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 10,
-    marginTop: SPACING.lg,
+    marginTop: SPACING.sm,
   },
 
   googleLine: {
@@ -956,7 +956,7 @@ const s = StyleSheet.create({
 
   alt: {
     textAlign: "center",
-    marginTop: SPACING.lg,
+    marginTop: SPACING.sm,
     color: "#64748B",
     fontSize: 13,
     lineHeight: 18,
@@ -992,7 +992,7 @@ const s = StyleSheet.create({
   skyBlueBanner: {
     width: "100%",
     height: 2,
-    marginTop: SPACING.lg,
+    marginTop: SPACING.sm,
     alignItems: "center",
   },
 
