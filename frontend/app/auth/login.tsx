@@ -464,13 +464,51 @@ export default function Login() {
         >
           <Image
             source={require("../../assets/images/vidyasagar-station-sketch.webp")}
+            style={[s.stationSketchImage, s.stationSketchGlowOuter]}
+            contentFit="fill"
+            blurRadius={8}
+            tintColor="#006BFF"
+            cachePolicy="memory-disk"
+          />
+          <Image
+            source={require("../../assets/images/vidyasagar-station-sketch.webp")}
+            style={[s.stationSketchImage, s.stationSketchGlowInner]}
+            contentFit="fill"
+            blurRadius={3}
+            tintColor="#00CFFF"
+            cachePolicy="memory-disk"
+          />
+          <Image
+            source={require("../../assets/images/vidyasagar-station-sketch.webp")}
             style={s.stationSketchImage}
             contentFit="fill"
+            tintColor="#C5F6FF"
             cachePolicy="memory-disk"
             transition={100}
           />
         </View>
         <View style={[s.cardWrapper, isWideScreen && s.cardWrapperWide]}>
+          <View
+            pointerEvents="none"
+            style={s.boatMascot}
+            accessible={false}
+            testID="login-card-boat"
+          >
+            <View style={s.boatPaddle} />
+            <View style={s.boatLegs}>
+              <View style={s.boatLeg}>
+                <View style={s.boatFoot} />
+              </View>
+              <View style={[s.boatLeg, s.boatLegRight]}>
+                <View style={[s.boatFoot, s.boatFootRight]} />
+              </View>
+            </View>
+            <View style={s.boatHull}>
+              <View style={s.boatSeat} />
+              <View style={s.boatRim} />
+              <View style={s.boatHullHighlight} />
+            </View>
+          </View>
           <View style={s.card}>
             <LinearGradient
               colors={["#00B4D8", "#FF6E00"]}
@@ -808,18 +846,30 @@ const s = StyleSheet.create({
   },
 
   stationSketch: {
+    position: "relative",
     height: 38,
     marginHorizontal: SPACING.lg,
     marginBottom: 2,
-    overflow: "hidden",
-    opacity: 0.68,
+    overflow: "visible",
+    opacity: 1,
   },
   stationSketchWide: {
     marginHorizontal: 0,
   },
   stationSketchImage: {
+    position: "absolute",
+    top: 0,
+    left: 0,
     width: "100%",
     height: 38,
+  },
+  stationSketchGlowOuter: {
+    opacity: 0.52,
+    transform: [{ scaleX: 1.018 }, { scaleY: 1.2 }],
+  },
+  stationSketchGlowInner: {
+    opacity: 0.78,
+    transform: [{ scaleX: 1.01 }, { scaleY: 1.1 }],
   },
 
   rightColumn: {
@@ -836,6 +886,9 @@ const s = StyleSheet.create({
     paddingRight: 8,
   },
   cardWrapper: {
+    position: "relative",
+    zIndex: 4,
+    overflow: "visible",
     width: "100%",
     alignSelf: "stretch",
     paddingHorizontal: SPACING.lg,
@@ -846,6 +899,111 @@ const s = StyleSheet.create({
     paddingHorizontal: 0,
     paddingTop: 0,
   },
+  boatMascot: {
+    position: "absolute",
+    top: -28,
+    right: 18,
+    width: 76,
+    height: 42,
+    zIndex: 30,
+    alignItems: "center",
+    overflow: "visible",
+  },
+  boatPaddle: {
+    position: "absolute",
+    top: 17,
+    left: 5,
+    width: 24,
+    height: 2,
+    borderRadius: 2,
+    backgroundColor: "#FDE68A",
+    transform: [{ rotate: "-35deg" }],
+    zIndex: 3,
+  },
+  boatLegs: {
+    position: "absolute",
+    top: 26,
+    left: 24,
+    right: 23,
+    height: 15,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    zIndex: 1,
+  },
+  boatLeg: {
+    width: 5,
+    height: 13,
+    borderRadius: 4,
+    backgroundColor: "#EAB68C",
+    borderWidth: 0.5,
+    borderColor: "#FFE0C2",
+  },
+  boatLegRight: {
+    transform: [{ rotate: "7deg" }],
+  },
+  boatFoot: {
+    position: "absolute",
+    left: -2,
+    bottom: -1,
+    width: 10,
+    height: 5,
+    borderRadius: 4,
+    backgroundColor: "#183C60",
+    borderWidth: 1,
+    borderColor: "#8BE9FF",
+  },
+  boatFootRight: {
+    left: -3,
+  },
+  boatHull: {
+    position: "absolute",
+    bottom: 14,
+    width: 72,
+    height: 16,
+    borderWidth: 1.5,
+    borderColor: "#F7C56B",
+    borderTopLeftRadius: 6,
+    borderTopRightRadius: 6,
+    borderBottomLeftRadius: 28,
+    borderBottomRightRadius: 28,
+    backgroundColor: "#8F4E2A",
+    overflow: "hidden",
+    shadowColor: "#F59E0B",
+    shadowOpacity: 0.8,
+    shadowRadius: 7,
+    elevation: 5,
+    transform: [{ skewX: "-5deg" }],
+    zIndex: 2,
+  },
+  boatSeat: {
+    position: "absolute",
+    top: -3,
+    left: 23,
+    width: 25,
+    height: 5,
+    borderRadius: 3,
+    backgroundColor: "#E6B86A",
+  },
+  boatRim: {
+    position: "absolute",
+    top: 2,
+    left: 4,
+    right: 4,
+    height: 2,
+    borderRadius: 2,
+    backgroundColor: "#FFE8A6",
+  },
+  boatHullHighlight: {
+    position: "absolute",
+    bottom: 3,
+    left: 19,
+    width: 31,
+    height: 2,
+    borderRadius: 2,
+    backgroundColor: "#F5C87A",
+    opacity: 0.85,
+  },
+
   assistantSlot: {
     width: "100%",
     minHeight: 286,
