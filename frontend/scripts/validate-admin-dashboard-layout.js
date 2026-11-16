@@ -20,9 +20,11 @@ function requireRules(name, rules) {
 // Regression guard for prior blank-page error: a removed width variable had remained in rendered JSX.
 assert.ok(!source.includes("quickActionCardWidth"), "Undefined quickActionCardWidth reference must never return");
 assert.ok(!source.includes("kpiGridWidth") && !source.includes("quickActionsGridWidth"), "No measured tile width state is allowed");
-assert.ok(!source.includes("useWindowDimensions"), "Tile sizing must not depend on viewport calculations");
-assert.equal((source.match(/<KPI\n/g) || []).length, 8, "Expected all 8 KPI cards");
-assert.equal((source.match(/<View style=\{s\.kpiRow\}>/g) || []).length, 4, "Overview must use four two-card rows");
+assert.ok(source.includes("useWindowDimensions") && source.includes("screenWidth >= 980"), "Desktop KPI layout must adapt to viewport width");
+assert.ok(source.includes('const kpiColumnCount = Platform.OS === "web" && screenWidth >= 980 ? 4 : 2;'), "Desktop must use four KPI columns and smaller screens two");
+assert.equal((source.match(/<KPI key=/g) || []).length, 8, "Expected all 8 KPI cards");
+assert.ok(source.includes("const kpiRows = Array.from(") && source.includes("kpiCards.slice(rowIndex * kpiColumnCount"), "Eight KPI cards must be grouped into responsive rows");
+assert.ok(source.includes("kpiColumnCount === 4 && s.kpiCardCompact"), "Desktop KPI cards must use compact dimensions");
 assert.ok(source.includes("quickActionRows.map((row, rowIndex)"), "Quick Actions must use explicit three-card rows");
 assert.ok(source.includes("row.length < 3"), "Last Quick Actions row must retain empty spacer columns");
 
@@ -30,13 +32,19 @@ requireRules("kpiGrid", ['width: "100%"', 'flexDirection: "column"']);
 requireRules("kpiRow", ['width: "100%"', 'flexDirection: "row"', "gap: 10"]);
 requireRules("kpiCardWrap", ["flex: 1", "minWidth: 0"]);
 requireRules("kpiCard", ['width: "100%"', "height: 164", "minHeight: 164", "maxHeight: 164", "flexShrink: 0"]);
+requireRules("kpiCardCompact", ["height: 112", "minHeight: 112", "maxHeight: 112", "padding: 8"]);
+requireRules("kpiIconCompact", ["width: 28", "height: 28"]);
+requireRules("kpiValueCompact", ["fontSize: 16", "marginTop: 5"]);
+requireRules("kpiLabelCompact", ["fontSize: 9"]);
+requireRules("kpiSubCompact", ["fontSize: 8"]);
+requireRules("kpiTapHintCompact", ["marginTop: 3"]);
 requireRules("grid", ['width: "100%"', 'flexDirection: "column"']);
 requireRules("gridRow", ['width: "100%"', 'flexDirection: "row"', "gap: 10"]);
 requireRules("gridWrapper", ["flex: 1", "minWidth: 0"]);
 requireRules("gridItem", ['width: "100%"', "height: 128", "minHeight: 128", "maxHeight: 128", "flexShrink: 0"]);
 
 console.log("ADMIN_DASHBOARD_LAYOUT_VALIDATION_PASS");
-console.log("KPI: 2 equal columns / fixed 164px height; Quick Actions: 3 equal columns / fixed 128px height.");
+console.log("KPI: desktop 4 columns × 2 rows / compact 112px tiles; smaller screens 2 columns. Quick Actions: 3 equal columns / fixed 128px height.");
 
 if (process.argv.includes("--check-build")) {
   const dist = path.resolve("dist");
