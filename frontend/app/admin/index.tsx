@@ -9,6 +9,7 @@ import {
   RefreshControl,
   Alert,
   Platform,
+  useWindowDimensions,
 } from "react-native";
 
 import { Image } from "expo-image";
@@ -61,6 +62,7 @@ const THEME = {
 
 export default function AdminDashboard() {
   const router = useRouter();
+  const { width: screenWidth } = useWindowDimensions();
   const { user } = useAuth();
   const [stats, setStats] = useState<any>(null);
   const [pendingStores, setPendingStores] = useState<any[]>([]);
@@ -259,6 +261,23 @@ export default function AdminDashboard() {
     (_, rowIndex) => quickActions.slice(rowIndex * 3, rowIndex * 3 + 3)
   );
 
+  // Desktop: compact 4 × 2 overview. Smaller screens keep two readable columns.
+  const kpiColumnCount = Platform.OS === "web" && screenWidth >= 980 ? 4 : 2;
+  const kpiCards = [
+    <KPI key="revenue" label="Revenue" value={`₹${stats?.revenue ?? 0}`} icon="cash-multiple" color={THEME.success} route="/admin/orders" delay={150} dark={adminSettings?.themeMode === "night"} compact={kpiColumnCount === 4} />,
+    <KPI key="orders" label="Orders" value={stats?.orders ?? 0} icon="package-variant" color={THEME.orange} route="/admin/orders" delay={200} dark={adminSettings?.themeMode === "night"} compact={kpiColumnCount === 4} />,
+    <KPI key="platform-earnings" label="Platform Earnings" value={`₹${stats?.platform_earnings ?? 0}`} icon="currency-inr" color={THEME.sky} sub={`${stats?.commission_percent ?? 10}% commission`} route="/admin/commission" delay={250} dark={adminSettings?.themeMode === "night"} compact={kpiColumnCount === 4} />,
+    <KPI key="customers" label="Customers" value={stats?.users ?? 0} icon="account-multiple" color={THEME.brownLight} route="/admin/users?role=customer" delay={300} dark={adminSettings?.themeMode === "night"} compact={kpiColumnCount === 4} />,
+    <KPI key="service-vendor" label="Service Vendor" value={serviceVendorCount} icon="briefcase-outline" color={THEME.orange} route="/admin/service-vendors" delay={300} dark={adminSettings?.themeMode === "night"} compact={kpiColumnCount === 4} />,
+    <KPI key="service-bookings" label="Service Bookings" value={serviceBookingTotal} icon="calendar-check-outline" color={THEME.success} route="/admin/service-bookings" delay={350} dark={adminSettings?.themeMode === "night"} compact={kpiColumnCount === 4} />,
+    <KPI key="vendors" label="Vendors" value={stats?.vendors ?? 0} icon="store" color={THEME.orange} route="/admin/users?role=vendor" delay={400} dark={adminSettings?.themeMode === "night"} compact={kpiColumnCount === 4} />,
+    <KPI key="delivery" label="Delivery" value={stats?.delivery ?? 0} icon="moped" color={THEME.sky} route="/admin/users?role=delivery" delay={450} dark={adminSettings?.themeMode === "night"} compact={kpiColumnCount === 4} />,
+  ];
+  const kpiRows = Array.from(
+    { length: Math.ceil(kpiCards.length / kpiColumnCount) },
+    (_, rowIndex) => kpiCards.slice(rowIndex * kpiColumnCount, rowIndex * kpiColumnCount + kpiColumnCount)
+  );
+
   return (
     <View style={[s.root, adminSettings?.themeMode === "night" && s.rootNight]} testID="admin-dashboard">
       {/* =====================================================
@@ -432,95 +451,15 @@ export default function AdminDashboard() {
             KPI CARDS
         =================================================== */}
 
-        <View style={s.kpiGrid}>
-          <View style={s.kpiRow}>
-            <KPI
-              label="Revenue"
-              value={`₹${stats?.revenue ?? 0}`}
-              icon="cash-multiple"
-              color={THEME.success}
-              route="/admin/orders"
-              delay={150}
-              dark={adminSettings?.themeMode === "night"}
-            />
-
-            <KPI
-              label="Orders"
-              value={stats?.orders ?? 0}
-              icon="package-variant"
-              color={THEME.orange}
-              route="/admin/orders"
-              delay={200}
-              dark={adminSettings?.themeMode === "night"}
-            />
-          </View>
-
-          <View style={s.kpiRow}>
-            <KPI
-              label="Platform Earnings"
-              value={`₹${stats?.platform_earnings ?? 0}`}
-              icon="currency-inr"
-              color={THEME.sky}
-              sub={`${stats?.commission_percent ?? 10}% commission`}
-              route="/admin/commission"
-              delay={250}
-              dark={adminSettings?.themeMode === "night"}
-            />
-
-            <KPI
-              label="Customers"
-              value={stats?.users ?? 0}
-              icon="account-multiple"
-              color={THEME.brownLight}
-              route="/admin/users?role=customer"
-              delay={300}
-              dark={adminSettings?.themeMode === "night"}
-            />
-          </View>
-
-          <View style={s.kpiRow}>
-            <KPI
-              label="Service Vendor"
-              value={serviceVendorCount}
-              icon="briefcase-outline"
-              color={THEME.orange}
-              route="/admin/service-vendors"
-              delay={300}
-              dark={adminSettings?.themeMode === "night"}
-            />
-
-            <KPI
-              label="Service Bookings"
-              value={serviceBookingTotal}
-              icon="calendar-check-outline"
-              color={THEME.success}
-              route="/admin/service-bookings"
-              delay={350}
-              dark={adminSettings?.themeMode === "night"}
-            />
-          </View>
-
-          <View style={s.kpiRow}>
-            <KPI
-              label="Vendors"
-              value={stats?.vendors ?? 0}
-              icon="store"
-              color={THEME.orange}
-              route="/admin/users?role=vendor"
-              delay={400}
-              dark={adminSettings?.themeMode === "night"}
-            />
-
-            <KPI
-              label="Delivery"
-              value={stats?.delivery ?? 0}
-              icon="moped"
-              color={THEME.sky}
-              route="/admin/users?role=delivery"
-              delay={450}
-              dark={adminSettings?.themeMode === "night"}
-            />
-          </View>
+        <View style={[s.kpiGrid, kpiColumnCount === 4 && s.kpiGridCompact]}>
+          {kpiRows.map((row, rowIndex) => (
+            <View
+              key={`admin-kpi-row-${rowIndex}`}
+              style={[s.kpiRow, kpiColumnCount === 4 && s.kpiRowCompact]}
+            >
+              {row}
+            </View>
+          ))}
         </View>
 
         {/* ===================================================
@@ -814,6 +753,7 @@ function KPI({
   route,
   dark = false,
   delay = 0,
+  compact = false,
 }: any) {
   const router = useRouter();
 
@@ -827,16 +767,18 @@ function KPI({
         onPress={() => router.push(route as any)}
         style={({ pressed }) => [
           s.kpiCard,
+          compact && s.kpiCardCompact,
           dark && s.kpiCardNight,
           pressed && s.kpiPressed,
         ]}
         accessibilityRole="button"
         accessibilityLabel={`Open ${label}`}
       >
-        <View style={s.kpiTop}>
+        <View style={[s.kpiTop, compact && s.kpiTopCompact]}>
           <View
             style={[
               s.kpiIcon,
+              compact && s.kpiIconCompact,
               {
                 backgroundColor: color + "16",
                 borderColor: color + "30",
@@ -853,6 +795,7 @@ function KPI({
           <View
             style={[
               s.kpiArrow,
+              compact && s.kpiArrowCompact,
               {
                 backgroundColor: color + "12",
               },
@@ -867,14 +810,14 @@ function KPI({
         </View>
 
         <Text
-          style={[s.kpiValue, dark && s.kpiTextNight]}
+          style={[s.kpiValue, compact && s.kpiValueCompact, dark && s.kpiTextNight]}
           numberOfLines={1}
           adjustsFontSizeToFit
         >
           {value}
         </Text>
 
-        <Text style={s.kpiLabel}>
+        <Text style={[s.kpiLabel, compact && s.kpiLabelCompact]}>
           {label}
         </Text>
 
@@ -882,6 +825,7 @@ function KPI({
           <Text
             style={[
               s.kpiSub,
+              compact && s.kpiSubCompact,
               { color },
             ]}
           >
@@ -889,8 +833,8 @@ function KPI({
           </Text>
         )}
 
-        <View style={[s.kpiTapHint, dark && s.kpiTapHintNight]}>
-          <Text style={[s.kpiTapHintText, { color }]}>
+        <View style={[s.kpiTapHint, compact && s.kpiTapHintCompact, dark && s.kpiTapHintNight]}>
+          <Text style={[s.kpiTapHintText, compact && s.kpiTapHintTextCompact, { color }]}>
             View details
           </Text>
           <MaterialCommunityIcons
@@ -1066,10 +1010,19 @@ const s = StyleSheet.create({
     marginBottom: 8,
   },
 
+  kpiGridCompact: {
+    gap: 8,
+    marginBottom: 6,
+  },
+
   kpiRow: {
     width: "100%",
     flexDirection: "row",
     gap: 10,
+  },
+
+  kpiRowCompact: {
+    gap: 8,
   },
 
   kpiCardWrap: {
@@ -1097,6 +1050,16 @@ const s = StyleSheet.create({
       height: 5,
     },
     elevation: 2,
+  },
+
+  kpiCardCompact: {
+    height: 112,
+    minHeight: 112,
+    maxHeight: 112,
+    padding: 8,
+    borderRadius: 14,
+    shadowRadius: 7,
+    shadowOffset: { width: 0, height: 3 },
   },
 
   kpiPressed: {
@@ -1141,6 +1104,10 @@ const s = StyleSheet.create({
     alignItems: "center",
   },
 
+  kpiTopCompact: {
+    alignItems: "center",
+  },
+
   kpiIcon: {
     width: 37,
     height: 37,
@@ -1150,11 +1117,22 @@ const s = StyleSheet.create({
     borderWidth: 1,
   },
 
+  kpiIconCompact: {
+    width: 28,
+    height: 28,
+    borderRadius: 9,
+  },
+
   kpiValue: {
     color: THEME.text,
     fontSize: 20,
     fontWeight: "900",
     marginTop: 11,
+  },
+
+  kpiValueCompact: {
+    fontSize: 16,
+    marginTop: 5,
   },
 
   kpiLabel: {
@@ -1164,10 +1142,20 @@ const s = StyleSheet.create({
     marginTop: 2,
   },
 
+  kpiLabelCompact: {
+    fontSize: 9,
+    marginTop: 1,
+  },
+
   kpiSub: {
     fontSize: 9,
     fontWeight: "800",
     marginTop: 4,
+  },
+
+  kpiSubCompact: {
+    fontSize: 8,
+    marginTop: 2,
   },
 
   kpiArrow: {
@@ -1178,6 +1166,12 @@ const s = StyleSheet.create({
     justifyContent: "center",
   },
 
+  kpiArrowCompact: {
+    width: 20,
+    height: 20,
+    borderRadius: 7,
+  },
+
   kpiTapHint: {
     flexDirection: "row",
     alignItems: "center",
@@ -1186,9 +1180,18 @@ const s = StyleSheet.create({
     opacity: 0.9,
   },
 
+  kpiTapHintCompact: {
+    gap: 1,
+    marginTop: 3,
+  },
+
   kpiTapHintText: {
     fontSize: 9,
     fontWeight: "800",
+  },
+
+  kpiTapHintTextCompact: {
+    fontSize: 8,
   },
 
   chartCard: {
