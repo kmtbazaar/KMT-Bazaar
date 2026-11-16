@@ -44,6 +44,27 @@ jobs:
       - name: Validate AI chat diagnostics and voice mode
         working-directory: frontend
         run: node scripts/validate-ai-voice-mode.js
+      - name: Validate 30-day sessions and independent Chrome tabs
+        working-directory: frontend
+        run: |
+          node <<'NODE'
+          const assert = require("node:assert/strict");
+          const fs = require("node:fs");
+          const api = fs.readFileSync("src/api.ts", "utf8");
+          const auth = fs.readFileSync("src/AuthContext.tsx", "utf8");
+          const backend = fs.readFileSync("../backend/server.py", "utf8");
+
+          assert.ok(api.includes("AUTH_SESSION_DAYS = 30") && api.includes("AUTH_SESSION_DAYS * 24 * 60 * 60 * 1000"), "Web session lifetime must remain 30 days");
+          assert.ok(backend.includes("AUTH_SESSION_DAYS = 30") && backend.includes("WEB_SESSION_TIMEOUT_MIN = 60 * 24 * AUTH_SESSION_DAYS"), "Backend session lifetime must remain 30 days");
+          assert.ok(backend.includes("max_age=AUTH_COOKIE_MAX_AGE") && backend.includes('"expires_at": expires_at'), "Browser cookies and server session records must use the 30-day expiry");
+          assert.ok(api.includes("new BroadcastChannel(WEB_TAB_CHANNEL_NAME)") && api.includes('message.type === "claim"') && api.includes('message.type === "claimed"'), "Duplicated Chrome tabs must detect a shared sessionStorage tab ID");
+          assert.ok(api.includes("export function ensureUniqueWebTabId()") && api.includes("window.sessionStorage.setItem(WEB_TAB_ID_KEY, tabId)"), "A duplicated tab must receive its own tab ID");
+          assert.ok(api.includes("await ensureUniqueWebTabId();") && auth.includes("await ensureUniqueWebTabId();"), "All browser API calls and initial session restore must verify tab isolation");
+          assert.ok(api.includes('headers["X-KMT-Tab-Id"] = tabId') && backend.includes('return f"{AUTH_COOKIE_NAME}_{tab_id}"'), "Each tab must select its own HttpOnly auth cookie");
+          assert.ok(auth.includes("await api.logoutSession()") && auth.includes("await clearAuth()"), "Manual logout must revoke and clear only the active tab's session");
+          console.log("WEB_30_DAY_SESSION_AND_TAB_ISOLATION_VALIDATION_PASS");
+          NODE
+
       - name: Export web app
         working-directory: frontend
         run: npm run build:web
