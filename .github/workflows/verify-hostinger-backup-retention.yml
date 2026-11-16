@@ -26,7 +26,7 @@ jobs:
           PORT="${HOSTINGER_PORT:-22}"
           mkdir -p "$HOME/.ssh"
           chmod 700 "$HOME/.ssh"
-          printf '%s\\n' "$HOSTINGER_SSH_KEY" > "$HOME/.ssh/kmt_bazaar_verify_key"
+          printf '%s\n' "$HOSTINGER_SSH_KEY" > "$HOME/.ssh/kmt_bazaar_verify_key"
           chmod 600 "$HOME/.ssh/kmt_bazaar_verify_key"
           ssh-keyscan -p "$PORT" -H "$HOSTINGER_HOST" >> "$HOME/.ssh/known_hosts" 2>/dev/null
           echo "port=$PORT" >> "$GITHUB_OUTPUT"
@@ -42,7 +42,7 @@ jobs:
           ssh -T -o BatchMode=yes -o ConnectTimeout=15 -o ServerAliveInterval=15 -o ServerAliveCountMax=3 -i "$HOME/.ssh/kmt_bazaar_verify_key" -p "$HOSTINGER_PORT" "$DEST" "bash -s" <<'REMOTE'
           set -Eeuo pipefail
           WEBROOT=/var/www/kmt-bazaar-com
-          mapfile -d '' BACKUPS < <(find /var/www -mindepth 1 -maxdepth 1 -type d \\( -name 'kmt-bazaar-com-backup-*' -o -name 'kmt-bazaar-backup-*' \\) -print0)
+          mapfile -d '' BACKUPS < <(find /var/www -mindepth 1 -maxdepth 1 -type d \( -name 'kmt-bazaar-com-backup-*' -o -name 'kmt-bazaar-backup-*' \) -print0)
           [ "${#BACKUPS[@]}" -eq 1 ]
           BACKUP="${BACKUPS[0]}"
           test -s "$WEBROOT/index.html"
@@ -51,8 +51,8 @@ jobs:
           systemctl is-active --quiet nginx
           systemctl is-active --quiet kmt-bazaar-com.service
           NGINX_CONFIG="$(nginx -T 2>&1)"
-          printf '%s\\n' "$NGINX_CONFIG" | grep -Fq 'root /var/www/kmt-bazaar-com;'
-          printf '%s\\n' "$NGINX_CONFIG" | grep -Fq 'proxy_pass http://127.0.0.1:8001;'
+          printf '%s\n' "$NGINX_CONFIG" | grep -Fq 'root /var/www/kmt-bazaar-com;'
+          printf '%s\n' "$NGINX_CONFIG" | grep -Fq 'proxy_pass http://127.0.0.1:8001;'
           HOME_CODE=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 20 --resolve kmtbazaar.com:443:127.0.0.1 https://kmtbazaar.com/)
           STORES_CODE=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 20 --resolve kmtbazaar.com:443:127.0.0.1 https://kmtbazaar.com/api/stores)
           PRODUCTS_CODE=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 20 --resolve kmtbazaar.com:443:127.0.0.1 https://kmtbazaar.com/api/products)
