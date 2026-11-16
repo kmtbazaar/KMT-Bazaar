@@ -88,7 +88,7 @@ export default function AIAssistant({ embedded = false, compact = false }: { emb
 
       <Animated.View pointerEvents="box-none" style={[styles.robotFloat, robotStyle]}>
         <RobotCompanion3D
-          size={compact ? 58 : 76}
+          size={76}
           style={embedded ? styles.embeddedRobot : compact ? styles.compactRobot : undefined}
           interactive={true}
           fallbackOrbit={false}
@@ -128,7 +128,7 @@ const styles = StyleSheet.create({
     height: 116,
   },
   compactRobot: {
-    transform: [{ translateY: 2 }],
+    transform: [{ translateY: 2 }, { scale: 0.72 }],
   },
   embeddedContainer: {
     position: "relative",
