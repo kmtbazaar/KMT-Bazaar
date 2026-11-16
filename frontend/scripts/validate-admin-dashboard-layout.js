@@ -24,7 +24,7 @@ assert.ok(source.includes("useWindowDimensions") && source.includes("screenWidth
 assert.ok(source.includes('const kpiColumnCount = Platform.OS === "web" && screenWidth >= 980 ? 4 : 2;'), "Desktop must use four KPI columns and smaller screens two");
 assert.equal((source.match(/<KPI key=/g) || []).length, 8, "Expected all 8 KPI cards");
 assert.ok(source.includes("const kpiRows = Array.from(") && source.includes("kpiCards.slice(rowIndex * kpiColumnCount"), "Eight KPI cards must be grouped into responsive rows");
-assert.ok(source.includes("kpiColumnCount === 4 && s.kpiCardCompact"), "Desktop KPI cards must use compact dimensions");
+assert.ok(source.includes("compact && s.kpiCardCompact") && source.includes("compact={kpiColumnCount === 4}"), "Desktop KPI cards must use compact dimensions");
 assert.ok(source.includes("quickActionRows.map((row, rowIndex)"), "Quick Actions must use explicit three-card rows");
 assert.ok(source.includes("row.length < 3"), "Last Quick Actions row must retain empty spacer columns");
 
