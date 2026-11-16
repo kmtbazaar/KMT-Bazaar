@@ -1,8 +1,8 @@
 import { LocalizedText as Text } from "@/src/LocalizedText";
-import React, { useEffect, useState, useRef } from "react";
+import React, { useCallback, useEffect, useState, useRef } from "react";
 import { View, ScrollView, StyleSheet, Pressable, ActivityIndicator, Animated, Text as NativeText } from "react-native";
 import { Image } from "expo-image";
-import { useRouter, useNavigation, useLocalSearchParams } from "expo-router";
+import { useRouter, useNavigation, useLocalSearchParams, useFocusEffect } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { api } from "@/src/api";
@@ -215,6 +215,32 @@ export default function Categories() {
   const lastOffsetY = useRef(0);
   const isHidden = useRef(false);
 
+  // A route-specific tabBarStyle must never leak after leaving Categories.
+  // Keep the same 82px geometry as the shared tab layout on focus and blur.
+  useFocusEffect(
+    useCallback(() => {
+      const restoreTabBar = () => {
+        translateYAnim.stopAnimation();
+        translateYAnim.setValue(0);
+        lastOffsetY.current = 0;
+        isHidden.current = false;
+        navigation.setOptions({
+          tabBarStyle: {
+            position: "absolute",
+            borderTopColor: COLORS.border,
+            backgroundColor: "#FFFFFF",
+            height: 82,
+            paddingTop: 1,
+            paddingBottom: 8,
+          },
+        });
+      };
+
+      restoreTabBar();
+      return restoreTabBar;
+    }, [navigation, translateYAnim])
+  );
+
   const handleScroll = (event: any) => {
     const currentOffsetY = event.nativeEvent.contentOffset.y;
     const diff = currentOffsetY - lastOffsetY.current;
@@ -235,9 +261,9 @@ export default function Categories() {
                 position: "absolute",
                 borderTopColor: COLORS.border,
                 backgroundColor: "#FFFFFF",
-                height: 65,
-                paddingTop: 4,
-                paddingBottom: 12,
+                height: 82,
+                paddingTop: 1,
+                paddingBottom: 8,
                 transform: [{ translateY: 100 }],
               },
             });
@@ -251,9 +277,9 @@ export default function Categories() {
             position: "absolute",
             borderTopColor: COLORS.border,
             backgroundColor: "#FFFFFF",
-            height: 65,
-            paddingTop: 4,
-            paddingBottom: 12,
+            height: 82,
+            paddingTop: 1,
+            paddingBottom: 8,
             transform: [{ translateY: translateYAnim }],
           },
         });
