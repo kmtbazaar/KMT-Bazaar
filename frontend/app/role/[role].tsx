@@ -1,7 +1,8 @@
 import { LocalizedText as Text, LocalizedTextInput as TextInput } from "@/src/LocalizedText";
 import React from "react";
 import { View, StyleSheet, Pressable, ScrollView } from "react-native";
-import AnimatedBrandLogo, { BrandingFooter } from "@/src/components/AnimatedBrandLogo";
+import { Image } from "expo-image";
+import { BrandingFooter } from "@/src/components/AnimatedBrandLogo";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -60,7 +61,15 @@ export default function RolePanel() {
     <SafeAreaView style={s.root} edges={["top"]} testID={`role-${role}-screen`}>
       <LinearGradient colors={[COLORS.brand, COLORS.brandDark]} style={s.header}>
         <View style={s.headerTop}>
-          <AnimatedBrandLogo size={46} />
+          <View style={s.crystalLogoFrame} testID="role-panel-crystal-logo">
+            <Image
+              source={require("../../assets/images/splash-icon.png")}
+              style={s.crystalLogo}
+              contentFit="contain"
+              cachePolicy="memory-disk"
+              transition={0}
+            />
+          </View>
           <Pressable testID="role-logout" onPress={async () => { await logout(); router.replace("/auth/login"); }} hitSlop={10}>
             <MaterialCommunityIcons name="logout" size={22} color="#fff" />
           </Pressable>
@@ -114,6 +123,26 @@ const s = StyleSheet.create({
   root: { flex: 1, backgroundColor: COLORS.surfaceSecondary },
   header: { padding: SPACING.lg, paddingBottom: SPACING.xl, borderBottomLeftRadius: 24, borderBottomRightRadius: 24 },
   headerTop: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
+  crystalLogoFrame: {
+    width: 52,
+    height: 52,
+    padding: 3,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#FFFFFF",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.92)",
+    shadowColor: "#172033",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.18,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  crystalLogo: {
+    width: "100%",
+    height: "100%",
+  },
   title: { fontSize: 24, fontWeight: "800", color: "#fff", marginTop: SPACING.md },
   sub: { color: "rgba(255,255,255,0.85)", marginTop: 4 },
   user: { color: "#fff", marginTop: 8, fontWeight: "600" },
