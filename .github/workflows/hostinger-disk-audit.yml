@@ -1,0 +1,89 @@
+name: Temporary Hostinger disk audit
+
+on:
+  push:
+    branches:
+      - customer-live
+    paths:
+      - ".github/workflows/hostinger-disk-audit.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  read-only-disk-audit:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Configure SSH
+        env:
+          HOSTINGER_HOST: ${{ secrets.HOSTINGER_HOST }}
+          HOSTINGER_USER: ${{ secrets.HOSTINGER_USER }}
+          HOSTINGER_SSH_KEY: ${{ secrets.HOSTINGER_SSH_KEY }}
+          HOSTINGER_PORT: ${{ secrets.HOSTINGER_PORT }}
+        run: |
+          set -euo pipefail
+          PORT="${HOSTINGER_PORT:-22}"
+          mkdir -p "$HOME/.ssh"
+          chmod 700 "$HOME/.ssh"
+          printf '%s\n' "$HOSTINGER_SSH_KEY" > "$HOME/.ssh/kmt_bazaar_audit_key"
+          chmod 600 "$HOME/.ssh/kmt_bazaar_audit_key"
+          ssh-keyscan -p "$PORT" -H "$HOSTINGER_HOST" >> "$HOME/.ssh/known_hosts" 2>/dev/null
+          printf 'port=%s\n' "$PORT" >> "$GITHUB_OUTPUT"
+        id: ssh
+
+      - name: Read-only disk usage audit
+        env:
+          HOSTINGER_HOST: ${{ secrets.HOSTINGER_HOST }}
+          HOSTINGER_USER: ${{ secrets.HOSTINGER_USER }}
+          HOSTINGER_PORT: ${{ steps.ssh.outputs.port }}
+        run: |
+          set -euo pipefail
+          DEST="${HOSTINGER_USER}@${HOSTINGER_HOST}"
+          ssh -T -o BatchMode=yes -o ConnectTimeout=15 -o ServerAliveInterval=15 -o ServerAliveCountMax=3 -i "$HOME/.ssh/kmt_bazaar_audit_key" -p "$HOSTINGER_PORT" "$DEST" "bash -s" <<'REMOTE'
+          set +e
+          echo "=== SERVER ==="
+          date -u
+          hostname
+          id
+          uptime
+
+          echo "=== BLOCK DEVICES ==="
+          lsblk -o NAME,SIZE,FSTYPE,TYPE,MOUNTPOINT
+          echo "=== FILESYSTEM SPACE ==="
+          df -hT
+          echo "=== INODES ==="
+          df -ih
+
+          echo "=== ROOT LEVEL USAGE ==="
+          timeout 180s du -xhd1 / 2>/dev/null | sort -h
+          echo "=== TOP DIRECTORY DETAIL ==="
+          for p in /root /var /home /opt /usr/local /tmp; do
+            if [ -d "$p" ]; then
+              echo "--- $p ---"
+              timeout 120s du -xhd2 "$p" 2>/dev/null | sort -h | tail -45
+            fi
+          done
+
+          echo "=== WEBROOT AND BACKUP DIRECTORIES ==="
+          for p in /var/www/kmt-bazaar-com /var/www/kmt-bazaar-com/uploads /var/www/kmt-bazaar-com-backup* /var/www/kmt-bazaar-backup*; do
+            [ -e "$p" ] && du -sh "$p" 2>/dev/null
+          done
+          echo "--- /var/www first level ---"
+          timeout 120s du -xhd1 /var/www 2>/dev/null | sort -h
+
+          echo "=== BIG FILES OVER 200 MB (TOP 50) ==="
+          timeout 180s find / -xdev -type f -size +200M -printf '%s %p\n' 2>/dev/null | sort -nr | head -50
+
+          echo "=== LOG AND JOURNAL USAGE ==="
+          journalctl --disk-usage 2>&1
+          timeout 90s du -xhd1 /var/log 2>/dev/null | sort -h
+
+          echo "=== DATABASE / CONTAINER STORAGE ==="
+          for p in /var/lib/mongodb /var/lib/docker /var/lib/postgresql /var/lib/containerd; do
+            [ -e "$p" ] && du -sh "$p" 2>/dev/null
+          done
+          command -v mongod >/dev/null 2>&1 && mongod --version | head -2
+          command -v docker >/dev/null 2>&1 && docker system df 2>&1
+          systemctl is-active mongod 2>&1
+          echo "=== END AUDIT ==="
+          REMOTE
