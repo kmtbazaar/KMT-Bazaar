@@ -133,9 +133,10 @@ export default function TabsLayout() {
       screenOptions={{
         headerShown: false,
         tabBarActiveTintColor: COLORS.brand,
-        tabBarInactiveTintColor: COLORS.textMuted,
+        tabBarInactiveTintColor: "#475569",
         tabBarStyle: {
           position: "absolute",
+          bottom: 0,
           borderTopColor: COLORS.border,
           backgroundColor:
             Platform.OS === "ios" ? "transparent" : "#FFFFFF",
@@ -152,11 +153,12 @@ export default function TabsLayout() {
             />
           ) : null,
         tabBarLabelStyle: {
-          fontSize: 12,
-          lineHeight: 16,
-          fontWeight: "700",
-          marginTop: 0,
-          marginBottom: 1,
+          fontSize: 13,
+          lineHeight: 18,
+          fontWeight: "800",
+          marginTop: 2,
+          marginBottom: 2,
+          includeFontPadding: false,
         },
       }}
     >
