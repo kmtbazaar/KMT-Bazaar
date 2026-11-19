@@ -4163,6 +4163,10 @@ async def vendor_create_service(
         "created_at": now_iso(),
         "updated_at": now_iso(),
     }
+    if vendor_service_type in NEW_SERVICE_VENDOR_TYPES:
+        profile = await db.service_vendor_profiles.find_one({"vendor_id": current["id"]}, {"_id": 0, "business_name": 1})
+        if profile and str(profile.get("business_name") or "").strip():
+            doc["vendor_name"] = profile["business_name"].strip()
     await db.vendor_services.insert_one(dict(doc))
     doc.pop("_id", None)
     return doc
@@ -4179,6 +4183,10 @@ async def vendor_update_service(
         raise HTTPException(status_code=403, detail="Daily Services are managed by Admin only")
     update_data = data.dict()
     update_data["service_type"] = current.get("service_type") or ServiceType.DAILY_SERVICE.value
+    if update_data["service_type"] in NEW_SERVICE_VENDOR_TYPES:
+        profile = await db.service_vendor_profiles.find_one({"vendor_id": current["id"]}, {"_id": 0, "business_name": 1})
+        if profile and str(profile.get("business_name") or "").strip():
+            update_data["vendor_name"] = profile["business_name"].strip()
     result = await db.vendor_services.update_one(
         {"id": service_id, "vendor_id": current["id"], "service_type": update_data["service_type"]},
         {"$set": {**update_data, "updated_at": now_iso()}}
