@@ -21,6 +21,48 @@ import ProductImagesUploader from "@/src/components/ProductImagesUploader";
 const FALLBACK_PRODUCT_IMAGE =
   "https://images.unsplash.com/photo-1542838132-92c53300491e?w=400&q=80";
 
+const PRODUCT_UNIT_OPTIONS = [
+  "XS", "S", "M", "L", "XL", "XXL",
+  "UK 3", "UK 4", "UK 5", "UK 6", "UK 7", "UK 8", "UK 9",
+  "UK 10", "UK 11", "UK 12", "UK 13", "UK 14",
+  "1 pc", "250 g", "500 g", "1 kg", "250 ml", "500 ml", "750 ml", "1 L", "2 L",
+];
+
+type ProductVariantDraft = { id: string; unit: string; price: string; mrp: string; stock: string };
+
+const buildVariantPayload = (base: any, extras: ProductVariantDraft[], baseVariantId = "") => [
+  {
+    ...(baseVariantId ? { id: baseVariantId } : {}),
+    unit: String(base.unit || "").trim(),
+    price: Number.parseFloat(String(base.price)),
+    mrp: base.mrp ? Number.parseFloat(String(base.mrp)) : Number.parseFloat(String(base.price)),
+    stock: Number.parseInt(String(base.stock), 10),
+  },
+  ...extras.map((variant) => ({
+    ...(variant.id ? { id: variant.id } : {}),
+    unit: String(variant.unit || "").trim(),
+    price: Number.parseFloat(String(variant.price)),
+    mrp: variant.mrp ? Number.parseFloat(String(variant.mrp)) : Number.parseFloat(String(variant.price)),
+    stock: Number.parseInt(String(variant.stock), 10),
+  })),
+];
+
+const validateVariantDrafts = (variants: any[]) => {
+  if (variants.some((variant) =>
+    !variant.unit ||
+    !Number.isFinite(variant.price) || variant.price < 0 ||
+    !Number.isFinite(variant.mrp) || variant.mrp < 0 ||
+    !Number.isFinite(variant.stock) || variant.stock < 0
+  )) {
+    return "Every size/pack option needs a label, valid price/MRP, and non-negative stock.";
+  }
+  const labels = variants.map((variant) => variant.unit.toLowerCase());
+  if (new Set(labels).size !== labels.length) {
+    return "Each size/pack option must have a unique label.";
+  }
+  return "";
+};
+
 const emptyProductForm = () => ({
   name: "",
   price: "",
@@ -50,6 +92,9 @@ export default function AdminVendorProducts({ vendorId, selectedStoreId: externa
   const [modalVisible, setModalVisible] = useState(false);
   const [editingProductId, setEditingProductId] = useState("");
   const [form, setForm] = useState(emptyProductForm);
+  const [variantDrafts, setVariantDrafts] = useState<ProductVariantDraft[]>([]);
+  const [baseVariantId, setBaseVariantId] = useState("");
+  const [productItemCategoryName, setProductItemCategoryName] = useState("");
   const [itemCategoryName, setItemCategoryName] = useState("");
   const [editingItemCategoryId, setEditingItemCategoryId] = useState("");
 
@@ -135,6 +180,9 @@ export default function AdminVendorProducts({ vendorId, selectedStoreId: externa
 
   const resetProductForm = () => {
     setEditingProductId("");
+    setBaseVariantId("");
+    setVariantDrafts([]);
+    setProductItemCategoryName("");
     setForm(emptyProductForm());
   };
 
@@ -145,13 +193,23 @@ export default function AdminVendorProducts({ vendorId, selectedStoreId: externa
   };
 
   const openEditProduct = (product: any) => {
+    const savedVariants = Array.isArray(product.variants) ? product.variants : [];
+    const primaryVariant = savedVariants[0];
     setEditingProductId(String(product.id || product._id || ""));
+    setBaseVariantId(String(primaryVariant?.id || ""));
+    setVariantDrafts(savedVariants.slice(1).map((variant: any) => ({
+      id: String(variant.id || ""),
+      unit: String(variant.unit || ""),
+      price: String(variant.price ?? ""),
+      mrp: String(variant.mrp ?? variant.price ?? ""),
+      stock: String(variant.stock ?? 0),
+    })));
     setForm({
       name: String(product.name || ""),
-      price: String(product.price ?? ""),
-      mrp: String(product.mrp ?? product.price ?? ""),
-      unit: String(product.unit || "1 pc"),
-      stock: String(product.stock ?? 0),
+      price: String(primaryVariant?.price ?? product.price ?? ""),
+      mrp: String(primaryVariant?.mrp ?? product.mrp ?? product.price ?? ""),
+      unit: String(primaryVariant?.unit || product.unit || "1 pc"),
+      stock: String(primaryVariant?.stock ?? product.stock ?? 0),
       image: String(product.image || product.images?.[0] || ""),
       images: Array.isArray(product.images) && product.images.length ? product.images : (product.image ? [product.image] : []),
       description: String(product.description || ""),
@@ -159,42 +217,12 @@ export default function AdminVendorProducts({ vendorId, selectedStoreId: externa
       item_category: String(product.item_category || ""),
       item_category_id: String(product.item_category_id || ""),
     });
+    setProductItemCategoryName("");
     setNotice("");
     setModalVisible(true);
   };
 
-  const pickImage = async (useCamera = false) => {
-    let result: ImagePicker.ImagePickerResult;
-    const options: ImagePicker.ImagePickerOptions = {
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      aspect: [1, 1],
-      quality: 0.6,
-    };
-    if (useCamera) {
-      const permission = await ImagePicker.requestCameraPermissionsAsync();
-      if (!permission.granted) {
-        setNotice("Please allow camera access to take a product photo.");
-        return;
-      }
-      result = await ImagePicker.launchCameraAsync(options);
-    } else {
-      result = await ImagePicker.launchImageLibraryAsync(options);
-    }
-    if (result.canceled || !result.assets?.[0]) return;
-    setUploadingImage(true);
-    try {
-      const imageUrl = await uploadImageAsset(result.assets[0], "product");
-      setForm((current) => ({ ...current, image: imageUrl, images: [...(current.images || []).filter((url: string) => url && url !== current.image), imageUrl] }));
-      setNotice("Product image uploaded.");
-    } catch (error: any) {
-      setNotice(error?.message || "Product image upload failed.");
-    } finally {
-      setUploadingImage(false);
-    }
-  };
-
-  const payloadFor = (item: any, available: boolean) => ({
+  const payloadFor = (item: any, available: boolean, variants?: any[]) => ({
     name: String(item.name || "").trim(),
     category_id: String(selectedStore?.category_id || item.category_id || ""),
     store_id: String(selectedStoreId),
@@ -209,6 +237,7 @@ export default function AdminVendorProducts({ vendorId, selectedStoreId: externa
     description: String(item.description || ""),
     is_available: available,
     trending: Boolean(item.trending),
+    ...(Array.isArray(variants) ? { variants } : Array.isArray(item.variants) ? { variants: item.variants } : {}),
   });
 
   const saveProduct = async () => {
@@ -228,13 +257,19 @@ export default function AdminVendorProducts({ vendorId, selectedStoreId: externa
       setNotice("Please add at least 3 product photos before saving.");
       return;
     }
+    const variants = buildVariantPayload(form, variantDrafts, baseVariantId);
+    const variantError = validateVariantDrafts(variants);
+    if (variantError) {
+      setNotice(variantError);
+      return;
+    }
     setSaving(true);
     setNotice("");
     try {
       const existing = products.find(
         (product: any) => String(product.id || product._id) === String(editingProductId)
       );
-      const payload = payloadFor(form, existing ? existing.is_available !== false : true);
+      const payload = payloadFor(form, existing ? existing.is_available !== false : true, variants);
       if (editingProductId) {
         await adminApi.updateProduct(editingProductId, payload);
         setNotice("Product updated successfully.");
@@ -258,7 +293,7 @@ export default function AdminVendorProducts({ vendorId, selectedStoreId: externa
     try {
       await adminApi.updateProduct(
         productId,
-        payloadFor(product, product.is_available === false)
+        payloadFor(product, product.is_available === false, product.variants)
       );
       setNotice(product.is_available === false ? "Product is now available." : "Product is now unavailable.");
       await loadStoreData();
@@ -270,7 +305,7 @@ export default function AdminVendorProducts({ vendorId, selectedStoreId: externa
   const duplicateProduct = async (product: any) => {
     try {
       await adminApi.createProduct({
-        ...payloadFor(product, true),
+        ...payloadFor(product, true, product.variants),
         name: `${String(product.name || "Product").trim()} Copy`,
       });
       setNotice("Product duplicated successfully.");
@@ -322,6 +357,42 @@ export default function AdminVendorProducts({ vendorId, selectedStoreId: externa
       await loadStoreData();
     } catch (error: any) {
       setNotice(error?.message || "Could not save the item category.");
+    }
+  };
+
+  const createItemCategoryForProduct = async () => {
+    const name = productItemCategoryName.trim();
+    if (!selectedStoreId || !name) {
+      setNotice("Enter an item category name first.");
+      return;
+    }
+    const existing = activeItemCategories.find(
+      (item: any) => String(item.name || "").trim().toLowerCase() === name.toLowerCase()
+    );
+    if (existing) {
+      setForm((current) => ({ ...current, item_category: existing.name, item_category_id: String(existing.id) }));
+      setProductItemCategoryName("");
+      return;
+    }
+    try {
+      await adminApi.createStoreItemCategory(selectedStoreId, {
+        name, icon: "tag-outline", color: "#F97316", order: 99, active: true,
+      });
+      const refreshed = await adminApi.storeItemCategories(selectedStoreId);
+      const nextCategories = Array.isArray(refreshed)
+        ? refreshed.filter((item: any) => item.active !== false)
+        : [];
+      setItemCategories(nextCategories);
+      const created = nextCategories.find(
+        (item: any) => String(item.name || "").trim().toLowerCase() === name.toLowerCase()
+      );
+      if (created) {
+        setForm((current) => ({ ...current, item_category: created.name, item_category_id: String(created.id) }));
+      }
+      setProductItemCategoryName("");
+      setNotice(created ? "Item category added and selected." : "Item category added. Select it from the choices.");
+    } catch (error: any) {
+      setNotice(error?.message || "Could not create the item category.");
     }
   };
 
@@ -511,6 +582,28 @@ export default function AdminVendorProducts({ vendorId, selectedStoreId: externa
                 placeholderTextColor="#9CA3AF"
                 style={styles.input}
               />
+              <View style={styles.unitPickerPanel} testID="admin-vendor-product-size-pack-picker">
+                <Text style={styles.sectionLabel}>Choose product size / pack</Text>
+                <Text style={styles.unitPickerHint}>Tap one option. Your selection fills the Unit field.</Text>
+                <View style={styles.unitChipContainer}>
+                  {PRODUCT_UNIT_OPTIONS.map((option) => {
+                    const active = form.unit.trim().toLowerCase() === option.toLowerCase();
+                    return (
+                      <Pressable
+                        key={option}
+                        accessibilityRole="button"
+                        accessibilityLabel={`Select product unit ${option}`}
+                        accessibilityState={{ selected: active }}
+                        testID={`admin-vendor-product-unit-${option.toLowerCase().replaceAll(" ", "-")}`}
+                        style={[styles.unitChip, active && styles.unitChipActive]}
+                        onPress={() => setForm((current) => ({ ...current, unit: option }))}
+                      >
+                        <Text style={[styles.unitChipText, active && styles.unitChipTextActive]}>{option}</Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              </View>
               <View style={styles.shopCategoryBlock}>
                 <Text style={styles.formLabel}>Shop Category</Text>
                 <Text style={styles.shopCategoryText}>{shopCategoryName}</Text>
@@ -533,6 +626,25 @@ export default function AdminVendorProducts({ vendorId, selectedStoreId: externa
                     );
                   })}
                   {activeItemCategories.length === 0 ? <Text style={styles.muted}>Add a store item category above first; selecting a category is optional.</Text> : null}
+                </View>
+                <View style={styles.productCategoryCreateRow}>
+                  <TextInput
+                    value={productItemCategoryName}
+                    onChangeText={setProductItemCategoryName}
+                    placeholder="New item category (e.g. Shoes)"
+                    placeholderTextColor="#047857"
+                    style={[styles.input, styles.productCategoryInput]}
+                    onSubmitEditing={() => { void createItemCategoryForProduct(); }}
+                    returnKeyType="done"
+                  />
+                  <Pressable
+                    disabled={!productItemCategoryName.trim()}
+                    onPress={() => { void createItemCategoryForProduct(); }}
+                    style={[styles.productCategoryButton, !productItemCategoryName.trim() && { opacity: 0.55 }]}
+                    accessibilityLabel="Create and select item category"
+                  >
+                    <MaterialCommunityIcons name="plus" size={19} color="#fff" />
+                  </Pressable>
                 </View>
               </View>
               <View style={styles.formRow}>
@@ -569,6 +681,71 @@ export default function AdminVendorProducts({ vendorId, selectedStoreId: externa
                   placeholderTextColor="#9CA3AF"
                   style={[styles.input, styles.flexInput]}
                 />
+              </View>
+              <View style={styles.variantManagerPanel} testID="admin-vendor-product-variants">
+                <View style={styles.variantManagerHeader}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.variantManagerTitle}>Sell in more sizes</Text>
+                    <Text style={styles.variantManagerHint}>Add each size/pack with its own label, price, MRP and stock.</Text>
+                  </View>
+                  <Pressable
+                    testID="admin-vendor-product-add-variant"
+                    accessibilityRole="button"
+                    onPress={() => setVariantDrafts((current) => [...current, { id: "", unit: "", price: "", mrp: "", stock: "10" }])}
+                    style={styles.addVariantButton}
+                  >
+                    <MaterialCommunityIcons name="plus" size={17} color="#FFFFFF" />
+                    <Text style={styles.addVariantButtonText}>Add size</Text>
+                  </Pressable>
+                </View>
+                {variantDrafts.map((variant, index) => (
+                  <View key={`${variant.id || "new"}-${index}`} style={styles.variantDraftCard}>
+                    <View style={styles.variantDraftTopRow}>
+                      <Text style={styles.variantDraftLabel}>Option {index + 2}</Text>
+                      <Pressable
+                        accessibilityRole="button"
+                        accessibilityLabel={`Remove size option ${index + 2}`}
+                        onPress={() => setVariantDrafts((current) => current.filter((_, itemIndex) => itemIndex !== index))}
+                        style={styles.removeVariantButton}
+                      >
+                        <MaterialCommunityIcons name="trash-can-outline" size={17} color="#B91C1C" />
+                      </Pressable>
+                    </View>
+                    <TextInput
+                      placeholder="Size / pack (e.g. UK 8 or 500 g)"
+                      placeholderTextColor="#64748B"
+                      value={variant.unit}
+                      onChangeText={(value) => setVariantDrafts((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, unit: value } : item))}
+                      style={styles.input}
+                    />
+                    <View style={styles.formRow}>
+                      <TextInput
+                        placeholder="Price"
+                        placeholderTextColor="#64748B"
+                        value={variant.price}
+                        onChangeText={(value) => setVariantDrafts((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, price: value } : item))}
+                        style={[styles.input, styles.flexInput]}
+                        keyboardType="decimal-pad"
+                      />
+                      <TextInput
+                        placeholder="MRP"
+                        placeholderTextColor="#64748B"
+                        value={variant.mrp}
+                        onChangeText={(value) => setVariantDrafts((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, mrp: value } : item))}
+                        style={[styles.input, styles.flexInput]}
+                        keyboardType="decimal-pad"
+                      />
+                      <TextInput
+                        placeholder="Stock"
+                        placeholderTextColor="#64748B"
+                        value={variant.stock}
+                        onChangeText={(value) => setVariantDrafts((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, stock: value } : item))}
+                        style={[styles.input, styles.flexInput]}
+                        keyboardType="number-pad"
+                      />
+                    </View>
+                  </View>
+                ))}
               </View>
               <ProductImagesUploader value={form.images} onChange={(images) => setForm((current) => ({ ...current, images, image: images[0] || "" }))} label="Product Photos (minimum 3)" testID="admin-vendor-product-images" />
               <TextInput
@@ -657,6 +834,27 @@ const styles = StyleSheet.create({
   formCategoryChipActive: { backgroundColor: "#EA580C", borderColor: "#EA580C" },
   formCategoryChipText: { color: "#9A3412", fontSize: 11, fontWeight: "800" },
   formCategoryChipTextActive: { color: "#fff" },
+  sectionLabel: { fontSize: 13, fontWeight: "800", color: "#7C2D12", marginBottom: 7 },
+  unitPickerPanel: { backgroundColor: "#FFF7ED", borderWidth: 1, borderColor: "#FDBA74", borderRadius: 14, padding: 10, marginBottom: 10 },
+  unitPickerHint: { fontSize: 11, lineHeight: 15, color: "#7C2D12", marginBottom: 8 },
+  unitChipContainer: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
+  unitChip: { minHeight: 36, justifyContent: "center", alignItems: "center", backgroundColor: "#FFFFFF", borderColor: "#EA580C", borderWidth: 1, borderRadius: 16, paddingHorizontal: 12, paddingVertical: 7 },
+  unitChipActive: { backgroundColor: "#EA580C", borderColor: "#EA580C" },
+  unitChipText: { color: "#9A3412", fontSize: 12, fontWeight: "700" },
+  unitChipTextActive: { color: "#FFFFFF", fontWeight: "800" },
+  variantManagerPanel: { borderWidth: 1, borderColor: "#FDBA74", backgroundColor: "#FFF7ED", borderRadius: 14, padding: 12, marginTop: 2, marginBottom: 12, gap: 9 },
+  variantManagerHeader: { flexDirection: "row", alignItems: "center", gap: 10 },
+  variantManagerTitle: { color: "#7C2D12", fontSize: 14, fontWeight: "900" },
+  variantManagerHint: { color: "#9A3412", fontSize: 11, lineHeight: 15, marginTop: 3 },
+  addVariantButton: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 4, backgroundColor: "#EA580C", borderRadius: 10, paddingHorizontal: 10, paddingVertical: 8 },
+  addVariantButtonText: { color: "#FFFFFF", fontSize: 11, fontWeight: "900" },
+  variantDraftCard: { borderWidth: 1, borderColor: "#FED7AA", backgroundColor: "#FFFFFF", borderRadius: 10, padding: 9, gap: 7 },
+  variantDraftTopRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  variantDraftLabel: { color: "#7C2D12", fontSize: 12, fontWeight: "900" },
+  removeVariantButton: { width: 30, height: 28, alignItems: "center", justifyContent: "center", borderRadius: 8, backgroundColor: "#FEF2F2" },
+  productCategoryCreateRow: { flexDirection: "row", alignItems: "center", gap: 7, marginTop: 9 },
+  productCategoryInput: { flex: 1, minWidth: 0, marginBottom: 0, borderColor: "#6EE7B7", backgroundColor: "#FFFFFF", color: "#064E3B" },
+  productCategoryButton: { width: 42, height: 42, borderRadius: 10, alignItems: "center", justifyContent: "center", backgroundColor: "#047857" },
   formRow: { flexDirection: "row", gap: 8 },
   flexInput: { flex: 1, minWidth: 0 },
   imageRow: { flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 9 },

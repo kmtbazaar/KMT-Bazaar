@@ -103,6 +103,7 @@ jobs:
           const vendor = fs.readFileSync("app/vendor/store/[id].tsx", "utf8");
           const customer = fs.readFileSync("app/product/[id].tsx", "utf8");
           const uploader = fs.readFileSync("src/components/ProductImagesUploader.tsx", "utf8");
+          const adminVendor = fs.readFileSync("src/components/AdminVendorProducts.tsx", "utf8");
           const backend = fs.readFileSync("../backend/server.py", "utf8");
           const options = ["XS", "S", "M", "L", "XL", "XXL", "UK 3", "UK 4", "UK 5", "UK 6", "UK 7", "UK 8", "UK 9", "UK 10", "UK 11", "UK 12", "UK 13", "UK 14", "1 pc", "250 g", "500 g", "1 kg", "250 ml", "500 ml", "750 ml", "1 L", "2 L"];
           assert.ok(vendor.includes("const PRODUCT_UNIT_OPTIONS = ["), "Store vendor quick options are missing");
@@ -131,7 +132,15 @@ jobs:
 
           for (const option of options) assert.ok(vendor.includes(JSON.stringify(option)), `Missing option: ${option}`);
           assert.ok(vendor.includes("onPress={() => setForm((current) => ({ ...current, unit: option }))}"), "Add Product chip selection must update form state");
-          assert.ok(vendor.includes("onPress={() => setEditProductForm((current) => ({ ...current, unit: option }))}"), "Edit Product chip selection must update form state");
+          assert.ok(adminVendor.includes("const PRODUCT_UNIT_OPTIONS = ["), "Admin Store Vendor must expose the same product size/pack options.");
+          for (const option of options) assert.ok(adminVendor.includes(JSON.stringify(option)), `Admin Store Vendor is missing size/pack option: ${option}`);
+          assert.ok(adminVendor.includes('testID="admin-vendor-product-size-pack-picker"'), "Admin Store Vendor Add/Edit form must render the size/pack picker.");
+          assert.ok(adminVendor.includes('testID="admin-vendor-product-variants"'), "Admin Store Vendor must support multiple size/pack variants.");
+          assert.ok(adminVendor.includes("buildVariantPayload") && adminVendor.includes("validateVariantDrafts"), "Admin Store Vendor must validate and save variant-specific price, MRP and stock.");
+          assert.ok(adminVendor.includes("createItemCategoryForProduct") && adminVendor.includes("productItemCategoryName"), "Admin Store Vendor must create and select item categories inside the product form.");
+          assert.ok(adminVendor.includes("<ProductImagesUploader") && uploader.includes("compressProductPhotoForWeb"), "Admin Store Vendor must use the shared compressed product-photo uploader.");
+          assert.ok(adminVendor.includes("payloadFor(form, existing ? existing.is_available !== false : true, variants)"), "Admin product create/edit must persist the selected variants.");
+                    assert.ok(vendor.includes("onPress={() => setEditProductForm((current) => ({ ...current, unit: option }))}"), "Edit Product chip selection must update form state");
           assert.ok(vendor.includes("...form,"), "Product request must spread saved form fields");
           assert.ok(customer.includes("selectedUnit"), "Customer detail must display the saved or selected unit.");
           assert.ok(customer.includes("testID=\"product-size-pack-selector\""), "Customer detail must show selectable size/pack options.");
@@ -223,7 +232,7 @@ jobs:
 
       - name: Lint changed product and branding screens
         working-directory: frontend
-        run: npx eslint "app/vendor/store/[id].tsx" "app/vendor/products.tsx" "app/product/[id].tsx" "src/components/ProductCard.tsx" "src/components/AnimatedBrandLogo.tsx" "app/auth/login.tsx" "app/admin/index.tsx" "app/delivery/index.tsx" "app/vendor/holiday-dashboard.tsx" "app/vendor/car-rental-dashboard.tsx" "app/role/[role].tsx" "app/(tabs)/profile.tsx" "app/(tabs)/cart.tsx" "app/addresses.tsx" "app/checkout.tsx" "app/index.tsx" "app/search.tsx" "src/components/ParticleLogoSplash.tsx" "components/AIAssistant.tsx" "components/BotHeader.tsx" "app/assistant.tsx" "components/ChatBubble.tsx" "components/TypingIndicator.tsx" "src/components/RobotAvatar.tsx" "src/components/RobotCompanion3D.tsx" "app/(tabs)/_layout.tsx" "src/api.ts" --no-cache
+        run: npx eslint "app/vendor/store/[id].tsx" "app/vendor/products.tsx" "app/product/[id].tsx" "src/components/ProductCard.tsx" "src/components/AnimatedBrandLogo.tsx" "app/auth/login.tsx" "app/admin/index.tsx" "app/delivery/index.tsx" "app/vendor/holiday-dashboard.tsx" "app/vendor/car-rental-dashboard.tsx" "app/role/[role].tsx" "app/(tabs)/profile.tsx" "app/(tabs)/cart.tsx" "app/addresses.tsx" "app/checkout.tsx" "app/index.tsx" "app/search.tsx" "src/components/ParticleLogoSplash.tsx" "components/AIAssistant.tsx" "components/BotHeader.tsx" "app/assistant.tsx" "components/ChatBubble.tsx" "components/TypingIndicator.tsx" "src/components/RobotAvatar.tsx" "src/components/RobotCompanion3D.tsx" "app/(tabs)/_layout.tsx" "src/api.ts" "src/components/AdminVendorProducts.tsx" --no-cache
 
       - name: Validate particle-forming splash and black-background removal
         working-directory: frontend
