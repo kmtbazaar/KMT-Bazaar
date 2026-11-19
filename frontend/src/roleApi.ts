@@ -16,8 +16,12 @@ export const adminApi = {
       method: "POST",
     }),
 
-  serviceVendors: () =>
-    apiFetch<any[]>("/admin/users?role=vendor"),
+  serviceVendors: (status?: string, serviceType?: string) => apiFetch<any[]>(
+    `/admin/service-vendors${status || serviceType ? `?${new URLSearchParams({ ...(status ? { status } : {}), ...(serviceType ? { service_type: serviceType } : {}) }).toString()}` : ""}`
+  ),
+  createServiceVendor: (data: any) => apiFetch<any>("/admin/service-vendors", { method: "POST", body: JSON.stringify(data) }),
+  approveServiceVendor: (id: string, status: "pending" | "approved" | "rejected", note = "") => apiFetch<any>(`/admin/service-vendors/${encodeURIComponent(id)}/approval`, { method: "PUT", body: JSON.stringify({ status, note }) }),
+  serviceEnquiries: (status?: string) => apiFetch<any[]>(`/admin/service-enquiries${status ? `?status=${encodeURIComponent(status)}` : ""}`),
   updateServiceVendor: (id: string, data: any) =>
     apiFetch<any>(`/admin/service-vendors/${encodeURIComponent(id)}`, {
       method: "PUT",
@@ -180,6 +184,10 @@ export const vendorApi = {
 
   serviceStats: () => apiFetch<any>("/vendor/service-stats"),
   serviceBookings: () => apiFetch<any[]>("/vendor/service-bookings"),
+  serviceVendorEnquiries: () => apiFetch<any[]>("/vendor/service-enquiries"),
+  quoteServiceEnquiry: (id: string, data: any) => apiFetch<any>(`/vendor/service-enquiries/${encodeURIComponent(id)}/quote`, { method: "POST", body: JSON.stringify(data) }),
+  vendorServiceAvailability: () => apiFetch<any>("/vendor/service-availability"),
+  saveVendorServiceAvailability: (data: any) => apiFetch<any>("/vendor/service-availability", { method: "PUT", body: JSON.stringify(data) }),
   holidayBanner: () => apiFetch<any>("/vendor/holiday/banner"),
   updateHolidayBanner: (url: string) =>
     apiFetch<any>("/vendor/holiday/banner", {
