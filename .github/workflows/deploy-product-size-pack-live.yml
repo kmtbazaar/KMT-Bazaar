@@ -30,6 +30,7 @@ on:
       - "frontend/app/(tabs)/cart.tsx"
       - "frontend/app/vendor/orders.tsx"
       - "frontend/app/orders/[id].tsx"
+      - "frontend/app/support/**"
       - "frontend/app/admin/order/[id].tsx"
       - "frontend/app/addresses.tsx"
       - "frontend/app/checkout.tsx"
@@ -250,7 +251,35 @@ jobs:
 
       - name: Lint changed product and branding screens
         working-directory: frontend
-        run: npx eslint "app/vendor/store/[id].tsx" "app/vendor/products.tsx" "app/product/[id].tsx" "src/components/ProductCard.tsx" "src/components/AnimatedBrandLogo.tsx" "app/auth/login.tsx" "app/admin/index.tsx" "app/delivery/index.tsx" "app/vendor/holiday-dashboard.tsx" "app/vendor/car-rental-dashboard.tsx" "app/role/[role].tsx" "app/(tabs)/profile.tsx" "app/(tabs)/cart.tsx" "app/addresses.tsx" "app/checkout.tsx" "app/index.tsx" "app/search.tsx" "src/components/ParticleLogoSplash.tsx" "components/AIAssistant.tsx" "components/BotHeader.tsx" "app/assistant.tsx" "components/ChatBubble.tsx" "components/TypingIndicator.tsx" "src/components/RobotAvatar.tsx" "src/components/RobotCompanion3D.tsx" "app/(tabs)/_layout.tsx" "src/api.ts" "src/components/AdminVendorProducts.tsx" --no-cache
+        run: npx eslint "app/vendor/store/[id].tsx" "app/vendor/products.tsx" "app/product/[id].tsx" "src/components/ProductCard.tsx" "src/components/AnimatedBrandLogo.tsx" "app/auth/login.tsx" "app/admin/index.tsx" "app/delivery/index.tsx" "app/vendor/holiday-dashboard.tsx" "app/vendor/car-rental-dashboard.tsx" "app/vendor/index.tsx" "app/role/[role].tsx" "app/(tabs)/profile.tsx" "app/(tabs)/cart.tsx" "app/addresses.tsx" "app/checkout.tsx" "app/index.tsx" "app/search.tsx" "src/components/ParticleLogoSplash.tsx" "components/AIAssistant.tsx" "components/BotHeader.tsx" "app/assistant.tsx" "components/ChatBubble.tsx" "components/TypingIndicator.tsx" "src/components/RobotAvatar.tsx" "src/components/RobotCompanion3D.tsx" "app/(tabs)/_layout.tsx" "app/orders/[id].tsx" "app/support/returns.tsx" "src/api.ts" "src/components/AdminVendorProducts.tsx" --no-cache
+
+      - name: Validate customer billing, invoice PDF, refund/return help and order item navigation
+        working-directory: frontend
+        run: |
+          node <<'NODE'
+          const assert = require("node:assert/strict");
+          const fs = require("node:fs");
+          const cart = fs.readFileSync("app/(tabs)/cart.tsx", "utf8");
+          const checkout = fs.readFileSync("app/checkout.tsx", "utf8");
+          const order = fs.readFileSync("app/orders/[id].tsx", "utf8");
+          const support = fs.readFileSync("app/support/returns.tsx", "utf8");
+          const profile = fs.readFileSync("app/(tabs)/profile.tsx", "utf8");
+          const vendor = fs.readFileSync("app/vendor/index.tsx", "utf8");
+          const api = fs.readFileSync("src/api.ts", "utf8");
+          const backend = fs.readFileSync("../backend/server.py", "utf8");
+          assert.ok(!cart.includes("Taxes (5%)") && !checkout.includes('l="Tax"'), "Customer cart and checkout must not show a tax line.");
+          assert.ok(backend.includes("total = round(subtotal + delivery_fee, 2)") && !backend.includes("tax = round(subtotal * 0.05, 2)"), "New checkout totals must not add the legacy 5% tax.");
+          assert.ok(order.includes('testID="order-download-invoice"') && order.includes("api.orderInvoiceToken") && order.includes("invoice.pdf"), "Order confirmation must offer a downloadable PDF bill.");
+          assert.ok(order.includes('l="Tax (previous order)"') && order.includes("Number(order.tax || 0) > 0"), "Only a pre-existing historical order may display its saved legacy tax amount.");
+          assert.ok(vendor.includes('label="Tax (previous order)"') && vendor.includes("Number(pendingOrder.tax || 0) > 0"), "Historical vendor orders may retain their stored tax line, without adding tax to new orders.");
+          assert.ok(order.includes('testID="order-return-refund-help"') && order.includes('pathname: "/support/returns"'), "Order confirmation must link to return/refund support.");
+          assert.ok(order.includes('testID={`order-item-${it.product_id}`}') && order.includes("/product/${encodeURIComponent(String(it.product_id))}"), "Tapping an order item must open its product page.");
+          assert.ok(profile.includes('testID="help-refund-return-entry"'), "Profile Help & Support must offer the refund/return application screen.");
+          assert.ok(support.includes('testID="submit-support-request"') && support.includes('"Damaged item"') && support.includes('"Wrong item received"'), "Support screen must allow customers to submit a reasoned request.");
+          assert.ok(api.includes('apiFetch<any[]>("/support/requests")') && api.includes("/support-requests"), "Frontend API must load and create customer support requests.");
+          assert.ok(backend.includes('@api.get("/orders/{order_id}/invoice.pdf")') && backend.includes('@api.post("/orders/{order_id}/support-requests")'), "Backend must provide PDF invoice and order support endpoints.");
+          console.log("CUSTOMER_NO_TAX_INVOICE_REFUND_RETURN_AND_PRODUCT_NAVIGATION_VALIDATION_PASS");
+          NODE
 
       - name: Validate particle-forming splash and black-background removal
         working-directory: frontend

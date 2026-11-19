@@ -470,7 +470,6 @@ export default function Checkout() {
           <View style={s.summary}>
             <Row l="Subtotal" v={`₹${cart?.subtotal || 0}`} />
             <Row l="Delivery" v={cart?.delivery_fee ? `₹${cart?.delivery_fee}` : "FREE"} />
-            <Row l="Tax" v={`₹${cart?.tax || 0}`} />
             <View style={s.divider} />
             <Row l="Total" v={`₹${cart?.total || 0}`} bold />
           </View>

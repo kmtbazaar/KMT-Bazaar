@@ -29,7 +29,7 @@ from typing import List, Optional, Dict, Any
 import uuid
 from datetime import datetime, timezone, timedelta
 from passlib.context import CryptContext
-from PIL import Image, ImageOps
+from PIL import Image, ImageOps, ImageDraw, ImageFont
 import io
 from html import escape
 import httpx
@@ -461,6 +461,39 @@ class CheckoutIn(BaseModel):
             raise ValueError("Invalid payment method")
         return value
 
+
+# KMT_SUPPORT_REQUEST_MODEL_BEGIN
+class SupportRequestIn(BaseModel):
+    request_type: str
+    reason: str
+    details: Optional[str] = ""
+
+    @field_validator("request_type")
+    @classmethod
+    def validate_request_type(cls, value):
+        request_type = str(value or "").strip().lower()
+        if request_type not in {"return", "refund"}:
+            raise ValueError("Choose either return or refund")
+        return request_type
+
+    @field_validator("reason")
+    @classmethod
+    def validate_support_reason(cls, value):
+        reason = str(value or "").strip()
+        if not reason or len(reason) > 100:
+            raise ValueError("Enter a reason (maximum 100 characters)")
+        return reason
+
+    @field_validator("details")
+    @classmethod
+    def validate_support_details(cls, value):
+        details = str(value or "").strip()
+        if len(details) > 1000:
+            raise ValueError("Additional details must be 1000 characters or fewer")
+        return details
+
+
+# KMT_SUPPORT_REQUEST_MODEL_END
 
 class TravelPageIn(BaseModel):
     name: str
@@ -1955,13 +1988,11 @@ async def expand_cart(cart):
         })
 
     delivery_fee = 0 if subtotal >= 199 or subtotal == 0 else 25
-    tax = round(subtotal * 0.05, 2)
-    total = round(subtotal + delivery_fee + tax, 2)
+    total = round(subtotal + delivery_fee, 2)
     return {
         "items": items,
         "subtotal": round(subtotal, 2),
         "delivery_fee": delivery_fee,
-        "tax": tax,
         "total": total,
         "item_count": sum(i["quantity"] for i in items),
     }
@@ -2488,7 +2519,6 @@ async def checkout(
         "items": expanded["items"],
         "subtotal": expanded["subtotal"],
         "delivery_fee": expanded["delivery_fee"],
-        "tax": expanded["tax"],
         "total": expanded["total"],
         "address": addr,
         "customer_location": customer_location,
@@ -2573,6 +2603,217 @@ async def get_order(order_id: str, current=Depends(get_current_user)):
         raise HTTPException(404, "Order not found")
     return o
 
+
+# KMT_ORDER_INVOICE_AND_SUPPORT_ROUTES_BEGIN
+def _invoice_clean_text(value):
+    return str(value if value is not None else "-").replace("₹", "Rs.").replace("\r", " ").replace("\n", " ").strip()
+
+
+def _invoice_font(size):
+    for font_path in (
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+        "/usr/share/fonts/truetype/noto/NotoSansDevanagari-Regular.ttf",
+        "/usr/share/fonts/truetype/liberation2/LiberationSans-Regular.ttf",
+    ):
+        if Path(font_path).is_file():
+            try:
+                return ImageFont.truetype(font_path, size=size)
+            except OSError:
+                pass
+    try:
+        return ImageFont.load_default(size=size)
+    except TypeError:
+        return ImageFont.load_default()
+
+
+def _invoice_draw_text(draw, position, value, font, fill="#17211B"):
+    text_value = _invoice_clean_text(value)
+    try:
+        draw.text(position, text_value, font=font, fill=fill)
+    except UnicodeEncodeError:
+        draw.text(position, text_value.encode("ascii", "replace").decode("ascii"), font=font, fill=fill)
+
+
+def _build_order_invoice_pdf(order, customer):
+    items = order.get("items") if isinstance(order.get("items"), list) else []
+    width = 1240
+    margin = 76
+    table_top = 560
+    row_height = 70
+    height = max(1754, table_top + 72 + max(1, len(items)) * row_height + 390)
+    page = Image.new("RGB", (width, height), "#FFFFFF")
+    draw = ImageDraw.Draw(page)
+    font_title = _invoice_font(46)
+    font_heading = _invoice_font(28)
+    font_body = _invoice_font(22)
+    font_small = _invoice_font(17)
+    font_total = _invoice_font(31)
+
+    _invoice_draw_text(draw, (margin, 58), "KMT BAZAAR", font_title, "#087A3D")
+    _invoice_draw_text(draw, (margin, 120), "Customer order invoice", font_body, "#475569")
+    _invoice_draw_text(draw, (875, 72), "INVOICE", font_heading, "#17211B")
+    _invoice_draw_text(draw, (875, 122), f"Order: {order.get('order_no') or order.get('id')}", font_small)
+    _invoice_draw_text(draw, (margin, 220), f"Order date: {order.get('created_at') or '-'}", font_body)
+    _invoice_draw_text(draw, (700, 220), f"Payment: {'Cash on Delivery' if order.get('payment_method') == 'cod' else 'Online'}", font_body)
+
+    address = order.get("address") if isinstance(order.get("address"), dict) else {}
+    draw.rectangle((margin, 275, width - margin, 485), outline="#D7E2DA", width=2)
+    _invoice_draw_text(draw, (margin + 22, 294), "DELIVER TO", font_small, "#087A3D")
+    customer_name = customer.get("name") or address.get("full_name") or "Customer"
+    _invoice_draw_text(draw, (margin + 22, 332), customer_name, font_heading)
+    _invoice_draw_text(draw, (margin + 22, 378), address.get("line1") or "", font_small)
+    _invoice_draw_text(draw, (margin + 22, 410), ", ".join(str(address.get(key) or "") for key in ("line2", "landmark", "city", "state") if address.get(key)), font_small)
+    _invoice_draw_text(draw, (margin + 22, 442), f"PIN: {address.get('pincode') or '-'}  |  Phone: {address.get('phone') or customer.get('phone') or '-'}", font_small)
+
+    draw.rectangle((margin, table_top, width - margin, table_top + 58), fill="#EAF5EE")
+    _invoice_draw_text(draw, (margin + 18, table_top + 16), "ITEM", font_small, "#087A3D")
+    _invoice_draw_text(draw, (865, table_top + 16), "QTY", font_small, "#087A3D")
+    _invoice_draw_text(draw, (955, table_top + 16), "PRICE", font_small, "#087A3D")
+    _invoice_draw_text(draw, (1080, table_top + 16), "AMOUNT", font_small, "#087A3D")
+
+    y = table_top + 58
+    for index, item in enumerate(items):
+        if index % 2:
+            draw.rectangle((margin, y, width - margin, y + row_height), fill="#FAFCFA")
+        item_name = _invoice_clean_text(item.get("name") or "Product")
+        if len(item_name) > 58:
+            item_name = item_name[:55] + "..."
+        detail = " · ".join(str(value) for value in (item.get("unit"), item.get("color")) if value)
+        _invoice_draw_text(draw, (margin + 18, y + 10), item_name, font_small)
+        _invoice_draw_text(draw, (margin + 18, y + 39), detail, font_small, "#64748B")
+        _invoice_draw_text(draw, (865, y + 20), item.get("quantity") or 0, font_small)
+        _invoice_draw_text(draw, (955, y + 20), f"Rs. {float(item.get('price') or 0):,.2f}", font_small)
+        _invoice_draw_text(draw, (1080, y + 20), f"Rs. {float(item.get('line_total') or 0):,.2f}", font_small)
+        draw.line((margin, y + row_height, width - margin, y + row_height), fill="#E2E8F0", width=1)
+        y += row_height
+
+    summary_y = y + 36
+    summary_x = 730
+    _invoice_draw_text(draw, (summary_x, summary_y), "Item subtotal", font_body, "#475569")
+    _invoice_draw_text(draw, (1060, summary_y), f"Rs. {float(order.get('subtotal') or 0):,.2f}", font_body)
+    summary_y += 48
+    delivery_fee = float(order.get("delivery_fee") or 0)
+    _invoice_draw_text(draw, (summary_x, summary_y), "Delivery", font_body, "#475569")
+    _invoice_draw_text(draw, (1060, summary_y), "FREE" if delivery_fee == 0 else f"Rs. {delivery_fee:,.2f}", font_body)
+    summary_y += 48
+    legacy_tax = float(order.get("tax") or 0)
+    if legacy_tax > 0:
+        _invoice_draw_text(draw, (summary_x, summary_y), "Tax (previous order)", font_body, "#475569")
+        _invoice_draw_text(draw, (1060, summary_y), f"Rs. {legacy_tax:,.2f}", font_body)
+        summary_y += 48
+    draw.line((summary_x, summary_y, width - margin, summary_y), fill="#A7B8AC", width=2)
+    summary_y += 22
+    _invoice_draw_text(draw, (summary_x, summary_y), "TOTAL", font_heading, "#087A3D")
+    _invoice_draw_text(draw, (1030, summary_y), f"Rs. {float(order.get('total') or 0):,.2f}", font_total, "#087A3D")
+    summary_y += 72
+    _invoice_draw_text(draw, (margin, summary_y), f"Payment status: {str(order.get('payment_status') or 'pending').replace('_', ' ').title()}", font_small, "#475569")
+    _invoice_draw_text(draw, (margin, summary_y + 42), "Thank you for shopping with KMT Bazaar.", font_body, "#087A3D")
+    _invoice_draw_text(draw, (margin, summary_y + 78), "This is a computer-generated invoice.", font_small, "#64748B")
+
+    output = io.BytesIO()
+    page.save(output, format="PDF", resolution=150.0)
+    return output.getvalue()
+
+
+@api.get("/orders/{order_id}/invoice-token")
+async def create_order_invoice_token(order_id: str, current=Depends(require_roles("customer"))):
+    order = await db.orders.find_one({"id": order_id, "user_id": current["id"]}, {"_id": 0, "id": 1})
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+    token = jwt.encode(
+        {
+            "sub": current["id"],
+            "order_id": order_id,
+            "purpose": "order_invoice",
+            "exp": datetime.now(timezone.utc) + timedelta(minutes=10),
+        },
+        JWT_SECRET,
+        algorithm=JWT_ALGO,
+    )
+    return {"token": token, "expires_in_seconds": 600}
+
+
+@api.get("/orders/{order_id}/invoice.pdf")
+async def download_order_invoice(order_id: str, token: str):
+    try:
+        claims = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGO])
+    except jwt.PyJWTError:
+        raise HTTPException(status_code=403, detail="Invoice link is invalid or expired")
+    if claims.get("purpose") != "order_invoice" or str(claims.get("order_id")) != order_id or not claims.get("sub"):
+        raise HTTPException(status_code=403, detail="Invoice link is invalid or expired")
+
+    order = await db.orders.find_one(
+        {"id": order_id, "user_id": str(claims["sub"])},
+        {"_id": 0},
+    )
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+    customer = await db.users.find_one(
+        {"id": str(claims["sub"])},
+        {"_id": 0, "id": 1, "name": 1, "phone": 1, "email": 1},
+    ) or {}
+    pdf_data = _build_order_invoice_pdf(order, customer)
+    safe_order_no = re.sub(r"[^A-Za-z0-9_-]", "", str(order.get("order_no") or order_id))
+    return Response(
+        content=pdf_data,
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": f'attachment; filename="KMT-Bazaar-{safe_order_no}.pdf"',
+            "Cache-Control": "private, no-store",
+        },
+    )
+
+
+@api.get("/support/requests")
+async def list_order_support_requests(current=Depends(require_roles("customer"))):
+    return await db.order_support_requests.find(
+        {"user_id": current["id"]},
+        {"_id": 0},
+    ).sort("created_at", -1).to_list(100)
+
+
+@api.post("/orders/{order_id}/support-requests")
+async def create_order_support_request(
+    order_id: str,
+    data: SupportRequestIn,
+    current=Depends(require_roles("customer")),
+):
+    order = await db.orders.find_one(
+        {"id": order_id, "user_id": current["id"]},
+        {"_id": 0, "id": 1, "order_no": 1, "status": 1, "total": 1},
+    )
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+    active_request = await db.order_support_requests.find_one(
+        {
+            "order_id": order_id,
+            "user_id": current["id"],
+            "status": {"$in": ["submitted", "under_review"]},
+        },
+        {"_id": 0, "id": 1},
+    )
+    if active_request:
+        raise HTTPException(status_code=409, detail="A support request for this order is already being reviewed")
+
+    request_doc = {
+        "id": str(uuid.uuid4()),
+        "order_id": order_id,
+        "order_no": order.get("order_no"),
+        "user_id": current["id"],
+        "request_type": data.request_type,
+        "reason": data.reason,
+        "details": data.details or "",
+        "order_status_at_request": order.get("status"),
+        "order_total": order.get("total"),
+        "status": "submitted",
+        "created_at": now_iso(),
+        "updated_at": now_iso(),
+    }
+    await db.order_support_requests.insert_one(dict(request_doc))
+    return request_doc
+
+
+# KMT_ORDER_INVOICE_AND_SUPPORT_ROUTES_END
 
 class DeliveryLocationIn(BaseModel):
     latitude: float
@@ -5885,7 +6126,7 @@ async def vendor_pending_orders(current=Depends(require_roles("vendor"))):
             "my_revenue": round(vendor_total, 2),
             "subtotal": o.get("subtotal"),
             "delivery_fee": o.get("delivery_fee"),
-            "tax": o.get("tax"),
+            "tax": o.get("tax"),  # Preserve legacy tax only for historical vendor orders.
             "payment_method": o.get("payment_method"),
             "address": o.get("address"),
         })
@@ -6343,13 +6584,12 @@ async def seed_db():
                         "variant": None, "unit": p.get("unit", ""), "line_total": round(lt, 2),
                     })
                 delivery_fee = 0 if subtotal >= 199 else 25
-                tax = round(subtotal * 0.05, 2)
-                total = round(subtotal + delivery_fee + tax, 2)
+                total = round(subtotal + delivery_fee, 2)
                 oid = str(uuid.uuid4())
                 ono = "KMT" + (base_dt - _td2(days=i)).strftime("%y%m%d") + oid[:4].upper()
                 await db.orders.insert_one({
                     "id": oid, "order_no": ono, "user_id": cust["id"], "items": items,
-                    "subtotal": round(subtotal, 2), "delivery_fee": delivery_fee, "tax": tax, "total": total,
+                    "subtotal": round(subtotal, 2), "delivery_fee": delivery_fee, "total": total,
                     "address": addr, "payment_method": pm,
                     "payment_status": "paid" if pm == "online" or st == "delivered" else "pending",
                     "status": st, "notes": "",

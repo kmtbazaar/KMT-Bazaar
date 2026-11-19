@@ -162,7 +162,7 @@ class TestCatalog:
 # ---------- CART + CHECKOUT (FULL FLOW) ----------
 class TestCartCheckout:
     def test_cart_unauth_401(self, session):
-        for path in ["/cart", "/orders", "/addresses", "/notifications", "/notifications/unread-count"]:
+        for path in ["/cart", "/orders", "/addresses", "/support/requests", "/notifications", "/notifications/unread-count"]:
             r = session.get(f"{API}{path}", timeout=15)
             assert r.status_code == 401, f"{path} returned {r.status_code} (expected 401)"
 
@@ -180,9 +180,9 @@ class TestCartCheckout:
         assert cart["subtotal"] == 78.0  # 39 * 2
         # subtotal 78 < 199 → delivery fee 25
         assert cart["delivery_fee"] == 25
-        # tax 5%
-        assert cart["tax"] == round(78 * 0.05, 2)
-        assert cart["total"] == round(78 + 25 + cart["tax"], 2)
+        # Customer billing no longer adds a tax line.
+        assert "tax" not in cart
+        assert cart["total"] == round(78 + 25, 2)
         _no_mongo_id(cart)
 
         # 3. Update qty -> 3
@@ -208,8 +208,8 @@ class TestCartCheckout:
         # 6. Create address
         r = session.post(f"{API}/addresses", headers=auth_headers, json={
             "label": "Home", "full_name": "Demo Customer", "phone": "9000000001",
-            "line1": "TEST 123 Main St", "city": "Noida", "state": "UP",
-            "pincode": "201301", "is_default": True
+            "line1": "TEST 123 Main St", "city": "Ranchi", "state": "Jharkhand",
+            "pincode": "815352", "latitude": 23.3441, "longitude": 85.3096, "is_default": True
         }, timeout=15)
         assert r.status_code == 200, r.text
         addr = r.json()
@@ -234,6 +234,8 @@ class TestCartCheckout:
         assert order["payment_status"] == "pending"
         assert order["order_no"].startswith("KMT")
         assert len(order["items"]) == 2
+        assert "tax" not in order
+        assert order["total"] == round(order["subtotal"] + order["delivery_fee"], 2)
         assert order["timeline"][0]["label"] == "Order placed"
         _no_mongo_id(order)
         order_id = order["id"]
@@ -255,7 +257,29 @@ class TestCartCheckout:
         assert r.status_code == 200
         _no_mongo_id(r.json())
 
-        # 12. Notification created
+        # 12. Customer invoice is an authenticated, expiring PDF link.
+        r = session.get(f"{API}/orders/{order_id}/invoice-token", headers=auth_headers, timeout=15)
+        assert r.status_code == 200, r.text
+        invoice_token = r.json()["token"]
+        r = session.get(f"{API}/orders/{order_id}/invoice.pdf", params={"token": invoice_token}, timeout=15)
+        assert r.status_code == 200, r.text
+        assert r.headers.get("content-type", "").startswith("application/pdf")
+        assert r.content.startswith(b"%PDF")
+
+        # 13. Customer can submit and track a return/refund request.
+        r = session.post(f"{API}/orders/{order_id}/support-requests", headers=auth_headers, json={
+            "request_type": "refund", "reason": "Damaged item", "details": "Test support request"
+        }, timeout=15)
+        assert r.status_code == 200, r.text
+        support_request = r.json()
+        assert support_request["order_id"] == order_id
+        assert support_request["request_type"] == "refund"
+        assert support_request["status"] == "submitted"
+        r = session.get(f"{API}/support/requests", headers=auth_headers, timeout=15)
+        assert r.status_code == 200
+        assert any(item["id"] == support_request["id"] for item in r.json())
+
+        # 14. Notification created
         r = session.get(f"{API}/notifications", headers=auth_headers, timeout=15)
         assert r.status_code == 200
         notifs = r.json()

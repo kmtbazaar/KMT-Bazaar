@@ -7,6 +7,8 @@ import {
   Pressable,
   ActivityIndicator,
   Platform,
+  Alert,
+  Linking,
 } from "react-native";
 import { Image } from "expo-image";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -15,7 +17,7 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import Animated, { ZoomIn } from "react-native-reanimated";
 import { LinearGradient } from "expo-linear-gradient";
 import { WebView } from "react-native-webview";
-import { api } from "@/src/api";
+import { API, api } from "@/src/api";
 import { COLORS, RADIUS, SPACING } from "@/src/theme";
 
 const STAGES = [
@@ -29,6 +31,7 @@ export default function OrderDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const [order, setOrder] = useState<any>(null);
+  const [invoiceLoading, setInvoiceLoading] = useState(false);
 
   const locationWatchRef = useRef<number | null>(null);
 
@@ -91,6 +94,24 @@ export default function OrderDetail() {
 
   const curIdx = STAGES.findIndex((st) => st.key === order.status);
 
+  const downloadInvoice = async () => {
+    if (invoiceLoading) return;
+    setInvoiceLoading(true);
+    try {
+      const result = await api.orderInvoiceToken(String(id));
+      const invoiceUrl = `${API}/orders/${encodeURIComponent(String(id))}/invoice.pdf?token=${encodeURIComponent(result.token)}`;
+      await Linking.openURL(invoiceUrl);
+    } catch (error: any) {
+      Alert.alert("Bill unavailable", error?.message || "Could not open your PDF bill. Please try again.");
+    } finally {
+      setInvoiceLoading(false);
+    }
+  };
+
+  const openOrderSupport = () => {
+    router.push({ pathname: "/support/returns", params: { orderId: String(id) } } as any);
+  };
+
   return (
     <SafeAreaView
       style={s.root}
@@ -135,6 +156,28 @@ export default function OrderDetail() {
             </Text>
           </LinearGradient>
         </Animated.View>
+
+        <View style={s.orderActions}>
+          <Pressable
+            testID="order-download-invoice"
+            accessibilityRole="button"
+            onPress={downloadInvoice}
+            disabled={invoiceLoading}
+            style={[s.orderAction, invoiceLoading && { opacity: 0.65 }]}
+          >
+            {invoiceLoading ? <ActivityIndicator color="#fff" size="small" /> : <MaterialCommunityIcons name="file-pdf-box" size={20} color="#fff" />}
+            <Text style={s.orderActionText}>{invoiceLoading ? "Preparing bill..." : "Download Bill PDF"}</Text>
+          </Pressable>
+          <Pressable
+            testID="order-return-refund-help"
+            accessibilityRole="button"
+            onPress={openOrderSupport}
+            style={s.orderActionSecondary}
+          >
+            <MaterialCommunityIcons name="headset" size={19} color={COLORS.brand} />
+            <Text style={s.orderActionSecondaryText}>Help / Return / Refund</Text>
+          </Pressable>
+        </View>
 
         <View style={s.box}>
           <Text style={s.boxTitle}>Track Order</Text>
@@ -194,7 +237,14 @@ export default function OrderDetail() {
           </Text>
 
           {order.items.map((it: any) => (
-            <View key={it.product_id} style={s.itemRow}>
+            <Pressable
+              key={`${it.product_id}:${it.variant || "default"}:${it.color || "default"}`}
+              testID={`order-item-${it.product_id}`}
+              accessibilityRole="button"
+              accessibilityHint="Open product details"
+              onPress={() => router.push(`/product/${encodeURIComponent(String(it.product_id))}` as any)}
+            >
+              <View style={s.itemRow}>
               <Image
                 source={{ uri: it.image }}
                 style={s.itemImg}
@@ -217,7 +267,9 @@ export default function OrderDetail() {
               <Text style={s.itemPrice}>
                 ₹{it.line_total}
               </Text>
-            </View>
+              <MaterialCommunityIcons name="chevron-right" size={18} color={COLORS.textMuted} />
+              </View>
+            </Pressable>
           ))}
         </View>
 
@@ -278,10 +330,9 @@ export default function OrderDetail() {
             }
           />
 
-          <Row
-            l="Tax"
-            v={`₹${order.tax}`}
-          />
+          {Number(order.tax || 0) > 0 && (
+            <Row l="Tax (previous order)" v={`₹${order.tax}`} />
+          )}
 
           <View style={s.divider} />
 
@@ -444,6 +495,47 @@ const s = StyleSheet.create({
     backgroundColor: COLORS.border,
   },
 
+  orderActions: {
+    flexDirection: "row",
+    gap: 10,
+    marginHorizontal: SPACING.lg,
+    marginTop: 12,
+    marginBottom: 4,
+  },
+  orderAction: {
+    flex: 1,
+    minHeight: 48,
+    paddingHorizontal: 10,
+    borderRadius: RADIUS.md,
+    backgroundColor: COLORS.brand,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 7,
+  },
+  orderActionText: {
+    color: "#fff",
+    fontSize: 12,
+    fontWeight: "800",
+  },
+  orderActionSecondary: {
+    flex: 1,
+    minHeight: 48,
+    paddingHorizontal: 10,
+    borderRadius: RADIUS.md,
+    backgroundColor: COLORS.surface,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+  },
+  orderActionSecondaryText: {
+    color: COLORS.brand,
+    fontSize: 11,
+    fontWeight: "800",
+  },
   itemRow: {
     flexDirection: "row",
     alignItems: "center",

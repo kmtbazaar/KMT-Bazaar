@@ -552,7 +552,9 @@ function StoreVendorDashboard() {
                 <View style={s.detailTotals}>
                   <DetailLine label="Subtotal" value={pendingOrder.subtotal} />
                   <DetailLine label="Delivery" value={pendingOrder.delivery_fee} />
-                  <DetailLine label="Tax" value={pendingOrder.tax} />
+                  {Number(pendingOrder.tax || 0) > 0 && (
+                    <DetailLine label="Tax (previous order)" value={pendingOrder.tax} />
+                  )}
                   <View style={s.detailGrandRow}>
                     <Text style={s.detailGrandLabel}>Total</Text>
                     <Text style={s.detailGrandValue}>₹{pendingOrder.total}</Text>

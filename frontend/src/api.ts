@@ -864,7 +864,19 @@ export const api = {
     apiFetch<any[]>("/orders"),
 
   order: (id: string) =>
-    apiFetch<any>(`/orders/${id}`),
+    apiFetch<any>(`/orders/${encodeURIComponent(id)}`),
+
+  orderInvoiceToken: (id: string) =>
+    apiFetch<{ token: string }>(`/orders/${encodeURIComponent(id)}/invoice-token`),
+
+  supportRequests: () =>
+    apiFetch<any[]>("/support/requests"),
+
+  createOrderSupportRequest: (orderId: string, data: { request_type: "return" | "refund"; reason: string; details?: string }) =>
+    apiFetch<any>(`/orders/${encodeURIComponent(orderId)}/support-requests`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
 
   updateCustomerLocation: (
     orderId: string,

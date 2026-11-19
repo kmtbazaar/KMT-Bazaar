@@ -257,7 +257,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const update = async (productId: string, qty: number, variant?: string | null, color?: string | null) => {
     const c = await api.cartUpdate(productId, qty, variant, color); setCart(c);
   };
-  const clear = async () => { await api.cartClear(); setCart({ items: [], item_count: 0, subtotal: 0, total: 0, delivery_fee: 0, tax: 0 }); };
+  const clear = async () => { await api.cartClear(); setCart({ items: [], item_count: 0, subtotal: 0, total: 0, delivery_fee: 0 }); };
   const bumpBadge = () => setPulse((p) => p + 1);
 
   return (

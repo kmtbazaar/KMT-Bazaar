@@ -239,10 +239,9 @@ export default function AdminOrderDetail() {
             }
           />
 
-          <Row
-            l="Tax"
-            v={`₹${order.tax ?? 0}`}
-          />
+          {Number(order.tax ?? 0) > 0 && (
+            <Row l="Tax (previous order)" v={`₹${order.tax}`} />
+          )}
 
           <View style={s.divider} />
 

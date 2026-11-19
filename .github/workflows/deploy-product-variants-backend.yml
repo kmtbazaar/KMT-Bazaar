@@ -45,6 +45,16 @@ jobs:
           assert "JWT_EXPIRE_MIN = 60 * 24 * AUTH_SESSION_DAYS" in source
           assert "WEB_SESSION_TIMEOUT_MIN = 60 * 24 * AUTH_SESSION_DAYS" in source
           assert "AUTH_COOKIE_MAX_AGE = WEB_SESSION_TIMEOUT_MIN * 60" in source
+          assert "tax = round(subtotal * 0.05, 2)" not in source, "Customer checkout must not calculate the extra 5% tax."
+          assert "total = round(subtotal + delivery_fee, 2)" in source, "Customer total must be subtotal plus delivery only."
+          assert "def _build_order_invoice_pdf" in source
+          assert '@api.get("/orders/{order_id}/invoice-token")' in source
+          assert '@api.get("/orders/{order_id}/invoice.pdf")' in source
+          assert '@api.get("/support/requests")' in source
+          assert '@api.post("/orders/{order_id}/support-requests")' in source
+          assert "class SupportRequestIn(BaseModel):" in source
+          assert "ImageDraw, ImageFont" in source
+          print("BACKEND_TAX_REMOVAL_INVOICE_AND_REFUND_SUPPORT_VALIDATION_PASS")
           print("BACKEND_30_DAY_AUTH_DURATION_VALIDATION_PASS")
           assert "force_product_delivery_state" in source
           assert "return PRODUCT_DELIVERY_PINCODE" in source
@@ -112,15 +122,21 @@ jobs:
         run: |
           set -euo pipefail
           DEST="${HOSTINGER_USER}@${HOSTINGER_HOST}"
+          CANDIDATE_PATH="/tmp/kmt-bazaar-backend-candidate-${GITHUB_SHA}.py"
+          scp -o BatchMode=yes -o ConnectTimeout=15 \
+            -i "$HOME/.ssh/kmt_bazaar_backend_key" -P "$HOSTINGER_PORT" \
+            backend/server.py "$DEST:$CANDIDATE_PATH"
           ssh -o BatchMode=yes -o ConnectTimeout=15 -o ServerAliveInterval=15 -o ServerAliveCountMax=3 \
             -i "$HOME/.ssh/kmt_bazaar_backend_key" -p "$HOSTINGER_PORT" "$DEST" \
-            "DEPLOY_SHA='$GITHUB_SHA' bash -s" <<'REMOTE'
+            "DEPLOY_SHA='$GITHUB_SHA' CANDIDATE_PATH='$CANDIDATE_PATH' bash -s" <<'REMOTE'
           set -Eeuo pipefail
           exec 9>/run/kmt-bazaar-com-backend-deploy.lock
           flock -n 9 || { echo "STOP: Another backend deployment is running."; exit 1; }
 
           TARGET=/root/KMT-Bazaar-com/backend/server.py
           test -s "$TARGET"
+          test -s "$CANDIDATE_PATH"
+          trap 'rm -f "$CANDIDATE_PATH"' EXIT
           BACKUP="/root/kmtbazaar-backend-backup-${DEPLOY_SHA:0:12}-$(date +%Y%m%d-%H%M%S).py"
           cp -a "$TARGET" "$BACKUP"
 
@@ -131,15 +147,42 @@ jobs:
             echo "BACKEND_BACKUP=$BACKUP"
           }
 
-          if ! python3 - "$TARGET" <<'PY'
+          if ! python3 - "$TARGET" "$CANDIDATE_PATH" <<'PY'
           import os
           import re
           import sys
           from pathlib import Path
 
           path = Path(sys.argv[1])
+          candidate_path = Path(sys.argv[2])
           source = path.read_text(encoding="utf-8")
           original = source
+          candidate_source = candidate_path.read_text(encoding="utf-8")
+
+          def extract_marked_block(candidate, start_marker, end_marker, label):
+              if candidate.count(start_marker) != 1 or candidate.count(end_marker) != 1:
+                  raise SystemExit(f"STOP: Candidate {label} markers are missing or duplicated; no VPS changes made.")
+              start = candidate.index(start_marker) + len(start_marker)
+              end = candidate.index(end_marker, start)
+              if end <= start:
+                  raise SystemExit(f"STOP: Candidate {label} markers are out of order; no VPS changes made.")
+              block = candidate[start:end].strip("\r\n")
+              if not block:
+                  raise SystemExit(f"STOP: Candidate {label} block is empty; no VPS changes made.")
+              return block
+
+          support_model = extract_marked_block(
+              candidate_source,
+              "# KMT_SUPPORT_REQUEST_MODEL_BEGIN",
+              "# KMT_SUPPORT_REQUEST_MODEL_END",
+              "support model",
+          )
+          invoice_support_routes = extract_marked_block(
+              candidate_source,
+              "# KMT_ORDER_INVOICE_AND_SUPPORT_ROUTES_BEGIN",
+              "# KMT_ORDER_INVOICE_AND_SUPPORT_ROUTES_END",
+              "invoice/support routes",
+          )
 
           if "GOOGLE_CLIENT_ID =" not in source:
               raise SystemExit("STOP: Existing server.py has no GOOGLE_CLIENT_ID setting; no file changes made.")
@@ -349,6 +392,68 @@ jobs:
               ),
           ])
 
+          # Import the Pillow primitives used to build a lightweight PDF invoice.
+          if "from PIL import Image, ImageOps, ImageDraw, ImageFont" not in source:
+              old_pil_import = "from PIL import Image, ImageOps"
+              if source.count(old_pil_import) != 1:
+                  raise SystemExit("STOP: Could not safely locate the existing Pillow import; no VPS changes made.")
+              source = source.replace(old_pil_import, "from PIL import Image, ImageOps, ImageDraw, ImageFont", 1)
+
+          # Extract only the two marked candidate sections; preserve unrelated VPS-only source changes.
+          if "class SupportRequestIn(BaseModel):" not in source:
+              model_anchor = "\n\nclass TravelPageIn(BaseModel):"
+              if source.count(model_anchor) != 1:
+                  raise SystemExit("STOP: Could not safely locate the support model insertion point; no VPS changes made.")
+              source = source.replace(model_anchor, "\n\n" + support_model + model_anchor, 1)
+          elif "validate_support_reason" not in source or "validate_support_details" not in source:
+              raise SystemExit("STOP: Existing support model differs from the expected version; no VPS changes made.")
+
+          if "def _build_order_invoice_pdf(" not in source:
+              route_anchor = "\n\nclass DeliveryLocationIn(BaseModel):"
+              if source.count(route_anchor) != 1:
+                  raise SystemExit("STOP: Could not safely locate invoice/support route insertion point; no VPS changes made.")
+              source = source.replace(route_anchor, "\n\n" + invoice_support_routes + route_anchor, 1)
+          elif (
+              '@api.get("/orders/{order_id}/invoice-token")' not in source
+              or '@api.get("/orders/{order_id}/invoice.pdf")' not in source
+              or '@api.get("/support/requests")' not in source
+              or '@api.post("/orders/{order_id}/support-requests")' not in source
+          ):
+              raise SystemExit("STOP: Existing invoice/support routes are incomplete; no VPS changes made.")
+
+          # Remove the former 5% customer tax calculation from cart, checkout and seeded sample orders.
+          source, tax_calc_count = re.subn(
+              r"(?m)^([ \t]*)tax = round\(subtotal \* 0\.05, 2\)\r?\n",
+              "",
+              source,
+          )
+          if tax_calc_count not in (0, 2):
+              raise SystemExit(f"STOP: Expected 0 or 2 legacy tax calculations, found {tax_calc_count}; no VPS changes made.")
+
+          source, tax_total_count = re.subn(
+              r"(?m)^([ \t]*)total = round\(subtotal \+ delivery_fee \+ tax, 2\)\r?\n",
+              lambda match: match.group(1) + "total = round(subtotal + delivery_fee, 2)\n",
+              source,
+          )
+          if tax_total_count not in (0, 2):
+              raise SystemExit(f"STOP: Expected 0 or 2 legacy tax-inclusive totals, found {tax_total_count}; no VPS changes made.")
+
+          source, tax_field_count = re.subn(
+              r'(?m)^[ \t]*"tax": (?:tax|expanded\["tax"\]),\r?\n',
+              "",
+              source,
+          )
+          if tax_field_count not in (0, 2):
+              raise SystemExit(f"STOP: Expected 0 or 2 legacy tax response fields, found {tax_field_count}; no VPS changes made.")
+
+          old_seed_tax = '"subtotal": round(subtotal, 2), "delivery_fee": delivery_fee, "tax": tax, "total": total,'
+          new_seed_total = '"subtotal": round(subtotal, 2), "delivery_fee": delivery_fee, "total": total,'
+          seed_tax_count = source.count(old_seed_tax)
+          if seed_tax_count not in (0, 1):
+              raise SystemExit(f"STOP: Expected 0 or 1 seeded tax fields, found {seed_tax_count}; no VPS changes made.")
+          if seed_tax_count:
+              source = source.replace(old_seed_tax, new_seed_total, 1)
+
           if source != original:
               mode = path.stat().st_mode & 0o777
               temporary = path.with_suffix(path.suffix + ".targeted-backend.tmp")
@@ -385,6 +490,17 @@ jobs:
 
           if ! grep -Fq 'doc = {"id": pid, **product_data, "vendor_id": store.get("vendor_id")}' "$TARGET" || ! grep -Fq 'upd["vendor_id"] = store.get("vendor_id")' "$TARGET"; then
             echo "BACKEND_ADMIN_VENDOR_PRODUCT_OWNERSHIP_PATCH_MISSING"
+            rollback
+            exit 1
+          fi
+
+          if ! grep -Fq 'def _build_order_invoice_pdf(' "$TARGET" \
+            || ! grep -Fq '@api.get("/orders/{order_id}/invoice-token")' "$TARGET" \
+            || ! grep -Fq '@api.get("/orders/{order_id}/invoice.pdf")' "$TARGET" \
+            || ! grep -Fq '@api.get("/support/requests")' "$TARGET" \
+            || ! grep -Fq '@api.post("/orders/{order_id}/support-requests")' "$TARGET" \
+            || grep -Fq 'tax = round(subtotal * 0.05, 2)' "$TARGET"; then
+            echo "BACKEND_INVOICE_SUPPORT_OR_TAX_VALIDATION_FAIL"
             rollback
             exit 1
           fi

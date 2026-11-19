@@ -129,7 +129,6 @@ export default function Cart() {
           <Text style={s.billTitle}>Bill Details</Text>
           <Row label="Item total" value={`₹${cart.subtotal}`} />
           <Row label="Delivery fee" value={cart.delivery_fee ? `₹${cart.delivery_fee}` : "FREE"} valueColor={cart.delivery_fee ? undefined : COLORS.success} />
-          <Row label="Taxes (5%)" value={`₹${cart.tax}`} />
           <View style={s.dash} />
           <Row label="To Pay" value={`₹${cart.total}`} bold />
         </View>

@@ -402,6 +402,29 @@ export default function Profile() {
                     Our support team will help you with your
                     queries and concerns regarding KMT Bazaar.
                   </Text>
+                  <TouchableOpacity
+                    testID="help-refund-return-entry"
+                    onPress={() => {
+                      closeInfoModal();
+                      router.push("/support/returns" as any);
+                    }}
+                    style={{
+                      minHeight: 48,
+                      borderRadius: 12,
+                      backgroundColor: COLORS.brand,
+                      paddingHorizontal: 14,
+                      marginTop: 14,
+                      flexDirection: "row",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: 9,
+                    }}
+                  >
+                    <MaterialCommunityIcons name="swap-horizontal" size={20} color="#fff" />
+                    <Text style={{ color: "#fff", fontWeight: "800", fontSize: 13 }}>
+                      Apply for Refund / Return
+                    </Text>
+                  </TouchableOpacity>
                 </View>
               )}
 
