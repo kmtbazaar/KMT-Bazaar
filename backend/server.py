@@ -439,12 +439,14 @@ class CartItemIn(BaseModel):
     product_id: str
     quantity: int = 1
     variant: Optional[str] = None
+    color: Optional[str] = None
 
 
 class CartUpdateIn(BaseModel):
     product_id: str
     quantity: int
     variant: Optional[str] = None
+    color: Optional[str] = None
 
 
 class CheckoutIn(BaseModel):
@@ -1855,6 +1857,22 @@ def _resolve_product_variant(product, variant_id=None, unit_fallback=None):
     return variants[0]
 
 
+def _resolve_product_color(product, requested_color=None):
+    colors = (product or {}).get("colors")
+    available = [str(color).strip() for color in colors if str(color).strip()] if isinstance(colors, list) else []
+    requested = str(requested_color or "").strip()
+    if not available:
+        if requested:
+            raise HTTPException(status_code=400, detail="This product has no selectable colours")
+        return None
+    if not requested:
+        return available[0]
+    found = next((color for color in available if color.casefold() == requested.casefold()), None)
+    if not found:
+        raise HTTPException(status_code=400, detail="Please select a valid product colour")
+    return found
+
+
 def _cart_item_variant_id(product, item):
     variants = (product or {}).get("variants")
     if isinstance(variants, list) and variants:
@@ -1917,6 +1935,7 @@ async def expand_cart(cart):
         unit_label = str(selected_variant.get("unit") or p.get("unit") or "") if selected_variant else str(p.get("unit") or "")
         variant_id = str(selected_variant.get("id")) if selected_variant and selected_variant.get("id") else None
         available_stock = max(0, int(selected_variant.get("stock") or 0)) if selected_variant else max(0, int(p.get("stock") or 0))
+        selected_color = _resolve_product_color(p, item.get("color"))
         quantity = max(0, int(item.get("quantity") or 0))
         line_total = unit_price * quantity
         subtotal += line_total
@@ -1930,6 +1949,7 @@ async def expand_cart(cart):
             "variant": variant_id if product_variants else item.get("variant"),
             "variant_label": unit_label if product_variants else None,
             "unit": unit_label,
+            "color": selected_color,
             "stock": available_stock,
             "line_total": round(line_total, 2),
         })
@@ -1971,6 +1991,7 @@ async def add_to_cart(item: CartItemIn, current=Depends(get_current_user)):
     if product_variants and item.variant and not selected_variant:
         raise HTTPException(status_code=400, detail="Please select a valid size/pack option")
     canonical_variant_id = str(selected_variant.get("id")) if selected_variant and selected_variant.get("id") else None
+    canonical_color = _resolve_product_color(product, item.color)
     stock = max(0, int(selected_variant.get("stock") or 0)) if selected_variant else max(0, int(product.get("stock") or 0))
 
     cart = await get_cart_doc(current["id"])
@@ -1997,10 +2018,16 @@ async def add_to_cart(item: CartItemIn, current=Depends(get_current_user)):
             continue
         existing_variant_id = _cart_item_variant_id(product, existing)
         same_variant = existing_variant_id == canonical_variant_id if product_variants else existing.get("variant") == (item.variant or None)
-        if same_variant:
+        existing_color = _resolve_product_color(product, existing.get("color"))
+        same_color = str(existing_color or "").casefold() == str(canonical_color or "").casefold()
+        if same_variant and same_color:
             existing["quantity"] = max(0, int(existing.get("quantity") or 0)) + item.quantity
             if product_variants:
                 existing["variant"] = canonical_variant_id
+            if canonical_color:
+                existing["color"] = canonical_color
+            else:
+                existing.pop("color", None)
             found = True
             break
     if not found:
@@ -2008,6 +2035,7 @@ async def add_to_cart(item: CartItemIn, current=Depends(get_current_user)):
             "product_id": item.product_id,
             "quantity": item.quantity,
             "variant": canonical_variant_id if product_variants else (item.variant or None),
+            "color": canonical_color,
         })
     await db.carts.update_one(
         {"user_id": current["id"]},
@@ -2027,6 +2055,7 @@ async def update_cart(item: CartUpdateIn, current=Depends(get_current_user)):
     if product_variants and item.variant and not selected_variant and item.quantity > 0:
         raise HTTPException(status_code=400, detail="Please select a valid size/pack option")
     canonical_variant_id = str(selected_variant.get("id")) if selected_variant and selected_variant.get("id") else None
+    canonical_color = _resolve_product_color(product, item.color) if product else None
 
     if item.quantity > 0:
         if not product or product.get("is_available", True) is False:
@@ -2042,10 +2071,10 @@ async def update_cart(item: CartUpdateIn, current=Depends(get_current_user)):
             if existing.get("product_id") != item.product_id:
                 continue
             existing_variant_id = _cart_item_variant_id(product, existing)
-            if product_variants:
-                if existing_variant_id != canonical_variant_id:
-                    continue
-            elif existing.get("variant") != (item.variant or None):
+            if product_variants and existing_variant_id != canonical_variant_id:
+                continue
+            existing_color = _resolve_product_color(product, existing.get("color"))
+            if str(existing_color or "").casefold() != str(canonical_color or "").casefold():
                 quantity_of_other_lines += max(0, int(existing.get("quantity") or 0))
         if stock <= 0:
             raise HTTPException(status_code=409, detail="This size/pack is out of stock")
@@ -2058,11 +2087,17 @@ async def update_cart(item: CartUpdateIn, current=Depends(get_current_user)):
         if existing.get("product_id") == item.product_id:
             existing_variant_id = _cart_item_variant_id(product, existing) if product else existing.get("variant")
             same_variant = existing_variant_id == canonical_variant_id if product_variants else existing.get("variant") == (item.variant or None)
-            if same_variant:
+            existing_color = _resolve_product_color(product, existing.get("color"))
+            same_color = str(existing_color or "").casefold() == str(canonical_color or "").casefold()
+            if same_variant and same_color:
                 if item.quantity > 0:
                     existing["quantity"] = item.quantity
                     if product_variants:
                         existing["variant"] = canonical_variant_id
+                    if canonical_color:
+                        existing["color"] = canonical_color
+                    else:
+                        existing.pop("color", None)
                     new_items.append(existing)
                 continue
         new_items.append(existing)
@@ -2960,11 +2995,35 @@ class ProductIn(BaseModel):
     unit: str = ""
     stock: int = 0
     variants: Optional[List[ProductVariantIn]] = None
+    colors: Optional[List[str]] = None
     image: str = ""
     images: Optional[List[str]] = None
     description: str = ""
     is_available: bool = True
     trending: bool = False
+
+
+def _normalize_product_colors(raw_colors):
+    if raw_colors is None:
+        return None
+    if not isinstance(raw_colors, list):
+        raise HTTPException(status_code=400, detail="Product colours must be a list")
+    normalized = []
+    seen = set()
+    for raw in raw_colors:
+        color = str(raw or "").strip()
+        if not color:
+            continue
+        if len(color) > 32:
+            raise HTTPException(status_code=400, detail="Colour names must be 32 characters or fewer")
+        key = color.casefold()
+        if key in seen:
+            continue
+        seen.add(key)
+        normalized.append(color)
+    if len(normalized) > 20:
+        raise HTTPException(status_code=400, detail="A product can have at most 20 colour options")
+    return normalized
 
 
 def _normalize_product_variants(raw_variants):
@@ -3745,6 +3804,11 @@ async def admin_create_product(data: ProductIn, _=Depends(require_roles("admin")
 
     pid = "p-" + uuid.uuid4().hex[:8]
     product_data = data.dict()
+    normalized_colors = _normalize_product_colors(data.colors)
+    if normalized_colors is None:
+        product_data.pop("colors", None)
+    else:
+        product_data["colors"] = normalized_colors
     if data.variants is not None:
         _apply_product_variants(product_data, _normalize_product_variants(data.variants))
     else:
@@ -3763,6 +3827,10 @@ async def admin_create_product(data: ProductIn, _=Depends(require_roles("admin")
 @api.put("/admin/products/{pid}")
 async def admin_update_product(pid: str, data: ProductIn, _=Depends(require_roles("admin"))):
     upd = data.dict()
+    if data.colors is None:
+        upd.pop("colors", None)
+    else:
+        upd["colors"] = _normalize_product_colors(data.colors)
     if data.images is None:
         upd.pop("images", None)
 
@@ -5391,6 +5459,11 @@ async def vendor_create_product(data: ProductIn, current=Depends(require_roles("
 
     pid = "p-" + uuid.uuid4().hex[:8]
     doc = data.dict()
+    normalized_colors = _normalize_product_colors(data.colors)
+    if normalized_colors is None:
+        doc.pop("colors", None)
+    else:
+        doc["colors"] = normalized_colors
     if data.variants is not None:
         _apply_product_variants(doc, _normalize_product_variants(data.variants))
     else:
@@ -5430,6 +5503,10 @@ async def vendor_update_product(pid: str, data: ProductIn, current=Depends(requi
         raise HTTPException(400, "Shop category is not configured")
 
     upd = data.dict()
+    if data.colors is None:
+        upd.pop("colors", None)
+    else:
+        upd["colors"] = _normalize_product_colors(data.colors)
     if data.variants is None:
         upd.pop("variants", None)
         if p.get("variants"):

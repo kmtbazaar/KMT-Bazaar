@@ -1,17 +1,26 @@
 import { LocalizedText as Text, LocalizedTextInput as TextInput } from "@/src/LocalizedText";
 import React, { useEffect, useState, useMemo, useRef } from "react";
-import { View, StyleSheet, Pressable, ScrollView, ActivityIndicator, Share, Platform, useWindowDimensions } from "react-native";
+import { View, StyleSheet, Pressable, ScrollView, ActivityIndicator, Share, Platform, useWindowDimensions, Modal } from "react-native";
 import { Image } from "expo-image";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
+import { Gesture, GestureDetector } from "react-native-gesture-handler";
+import Animated, { useAnimatedStyle, useSharedValue, withSpring } from "react-native-reanimated";
 import { API, api } from "@/src/api";
 import { useCart } from "@/src/CartContext";
 import { COLORS, RADIUS, SPACING, shadow } from "@/src/theme";
 import CheckoutBar from "@/src/components/CheckoutBar";
 import { useWishlist } from "@/src/WishlistContext";
+
+const PRODUCT_COLOR_SWATCHES: Record<string, string> = {
+  black: "#171717", white: "#FFFFFF", red: "#DC2626", blue: "#2563EB",
+  navy: "#1E3A8A", green: "#16A34A", yellow: "#FACC15", pink: "#EC4899",
+  purple: "#8B5CF6", orange: "#F97316", brown: "#92400E", grey: "#9CA3AF",
+  gray: "#9CA3AF", maroon: "#7F1D1D", beige: "#D6C1A1",
+};
 
 export default function Product() {
   const { width: screenWidth } = useWindowDimensions();
@@ -22,6 +31,37 @@ export default function Product() {
   const { isWishlisted, toggle: toggleWishlist, ready: wishlistReady } = useWishlist();
   const [p, setP] = useState<any>(null);
   const [selectedVariantId, setSelectedVariantId] = useState<string | null>(null);
+  const [selectedColor, setSelectedColor] = useState<string | null>(null);
+  const [imageViewerVisible, setImageViewerVisible] = useState(false);
+  const [viewerImageIndex, setViewerImageIndex] = useState(0);
+  const zoomScale = useSharedValue(1);
+  const zoomOffsetX = useSharedValue(0);
+  const zoomOffsetY = useSharedValue(0);
+  const zoomImageStyle = useAnimatedStyle(() => ({
+    transform: [
+      { translateX: zoomOffsetX.value },
+      { translateY: zoomOffsetY.value },
+      { scale: zoomScale.value },
+    ],
+  }));
+  const imageZoomGesture = Gesture.Simultaneous(
+    Gesture.Pinch()
+      .onUpdate((event) => { zoomScale.value = Math.max(1, Math.min(4, event.scale)); })
+      .onEnd(() => {
+        if (zoomScale.value <= 1.02) {
+          zoomScale.value = withSpring(1);
+          zoomOffsetX.value = withSpring(0);
+          zoomOffsetY.value = withSpring(0);
+        }
+      }),
+    Gesture.Pan()
+      .onUpdate((event) => {
+        if (zoomScale.value > 1) {
+          zoomOffsetX.value = event.translationX;
+          zoomOffsetY.value = event.translationY;
+        }
+      })
+  );
   const selectedVariant = Array.isArray(p?.variants)
     ? p.variants.find((variant: any) => String(variant.id) === String(selectedVariantId)) || p.variants[0] || null
     : null;
@@ -47,6 +87,7 @@ export default function Product() {
       try {
         const data = await api.product(id as string);
         setSelectedVariantId(Array.isArray(data?.variants) && data.variants.length ? String(data.variants[0].id) : null);
+        setSelectedColor(Array.isArray(data?.colors) && data.colors.length ? String(data.colors[0]) : null);
         setP(data);
       } catch (e) {
         console.error(e);
@@ -135,6 +176,23 @@ export default function Product() {
   // FIX 1: Quantity ko hardcoded 1 rakhne ke bajaye Context wale Cart state se read karenge
   const productImages = useMemo(() => Array.from(new Set([...(Array.isArray(p?.images) ? p.images : []), p?.image].filter((url: any) => typeof url === "string" && url.trim()))), [p?.images, p?.image]);
 
+  const openImageViewer = (index: number) => {
+    setViewerImageIndex(index);
+    zoomScale.value = withSpring(1);
+    zoomOffsetX.value = withSpring(0);
+    zoomOffsetY.value = withSpring(0);
+    setImageViewerVisible(true);
+  };
+
+  const closeImageViewer = () => {
+    setImageViewerVisible(false);
+    zoomScale.value = withSpring(1);
+    zoomOffsetX.value = withSpring(0);
+    zoomOffsetY.value = withSpring(0);
+  };
+
+  const imageViewerUri = productImages[viewerImageIndex] || p?.image || "";
+
   useEffect(() => {
     if (productImages.length < 2 || carouselWidth <= 0) return;
     const timer = setInterval(() => {
@@ -187,16 +245,17 @@ export default function Product() {
     const item = cart?.items?.find((i: any) =>
       (i.product_id === p?.id || i.id === p?.id) &&
       (String(i.variant || "") === String(selectedVariant?.id || "") ||
-        (!i.variant && selectedVariant?.id && String(selectedVariant.id) === String(defaultVariantId)))
+        (!i.variant && selectedVariant?.id && String(selectedVariant.id) === String(defaultVariantId))) &&
+      String(i.color || "").toLowerCase() === String(selectedColor || "").toLowerCase()
     );
     return item?.quantity || 0;
-  }, [cart, p?.id, selectedVariant?.id, p?.variants]);
+  }, [cart, p?.id, selectedVariant?.id, p?.variants, selectedColor]);
 
   const onAddFirstTime = async () => {
     if (outOfStock) return;
     setAdding(true);
     try {
-      const added = await add(p.id, 1, selectedVariant?.id);
+      const added = await add(p.id, 1, selectedVariant?.id, selectedColor);
       if (added) {
         try { await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success); } catch {}
         setToast("Added to cart!");
@@ -211,14 +270,14 @@ export default function Product() {
     if (outOfStock || currentQty >= availableStock) return;
     try { await Haptics.selectionAsync(); } catch {}
     try {
-      if (currentQty === 0) await add(p.id, 1, selectedVariant?.id);
-      else await update(p.id, currentQty + 1, selectedVariant?.id);
+      if (currentQty === 0) await add(p.id, 1, selectedVariant?.id, selectedColor);
+      else await update(p.id, currentQty + 1, selectedVariant?.id, selectedColor);
     } catch {}
   };
 
   const handleDecrement = async () => {
     try { await Haptics.selectionAsync(); } catch {}
-    try { await update(p.id, Math.max(0, currentQty - 1), selectedVariant?.id); } catch {}
+    try { await update(p.id, Math.max(0, currentQty - 1), selectedVariant?.id, selectedColor); } catch {}
   };
 
   const onToggleWishlist = () => {
@@ -292,7 +351,15 @@ export default function Product() {
                 key={uri + "-" + index}
                 style={[s.carouselSlide, carouselWidth > 0 ? { width: carouselWidth } : null, { height: productImageHeight }]}
               >
-                <Image source={{ uri }} style={s.img} contentFit="contain" />
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={"Open product photo " + (index + 1) + " to zoom"}
+                  testID={"product-image-open-" + (index + 1)}
+                  style={s.carouselSlideContent}
+                  onPress={() => openImageViewer(index)}
+                >
+                  <Image source={{ uri }} style={s.img} contentFit="contain" />
+                </Pressable>
               </View>
             ))}
           </ScrollView>
@@ -326,11 +393,42 @@ export default function Product() {
             {discount > 0 && <View style={s.discPill}><Text style={s.discText}>{discount}% OFF</Text></View>}
           </View>
 
+          {Array.isArray(p.colors) && p.colors.length ? (
+            <View style={s.productColorSelector} testID="product-colour-selector">
+              <View style={s.productColorHeader}>
+                <Text style={s.productColorTitle}>Choose colour</Text>
+                {selectedColor ? <Text style={s.productColorSelected}>{selectedColor}</Text> : null}
+              </View>
+              <View style={s.productColorOptions}>
+                {p.colors.map((color: string) => {
+                  const active = String(selectedColor || "").toLowerCase() === String(color).toLowerCase();
+                  const swatch = PRODUCT_COLOR_SWATCHES[String(color).toLowerCase()] || "#94A3B8";
+                  return (
+                    <Pressable
+                      key={color}
+                      accessibilityRole="button"
+                      accessibilityLabel={"Select colour " + color}
+                      accessibilityState={{ selected: active }}
+                      testID={"product-colour-" + String(color).toLowerCase().replace(/\s+/g, "-")}
+                      onPress={() => setSelectedColor(String(color))}
+                      style={[s.productColorChoice, active && s.productColorChoiceActive]}
+                    >
+                      <View style={[s.productColorSwatch, { backgroundColor: swatch }, String(color).toLowerCase() === "white" && s.productColorSwatchWhite]}>
+                        {active ? <MaterialCommunityIcons name="check" size={14} color={String(color).toLowerCase() === "white" ? "#111827" : "#FFFFFF"} /> : null}
+                      </View>
+                      <Text style={[s.productColorLabel, active && s.productColorLabelActive]}>{color}</Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            </View>
+          ) : null}
+
           <View style={s.variantSelector} testID="product-size-pack-selector">
             <View style={s.variantSelectorHeader}>
               <View style={{ flex: 1 }}>
                 <Text style={s.variantSelectorTitle}>Choose size / pack</Text>
-                <Text style={s.variantSelectorSubtitle}>Choose your pack — price and live stock update instantly</Text>
+                <Text style={s.variantSelectorSubtitle}>Select a size; its price updates above.</Text>
               </View>
               <MaterialCommunityIcons name="package-variant" size={23} color={COLORS.accent} />
             </View>
@@ -338,15 +436,13 @@ export default function Product() {
               {variantOptions.map((variant: any, index: number) => {
                 const variantId = variant.id ? String(variant.id) : null;
                 const active = String(variantId || "") === String(selectedVariant?.id || "");
-                const variantPrice = Number(variant.price ?? p.price ?? 0);
-                const variantMrp = Number(variant.mrp ?? variantPrice);
                 const variantStock = Math.max(0, Number(variant.stock ?? 0));
                 const unavailable = p?.is_available === false || variantStock <= 0;
                 return (
                   <Pressable
                     key={variantId || `legacy-${variant.unit || "standard"}-${index}`}
                     accessibilityRole="button"
-                    accessibilityLabel={`Select ${variant.unit || "standard"} for ₹${variantPrice}`}
+                    accessibilityLabel={"Select size " + (variant.unit || "standard")}
                     accessibilityState={{ selected: active }}
                     onPress={() => setSelectedVariantId(variantId)}
                     style={[s.variantChoice, active && s.variantChoiceActive, unavailable && s.variantChoiceUnavailable]}
@@ -356,13 +452,6 @@ export default function Product() {
                       <Text style={[s.variantChoiceUnit, active && s.variantChoiceUnitActive]}>{variant.unit || "Standard"}</Text>
                       {active ? <MaterialCommunityIcons name="check-circle" size={16} color={COLORS.accent} /> : null}
                     </View>
-                    <View style={s.variantChoicePriceRow}>
-                      <Text style={[s.variantChoicePrice, active && s.variantChoicePriceActive]}>₹{variantPrice}</Text>
-                      {variantMrp > variantPrice ? <Text style={s.variantChoiceMrp}>₹{variantMrp}</Text> : null}
-                    </View>
-                    <Text style={[s.variantChoiceStock, unavailable && s.variantChoiceStockUnavailable]}>
-                      {variantStock > 0 ? `${variantStock} available` : "Sold out"}
-                    </Text>
                   </Pressable>
                 );
               })}
@@ -447,6 +536,37 @@ export default function Product() {
         </View>
       </ScrollView>
 
+      <Modal
+        visible={imageViewerVisible && Boolean(imageViewerUri)}
+        transparent
+        animationType="fade"
+        statusBarTranslucent
+        onRequestClose={closeImageViewer}
+      >
+        <View style={s.imageViewerOverlay} testID="product-image-viewer">
+          <View style={s.imageViewerToolbar}>
+            <Text style={s.imageViewerCount}>{viewerImageIndex + 1} / {productImages.length}</Text>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Close image viewer"
+              testID="product-image-viewer-close"
+              onPress={closeImageViewer}
+              style={s.imageViewerClose}
+            >
+              <MaterialCommunityIcons name="close" size={25} color="#FFFFFF" />
+            </Pressable>
+          </View>
+          <GestureDetector gesture={imageZoomGesture}>
+            <View style={s.imageViewerStage}>
+              <Animated.View style={[s.imageViewerImageWrap, zoomImageStyle]}>
+                <Image source={{ uri: imageViewerUri }} style={s.imageViewerImage} contentFit="contain" />
+              </Animated.View>
+            </View>
+          </GestureDetector>
+          <Text style={s.imageViewerHint}>Pinch to zoom · drag to move</Text>
+        </View>
+      </Modal>
+
       {toast && (
         <View style={s.toast} testID="add-toast">
           <MaterialCommunityIcons name="check-circle" size={20} color="#fff" />
@@ -504,6 +624,7 @@ const s = StyleSheet.create({
   wishIcon: { textShadowColor: "rgba(0,0,0,0.65)", textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 2 },
   imageCarousel: { width: "100%", overflow: "hidden", backgroundColor: COLORS.surfaceSecondary },
   carouselSlide: { width: "100%", backgroundColor: COLORS.surfaceSecondary },
+  carouselSlideContent: { width: "100%", height: "100%" },
   img: { width: "100%", height: "100%", backgroundColor: COLORS.surfaceSecondary },
   carouselIndicators: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 4, paddingVertical: 4 },
   carouselDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: COLORS.border, marginHorizontal: 2 },
@@ -518,6 +639,17 @@ const s = StyleSheet.create({
   mrp: { fontSize: 16, color: COLORS.textMuted, textDecorationLine: "line-through" },
   discPill: { backgroundColor: COLORS.success, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 4 },
   discText: { color: "#fff", fontWeight: "800", fontSize: 11 },
+  productColorSelector: { marginTop: SPACING.md, padding: SPACING.md, borderRadius: 16, borderWidth: 1, borderColor: "#BFDBFE", backgroundColor: "#EFF6FF", gap: 10 },
+  productColorHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8 },
+  productColorTitle: { color: COLORS.text, fontSize: 15, fontWeight: "900" },
+  productColorSelected: { color: "#1D4ED8", fontSize: 12, fontWeight: "800" },
+  productColorOptions: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
+  productColorChoice: { minWidth: 58, alignItems: "center", gap: 4, paddingHorizontal: 5, paddingVertical: 5, borderRadius: 11, borderWidth: 1, borderColor: "transparent" },
+  productColorChoiceActive: { borderColor: "#2563EB", backgroundColor: "#DBEAFE" },
+  productColorSwatch: { width: 30, height: 30, borderRadius: 15, borderWidth: 1, borderColor: "rgba(15,23,42,0.14)", alignItems: "center", justifyContent: "center" },
+  productColorSwatchWhite: { borderColor: "#94A3B8" },
+  productColorLabel: { color: COLORS.textSecondary, fontSize: 10, fontWeight: "700" },
+  productColorLabelActive: { color: "#1D4ED8", fontWeight: "900" },
   variantSelector: { marginTop: SPACING.sm, padding: SPACING.md, borderRadius: 18, borderWidth: 1, borderColor: "#FED7AA", backgroundColor: "#FFF7ED", gap: 12 },
   variantSelectorHeader: { flexDirection: "row", alignItems: "center", gap: 10 },
   variantSelectorTitle: { color: COLORS.text, fontSize: 16, fontWeight: "900" },
@@ -527,14 +659,16 @@ const s = StyleSheet.create({
   variantChoiceActive: { borderColor: COLORS.accent, backgroundColor: "#FFEDD5", ...shadow.soft },
   variantChoiceUnavailable: { borderColor: "#FECACA", backgroundColor: "#FFF7F7" },
   variantChoiceTop: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 2 },
+  imageViewerOverlay: { flex: 1, backgroundColor: "rgba(2,6,23,0.98)", paddingTop: Platform.OS === "ios" ? 48 : 22, paddingBottom: 26 },
+  imageViewerToolbar: { height: 46, paddingHorizontal: 18, flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  imageViewerCount: { color: "#FFFFFF", fontSize: 13, fontWeight: "800" },
+  imageViewerClose: { width: 42, height: 42, borderRadius: 21, alignItems: "center", justifyContent: "center", backgroundColor: "rgba(255,255,255,0.12)" },
+  imageViewerStage: { flex: 1, overflow: "hidden", alignItems: "center", justifyContent: "center" },
+  imageViewerImageWrap: { width: "100%", height: "100%", alignItems: "center", justifyContent: "center" },
+  imageViewerImage: { width: "100%", height: "100%" },
+  imageViewerHint: { color: "rgba(255,255,255,0.7)", fontSize: 12, fontWeight: "600", textAlign: "center", paddingTop: 10 },
   variantChoiceUnit: { color: COLORS.text, fontSize: 11, fontWeight: "800", flexShrink: 1 },
   variantChoiceUnitActive: { color: COLORS.accentDark },
-  variantChoicePriceRow: { flexDirection: "row", alignItems: "baseline", gap: 3, flexWrap: "wrap" },
-  variantChoicePrice: { color: COLORS.text, fontSize: 13, fontWeight: "900" },
-  variantChoicePriceActive: { color: COLORS.accentDark },
-  variantChoiceMrp: { color: COLORS.textMuted, fontSize: 9, textDecorationLine: "line-through" },
-  variantChoiceStock: { color: COLORS.success, fontSize: 9, fontWeight: "700" },
-  variantChoiceStockUnavailable: { color: COLORS.error },
   divider: { height: 1, backgroundColor: COLORS.border, marginVertical: SPACING.lg },
   sectionTitle: { fontWeight: "800", color: COLORS.text, marginBottom: 6 },
   desc: { color: COLORS.textSecondary, lineHeight: 22 },

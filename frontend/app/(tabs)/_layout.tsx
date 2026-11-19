@@ -136,9 +136,9 @@ export default function TabsLayout() {
         tabBarInactiveTintColor: "#475569",
         tabBarStyle: {
           position: "absolute",
-          // Remove the remaining browser bottom inset and place the bar flush
-          // against the viewport edge; keep native safe-area positioning intact.
-          bottom: Platform.OS === "web" ? -18 : 0,
+          // Lower the Android bar into the unused bottom gap; keep iOS safe-area placement
+          // and the existing web viewport offset unchanged.
+          bottom: Platform.OS === "web" ? -18 : Platform.OS === "android" ? -10 : 0,
           borderTopColor: COLORS.border,
           backgroundColor:
             Platform.OS === "ios" ? "transparent" : "#FFFFFF",

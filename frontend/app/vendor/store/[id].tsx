@@ -28,6 +28,23 @@ const PRODUCT_UNIT_OPTIONS = [
   "1 pc", "250 g", "500 g", "1 kg", "250 ml", "500 ml", "750 ml", "1 L", "2 L",
 ];
 
+const PRODUCT_COLOR_OPTIONS = [
+  { label: "Black", hex: "#171717" },
+  { label: "White", hex: "#FFFFFF" },
+  { label: "Red", hex: "#DC2626" },
+  { label: "Blue", hex: "#2563EB" },
+  { label: "Navy", hex: "#1E3A8A" },
+  { label: "Green", hex: "#16A34A" },
+  { label: "Yellow", hex: "#FACC15" },
+  { label: "Pink", hex: "#EC4899" },
+  { label: "Purple", hex: "#8B5CF6" },
+  { label: "Orange", hex: "#F97316" },
+  { label: "Brown", hex: "#92400E" },
+  { label: "Grey", hex: "#9CA3AF" },
+  { label: "Maroon", hex: "#7F1D1D" },
+  { label: "Beige", hex: "#D6C1A1" },
+];
+
 type ProductVariantDraft = { id: string; unit: string; price: string; mrp: string; stock: string };
 
 const buildVariantPayload = (base: any, extras: ProductVariantDraft[], baseVariantId = "") => [
@@ -62,6 +79,89 @@ const validateVariantDrafts = (variants: any[]) => {
   }
   return "";
 };
+
+function ProductColorPicker({
+  value,
+  onChange,
+  testID,
+}: {
+  value: string[];
+  onChange: (colors: string[]) => void;
+  testID: string;
+}) {
+  const [customColor, setCustomColor] = useState("");
+
+  const toggleColor = (color: string) => {
+    const exists = value.some((item) => item.toLowerCase() === color.toLowerCase());
+    onChange(exists
+      ? value.filter((item) => item.toLowerCase() !== color.toLowerCase())
+      : [...value, color]);
+  };
+
+  const addCustomColor = () => {
+    const color = customColor.trim().replace(/\s+/g, " ");
+    if (!color || value.some((item) => item.toLowerCase() === color.toLowerCase())) return;
+    onChange([...value, color]);
+    setCustomColor("");
+  };
+
+  return (
+    <View style={s.productColorPanel} testID={testID}>
+      <Text style={s.productColorTitle}>Available colours</Text>
+      <Text style={s.productColorHint}>Select every colour customers can choose.</Text>
+      <View style={s.productColorOptions}>
+        {PRODUCT_COLOR_OPTIONS.map((color) => {
+          const active = value.some((item) => item.toLowerCase() === color.label.toLowerCase());
+          return (
+            <Pressable
+              key={color.label}
+              accessibilityRole="button"
+              accessibilityLabel={color.label + " colour"}
+              accessibilityState={{ selected: active }}
+              testID={testID + "-" + color.label.toLowerCase()}
+              onPress={() => toggleColor(color.label)}
+              style={[s.productColorOption, active && s.productColorOptionActive]}
+            >
+              <View style={[
+                s.productColorDot,
+                { backgroundColor: color.hex },
+                color.label === "White" && s.productColorDotWhite,
+                active && s.productColorDotSelected,
+              ]}>
+                {active ? <MaterialCommunityIcons name="check" size={11} color={color.label === "White" ? "#111827" : "#FFFFFF"} /> : null}
+              </View>
+              <Text style={[s.productColorOptionText, active && s.productColorOptionTextActive]}>{color.label}</Text>
+            </Pressable>
+          );
+        })}
+      </View>
+      <View style={s.addCustomColorRow}>
+        <TextInput
+          value={customColor}
+          onChangeText={setCustomColor}
+          placeholder="Add another colour"
+          placeholderTextColor="#64748B"
+          style={[s.inputCompact, s.addCustomColorInput]}
+          onSubmitEditing={addCustomColor}
+          returnKeyType="done"
+        />
+        <Pressable
+          testID={testID + "-add-custom"}
+          accessibilityRole="button"
+          accessibilityLabel="Add custom colour"
+          onPress={addCustomColor}
+          disabled={!customColor.trim()}
+          style={[s.addCustomColorButton, !customColor.trim() && { opacity: 0.45 }]}
+        >
+          <MaterialCommunityIcons name="plus" size={19} color="#FFFFFF" />
+        </Pressable>
+      </View>
+      <Text style={s.productColorSelectedCount}>
+        {value.length ? value.length + " colour option(s) selected" : "No colour options selected"}
+      </Text>
+    </View>
+  );
+}
 
 export default function VendorStoreDetail() {
   const router = useRouter();
@@ -105,6 +205,7 @@ export default function VendorStoreDetail() {
     stock: "10",
     image: "",
     images: [] as string[],
+    colors: [] as string[],
     description: "",
     trending: false,
     item_category: "",
@@ -122,6 +223,7 @@ export default function VendorStoreDetail() {
     stock: "10",
     image: "",
     images: [] as string[],
+    colors: [] as string[],
     description: "",
     trending: false,
     item_category: "",
@@ -370,6 +472,7 @@ export default function VendorStoreDetail() {
       stock: "10",
       image: "",
       images: [],
+      colors: [],
       description: "",
       trending: false,
       item_category: "",
@@ -438,6 +541,7 @@ export default function VendorStoreDetail() {
       stock: String(primaryVariant?.stock ?? prod.stock ?? 0),
       image: prod.image || "",
       images: Array.from(new Set([...(Array.isArray(prod.images) ? prod.images : []), prod.image].filter((url: any) => typeof url === "string" && url.trim()))),
+      colors: Array.isArray(prod.colors) ? prod.colors.map((color: any) => String(color)) : [],
       description: prod.description || "",
       trending: !!prod.trending,
       item_category: prod.item_category || "",
@@ -776,6 +880,12 @@ export default function VendorStoreDetail() {
                 </View>
               </View>
 
+              <ProductColorPicker
+                value={form.colors}
+                onChange={(colors) => setForm((current) => ({ ...current, colors }))}
+                testID="vendor-store-add-product-colours"
+              />
+
                 <View style={s.itemCategoryPanel} testID="vendor-store-add-product-item-category-picker">
                   <Text style={s.itemCategoryTitle}>Choose item category</Text>
                   <Text style={s.itemCategoryPickerHint}>Choose the category that best matches this product.</Text>
@@ -1022,6 +1132,12 @@ export default function VendorStoreDetail() {
                   })}
                 </View>
               </View>
+
+              <ProductColorPicker
+                value={editProductForm.colors}
+                onChange={(colors) => setEditProductForm((current) => ({ ...current, colors }))}
+                testID="vendor-store-edit-product-colours"
+              />
 
                 <View style={s.itemCategoryPanel} testID="vendor-store-edit-product-item-category-picker">
                   <Text style={s.itemCategoryTitle}>Choose item category</Text>
@@ -1572,6 +1688,21 @@ const s = StyleSheet.create({
     padding: 10,
     marginBottom: 10,
   },
+  productColorPanel: { backgroundColor: "#F0F9FF", borderWidth: 1, borderColor: "#BAE6FD", borderRadius: 14, padding: 10, marginBottom: 10 },
+  productColorTitle: { color: "#0C4A6E", fontSize: 13, fontWeight: "900" },
+  productColorHint: { color: "#0369A1", fontSize: 11, marginTop: 3, marginBottom: 8 },
+  productColorOptions: { flexDirection: "row", flexWrap: "wrap", gap: 7 },
+  productColorOption: { minWidth: 68, minHeight: 34, flexDirection: "row", alignItems: "center", gap: 5, paddingHorizontal: 7, paddingVertical: 5, borderRadius: 18, backgroundColor: "#FFFFFF", borderWidth: 1, borderColor: "#E2E8F0" },
+  productColorOptionActive: { borderColor: "#0284C7", backgroundColor: "#E0F2FE" },
+  productColorDot: { width: 17, height: 17, borderRadius: 9, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: "rgba(15,23,42,0.12)" },
+  productColorDotWhite: { borderColor: "#94A3B8" },
+  productColorDotSelected: { borderWidth: 1.5, borderColor: "#0C4A6E" },
+  productColorOptionText: { color: "#334155", fontSize: 11, fontWeight: "700" },
+  productColorOptionTextActive: { color: "#075985" },
+  addCustomColorRow: { flexDirection: "row", alignItems: "center", gap: 7, marginTop: 8 },
+  addCustomColorInput: { flex: 1, minWidth: 0, width: 0, height: 38, marginBottom: 0, backgroundColor: "#FFFFFF", borderColor: "#BAE6FD" },
+  addCustomColorButton: { width: 40, height: 38, borderRadius: 10, alignItems: "center", justifyContent: "center", backgroundColor: "#0284C7" },
+  productColorSelectedCount: { color: "#0369A1", fontSize: 10, fontWeight: "700", marginTop: 5 },
   unitPickerHint: { fontSize: 11, lineHeight: 15, color: "#7C2D12", marginTop: -3, marginBottom: 8 },
   unitChipContainer: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
   unitChip: {

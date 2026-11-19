@@ -19,8 +19,8 @@ interface CartCtx {
   cart: any | null;
   itemCount: number;
   refresh: () => Promise<void>;
-  add: (productId: string, qty?: number, variant?: string | null) => Promise<boolean>;
-  update: (productId: string, qty: number, variant?: string | null) => Promise<void>;
+  add: (productId: string, qty?: number, variant?: string | null, color?: string | null) => Promise<boolean>;
+  update: (productId: string, qty: number, variant?: string | null, color?: string | null) => Promise<void>;
   clear: () => Promise<void>;
   bumpBadge: () => void;
   badgePulse: number;
@@ -89,7 +89,8 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 const customerCart = await api.cartAdd(
                   productId,
                   quantity,
-                  pending?.variant ? String(pending.variant) : null
+                  pending?.variant ? String(pending.variant) : null,
+                  pending?.color ? String(pending.color) : null
                 );
                 await AsyncStorage.removeItem(PENDING_CART_ADD_KEY);
                 return { cart: customerCart, redirectToCart: true, showAddError: false };
@@ -222,7 +223,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
   }, []);
 
-  const add = async (productId: string, qty = 1, variant?: string | null): Promise<boolean> => {
+  const add = async (productId: string, qty = 1, variant?: string | null, color?: string | null): Promise<boolean> => {
     if (!user) {
       if (guestCartLoginStarted.current) return false;
       guestCartLoginStarted.current = true;
@@ -231,6 +232,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
           productId: String(productId),
           quantity: qty,
           variant: variant ?? null,
+          color: color ?? null,
           createdAt: Date.now(),
         }));
         router.push({ pathname: "/auth/login", params: { source: "cart" } } as any);
@@ -246,14 +248,14 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     playAddFeedback();
-    const c = await api.cartAdd(productId, qty, variant);
+    const c = await api.cartAdd(productId, qty, variant, color);
     setCart(c);
     setPulse((p) => p + 1);
     return true;
   };
 
-  const update = async (productId: string, qty: number, variant?: string | null) => {
-    const c = await api.cartUpdate(productId, qty, variant); setCart(c);
+  const update = async (productId: string, qty: number, variant?: string | null, color?: string | null) => {
+    const c = await api.cartUpdate(productId, qty, variant, color); setCart(c);
   };
   const clear = async () => { await api.cartClear(); setCart({ items: [], item_count: 0, subtotal: 0, total: 0, delivery_fee: 0, tax: 0 }); };
   const bumpBadge = () => setPulse((p) => p + 1);

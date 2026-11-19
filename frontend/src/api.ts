@@ -782,7 +782,8 @@ export const api = {
   cartAdd: (
     product_id: string,
     quantity = 1,
-    variant?: string | null
+    variant?: string | null,
+    color?: string | null
   ) =>
     apiFetch("/cart/add", {
       method: "POST",
@@ -790,13 +791,15 @@ export const api = {
         product_id,
         quantity,
         ...(variant ? { variant } : {}),
+        ...(color ? { color } : {}),
       }),
     }),
 
   cartUpdate: (
     product_id: string,
     quantity: number,
-    variant?: string | null
+    variant?: string | null,
+    color?: string | null
   ) =>
     apiFetch("/cart/update", {
       method: "POST",
@@ -804,6 +807,7 @@ export const api = {
         product_id,
         quantity,
         ...(variant ? { variant } : {}),
+        ...(color ? { color } : {}),
       }),
     }),
 

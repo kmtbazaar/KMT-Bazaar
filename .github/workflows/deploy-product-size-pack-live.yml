@@ -12,6 +12,7 @@ on:
       - "frontend/app/(tabs)/home.tsx"
       - "frontend/app/search.tsx"
       - "frontend/src/api.ts"
+      - "frontend/src/CartContext.tsx"
       - "frontend/src/AuthContext.tsx"
       - "frontend/src/components/AnimatedBrandLogo.tsx"
       - "frontend/app/auth/login.tsx"
@@ -106,18 +107,26 @@ jobs:
           const adminVendor = fs.readFileSync("src/components/AdminVendorProducts.tsx", "utf8");
           const productCard = fs.readFileSync("src/components/ProductCard.tsx", "utf8");
           const tabsLayout = fs.readFileSync("app/(tabs)/_layout.tsx", "utf8");
+          const cartScreen = fs.readFileSync("app/(tabs)/cart.tsx", "utf8");
+          const cartContext = fs.readFileSync("src/CartContext.tsx", "utf8");
+          const api = fs.readFileSync("src/api.ts", "utf8");
           const backend = fs.readFileSync("../backend/server.py", "utf8");
           const options = ["XS", "S", "M", "L", "XL", "XXL", "UK 3", "UK 4", "UK 5", "UK 6", "UK 7", "UK 8", "UK 9", "UK 10", "UK 11", "UK 12", "UK 13", "UK 14", "1 pc", "250 g", "500 g", "1 kg", "250 ml", "500 ml", "750 ml", "1 L", "2 L"];
           assert.ok(vendor.includes("const PRODUCT_UNIT_OPTIONS = ["), "Store vendor quick options are missing");
           assert.ok(uploader.includes("compressProductPhotoForWeb") && uploader.includes("canvas.toBlob") && uploader.includes("MAX_WEB_PRODUCT_UPLOAD_BYTES"), "Store vendor product photos must be compressed before browser upload");
           assert.ok(productCard.includes("height: 155,") && productCard.includes('contentFit="contain"'), "Customer product cards must display larger full photos without cropping.");
-          assert.ok(tabsLayout.includes('bottom: Platform.OS === "web" ? -18 : 0'), "Web bottom taskbar must sit closer to the viewport bottom while native safe area stays intact.");
+          assert.ok(tabsLayout.includes('bottom: Platform.OS === "web" ? -18 : Platform.OS === "android" ? -10 : 0'), "Android mobile taskbar must move lower while iOS safe area and web placement stay intact.");
                     assert.ok(backend.includes("PRODUCT_IMAGE_MAX_BYTES = 200 * 1024") && backend.includes("_encode_product_webp(image)"), "Backend must continue storing product photos at or below 200 KB WebP");
           assert.ok(vendor.includes("vendor-store-add-product-size-pack-picker"), "Actual store vendor Add Product screen must render size/pack options");
           assert.ok(vendor.includes("vendor-store-edit-product-size-pack-picker"), "Actual store vendor Edit Product screen must render size/pack options");
           assert.ok(vendor.includes("vendor-store-add-product-variants") && vendor.includes("vendor-store-edit-product-variants"), "Vendor must support multiple variants with separate price and stock.");
-          assert.ok(customer.includes('testID="product-size-pack-selector"') && customer.includes("selectedPrice"), "Customer details must show size/pack options and update the price.");
-          assert.ok(customer.includes("await add(p.id, 1, selectedVariant?.id)"), "Customer cart requests must carry the selected variant.");
+          assert.ok(customer.includes('testID="product-size-pack-selector"') && customer.includes("selectedPrice") && !customer.includes("variantChoicePriceRow"), "Customer details must show size-only chips while the selected price remains in the main price area.");
+          assert.ok(customer.includes("await add(p.id, 1, selectedVariant?.id, selectedColor)"), "Customer cart requests must carry the selected size and colour.");
+          assert.ok(vendor.includes('testID="vendor-store-add-product-colours"') && vendor.includes('testID="vendor-store-edit-product-colours"'), "Store vendor Add/Edit forms must allow product colours.");
+          assert.ok(customer.includes('testID="product-colour-selector"') && customer.includes("setSelectedColor"), "Customer product detail must allow selecting a product colour.");
+          assert.ok(customer.includes('testID="product-image-viewer"') && customer.includes("Gesture.Pinch()") && customer.includes("Gesture.Pan()"), "Customer product photos must open in a pinch-to-zoom viewer.");
+          assert.ok(backend.includes("colors: Optional[List[str]] = None") && backend.includes("_normalize_product_colors") && backend.includes("_resolve_product_color"), "Backend must store and validate product colour choices.");
+          assert.ok(cartScreen.includes("it.color") && cartScreen.includes("onQty(it.product_id, it.quantity + 1, it.variant, it.color)") && cartContext.includes("pending?.color") && api.includes("...(color ? { color } : {})"), "Selected colour must persist through guest login, cart edits and cart display.");
           assert.ok(vendor.includes("vendor-store-add-product-item-category-picker"), "Add Product must render a separate item category panel");
           assert.ok(vendor.includes("vendor-store-edit-product-item-category-picker"), "Edit Product must render a separate item category panel");
           assert.ok(vendor.includes("vendor-store-add-new-item-category-name"), "Add Product must include a new item-category name field");
