@@ -155,8 +155,11 @@ export default function TabsLayout() {
           flex: 1,
           minWidth: 0,
           alignItems: "center",
-          justifyContent: "center",
+          // Anchor every mobile icon and label to the bottom of the content area.
+          // The tab bar's paddingBottom above reserves the full device safe-area inset.
+          justifyContent: isMobileTabBar ? "flex-end" : "center",
           paddingHorizontal: 0,
+          paddingBottom: isMobileTabBar ? 2 : 0,
         },
         tabBarBackground: () =>
           Platform.OS === "ios" ? (
