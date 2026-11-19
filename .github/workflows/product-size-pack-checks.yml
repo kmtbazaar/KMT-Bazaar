@@ -71,8 +71,12 @@ jobs:
           assert.ok(vendor.includes("validateVariantDrafts"), "Vendor variant prices, stock, and duplicate labels must be validated.");
           assert.ok(customer.includes('testID="product-size-pack-selector"'), "Customer product details must render the size/pack selector.");
           assert.ok(customer.includes("selectedVariant?.price") && customer.includes("selectedVariant?.stock"), "Selected variant price and stock must drive customer detail.");
-          assert.ok(customer.includes("await add(p.id, 1, selectedVariant?.id)"), "Customer Add to Cart must send the selected variant ID.");
+          assert.ok(customer.includes("await add(p.id, 1, selectedVariant?.id, selectedColor)"), "Customer Add to Cart must send the selected size and colour.");
           assert.ok(customer.includes("selectedPrice"), "Customer price and bottom cart CTA must reflect the selected variant.");
+          assert.ok(vendor.includes('testID="vendor-store-add-product-colours"') && vendor.includes('testID="vendor-store-edit-product-colours"'), "Vendor Add/Edit forms must save product colour options.");
+          assert.ok(customer.includes('testID="product-colour-selector"') && customer.includes("setSelectedColor"), "Customer must be able to choose a product colour.");
+          assert.ok(!customer.includes("variantChoicePriceRow"), "Customer size buttons must show the size label only, not a price.");
+          assert.ok(customer.includes('testID="product-image-viewer"') && customer.includes("Gesture.Pinch()") && customer.includes("Gesture.Pan()"), "Customer product photos must open in a pinch-zoom viewer.");
           assert.ok(customer.includes('width: "22%"') && customer.includes('maxWidth: "24%"'), "Four size/pack options should fit across without overlap.");
           assert.ok(productCard.includes('fontSize: 11,\n    fontWeight: "700"'), "Product unit label must be larger and bolder.");
           assert.ok(productCard.includes("minWidth: 48,\n    height: 34,"), "Add button should be taller with a usable minimum width.");
