@@ -138,7 +138,7 @@ export default function TabsLayout() {
           position: "absolute",
           // Remove the remaining browser bottom inset and place the bar flush
           // against the viewport edge; keep native safe-area positioning intact.
-          bottom: Platform.OS === "web" ? -10 : 0,
+          bottom: Platform.OS === "web" ? -18 : 0,
           borderTopColor: COLORS.border,
           backgroundColor:
             Platform.OS === "ios" ? "transparent" : "#FFFFFF",

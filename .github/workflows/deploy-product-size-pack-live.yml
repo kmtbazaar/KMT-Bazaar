@@ -104,11 +104,15 @@ jobs:
           const customer = fs.readFileSync("app/product/[id].tsx", "utf8");
           const uploader = fs.readFileSync("src/components/ProductImagesUploader.tsx", "utf8");
           const adminVendor = fs.readFileSync("src/components/AdminVendorProducts.tsx", "utf8");
+          const productCard = fs.readFileSync("src/components/ProductCard.tsx", "utf8");
+          const tabsLayout = fs.readFileSync("app/(tabs)/_layout.tsx", "utf8");
           const backend = fs.readFileSync("../backend/server.py", "utf8");
           const options = ["XS", "S", "M", "L", "XL", "XXL", "UK 3", "UK 4", "UK 5", "UK 6", "UK 7", "UK 8", "UK 9", "UK 10", "UK 11", "UK 12", "UK 13", "UK 14", "1 pc", "250 g", "500 g", "1 kg", "250 ml", "500 ml", "750 ml", "1 L", "2 L"];
           assert.ok(vendor.includes("const PRODUCT_UNIT_OPTIONS = ["), "Store vendor quick options are missing");
           assert.ok(uploader.includes("compressProductPhotoForWeb") && uploader.includes("canvas.toBlob") && uploader.includes("MAX_WEB_PRODUCT_UPLOAD_BYTES"), "Store vendor product photos must be compressed before browser upload");
-          assert.ok(backend.includes("PRODUCT_IMAGE_MAX_BYTES = 200 * 1024") && backend.includes("_encode_product_webp(image)"), "Backend must continue storing product photos at or below 200 KB WebP");
+          assert.ok(productCard.includes("height: 155,") && productCard.includes('contentFit="contain"'), "Customer product cards must display larger full photos without cropping.");
+          assert.ok(tabsLayout.includes('bottom: Platform.OS === "web" ? -18 : 0'), "Web bottom taskbar must sit closer to the viewport bottom while native safe area stays intact.");
+                    assert.ok(backend.includes("PRODUCT_IMAGE_MAX_BYTES = 200 * 1024") && backend.includes("_encode_product_webp(image)"), "Backend must continue storing product photos at or below 200 KB WebP");
           assert.ok(vendor.includes("vendor-store-add-product-size-pack-picker"), "Actual store vendor Add Product screen must render size/pack options");
           assert.ok(vendor.includes("vendor-store-edit-product-size-pack-picker"), "Actual store vendor Edit Product screen must render size/pack options");
           assert.ok(vendor.includes("vendor-store-add-product-variants") && vendor.includes("vendor-store-edit-product-variants"), "Vendor must support multiple variants with separate price and stock.");

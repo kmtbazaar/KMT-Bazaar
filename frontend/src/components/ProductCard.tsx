@@ -436,7 +436,8 @@ const s = StyleSheet.create({
 
   imgWrap: {
     width: "100%",
-    height: 125,
+    // More vertical room makes the full, uncropped product photo easier to see.
+    height: 155,
     backgroundColor: COLORS.surfaceSecondary,
     overflow: "hidden",
     position: "relative",
