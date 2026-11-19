@@ -31,6 +31,8 @@ const VENDOR_TYPES = [
 const SERVICE_TYPES = [
 { id: "holiday", label: "Holiday", icon: "airplane-takeoff" },
 { id: "car_rental", label: "Car Rental", icon: "car" },
+{ id: "decorator", label: "Decorator", icon: "party-popper" },
+{ id: "photography_studio", label: "Photography Studio", icon: "camera" },
 ];
 
 export default function Register() {
@@ -45,7 +47,7 @@ const [password, setPassword] = useState("");
 const [confirmPassword, setConfirmPassword] = useState("");
 const [role, setRole] = useState("customer");
 const [vendorType, setVendorType] = useState<"store" | "service">("store");
-const [serviceType, setServiceType] = useState<"holiday" | "car_rental">("holiday");
+const [serviceType, setServiceType] = useState<"holiday" | "car_rental" | "decorator" | "photography_studio">("holiday");
 const [loading, setLoading] = useState(false);
 const [error, setError] = useState<string | null>(null);
 
@@ -225,7 +227,7 @@ color={COLORS.text}
                   <Pressable
                     key={v.id}
                     testID={`service-type-${v.id}`}
-                    onPress={() => setServiceType(v.id as any)}
+                    onPress={() => setServiceType(v.id as typeof serviceType)}
                     style={[s.vendorTypeCard, serviceType === v.id && s.vendorTypeCardActive]}
                   >
                     <MaterialCommunityIcons name={v.icon as any} size={22} color={serviceType === v.id ? "#fff" : COLORS.brand} />
@@ -233,6 +235,12 @@ color={COLORS.text}
                   </Pressable>
                 ))}
               </View>
+              {(serviceType === "decorator" || serviceType === "photography_studio") && (
+                <View style={s.approvalHint}>
+                  <MaterialCommunityIcons name="shield-check-outline" size={18} color="#0284C7" />
+                  <Text style={s.approvalHintText}>Admin verification is required before your service profile becomes visible to customers.</Text>
+                </View>
+              )}
             </View>
           )}
         </View>
@@ -434,10 +442,12 @@ fontSize: 13,
 vendorTypeBox: { backgroundColor: COLORS.surfaceSecondary, borderRadius: RADIUS.md, padding: SPACING.md, marginBottom: SPACING.lg, borderWidth: 1, borderColor: COLORS.border },
 vendorTypeTitle: { fontSize: 14, fontWeight: "800", color: COLORS.text },
 vendorTypeSub: { fontSize: 12, color: COLORS.textSecondary, marginTop: 3, marginBottom: 10 },
-vendorTypesRow: { flexDirection: "row", gap: SPACING.sm },
-vendorTypeCard: { flex: 1, alignItems: "center", padding: SPACING.md, borderRadius: RADIUS.md, borderWidth: 1.5, borderColor: COLORS.border, backgroundColor: COLORS.surface, gap: 6 },
+vendorTypesRow: { flexDirection: "row", gap: SPACING.sm, flexWrap: "wrap" },
+vendorTypeCard: { flex: 1, minWidth: "44%", alignItems: "center", padding: SPACING.md, borderRadius: RADIUS.md, borderWidth: 1.5, borderColor: COLORS.border, backgroundColor: COLORS.surface, gap: 6 },
 vendorTypeCardActive: { backgroundColor: COLORS.brand, borderColor: COLORS.brand },
-vendorTypeLabel: { fontWeight: "700", color: COLORS.text, fontSize: 12 },
+vendorTypeLabel: { fontWeight: "700", color: COLORS.text, fontSize: 12, textAlign: "center" },
+approvalHint: { flexDirection: "row", alignItems: "flex-start", gap: 8, padding: 11, marginTop: 10, borderRadius: 12, backgroundColor: "#E0F2FE" },
+approvalHintText: { flex: 1, color: "#075985", fontSize: 11, lineHeight: 16, fontWeight: "600" },
 rolesRow: {
 flexDirection: "row",
 gap: SPACING.sm,
