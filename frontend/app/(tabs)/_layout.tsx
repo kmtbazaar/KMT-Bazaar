@@ -143,23 +143,23 @@ export default function TabsLayout() {
         tabBarStyle: {
           position: "absolute",
           // Move the customer bar below the reported mobile safe-area gap; leave desktop/iOS as-is.
-          bottom: isMobileTabBar ? 0 : -18,
+          // Lower the complete mobile bar by 8px while keeping its content above the safe-area edge.
+          bottom: isMobileTabBar ? -8 : -18,
           borderTopColor: COLORS.border,
           backgroundColor:
             Platform.OS === "ios" ? "transparent" : "#FFFFFF",
           height: isMobileTabBar ? 92 + insets.bottom : 82,
-          paddingTop: 2,
-          paddingBottom: isMobileTabBar ? Math.max(insets.bottom, 8) : 0,
+          paddingTop: 0,
+          paddingBottom: isMobileTabBar ? insets.bottom + 8 : 0,
         },
         tabBarItemStyle: {
           flex: 1,
           minWidth: 0,
           alignItems: "center",
-          // Anchor every mobile icon and label to the bottom of the content area.
-          // The tab bar's paddingBottom above reserves the full device safe-area inset.
+          // Keep each tab at the same lower baseline; the parent reserves safe area plus its 8px drop.
           justifyContent: isMobileTabBar ? "flex-end" : "center",
           paddingHorizontal: 0,
-          paddingBottom: isMobileTabBar ? 2 : 0,
+          paddingBottom: 0,
         },
         tabBarBackground: () =>
           Platform.OS === "ios" ? (
