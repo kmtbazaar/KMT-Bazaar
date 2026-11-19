@@ -71,7 +71,7 @@ export default function VendorServices() {
 
   const save = async () => {
     if (!f.name?.trim()) {
-      Platform.OS === "web" ? window.alert(isCar ? "Car name is required" : "Holiday package name is required") : Alert.alert("Required", isCar ? "Car name is required" : "Holiday package name is required");
+      Platform.OS === "web" ? window.alert(isCar ? "Car name is required" : isCreativeService ? currentLabel + " service name is required" : "Holiday package name is required") : Alert.alert("Required", isCar ? "Car name is required" : isCreativeService ? currentLabel + " service name is required" : "Holiday package name is required");
       return;
     }
     const includes = String(f.includesText || "").split(",").map((x: string) => x.trim()).filter(Boolean);
@@ -151,7 +151,7 @@ export default function VendorServices() {
         ItemSeparatorComponent={() => <View style={{ height: 10 }} />}
         renderItem={({ item }) => (
           <View style={s.card}>
-            {item.image ? <Image source={{ uri: item.image }} style={s.img} contentFit="cover" /> : <View style={[s.img, s.ph]}><MaterialCommunityIcons name={isCar ? "car" : "airplane-takeoff"} size={30} color={isCar ? "#0EA5E9" : "#2563EB"} /></View>}
+            {item.image ? <Image source={{ uri: item.image }} style={s.img} contentFit="cover" /> : <View style={[s.img, s.ph]}><MaterialCommunityIcons name={isCar ? "car" : isCreativeService ? (serviceType === "decorator" ? "party-popper" : "camera") : "airplane-takeoff"} size={30} color={isCar ? "#0EA5E9" : isCreativeService ? "#C2410C" : "#2563EB"} /></View>}
             <View style={{ width: "100%" }}>
               <Text style={s.name} numberOfLines={2}>{item.name}</Text>
               {isCar ? (
