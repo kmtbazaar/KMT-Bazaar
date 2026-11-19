@@ -2865,6 +2865,659 @@ SERVICE_TYPES = {
 }
 
 
+
+# ------------------ DECORATOR & PHOTOGRAPHY SERVICE MODULE ------------------
+class ServiceVendorProfileIn(BaseModel):
+    business_name: str
+    business_description: str = ""
+    experience_years: int = 0
+    service_areas: List[str] = Field(default_factory=list)
+    address: str = ""
+    city: str = ""
+    district: str = ""
+    state: str = ""
+    portfolio_images: List[str] = Field(default_factory=list)
+    verification_documents: List[Dict[str, Any]] = Field(default_factory=list)
+    website: str = ""
+    instagram: str = ""
+    contact_person: str = ""
+
+    @field_validator("business_name")
+    @classmethod
+    def validate_business_name(cls, value):
+        value = str(value or "").strip()
+        if len(value) < 2:
+            raise ValueError("Business name must contain at least 2 characters")
+        return value
+
+    @field_validator("experience_years")
+    @classmethod
+    def validate_experience(cls, value):
+        if value < 0 or value > 80:
+            raise ValueError("Experience years must be between 0 and 80")
+        return value
+
+
+class ServiceVendorAdminCreateIn(BaseModel):
+    name: str
+    email: EmailStr
+    phone: str
+    password: str
+    service_type: ServiceType
+    business_name: str = ""
+
+
+class ServiceVendorApprovalIn(BaseModel):
+    status: str
+    note: str = ""
+
+
+class ServiceAvailabilityIn(BaseModel):
+    weekly_schedule: Dict[str, Any] = Field(default_factory=dict)
+    blocked_dates: List[str] = Field(default_factory=list)
+    min_notice_hours: int = 24
+    max_bookings_per_day: int = 1
+
+    @field_validator("min_notice_hours")
+    @classmethod
+    def validate_notice(cls, value):
+        if value < 0 or value > 720:
+            raise ValueError("Minimum notice must be between 0 and 720 hours")
+        return value
+
+    @field_validator("max_bookings_per_day")
+    @classmethod
+    def validate_daily_limit(cls, value):
+        if value < 1 or value > 50:
+            raise ValueError("Maximum bookings per day must be between 1 and 50")
+        return value
+
+
+class ServiceDirectBookingIn(BaseModel):
+    service_type: ServiceType
+    service_id: str
+    event_date: str
+    event_time: str = ""
+    event_type: str = ""
+    event_location: str = ""
+    guest_count: int = 0
+    notes: str = ""
+
+
+class ServiceEnquiryIn(BaseModel):
+    service_type: ServiceType
+    vendor_id: Optional[str] = None
+    service_id: Optional[str] = None
+    event_date: Optional[str] = None
+    event_time: str = ""
+    event_location: str = ""
+    budget_min: Optional[float] = None
+    budget_max: Optional[float] = None
+    requirements: str
+    reference_images: List[str] = Field(default_factory=list)
+
+
+class ServiceEnquiryQuoteIn(BaseModel):
+    amount: float
+    notes: str = ""
+    valid_until: Optional[str] = None
+
+    @field_validator("amount")
+    @classmethod
+    def validate_quote_amount(cls, value):
+        if value <= 0:
+            raise ValueError("Quotation amount must be greater than zero")
+        return round(float(value), 2)
+
+
+class ServiceEnquiryResponseIn(BaseModel):
+    action: str
+    note: str = ""
+
+
+async def _service_commission_snapshot(amount: float) -> dict:
+    settings = await db.settings.find_one({"id": "global"}, {"_id": 0})
+    try:
+        percent = float((settings or {}).get("commission_percent", 10.0))
+    except (TypeError, ValueError):
+        percent = 10.0
+    percent = max(0.0, min(100.0, percent))
+    gross = max(0.0, round(float(amount or 0), 2))
+    commission = round(gross * percent / 100.0, 2)
+    return {
+        "commission_percent": percent,
+        "platform_commission": commission,
+        "vendor_payout_estimate": round(gross - commission, 2),
+    }
+
+
+async def _approved_service_catalog_item(service_type: ServiceType, service_id: str):
+    service = await db.vendor_services.find_one(
+        {"id": service_id, "service_type": service_type.value, "active": True},
+        {"_id": 0}
+    )
+    if not service:
+        return None
+    vendor_id = service.get("vendor_id")
+    if vendor_id:
+        vendor = await db.users.find_one(
+            {"id": vendor_id, "role": Role.VENDOR.value, "vendor_type": VendorType.SERVICE.value},
+            {"_id": 0, "id": 1, "service_type": 1, "service_is_approved": 1, "service_approval_status": 1}
+        )
+        if not vendor or vendor.get("service_type") != service_type.value or not _service_vendor_is_approved(vendor):
+            return None
+    return service
+
+
+async def _check_new_service_date(vendor_id: str, event_date: str):
+    try:
+        datetime.strptime(event_date, "%Y-%m-%d")
+    except ValueError:
+        raise HTTPException(400, "Event date must use YYYY-MM-DD format")
+    availability = await db.service_availability.find_one({"vendor_id": vendor_id}, {"_id": 0})
+    if not availability:
+        return
+    if event_date in (availability.get("blocked_dates") or []):
+        raise HTTPException(409, "This vendor is unavailable on the selected date")
+    limit = int(availability.get("max_bookings_per_day", 1) or 1)
+    active_count = await db.service_bookings.count_documents({
+        "vendor_id": vendor_id,
+        "booking_date": event_date,
+        "status": {"$nin": ["cancelled", "rejected", "completed"]},
+    })
+    if active_count >= limit:
+        raise HTTPException(409, "This vendor has no remaining booking slots on the selected date")
+
+
+async def _notify_service_enquiry_created(enquiry: dict):
+    label = SERVICE_TYPES.get(enquiry.get("service_type"), {}).get("name", "Service")
+    base = {
+        "title": f"New {label} enquiry",
+        "body": f"New service enquiry from {enquiry.get('customer_name') or 'Customer'}.",
+        "type": "service_enquiry",
+        "read": False,
+        "created_at": now_iso(),
+        "enquiry_id": enquiry.get("id"),
+        "service_type": enquiry.get("service_type"),
+    }
+    recipients = []
+    if enquiry.get("vendor_id"):
+        recipients.append(enquiry["vendor_id"])
+    admins = await db.users.find(
+        {"role": Role.ADMIN.value, "active": {"$ne": False}},
+        {"_id": 0, "id": 1}
+    ).to_list(100)
+    recipients.extend(x["id"] for x in admins)
+    if recipients:
+        await db.notifications.insert_many([
+            {**base, "id": str(uuid.uuid4()), "user_id": user_id}
+            for user_id in dict.fromkeys(recipients)
+        ])
+
+
+@api.get("/admin/service-vendors")
+async def admin_list_service_vendors(
+    status: Optional[str] = None,
+    service_type: Optional[ServiceType] = None,
+    _=Depends(require_roles("admin"))
+):
+    query = {"role": Role.VENDOR.value, "vendor_type": VendorType.SERVICE.value}
+    if service_type:
+        query["service_type"] = service_type.value
+    if status:
+        if status not in {"pending", "approved", "rejected"}:
+            raise HTTPException(400, "Invalid service vendor approval status")
+        if status == "approved":
+            query["$or"] = [
+                {"service_approval_status": "approved"},
+                {"service_type": {"$nin": list(NEW_SERVICE_VENDOR_TYPES)}, "service_approval_status": {"$exists": False}},
+            ]
+        else:
+            query["service_approval_status"] = status
+    vendors = await db.users.find(query, {"_id": 0, "password": 0}).sort("created_at", -1).to_list(500)
+    ids = [x["id"] for x in vendors]
+    profiles = await db.service_vendor_profiles.find(
+        {"vendor_id": {"$in": ids}}, {"_id": 0}
+    ).to_list(500) if ids else []
+    profile_map = {x["vendor_id"]: x for x in profiles}
+    return [
+        {
+            **vendor,
+            "service_approval_status": vendor.get("service_approval_status") or (
+                "approved" if vendor.get("service_type") not in NEW_SERVICE_VENDOR_TYPES else "pending"
+            ),
+            "service_is_approved": _service_vendor_is_approved(vendor),
+            "profile": profile_map.get(vendor["id"]),
+        }
+        for vendor in vendors
+    ]
+
+
+@api.post("/admin/service-vendors")
+async def admin_create_service_vendor(
+    data: ServiceVendorAdminCreateIn,
+    _=Depends(require_roles("admin"))
+):
+    if data.service_type.value not in PUBLIC_SERVICE_VENDOR_TYPES:
+        raise HTTPException(400, "Daily Services are managed separately")
+    name = data.name.strip()
+    phone = "".join(ch for ch in data.phone if ch.isdigit())
+    if len(name) < 2 or len(phone) != 10 or len(data.password) < 8:
+        raise HTTPException(400, "Enter a valid name, 10-digit mobile and password of at least 8 characters")
+    email = str(data.email).strip().lower()
+    duplicate = await db.users.find_one({"$or": [{"email": email}, {"phone": phone}]}, {"_id": 0, "id": 1})
+    if duplicate:
+        raise HTTPException(409, "Email or mobile number already belongs to an account")
+    uid = str(uuid.uuid4())
+    user_doc = {
+        "id": uid,
+        "name": name,
+        "email": email,
+        "phone": phone,
+        "password": hash_password(data.password),
+        "role": Role.VENDOR.value,
+        "vendor_type": VendorType.SERVICE.value,
+        "service_type": data.service_type.value,
+        "avatar": None,
+        "service_approval_status": "approved",
+        "service_is_approved": True,
+        "service_registration_source": "admin",
+        "created_at": now_iso(),
+    }
+    await db.users.insert_one(dict(user_doc))
+    profile = {
+        "id": "svp-" + uuid.uuid4().hex[:10],
+        "vendor_id": uid,
+        "service_type": data.service_type.value,
+        "business_name": (data.business_name or name).strip(),
+        "business_description": "",
+        "experience_years": 0,
+        "service_areas": [],
+        "address": "",
+        "portfolio_images": [],
+        "verification_documents": [],
+        "created_at": now_iso(),
+        "updated_at": now_iso(),
+    }
+    await db.service_vendor_profiles.insert_one(dict(profile))
+    return {"user": user_to_out(user_doc), "profile": profile}
+
+
+@api.put("/admin/service-vendors/{user_id}/approval")
+async def admin_update_service_vendor_approval(
+    user_id: str,
+    data: ServiceVendorApprovalIn,
+    _=Depends(require_roles("admin"))
+):
+    state = data.status.strip().lower()
+    if state not in {"pending", "approved", "rejected"}:
+        raise HTTPException(400, "Status must be pending, approved or rejected")
+    user = await db.users.find_one(
+        {"id": user_id, "role": Role.VENDOR.value, "vendor_type": VendorType.SERVICE.value},
+        {"_id": 0, "id": 1, "service_type": 1}
+    )
+    if not user:
+        raise HTTPException(404, "Service vendor not found")
+    if user.get("service_type") not in PUBLIC_SERVICE_VENDOR_TYPES:
+        raise HTTPException(400, "This service type is not part of the service-vendor marketplace")
+    approved = state == "approved"
+    await db.users.update_one(
+        {"id": user_id},
+        {"$set": {
+            "service_approval_status": state,
+            "service_is_approved": approved,
+            "service_approval_note": data.note.strip(),
+            "service_approved_at": now_iso() if approved else None,
+            "service_approval_updated_at": now_iso(),
+        }}
+    )
+    return await db.users.find_one({"id": user_id}, {"_id": 0, "password": 0})
+
+
+@api.get("/service-vendor/profile")
+async def get_service_vendor_profile(current=Depends(require_roles("vendor"))):
+    if (current.get("vendor_type") or "store") != VendorType.SERVICE.value or current.get("service_type") not in NEW_SERVICE_VENDOR_TYPES:
+        raise HTTPException(403, "Decorator or Photography Studio vendor access required")
+    profile = await db.service_vendor_profiles.find_one({"vendor_id": current["id"]}, {"_id": 0})
+    return {
+        "profile": profile,
+        "approval_status": current.get("service_approval_status", "pending"),
+        "is_approved": _service_vendor_is_approved(current),
+    }
+
+
+@api.put("/service-vendor/profile")
+async def save_service_vendor_profile(
+    data: ServiceVendorProfileIn,
+    current=Depends(require_roles("vendor"))
+):
+    if (current.get("vendor_type") or "store") != VendorType.SERVICE.value or current.get("service_type") not in NEW_SERVICE_VENDOR_TYPES:
+        raise HTTPException(403, "Decorator or Photography Studio vendor access required")
+    profile = {
+        **data.dict(),
+        "vendor_id": current["id"],
+        "service_type": current["service_type"],
+        "updated_at": now_iso(),
+    }
+    await db.service_vendor_profiles.update_one(
+        {"vendor_id": current["id"]},
+        {"$set": profile, "$setOnInsert": {"id": "svp-" + uuid.uuid4().hex[:10], "created_at": now_iso()}},
+        upsert=True,
+    )
+    return await db.service_vendor_profiles.find_one({"vendor_id": current["id"]}, {"_id": 0})
+
+
+@api.post("/service-vendor/resubmit")
+async def resubmit_service_vendor_profile(current=Depends(require_roles("vendor"))):
+    if (current.get("vendor_type") or "store") != VendorType.SERVICE.value or current.get("service_type") not in NEW_SERVICE_VENDOR_TYPES:
+        raise HTTPException(403, "Decorator or Photography Studio vendor access required")
+    profile = await db.service_vendor_profiles.find_one({"vendor_id": current["id"]}, {"_id": 0, "business_name": 1})
+    if not profile or len(str(profile.get("business_name") or "").strip()) < 2:
+        raise HTTPException(400, "Complete your business profile before resubmitting")
+    await db.users.update_one(
+        {"id": current["id"]},
+        {"$set": {
+            "service_approval_status": "pending",
+            "service_is_approved": False,
+            "service_approval_note": "",
+            "service_approval_updated_at": now_iso(),
+        }}
+    )
+    return {"ok": True, "service_approval_status": "pending"}
+
+
+@api.get("/vendor/service-availability")
+async def get_vendor_service_availability(current=Depends(require_roles("vendor"))):
+    _require_vendor_type(current, "service")
+    if current.get("service_type") not in NEW_SERVICE_VENDOR_TYPES:
+        raise HTTPException(403, "Availability settings are available for Decorator and Photography Studio vendors")
+    return await db.service_availability.find_one({"vendor_id": current["id"]}, {"_id": 0}) or {
+        "vendor_id": current["id"], "weekly_schedule": {}, "blocked_dates": [],
+        "min_notice_hours": 24, "max_bookings_per_day": 1,
+    }
+
+
+@api.put("/vendor/service-availability")
+async def save_vendor_service_availability(
+    data: ServiceAvailabilityIn,
+    current=Depends(require_roles("vendor"))
+):
+    _require_vendor_type(current, "service")
+    if current.get("service_type") not in NEW_SERVICE_VENDOR_TYPES:
+        raise HTTPException(403, "Availability settings are available for Decorator and Photography Studio vendors")
+    payload = {**data.dict(), "vendor_id": current["id"], "service_type": current["service_type"], "updated_at": now_iso()}
+    await db.service_availability.update_one(
+        {"vendor_id": current["id"]},
+        {"$set": payload, "$setOnInsert": {"id": "sav-" + uuid.uuid4().hex[:10], "created_at": now_iso()}},
+        upsert=True,
+    )
+    return await db.service_availability.find_one({"vendor_id": current["id"]}, {"_id": 0})
+
+
+@api.get("/services/availability/{service_type}/{vendor_id}")
+async def get_public_service_availability(service_type: ServiceType, vendor_id: str):
+    if service_type.value not in NEW_SERVICE_VENDOR_TYPES:
+        raise HTTPException(400, "Availability lookup is only available for Decorator and Photography Studio")
+    vendor = await db.users.find_one(
+        {"id": vendor_id, "role": Role.VENDOR.value, "vendor_type": VendorType.SERVICE.value, "service_type": service_type.value},
+        {"_id": 0, "id": 1, "service_type": 1, "service_is_approved": 1, "service_approval_status": 1}
+    )
+    if not vendor or not _service_vendor_is_approved(vendor):
+        raise HTTPException(404, "Service vendor not found")
+    return await db.service_availability.find_one({"vendor_id": vendor_id}, {"_id": 0}) or {
+        "vendor_id": vendor_id, "weekly_schedule": {}, "blocked_dates": [],
+        "min_notice_hours": 24, "max_bookings_per_day": 1,
+    }
+
+
+@api.post("/service-bookings/request")
+async def create_service_direct_booking(
+    data: ServiceDirectBookingIn,
+    current=Depends(require_roles("customer"))
+):
+    if data.service_type.value not in NEW_SERVICE_VENDOR_TYPES:
+        raise HTTPException(400, "Direct service requests are for Decorator and Photography Studio")
+    service = await _approved_service_catalog_item(data.service_type, data.service_id)
+    if not service or not service.get("vendor_id"):
+        raise HTTPException(404, "Approved service package not found")
+    await _check_new_service_date(service["vendor_id"], data.event_date)
+    try:
+        amount = max(0.0, float(service.get("price") or 0))
+    except (TypeError, ValueError):
+        amount = 0.0
+    commission = await _service_commission_snapshot(amount)
+    booking = {
+        "id": "sbk-" + uuid.uuid4().hex[:10],
+        "customer_id": current["id"],
+        "customer_name": current.get("name", ""),
+        "customer_phone": current.get("phone", ""),
+        "customer_email": current.get("email", ""),
+        "vendor_id": service["vendor_id"],
+        "service_id": service["id"],
+        "service_type": data.service_type.value,
+        "service_name": service.get("name", ""),
+        "vendor_name": service.get("vendor_name") or "",
+        "booking_date": data.event_date,
+        "booking_time": data.event_time,
+        "event_type": data.event_type,
+        "event_location": data.event_location,
+        "guest_count": max(0, data.guest_count),
+        "notes": data.notes.strip(),
+        "booking_mode": "direct",
+        "status": "booking_requested",
+        "total_amount": amount,
+        "quoted_amount": amount if amount > 0 else None,
+        "payment_status": "unpaid",
+        **commission,
+        "created_at": now_iso(),
+        "updated_at": now_iso(),
+    }
+    await db.service_bookings.insert_one(dict(booking))
+    await _notify_service_booking_created(booking)
+    return booking
+
+
+@api.post("/service-enquiries")
+async def create_service_enquiry(
+    data: ServiceEnquiryIn,
+    current=Depends(require_roles("customer"))
+):
+    if data.service_type.value not in NEW_SERVICE_VENDOR_TYPES:
+        raise HTTPException(400, "Enquiries are available for Decorator and Photography Studio")
+    if not data.service_id and not data.vendor_id:
+        raise HTTPException(400, "Select a service package or service vendor")
+    if data.budget_min is not None and data.budget_min < 0:
+        raise HTTPException(400, "Minimum budget cannot be negative")
+    if data.budget_max is not None and data.budget_max < 0:
+        raise HTTPException(400, "Maximum budget cannot be negative")
+    if data.budget_min is not None and data.budget_max is not None and data.budget_max < data.budget_min:
+        raise HTTPException(400, "Maximum budget must be greater than or equal to minimum budget")
+    if data.event_date:
+        try:
+            datetime.strptime(data.event_date, "%Y-%m-%d")
+        except ValueError:
+            raise HTTPException(400, "Event date must use YYYY-MM-DD format")
+
+    service = None
+    vendor_id = data.vendor_id
+    if data.service_id:
+        service = await _approved_service_catalog_item(data.service_type, data.service_id)
+        if not service:
+            raise HTTPException(404, "Approved service package not found")
+        if vendor_id and vendor_id != service.get("vendor_id"):
+            raise HTTPException(400, "Service package does not belong to the selected vendor")
+        vendor_id = service.get("vendor_id")
+    vendor = await db.users.find_one(
+        {"id": vendor_id, "role": Role.VENDOR.value, "vendor_type": VendorType.SERVICE.value, "service_type": data.service_type.value},
+        {"_id": 0, "id": 1, "name": 1, "service_type": 1, "service_is_approved": 1, "service_approval_status": 1}
+    )
+    if not vendor or not _service_vendor_is_approved(vendor):
+        raise HTTPException(404, "Approved service vendor not found")
+    requirements = data.requirements.strip()
+    if len(requirements) < 5:
+        raise HTTPException(400, "Please describe your requirement in at least 5 characters")
+    enquiry = {
+        "id": "senq-" + uuid.uuid4().hex[:10],
+        "customer_id": current["id"],
+        "customer_name": current.get("name", ""),
+        "customer_phone": current.get("phone", ""),
+        "customer_email": current.get("email", ""),
+        "vendor_id": vendor_id,
+        "vendor_name": vendor.get("name", ""),
+        "service_id": service.get("id") if service else None,
+        "service_name": service.get("name") if service else SERVICE_TYPES[data.service_type.value]["name"],
+        "service_type": data.service_type.value,
+        "event_date": data.event_date,
+        "event_time": data.event_time,
+        "event_location": data.event_location,
+        "budget_min": data.budget_min,
+        "budget_max": data.budget_max,
+        "requirements": requirements,
+        "reference_images": data.reference_images[:10],
+        "status": "new",
+        "created_at": now_iso(),
+        "updated_at": now_iso(),
+    }
+    await db.service_enquiries.insert_one(dict(enquiry))
+    await _notify_service_enquiry_created(enquiry)
+    return enquiry
+
+
+@api.get("/service-enquiries")
+async def list_customer_service_enquiries(current=Depends(require_roles("customer"))):
+    return await db.service_enquiries.find(
+        {"customer_id": current["id"]}, {"_id": 0}
+    ).sort("created_at", -1).to_list(200)
+
+
+@api.get("/vendor/service-enquiries")
+async def list_vendor_service_enquiries(current=Depends(require_roles("vendor"))):
+    _require_vendor_type(current, "service")
+    if current.get("service_type") not in NEW_SERVICE_VENDOR_TYPES:
+        raise HTTPException(403, "Enquiry management is available for Decorator and Photography Studio vendors")
+    return await db.service_enquiries.find(
+        {"vendor_id": current["id"]}, {"_id": 0}
+    ).sort("created_at", -1).to_list(200)
+
+
+@api.get("/admin/service-enquiries")
+async def admin_service_enquiries(status: Optional[str] = None, _=Depends(require_roles("admin"))):
+    query = {}
+    if status:
+        query["status"] = status
+    return await db.service_enquiries.find(query, {"_id": 0}).sort("created_at", -1).to_list(500)
+
+
+@api.post("/vendor/service-enquiries/{enquiry_id}/quote")
+async def vendor_quote_service_enquiry(
+    enquiry_id: str,
+    data: ServiceEnquiryQuoteIn,
+    current=Depends(require_roles("vendor"))
+):
+    _require_vendor_type(current, "service")
+    if current.get("service_type") not in NEW_SERVICE_VENDOR_TYPES:
+        raise HTTPException(403, "Enquiry management is available for Decorator and Photography Studio vendors")
+    enquiry = await db.service_enquiries.find_one(
+        {"id": enquiry_id, "vendor_id": current["id"]}, {"_id": 0}
+    )
+    if not enquiry:
+        raise HTTPException(404, "Enquiry not found")
+    if enquiry.get("status") not in {"new", "replied", "quoted"}:
+        raise HTTPException(409, "This enquiry can no longer be quoted")
+    quote = {
+        "amount": round(float(data.amount), 2),
+        "notes": data.notes.strip(),
+        "valid_until": data.valid_until,
+        **(await _service_commission_snapshot(data.amount)),
+        "created_at": now_iso(),
+    }
+    await db.service_enquiries.update_one(
+        {"id": enquiry_id, "vendor_id": current["id"]},
+        {"$set": {"quote": quote, "status": "quoted", "updated_at": now_iso()}}
+    )
+    await db.notifications.insert_one({
+        "id": str(uuid.uuid4()),
+        "user_id": enquiry["customer_id"],
+        "title": "Your service quotation is ready",
+        "body": f"{enquiry.get('service_name') or 'Service'} vendor sent you a quotation.",
+        "type": "service_enquiry_quote",
+        "read": False,
+        "enquiry_id": enquiry_id,
+        "created_at": now_iso(),
+    })
+    return await db.service_enquiries.find_one({"id": enquiry_id}, {"_id": 0})
+
+
+@api.post("/service-enquiries/{enquiry_id}/respond")
+async def customer_respond_service_enquiry(
+    enquiry_id: str,
+    data: ServiceEnquiryResponseIn,
+    current=Depends(require_roles("customer"))
+):
+    action = data.action.strip().lower()
+    if action not in {"accept", "decline"}:
+        raise HTTPException(400, "Action must be accept or decline")
+    enquiry = await db.service_enquiries.find_one(
+        {"id": enquiry_id, "customer_id": current["id"]}, {"_id": 0}
+    )
+    if not enquiry:
+        raise HTTPException(404, "Enquiry not found")
+    if enquiry.get("status") != "quoted":
+        raise HTTPException(409, "There is no active quotation to respond to")
+    if action == "decline":
+        await db.service_enquiries.update_one(
+            {"id": enquiry_id, "customer_id": current["id"]},
+            {"$set": {"status": "declined", "customer_response": data.note.strip(), "updated_at": now_iso()}}
+        )
+        return {"ok": True, "status": "declined"}
+    if not enquiry.get("event_date"):
+        raise HTTPException(400, "Add an event date before accepting the quotation")
+    vendor = await db.users.find_one(
+        {"id": enquiry["vendor_id"], "role": Role.VENDOR.value, "vendor_type": VendorType.SERVICE.value},
+        {"_id": 0, "id": 1, "service_type": 1, "service_is_approved": 1, "service_approval_status": 1}
+    )
+    if not vendor or not _service_vendor_is_approved(vendor):
+        raise HTTPException(409, "This service vendor is currently unavailable")
+    await _check_new_service_date(enquiry["vendor_id"], enquiry["event_date"])
+    quote = enquiry.get("quote") or {}
+    amount = float(quote.get("amount") or 0)
+    commission = await _service_commission_snapshot(amount)
+    booking = {
+        "id": "sbk-" + uuid.uuid4().hex[:10],
+        "customer_id": current["id"],
+        "customer_name": current.get("name", ""),
+        "customer_phone": current.get("phone", ""),
+        "customer_email": current.get("email", ""),
+        "vendor_id": enquiry["vendor_id"],
+        "vendor_name": enquiry.get("vendor_name", ""),
+        "service_id": enquiry.get("service_id"),
+        "service_type": enquiry["service_type"],
+        "service_name": enquiry.get("service_name", "Service"),
+        "booking_date": enquiry["event_date"],
+        "booking_time": enquiry.get("event_time", ""),
+        "event_location": enquiry.get("event_location", ""),
+        "notes": enquiry.get("requirements", ""),
+        "customer_quote_response": data.note.strip(),
+        "booking_mode": "enquiry_quote",
+        "status": "booking_requested",
+        "total_amount": amount,
+        "quoted_amount": amount,
+        "payment_status": "unpaid",
+        **commission,
+        "created_at": now_iso(),
+        "updated_at": now_iso(),
+    }
+    await db.service_bookings.insert_one(dict(booking))
+    await db.service_enquiries.update_one(
+        {"id": enquiry_id, "customer_id": current["id"], "status": "quoted"},
+        {"$set": {"status": "converted_to_booking", "converted_booking_id": booking["id"], "updated_at": now_iso()}}
+    )
+    await _notify_service_booking_created(booking)
+    return {"ok": True, "status": "converted_to_booking", "booking": booking}
+
+
+# ------------------ END DECORATOR & PHOTOGRAPHY SERVICE MODULE ------------------
+
 class ServiceBookingIn(BaseModel):
     service_type: ServiceType
     service_id: str
