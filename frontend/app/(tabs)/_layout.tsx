@@ -131,15 +131,9 @@ export default function TabsLayout() {
   const { t } = useLanguage();
   const { width } = useWindowDimensions();
   const insets = useSafeAreaInsets();
-  // Android Chrome can report a wider layout viewport than the physical screen.
-  const isCompactWeb = Platform.OS === "web" && width <= 1024;
-  const mobileTabBarBottom = isCompactWeb
-    ? -Math.max(36, insets.bottom + 20)
-    : Platform.OS === "android"
-      ? -Math.max(24, insets.bottom + 8)
-      : Platform.OS === "web"
-        ? -18
-        : 0;
+  // Keep mobile navigation above the device safe area instead of shifting it off-screen.
+  // A wider mobile browser viewport is still treated as compact navigation up to 1024px.
+  const isMobileTabBar = Platform.OS !== "web" || width <= 1024;
   return (
     <Tabs
       screenOptions={{
@@ -149,13 +143,20 @@ export default function TabsLayout() {
         tabBarStyle: {
           position: "absolute",
           // Move the customer bar below the reported mobile safe-area gap; leave desktop/iOS as-is.
-          bottom: mobileTabBarBottom,
+          bottom: isMobileTabBar ? 0 : -18,
           borderTopColor: COLORS.border,
           backgroundColor:
             Platform.OS === "ios" ? "transparent" : "#FFFFFF",
-          height: 82,
-          paddingTop: 1,
-          paddingBottom: Platform.OS === "web" ? 0 : 8,
+          height: isMobileTabBar ? 92 + insets.bottom : 82,
+          paddingTop: 2,
+          paddingBottom: isMobileTabBar ? Math.max(insets.bottom, 8) : 0,
+        },
+        tabBarItemStyle: {
+          flex: 1,
+          minWidth: 0,
+          alignItems: "center",
+          justifyContent: "center",
+          paddingHorizontal: 0,
         },
         tabBarBackground: () =>
           Platform.OS === "ios" ? (
@@ -166,11 +167,11 @@ export default function TabsLayout() {
             />
           ) : null,
         tabBarLabelStyle: {
-          fontSize: 13,
-          lineHeight: 18,
+          fontSize: isMobileTabBar ? 12 : 13,
+          lineHeight: isMobileTabBar ? 16 : 18,
           fontWeight: "800",
-          marginTop: 2,
-          marginBottom: 2,
+          marginTop: isMobileTabBar ? 1 : 2,
+          marginBottom: 0,
           includeFontPadding: false,
         },
       }}
