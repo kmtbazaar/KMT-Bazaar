@@ -1,6 +1,6 @@
 import { LocalizedText as Text } from "@/src/LocalizedText";
 import React, { useState } from "react";
-import { ActivityIndicator, Pressable, StyleSheet, View } from "react-native";
+import { ActivityIndicator, Pressable, StyleSheet, View, Platform } from "react-native";
 import { Image } from "expo-image";
 import * as ImagePicker from "expo-image-picker";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
@@ -15,6 +15,100 @@ type Props = {
   maxCount?: number;
   testID?: string;
 };
+
+const MAX_WEB_PRODUCT_UPLOAD_BYTES = 3 * 1024 * 1024;
+
+async function compressProductPhotoForWeb(asset: ImagePicker.ImagePickerAsset) {
+  if (
+    Platform.OS !== "web" ||
+    typeof document === "undefined" ||
+    typeof URL === "undefined" ||
+    typeof URL.createObjectURL !== "function" ||
+    typeof File === "undefined"
+  ) {
+    return asset;
+  }
+
+  const sourceBlob =
+    asset.file instanceof Blob
+      ? asset.file
+      : await (await fetch(asset.uri)).blob();
+  const sourceUrl = URL.createObjectURL(sourceBlob);
+
+  try {
+    const image = document.createElement("img");
+    await new Promise<void>((resolve, reject) => {
+      image.onload = () => resolve();
+      image.onerror = () => reject(new Error("Could not read this photo. Please choose a JPG, PNG or WebP image."));
+      image.src = sourceUrl;
+    });
+
+    const sourceWidth = image.naturalWidth;
+    const sourceHeight = image.naturalHeight;
+    if (!sourceWidth || !sourceHeight) {
+      throw new Error("This image has invalid dimensions. Please choose another photo.");
+    }
+
+    const toBlob = (canvas: HTMLCanvasElement, type: string, quality: number) =>
+      new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, type, quality));
+
+    let compressedBlob: Blob | null = null;
+    for (const maxSide of [1800, 1500, 1200, 1000, 800]) {
+      const scale = Math.min(1, maxSide / Math.max(sourceWidth, sourceHeight));
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.max(1, Math.round(sourceWidth * scale));
+      canvas.height = Math.max(1, Math.round(sourceHeight * scale));
+
+      const context = canvas.getContext("2d");
+      if (!context) throw new Error("Your browser could not prepare this image for upload.");
+      context.imageSmoothingEnabled = true;
+      context.imageSmoothingQuality = "high";
+      context.drawImage(image, 0, 0, canvas.width, canvas.height);
+
+      for (const quality of [0.82, 0.72, 0.62, 0.52, 0.42]) {
+        let candidate = await toBlob(canvas, "image/webp", quality);
+        if (!candidate || candidate.type !== "image/webp") {
+          const jpegCanvas = document.createElement("canvas");
+          jpegCanvas.width = canvas.width;
+          jpegCanvas.height = canvas.height;
+          const jpegContext = jpegCanvas.getContext("2d");
+          if (!jpegContext) throw new Error("Your browser could not prepare this image for upload.");
+          jpegContext.fillStyle = "#FFFFFF";
+          jpegContext.fillRect(0, 0, jpegCanvas.width, jpegCanvas.height);
+          jpegContext.drawImage(image, 0, 0, jpegCanvas.width, jpegCanvas.height);
+          candidate = await toBlob(jpegCanvas, "image/jpeg", quality);
+        }
+
+        if (candidate && candidate.size <= MAX_WEB_PRODUCT_UPLOAD_BYTES) {
+          compressedBlob = candidate;
+          break;
+        }
+      }
+
+      if (compressedBlob) break;
+    }
+
+    if (!compressedBlob) {
+      throw new Error("This photo could not be compressed below 3 MB. Please select a smaller image.");
+    }
+
+    const extension = compressedBlob.type === "image/webp" ? "webp" : "jpg";
+    const baseName = (asset.fileName || "product-photo").replace(/\\.[^/.]+$/, "");
+    const compressedFile = new File([compressedBlob], `${baseName}.${extension}`, {
+      type: compressedBlob.type,
+      lastModified: Date.now(),
+    });
+
+    return {
+      ...asset,
+      file: compressedFile,
+      fileName: compressedFile.name,
+      mimeType: compressedFile.type,
+    };
+  } finally {
+    URL.revokeObjectURL(sourceUrl);
+  }
+}
 
 export default function ProductImagesUploader({
   value = [],
@@ -50,7 +144,7 @@ export default function ProductImagesUploader({
         mediaTypes: ["images"],
         allowsEditing: true,
         aspect: [1, 1],
-        quality: 0.7,
+        quality: 0.55,
       };
 
       setBusy(true);
@@ -59,7 +153,7 @@ export default function ProductImagesUploader({
         : await ImagePicker.launchCameraAsync(options);
 
       if (result.canceled || !result.assets?.[0]) return;
-      const asset = result.assets[0];
+      const asset = await compressProductPhotoForWeb(result.assets[0]);
       const url = await uploadImageAsset({
         uri: asset.uri,
         fileName: asset.fileName,

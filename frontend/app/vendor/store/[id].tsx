@@ -23,6 +23,8 @@ import ProductImagesUploader from "@/src/components/ProductImagesUploader";
 
 const PRODUCT_UNIT_OPTIONS = [
   "XS", "S", "M", "L", "XL", "XXL",
+  "UK 3", "UK 4", "UK 5", "UK 6", "UK 7", "UK 8", "UK 9",
+  "UK 10", "UK 11", "UK 12", "UK 13", "UK 14",
   "1 pc", "250 g", "500 g", "1 kg", "250 ml", "500 ml", "750 ml", "1 L", "2 L",
 ];
 
