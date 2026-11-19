@@ -30,7 +30,8 @@ function RoleRouteGuard({ children }: { children: React.ReactNode }) {
       first === "holiday" ||
       first === "car-rental" ||
       first === "daily-services" ||
-      first === "daily-service-booking";
+      first === "daily-service-booking" ||
+      first === "service";
 
     if (!user) {
       if (!isAuthRoute && !isPublicRoute) router.replace("/auth/login");
@@ -54,6 +55,7 @@ function RoleRouteGuard({ children }: { children: React.ReactNode }) {
       first === "service-payment" ||
       first === "service-booking-confirmed" ||
       first === "service-bookings" ||
+      first === "service-enquiries" ||
       first === "cart" ||
       first === "orders" ||
       first === "addresses" ||
