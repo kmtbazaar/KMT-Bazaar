@@ -2841,6 +2841,8 @@ async def _notify_service_booking_created(booking: dict):
         ServiceType.DAILY_SERVICE.value: "Daily Service",
         ServiceType.HOLIDAY.value: "Holiday",
         ServiceType.CAR_RENTAL.value: "Car Rental",
+        ServiceType.DECORATOR.value: "Decorator",
+        ServiceType.PHOTOGRAPHY_STUDIO.value: "Photography Studio",
     }.get(service_type, "Service")
     service_name = booking.get("service_name") or label
     customer_name = booking.get("customer_name") or "Customer"
@@ -3407,6 +3409,8 @@ async def vendor_service_booking_status(
         "holiday": {"pending", "confirmed", "travel_scheduled", "completed", "cancelled"},
         "car_rental": {"booking_requested", "accepted", "vehicle_assigned", "trip_started", "completed", "cancelled"},
         "daily_service": {"booking_requested", "provider_accepted", "provider_on_the_way", "service_started", "completed", "cancelled"},
+        "decorator": {"pending", "booking_requested", "accepted", "event_setup", "completed", "cancelled"},
+        "photography_studio": {"pending", "booking_requested", "accepted", "shoot_scheduled", "shoot_completed", "completed", "cancelled"},
     }
     st = data.status.strip().lower()
     if st not in allowed.get(booking.get("service_type"), set()):
