@@ -1,0 +1,28 @@
+import React,{useCallback,useMemo,useState}from"react";
+import{View,Text,StyleSheet,ScrollView,Pressable,ActivityIndicator,TextInput}from"react-native";
+import{useFocusEffect,useRouter}from"expo-router";
+import{SafeAreaView}from"react-native-safe-area-context";
+import{MaterialCommunityIcons}from"@expo/vector-icons";
+import{adminApi}from"@/src/roleApi";
+
+export default function AdminServiceEnquiries(){
+ const router=useRouter(),[items,setItems]=useState<any[]>([]),[loading,setLoading]=useState(true),[filter,setFilter]=useState("all"),[search,setSearch]=useState("");
+ const load=useCallback(async()=>{setLoading(true);try{setItems(await adminApi.serviceEnquiries())}catch(e:any){setItems([])}finally{setLoading(false)}},[]);
+ useFocusEffect(useCallback(()=>{load()},[load]));
+ const visible=useMemo(()=>items.filter(x=>(filter==="all"||x.status===filter)&&[x.customer_name,x.vendor_name,x.service_name,x.event_location,x.requirements].join(" ").toLowerCase().includes(search.toLowerCase())),[items,filter,search]);
+ return <SafeAreaView style={s.root} edges={["top"]}>
+  <View style={s.header}><Pressable onPress={()=>router.back()}><MaterialCommunityIcons name="arrow-left" size={24} color="#0F172A"/></Pressable><View style={{flex:1,marginLeft:12}}><Text style={s.title}>Service Enquiries</Text><Text style={s.sub}>Monitor Decorator and Photography quote requests</Text></View><Pressable onPress={load}><MaterialCommunityIcons name="refresh" size={22} color="#0284C7"/></Pressable></View>
+  <View style={s.search}><MaterialCommunityIcons name="magnify" size={18} color="#64748B"/><TextInput value={search} onChangeText={setSearch} placeholder="Search customer, vendor or event" placeholderTextColor="#94A3B8" style={s.searchInput}/></View>
+  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.filters}>{["all","new","quoted","declined","converted_to_booking"].map(x=><Pressable key={x} onPress={()=>setFilter(x)} style={[s.chip,filter===x&&s.chipActive]}><Text style={[s.chipText,filter===x&&{color:"#fff"}]}>{x.replaceAll("_"," ")}</Text></Pressable>)}</ScrollView>
+  <ScrollView contentContainerStyle={s.body}>{loading?<ActivityIndicator size="large" color="#0284C7"/>:visible.length===0?<View style={s.empty}><MaterialCommunityIcons name="message-off-outline" size={42} color="#94A3B8"/><Text style={s.emptyTitle}>No matching enquiries</Text></View>:visible.map(x=><View key={x.id} style={s.card}>
+   <View style={s.top}><View style={s.icon}><MaterialCommunityIcons name={x.service_type==="decorator"?"party-popper":"camera"} size={20} color={x.service_type==="decorator"?"#C2410C":"#7C3AED"}/></View><View style={{flex:1}}><Text style={s.name}>{x.service_name||"Service enquiry"}</Text><Text style={s.meta}>{x.vendor_name||"Vendor not assigned"}</Text></View><Text style={s.status}>{String(x.status||"new").replaceAll("_"," ").toUpperCase()}</Text></View>
+   <View style={s.line}><Text style={s.key}>CUSTOMER</Text><Text style={s.value}>{x.customer_name||"Customer"} · {x.customer_phone||"No phone"}</Text></View>
+   <View style={s.line}><Text style={s.key}>EVENT</Text><Text style={s.value}>{x.event_date||"Flexible"} {x.event_time||""} · {x.event_location||"Location not set"}</Text></View>
+   <View style={s.line}><Text style={s.key}>BUDGET</Text><Text style={s.value}>{x.budget_min!=null||x.budget_max!=null?"₹"+(x.budget_min??"0")+" – ₹"+(x.budget_max??"Open"):"Not specified"}</Text></View>
+   <Text style={s.requirements}>{x.requirements}</Text>
+   {x.quote&&<View style={s.quote}><Text style={s.quoteTitle}>Vendor Quote · ₹{Number(x.quote.amount||0).toLocaleString("en-IN")}</Text><Text style={s.meta}>{x.quote.notes||"No additional notes"}</Text></View>}
+   <Text style={s.id}>ID: {x.id}</Text>
+  </View>)}</ScrollView>
+ </SafeAreaView>;
+}
+const s=StyleSheet.create({root:{flex:1,backgroundColor:"#F1F5F9"},header:{flexDirection:"row",alignItems:"center",padding:15,backgroundColor:"#fff",borderBottomWidth:1,borderColor:"#E2E8F0"},title:{fontSize:18,fontWeight:"900",color:"#0F172A"},sub:{fontSize:10,color:"#64748B",marginTop:3},search:{marginHorizontal:14,marginTop:12,backgroundColor:"#fff",borderRadius:12,borderWidth:1,borderColor:"#E2E8F0",paddingHorizontal:12,flexDirection:"row",alignItems:"center",gap:8},searchInput:{flex:1,paddingVertical:11,color:"#0F172A",fontSize:12},filters:{paddingHorizontal:14,paddingVertical:10,gap:7},chip:{paddingHorizontal:11,paddingVertical:8,borderRadius:18,backgroundColor:"#fff",borderWidth:1,borderColor:"#E2E8F0"},chipActive:{backgroundColor:"#0F172A",borderColor:"#0F172A"},chipText:{fontSize:9,fontWeight:"900",color:"#475569",textTransform:"capitalize"},body:{padding:14,paddingBottom:40},card:{backgroundColor:"#fff",borderRadius:16,padding:14,borderWidth:1,borderColor:"#E2E8F0",marginBottom:10},top:{flexDirection:"row",alignItems:"center",gap:10},icon:{width:42,height:42,borderRadius:13,backgroundColor:"#F8FAFC",alignItems:"center",justifyContent:"center"},name:{fontSize:14,fontWeight:"900",color:"#0F172A"},meta:{fontSize:10,color:"#64748B",marginTop:3},status:{fontSize:8,fontWeight:"900",color:"#0284C7"},line:{marginTop:9},key:{fontSize:8,fontWeight:"900",color:"#94A3B8",letterSpacing:.7},value:{fontSize:11,fontWeight:"700",color:"#334155",marginTop:2},requirements:{fontSize:11,color:"#475569",lineHeight:17,marginTop:9},quote:{padding:10,backgroundColor:"#F5F3FF",borderRadius:11,marginTop:10},quoteTitle:{fontSize:11,fontWeight:"900",color:"#6D28D9"},id:{fontSize:8,color:"#94A3B8",marginTop:10},empty:{alignItems:"center",padding:55},emptyTitle:{fontSize:16,fontWeight:"900",color:"#64748B",marginTop:10}});
