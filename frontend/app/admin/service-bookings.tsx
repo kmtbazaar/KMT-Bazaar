@@ -56,7 +56,7 @@ export default function AdminServiceBookings(){
       </View>
       <Text style={s.line}>{x.customer_name||ex.customer_name||"Customer"} · {x.customer_phone||ex.customer_phone||"Mobile not provided"}</Text>
       <Text style={s.line}>{x.booking_date||"Date not set"}{x.booking_time?" · "+x.booking_time:""}</Text>
-      <Text style={s.line} numberOfLines={1}>{ex.service_address||ex.pickup_location||ex.destination||"Booking details available"}</Text>
+      <Text style={s.line} numberOfLines={1}>{x.event_location||ex.service_address||ex.pickup_location||ex.destination||"Booking details available"}</Text>
       {action&&<View style={s.actions}>
        <Pressable onPress={()=>update(x,action==="accept"?"accepted":"confirmed")} style={[s.action,s.confirm]}><MaterialCommunityIcons name={action==="accept"?"check-circle":"check-circle"} size={17} color="#fff"/><Text style={s.actionText}>{action==="accept"?"Accept":"Confirm"}</Text></Pressable>
        <Pressable onPress={()=>update(x,"cancelled")} style={[s.action,s.cancel]}><MaterialCommunityIcons name="close-circle" size={17} color="#fff"/><Text style={s.actionText}>Cancel</Text></Pressable>
@@ -82,7 +82,9 @@ export default function AdminServiceBookings(){
        <Info label="Service" value={selected.service_name}/>
        <Info label="Date" value={selected.booking_date}/>
        <Info label="Time" value={selected.booking_time||"Not specified"}/>
-       <Info label="Address / Pickup" value={ex.service_address||ex.pickup_location||"Not provided"}/>
+       <Info label="Address / Venue" value={selected.event_location||ex.service_address||ex.pickup_location||"Not provided"}/>
+      <Info label="Event type" value={selected.event_type||"Not specified"}/>
+      <Info label="Guest count" value={selected.guest_count||"Not specified"}/>
        <Info label="Destination" value={ex.destination||ex.location||"Not specified"}/>
        <Info label="Category" value={ex.service_category||selected.extra?.category||"Not specified"}/>
        <Info label="Notes" value={selected.notes||"Not provided"}/>
