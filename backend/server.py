@@ -4630,3 +4630,68 @@ async def seed_db():
                     "timeline": [{"status": "pending", "at": now_iso(), "label": "Order placed"}],
                     "created_at": (base_dt - _td2(days=i)).isoformat(),
                 })
+
+@app.on_event("startup")
+async def on_startup():
+    await ensure_db_indexes()
+    await seed_db()
+    logging.info("KMT Bazaar API ready. Seed completed.")
+
+
+@app.on_event("shutdown")
+async def on_shutdown():
+    client.close()
+
+
+@api.get("/")
+async def root():
+    return {"app": "KMT Bazaar", "status": "ok"}
+
+@api.post("/ai/chat")
+async def ai_chat(req: AIChatRequest):
+    try:
+        if not GEMINI_API_KEY:
+            raise HTTPException(
+                status_code=500,
+                detail="GEMINI_API_KEY not configured"
+            )
+
+        response = await asyncio.to_thread(
+            gemini_client.models.generate_content,
+            model=GEMINI_MODEL,
+            contents=req.message,
+            config=types.GenerateContentConfig(
+                system_instruction=(
+                    "You are KMT Bazaar AI Assistant. "
+                    "Help customers with products, orders, sellers, "
+                    "delivery and general shopping questions. "
+                    "Be concise, friendly and useful."
+                )
+            ),
+        )
+
+        return {
+            "message": response.text or "Sorry, I could not generate a response."
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.exception("AI chat failed")
+        raise HTTPException(
+            status_code=500,
+            detail=f"AI service error: {str(e)}",
+        )
+@api.get("/test-db")
+async def test_db(_=Depends(require_roles("admin"))):
+    return {"users": await db.users.count_documents({}), "orders": await db.orders.count_documents({})}
+
+
+
+app.include_router(api)
+# CORS is configured once above with the production and local development origins.
+
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
+    
+    
