@@ -3,6 +3,7 @@ import React from "react";
 import { Tabs, router } from "expo-router";;
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { View, Text, StyleSheet, Platform, useWindowDimensions } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import { BlurView } from "expo-blur";
 import Animated, {
@@ -129,7 +130,16 @@ function CartIcon({
 export default function TabsLayout() {
   const { t } = useLanguage();
   const { width } = useWindowDimensions();
-  const isCompactWeb = Platform.OS === "web" && width <= 768;
+  const insets = useSafeAreaInsets();
+  // Android Chrome can report a wider layout viewport than the physical screen.
+  const isCompactWeb = Platform.OS === "web" && width <= 1024;
+  const mobileTabBarBottom = isCompactWeb
+    ? -Math.max(36, insets.bottom + 20)
+    : Platform.OS === "android"
+      ? -Math.max(24, insets.bottom + 8)
+      : Platform.OS === "web"
+        ? -18
+        : 0;
   return (
     <Tabs
       screenOptions={{
@@ -138,9 +148,8 @@ export default function TabsLayout() {
         tabBarInactiveTintColor: "#475569",
         tabBarStyle: {
           position: "absolute",
-          // Compact Android browser view gets a deeper offset; desktop web and iOS remain unchanged.
-          // Native Android also sits lower to use the available bottom space.
-          bottom: isCompactWeb ? -36 : Platform.OS === "web" ? -18 : Platform.OS === "android" ? -24 : 0,
+          // Move the customer bar below the reported mobile safe-area gap; leave desktop/iOS as-is.
+          bottom: mobileTabBarBottom,
           borderTopColor: COLORS.border,
           backgroundColor:
             Platform.OS === "ios" ? "transparent" : "#FFFFFF",
