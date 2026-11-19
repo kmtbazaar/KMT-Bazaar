@@ -2,7 +2,7 @@ import { useLanguage } from "@/src/LanguageContext";
 import React from "react";
 import { Tabs, router } from "expo-router";;
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { View, Text, StyleSheet, Platform } from "react-native";
+import { View, Text, StyleSheet, Platform, useWindowDimensions } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { BlurView } from "expo-blur";
 import Animated, {
@@ -128,6 +128,8 @@ function CartIcon({
 
 export default function TabsLayout() {
   const { t } = useLanguage();
+  const { width } = useWindowDimensions();
+  const isCompactWeb = Platform.OS === "web" && width <= 768;
   return (
     <Tabs
       screenOptions={{
@@ -136,9 +138,9 @@ export default function TabsLayout() {
         tabBarInactiveTintColor: "#475569",
         tabBarStyle: {
           position: "absolute",
-          // Lower the Android bar into the unused bottom gap; keep iOS safe-area placement
-          // and the existing web viewport offset unchanged.
-          bottom: Platform.OS === "web" ? -18 : Platform.OS === "android" ? -10 : 0,
+          // Compact Android browser view gets a deeper offset; desktop web and iOS remain unchanged.
+          // Native Android also sits lower to use the available bottom space.
+          bottom: isCompactWeb ? -36 : Platform.OS === "web" ? -18 : Platform.OS === "android" ? -24 : 0,
           borderTopColor: COLORS.border,
           backgroundColor:
             Platform.OS === "ios" ? "transparent" : "#FFFFFF",
