@@ -3009,17 +3009,49 @@ async def _approved_service_catalog_item(service_type: ServiceType, service_id: 
     return service
 
 
-async def _check_new_service_date(vendor_id: str, event_date: str):
+async def _check_new_service_date(vendor_id: str, event_date: str, event_time: str = ""):
     try:
-        datetime.strptime(event_date, "%Y-%m-%d")
+        selected_date = datetime.strptime(event_date, "%Y-%m-%d").date()
     except ValueError:
         raise HTTPException(400, "Event date must use YYYY-MM-DD format")
+
+    ist = timezone(timedelta(hours=5, minutes=30))
+    now_local = datetime.now(timezone.utc).astimezone(ist)
+    if selected_date < now_local.date():
+        raise HTTPException(400, "Event date cannot be in the past")
+
     availability = await db.service_availability.find_one({"vendor_id": vendor_id}, {"_id": 0})
     if not availability:
         return
     if event_date in (availability.get("blocked_dates") or []):
         raise HTTPException(409, "This vendor is unavailable on the selected date")
-    limit = int(availability.get("max_bookings_per_day", 1) or 1)
+
+    # Example weekly schedule: {"monday":{"enabled":true,"start":"09:00","end":"18:00"}}
+    weekday_key = selected_date.strftime("%A").lower()
+    day_rule = (availability.get("weekly_schedule") or {}).get(weekday_key)
+    if day_rule is False or (isinstance(day_rule, dict) and day_rule.get("enabled") is False):
+        raise HTTPException(409, "This vendor is not available on the selected weekday")
+    if isinstance(day_rule, dict) and event_time:
+        try:
+            requested_time = datetime.strptime(event_time, "%H:%M").time()
+            start_time = datetime.strptime(str(day_rule.get("start") or "00:00"), "%H:%M").time()
+            end_time = datetime.strptime(str(day_rule.get("end") or "23:59"), "%H:%M").time()
+        except ValueError:
+            raise HTTPException(400, "Event time and vendor schedule must use HH:MM format")
+        if not (start_time <= requested_time <= end_time):
+            raise HTTPException(409, "Selected time is outside this vendor's working hours")
+
+    min_notice_hours = max(0, int(availability.get("min_notice_hours", 24) or 0))
+    if event_time:
+        try:
+            requested_time = datetime.strptime(event_time, "%H:%M").time()
+        except ValueError:
+            raise HTTPException(400, "Event time must use HH:MM format")
+        event_datetime = datetime.combine(selected_date, requested_time, tzinfo=ist)
+        if event_datetime < now_local + timedelta(hours=min_notice_hours):
+            raise HTTPException(409, f"This vendor requires at least {min_notice_hours} hours' advance notice")
+
+    limit = max(1, int(availability.get("max_bookings_per_day", 1) or 1))
     active_count = await db.service_bookings.count_documents({
         "vendor_id": vendor_id,
         "booking_date": event_date,
@@ -3465,10 +3497,12 @@ async def customer_respond_service_enquiry(
     if enquiry.get("status") != "quoted":
         raise HTTPException(409, "There is no active quotation to respond to")
     if action == "decline":
-        await db.service_enquiries.update_one(
-            {"id": enquiry_id, "customer_id": current["id"]},
+        result = await db.service_enquiries.update_one(
+            {"id": enquiry_id, "customer_id": current["id"], "status": "quoted"},
             {"$set": {"status": "declined", "customer_response": data.note.strip(), "updated_at": now_iso()}}
         )
+        if result.matched_count == 0:
+            raise HTTPException(409, "This quotation has already been answered")
         return {"ok": True, "status": "declined"}
     if not enquiry.get("event_date"):
         raise HTTPException(400, "Add an event date before accepting the quotation")
@@ -3478,10 +3512,16 @@ async def customer_respond_service_enquiry(
     )
     if not vendor or not _service_vendor_is_approved(vendor):
         raise HTTPException(409, "This service vendor is currently unavailable")
-    await _check_new_service_date(enquiry["vendor_id"], enquiry["event_date"])
+    await _check_new_service_date(enquiry["vendor_id"], enquiry["event_date"], enquiry.get("event_time", ""))
     quote = enquiry.get("quote") or {}
     amount = float(quote.get("amount") or 0)
     commission = await _service_commission_snapshot(amount)
+    conversion = await db.service_enquiries.update_one(
+        {"id": enquiry_id, "customer_id": current["id"], "status": "quoted"},
+        {"$set": {"status": "converting", "updated_at": now_iso()}}
+    )
+    if conversion.matched_count == 0:
+        raise HTTPException(409, "This quotation has already been accepted or declined")
     booking = {
         "id": "sbk-" + uuid.uuid4().hex[:10],
         "customer_id": current["id"],
@@ -3507,9 +3547,16 @@ async def customer_respond_service_enquiry(
         "created_at": now_iso(),
         "updated_at": now_iso(),
     }
-    await db.service_bookings.insert_one(dict(booking))
+    try:
+        await db.service_bookings.insert_one(dict(booking))
+    except Exception:
+        await db.service_enquiries.update_one(
+            {"id": enquiry_id, "customer_id": current["id"], "status": "converting"},
+            {"$set": {"status": "quoted", "updated_at": now_iso()}}
+        )
+        raise
     await db.service_enquiries.update_one(
-        {"id": enquiry_id, "customer_id": current["id"], "status": "quoted"},
+        {"id": enquiry_id, "customer_id": current["id"], "status": "converting"},
         {"$set": {"status": "converted_to_booking", "converted_booking_id": booking["id"], "updated_at": now_iso()}}
     )
     await _notify_service_booking_created(booking)
