@@ -41,7 +41,7 @@ export default function ServiceCatalog({ fixedType }: { fixedType?: string }) {
 
   const submit = async () => {
     if (!selected || sending) return;
-    if (!form.date.trim()) { notify("Event date required", "Please enter event date in YYYY-MM-DD format."); return; }
+    if ((!isCreative || mode === "direct") && !form.date.trim()) { notify("Event date required", "Please enter event date in YYYY-MM-DD format."); return; }
     if (isCreative && form.notes.trim().length < 5) { notify("More details needed", "Please describe your event requirements in at least 5 characters."); return; }
     setSending(true);
     try {
@@ -185,7 +185,7 @@ export default function ServiceCatalog({ fixedType }: { fixedType?: string }) {
               </View>
               <Pressable onPress={close}><MaterialCommunityIcons name="close-circle" size={25} color="#64748B" /></Pressable>
             </View>
-            <Field label="Event date (YYYY-MM-DD) *" value={form.date} onChange={(v: string) => setForm({ ...form, date: v })} placeholder="2027-01-15" />
+            <Field label={isCreative && mode === "enquiry" ? "Event date (YYYY-MM-DD, optional)" : "Event date (YYYY-MM-DD) *"} value={form.date} onChange={(v: string) => setForm({ ...form, date: v })} placeholder="2027-01-15" />
             <Field label="Event time" value={form.time} onChange={(v: string) => setForm({ ...form, time: v })} placeholder="18:00" />
             {isCreative && <Field label="Event location" value={form.location} onChange={(v: string) => setForm({ ...form, location: v })} placeholder="Venue, area, city" />}
             {isCreative && mode === "direct" && <Field label="Guest count" value={form.guestCount} onChange={(v: string) => setForm({ ...form, guestCount: v })} placeholder="100" keyboardType="numeric" />}
