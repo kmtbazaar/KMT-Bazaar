@@ -210,7 +210,7 @@ export default function OrderDetail() {
                 </Text>
 
                 <Text style={s.itemUnit}>
-                  {it.unit} · Qty {it.quantity}
+                  {it.unit}{it.color ? ` · ${it.color}` : ""} · Qty {it.quantity}
                 </Text>
               </View>
 

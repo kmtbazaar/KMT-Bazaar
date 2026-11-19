@@ -189,7 +189,7 @@ export default function AdminOrderDetail() {
                   </Text>
 
                   <Text style={s.text}>
-                    {it.unit} · Qty{" "}
+                    {it.unit}{it.color ? ` · ${it.color}` : ""} · Qty{" "}
                     {it.quantity}
                   </Text>
                 </View>

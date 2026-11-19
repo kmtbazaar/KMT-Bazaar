@@ -50,11 +50,11 @@ export default function VendorOrders() {
               </View>
               <Text style={s.cust}>{item.customer?.name} · {item.customer?.phone}</Text>
               {item.my_items.map((it: any) => (
-                <View key={it.product_id} style={s.itemRow}>
+                <View key={`${it.product_id}:${it.variant || "default"}:${it.color || "default"}`} style={s.itemRow}>
                   <Image source={{ uri: it.image }} style={s.itemImg} contentFit="cover" />
                   <View style={{ flex: 1 }}>
                     <Text style={s.itemName} numberOfLines={1}>{it.name}</Text>
-                    <Text style={s.itemMeta}>Qty {it.quantity} · ₹{it.line_total}</Text>
+                    <Text style={s.itemMeta}>Qty {it.quantity}{it.color ? ` · ${it.color}` : ""} · ₹{it.line_total}</Text>
                   </View>
                 </View>
               ))}
