@@ -34,7 +34,7 @@ export default function CreativeServiceDashboard() {
     address: "",
     city: "",
     district: "",
-    state: "Jharkhand",
+    state: "",
     portfolio_images: "",
     website: "",
     instagram: "",
