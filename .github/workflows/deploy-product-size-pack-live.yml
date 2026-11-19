@@ -147,7 +147,7 @@ jobs:
           console.log("PRODUCT_SIZE_PACK_UI_VALIDATION_PASS");
           NODE
 
-      - name: Validate animated Chhath-Diwali ghat hero, neon brand and home search placement
+      - name: Validate premium day-night village hero, chimney smoke, neon brand and home search placement
         working-directory: frontend
         run: |
           node <<'NODE'
@@ -156,12 +156,14 @@ jobs:
           const home = fs.readFileSync("app/(tabs)/home.tsx", "utf8");
           const robot = fs.readFileSync("src/components/RobotCompanion3D.tsx", "utf8");
           const assistant = fs.readFileSync("app/assistant.tsx", "utf8");
-          assert.ok(home.includes("function NightSky()") && home.includes("<FestivalDecor />"), "The animated Chhath–Diwali festival scene must render in the home hero");
-          assert.ok(home.includes("function FestivalDecor()") && home.includes("FESTIVAL_BULBS"), "Festival lighting and atmospheric backdrop must be present");
-          assert.ok(home.includes("FESTIVAL_LANTERNS") && home.includes("FESTIVAL_FIREWORKS") && home.includes("function FestivalLantern") && home.includes("function FestivalFirework"), "Floating lanterns and animated fireworks must be present");
-          assert.ok(home.includes("function FestivalSugarcane") && home.includes("home-festival-sugarcane") && home.includes("function FestivalChhathSoop") && home.includes("home-chhath-soop"), "Chhath sugarcane stalks and dala/sup offering must be present");
-          assert.ok(home.includes("festivalGhatStepOne") && home.includes("festivalWaterShimmer") && home.includes("festivalDiyaFlame"), "Ghat steps, moving water reflections and diyas must be present");
-          assert.ok(!home.includes("chhath-hero-240-q26.webp"), "The old flat GIF/WebP image must not replace the animated festival scene");
+          assert.ok(home.includes("function NightSky()") && home.includes("<VillageDayNight />"), "The premium day/night village scene must render in the home hero");
+          assert.ok(home.includes("function VillageDayNight()") && home.includes("villageDayLayer") && home.includes("villageNightLayer") && home.includes("withTiming(1, { duration: 28000 })"), "Day and night sky layers must cross-fade smoothly");
+          assert.ok(home.includes("villageSunCore") && home.includes("villageMoonBody") && home.includes("VILLAGE_STARS") && home.includes("VillageCloud"), "Village sky must include sun, moon, stars and soft drifting clouds");
+          assert.ok(home.includes('testID="home-village-hut"') && home.includes("villageHutRoof") && home.includes("villageHutWindowGlow"), "A traditional village hut with a thatched roof and warm window light must be present");
+          assert.ok(home.includes('testID="home-village-chimney-smoke"') && home.includes("function VillageSmokePuff") && home.includes("villageSmokePuff"), "Animated smoke must visibly rise from the hut chimney");
+          assert.ok(home.includes("VillageSmallHouse") && home.includes("VillageTree") && home.includes("villageFieldLineOne") && home.includes("villageFence"), "The hero must show a complete rural village atmosphere");
+          assert.ok(!home.includes("FestivalDecor") && !home.includes("FESTIVAL_FIREWORKS") && !home.includes("home-chhath-soop"), "The previous festival ghat scene must be replaced");
+          assert.ok(!home.includes("chhath-hero-240-q26.webp"), "The hero must remain animated CSS/View layers, not a flat replacement image");
           assert.ok(!home.includes('testID="home-location-neon-glow"') && !home.includes("headerNeonGlow"), "Neon bar between location and notification must remain removed");
           assert.ok(home.includes('testID="home-hero-brand-neon"') && home.includes("KMT BAZAAR") && home.includes("heroBrandNeon:") && home.includes('textShadowColor: "#FFB928"'), "Pre-GIF KMT Bazaar hero neon text must render");
           assert.ok(home.includes('backgroundColor: "rgba(22,163,74,0.22)"') && home.includes('borderColor: "rgba(134,239,172,0.72)"') && home.includes("borderRadius: 8"), "Home search field must retain translucent green styling and square corners");

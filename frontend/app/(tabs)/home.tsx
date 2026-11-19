@@ -55,441 +55,240 @@ const SEARCH_PLACEHOLDERS = [
 const RECENT_SEARCHES_KEY = "kmt_recent_searches";
 const MAX_RECENT_SEARCHES = 5;
 
-// Keep decorative night-sky stars to the outer edges so the KMT Bazaar wordmark stays completely clear.
-const SKY_STARS = Array.from({ length: 18 }, (_, index) => {
+// Premium village hero: a slow day-to-night sky cycle with a lived-in rural hamlet.
+const VILLAGE_STARS = Array.from({ length: 22 }, (_, index) => {
   const point = Math.floor(index / 2);
   const isLeftSide = index % 2 === 0;
   return {
-    left: `${isLeftSide ? 4 + ((point * 9) % 18) : 78 + ((point * 11) % 18)}%`,
-    top: 7 + ((index * 19 + 13) % 68),
-    size: index % 5 === 0 ? 2.2 : 1.6,
+    left: `${isLeftSide ? 4 + ((point * 8) % 21) : 76 + ((point * 9) % 19)}%`,
+    top: 8 + ((index * 17 + 11) % 58),
+    size: index % 6 === 0 ? 2.5 : 1.6,
   };
 });
 
-
-// Warm bulbs stay at the left and right edges, never across the central wordmark.
-const FESTIVAL_BULBS = [
-  { left: "0%", top: 7, color: "#FFE08A" },
-  { left: "6%", top: 12, color: "#FDBA74" },
-  { left: "12%", top: 7, color: "#FCA5A5" },
-  { left: "18%", top: 12, color: "#FDE68A" },
-  { left: "82%", top: 12, color: "#93C5FD" },
-  { left: "88%", top: 7, color: "#FFE08A" },
-  { left: "94%", top: 12, color: "#FDBA74" },
-  { left: "100%", top: 7, color: "#FCA5A5" },
-];
-
-const FESTIVAL_LANTERNS = [
-  { left: "12%", bottom: 22, delay: 0, duration: 6200, size: 0.82 },
-  { left: "88%", bottom: 18, delay: 1400, duration: 7100, size: 0.96 },
-  // Float beside the right edge of the wordmark, not over the letters.
-  { left: "74%", bottom: 38, delay: 2800, duration: 7600, size: 0.78 },
-];
-
-const FESTIVAL_FIREWORKS = [
-  { left: "19%", top: 82, delay: 300, size: 0.78 },
-  { left: "77%", top: 73, delay: 1700, size: 0.92 },
-];
-
-function FestivalLantern({
-  left,
-  bottom,
-  delay,
-  duration,
-  size,
-}: {
-  left: string;
-  bottom: number;
-  delay: number;
-  duration: number;
-  size: number;
-}) {
-  const floatProgress = useSharedValue(0);
+function VillageSmokePuff({ delay, size }: { delay: number; size: number }) {
+  const drift = useSharedValue(0);
 
   useEffect(() => {
-    floatProgress.value = withDelay(
-      delay,
-      withRepeat(
+    drift.value = withRepeat(
+      withDelay(
+        delay,
         withSequence(
-          withTiming(1, { duration }),
-          withTiming(0, { duration: Math.round(duration * 0.9) })
-        ),
-        -1,
-        false
-      )
-    );
-  }, [delay, duration]);
-
-  const floatStyle = useAnimatedStyle(() => ({
-    opacity: 0.72 + floatProgress.value * 0.28,
-    transform: [
-      { translateY: -floatProgress.value * 68 },
-      { translateX: Math.sin(floatProgress.value * Math.PI * 2) * 4 },
-      { rotate: `${-1.8 + floatProgress.value * 3.6}deg` },
-      { scale: size },
-    ],
-  }));
-
-  return (
-    <Animated.View
-      pointerEvents="none"
-      testID="home-festival-lantern"
-      style={[s.festivalLantern, { left, bottom }, floatStyle]}
-    >
-      <View style={s.festivalLanternGlow} />
-      <View style={s.festivalLanternString} />
-      <View style={s.festivalLanternHook} />
-      <View style={s.festivalLanternCap} />
-      <LinearGradient
-        colors={["#FFF9DE", "#FFE09A", "#F5A33B", "#B94C1F"]}
-        locations={[0, 0.24, 0.68, 1]}
-        style={s.festivalLanternBody}
-      >
-        <View style={s.festivalLanternInnerGlow} />
-        <View style={s.festivalLanternRib} />
-        <View style={s.festivalLanternCenterSeam} />
-        <View style={s.festivalLanternPaperFoldTop} />
-        <View style={s.festivalLanternPaperFoldBottom} />
-      </LinearGradient>
-      <View style={s.festivalLanternLowerFrame}>
-        <View style={s.festivalLanternBurner} />
-        <View style={s.festivalLanternFlame}>
-          <View style={s.festivalLanternFlameInner} />
-        </View>
-      </View>
-      <View style={s.festivalLanternBase} />
-    </Animated.View>
-  );
-}
-
-function FestivalFirework({
-  left,
-  top,
-  delay,
-  size,
-}: {
-  left: string;
-  top: number;
-  delay: number;
-  size: number;
-}) {
-  const burstProgress = useSharedValue(0.12);
-
-  useEffect(() => {
-    burstProgress.value = withDelay(
-      delay,
-      withRepeat(
-        withSequence(
-          withTiming(1, { duration: 480 }),
-          withTiming(0.04, { duration: 1500 })
-        ),
-        -1,
-        false
-      )
+          withTiming(1, { duration: 3600 }),
+          withTiming(0, { duration: 20 })
+        )
+      ),
+      -1,
+      false
     );
   }, [delay]);
 
-  const burstStyle = useAnimatedStyle(() => ({
-    opacity: burstProgress.value,
-    transform: [{ scale: size * (0.5 + burstProgress.value * 0.62) }],
-  }));
-
-  const rays = [0, 45, 90, 135, 180, 225, 270, 315];
-  const sparks = [
-    { left: 17, top: 0 },
-    { left: 34, top: 15 },
-    { left: 17, top: 33 },
-    { left: 0, top: 15 },
-    { left: 5, top: 4 },
-    { left: 31, top: 5 },
-    { left: 5, top: 29 },
-    { left: 30, top: 29 },
-  ];
-
-  return (
-    <Animated.View style={[s.festivalFirework, { left, top }, burstStyle]}>
-      {rays.map((angle) => (
-        <View
-          key={angle}
-          style={[
-            s.festivalFireworkRay,
-            { transform: [{ rotate: String(angle) + "deg" }] },
-          ]}
-        />
-      ))}
-      {sparks.map((spark, index) => (
-        <View
-          key={index}
-          style={[
-            s.festivalFireworkSpark,
-            { left: spark.left, top: spark.top },
-            index % 3 === 0 && s.festivalFireworkSparkWarm,
-          ]}
-        />
-      ))}
-      <View style={s.festivalFireworkCore} />
-    </Animated.View>
-  );
-}
-
-function FestivalSugarcane({ left, bottom }: { left: string; bottom: number }) {
-  const sway = useSharedValue(0);
-
-  useEffect(() => {
-    sway.value = withRepeat(
-      withSequence(
-        withTiming(1, { duration: 2600 }),
-        withTiming(0, { duration: 2600 })
-      ),
-      -1,
-      true
-    );
-  }, []);
-
-  const swayStyle = useAnimatedStyle(() => ({
-    transform: [{ rotate: `${-1.5 + sway.value * 3}deg` }],
-  }));
-
-  const stalkOffsets = [5, 17, 29];
-  const nodePositions = ["18%", "36%", "54%", "72%"];
-
-  return (
-    <Animated.View
-      pointerEvents="none"
-      testID="home-festival-sugarcane"
-      style={[s.festivalSugarcaneCluster, { left, bottom }, swayStyle]}
-    >
-      {stalkOffsets.map((offset, index) => (
-        <View
-          key={offset}
-          style={[
-            s.festivalSugarcaneStalk,
-            {
-              left: offset,
-              height: index === 1 ? 84 : index === 0 ? 75 : 79,
-              transform: [{ rotate: index === 0 ? "-5deg" : index === 2 ? "6deg" : "1deg" }],
-            },
-          ]}
-        >
-          {nodePositions.map((top) => (
-            <View key={top} style={[s.festivalSugarcaneNode, { top }]} />
-          ))}
-        </View>
-      ))}
-      <View style={[s.festivalSugarcaneLeaf, { left: -2, top: 18, transform: [{ rotate: "-34deg" }] }]} />
-      <View style={[s.festivalSugarcaneLeaf, { left: 15, top: 9, transform: [{ rotate: "34deg" }] }]} />
-      <View style={[s.festivalSugarcaneLeaf, { left: 4, top: 38, transform: [{ rotate: "-25deg" }] }]} />
-      <View style={[s.festivalSugarcaneLeaf, { left: 18, top: 32, transform: [{ rotate: "28deg" }] }]} />
-    </Animated.View>
-  );
-}
-
-function FestivalChhathSoop() {
-  return (
-    <View pointerEvents="none" testID="home-chhath-soop" style={s.festivalChhathSoop}>
-      <View style={s.festivalSoopBody}>
-        {[8, 17, 26, 35, 44].map((left) => (
-          <View key={left} style={[s.festivalSoopWeave, { left }]} />
-        ))}
-      </View>
-      <View style={s.festivalSoopRim} />
-      <View style={[s.festivalPaanLeaf, { left: 15, top: -13, transform: [{ rotate: "-34deg" }] }]}>
-        <View style={s.festivalPaanVein} />
-      </View>
-      <View style={[s.festivalPaanLeaf, { left: 30, top: -12, transform: [{ rotate: "31deg" }] }]}>
-        <View style={s.festivalPaanVein} />
-      </View>
-      <View style={s.festivalSoopFruitOrange} />
-      <View style={s.festivalSoopFruitBanana} />
-      <View style={s.festivalSoopCoconut} />
-    </View>
-  );
-}
-
-
-function FestivalChhathWoman() {
-  const offeringLift = useSharedValue(0);
-
-  useEffect(() => {
-    offeringLift.value = withRepeat(
-      withSequence(
-        withTiming(1, { duration: 1450 }),
-        withTiming(0, { duration: 1450 })
-      ),
-      -1,
-      false
-    );
-  }, []);
-
-  const offeringMotion = useAnimatedStyle(() => ({
+  const smokeStyle = useAnimatedStyle(() => ({
+    opacity: 0.34 * (1 - drift.value),
     transform: [
-      { translateY: -2 + offeringLift.value * 2 },
-      { rotate: `${-2 + offeringLift.value * 2}deg` },
+      { translateY: -drift.value * 40 },
+      { translateX: drift.value * 12 },
+      { scale: size * (0.72 + drift.value * 0.8) },
     ],
   }));
 
+  return <Animated.View style={[s.villageSmokePuff, smokeStyle]} />;
+}
+
+function VillageSmoke() {
   return (
-    <View pointerEvents="none" style={s.festivalChhathWoman} testID="home-chhath-woman">
-      {/* Traditional red sari silhouette with a gold border */}
-      <View style={s.festivalWomanSariBack} />
-      <View style={s.festivalWomanBody} />
-      <View style={s.festivalWomanSariDrape} />
-      <View style={s.festivalWomanGoldBorder} />
-      <View style={s.festivalWomanNeck} />
-      <View style={s.festivalWomanBlouse} />
-
-      {/* Side profile facing the setting sun, with hair covered by the pallu */}
-      <View style={s.festivalWomanVeil} />
-      <View style={s.festivalWomanHair} />
-      <View style={s.festivalWomanFace}>
-        <View style={s.festivalWomanEye} />
-        <View style={s.festivalWomanNose} />
-      </View>
-      <View style={s.festivalWomanEarring} />
-
-      {/* Both arms gently lift the soop towards the sun for arghya */}
-      <Animated.View style={[s.festivalWomanOffering, offeringMotion]}>
-        <View style={s.festivalWomanUpperArm} />
-        <View style={s.festivalWomanLowerArm} />
-        <View style={s.festivalWomanSecondArm} />
-        <View style={s.festivalWomanHandTop} />
-        <View style={s.festivalWomanHandBottom} />
-        <View style={s.festivalWomanSoop}>
-          <View style={s.festivalWomanSoopRim} />
-          <View style={s.festivalWomanSoopBody}>
-            <View style={s.festivalWomanSoopWeave} />
-          </View>
-          <View style={s.festivalWomanSoopBanana} />
-          <View style={s.festivalWomanSoopFruit} />
-          <View style={s.festivalWomanSoopLeaf} />
-        </View>
-      </Animated.View>
-      <View style={s.festivalWomanFoot} />
+    <View pointerEvents="none" style={s.villageSmokeTrail} testID="home-village-chimney-smoke">
+      <VillageSmokePuff delay={0} size={0.85} />
+      <VillageSmokePuff delay={1050} size={1.05} />
+      <VillageSmokePuff delay={2100} size={0.92} />
     </View>
   );
 }
 
-function FestivalArghyaSun() {
+function VillageCloud({ left, top, scale = 1 }: { left: string; top: number; scale?: number }) {
   return (
-    <View pointerEvents="none" style={s.festivalArghyaSun} testID="home-chhath-arghya-sun">
-      <View style={s.festivalArghyaSunHalo} />
-      <View style={s.festivalArghyaSunCore} />
+    <View pointerEvents="none" style={[s.villageCloud, { left, top, transform: [{ scale }] }]}>
+      <View style={[s.villageCloudPuff, { left: 13, top: 17, width: 38, height: 18 }]} />
+      <View style={[s.villageCloudPuff, { left: 29, top: 8, width: 34, height: 25 }]} />
+      <View style={[s.villageCloudPuff, { left: 49, top: 16, width: 35, height: 17 }]} />
+      <View style={[s.villageCloudBase, { left: 22, top: 23, width: 54, height: 12 }]} />
     </View>
   );
 }
 
-function FestivalDecor() {
-  const lightPulse = useSharedValue(0);
-  const waterDrift = useSharedValue(0);
+function VillageTree({ left, scale = 1 }: { left: string; scale?: number }) {
+  return (
+    <View pointerEvents="none" style={[s.villageTree, { left, transform: [{ scale }] }]}>
+      <View style={s.villageTreeTrunk} />
+      <View style={[s.villageTreeCrown, s.villageTreeCrownLeft]} />
+      <View style={[s.villageTreeCrown, s.villageTreeCrownTop]} />
+      <View style={[s.villageTreeCrown, s.villageTreeCrownRight]} />
+      <View style={[s.villageTreeCrown, s.villageTreeCrownLower]} />
+    </View>
+  );
+}
+
+function VillageSmallHouse({ left, bottom, scale = 1 }: { left: string; bottom: number; scale?: number }) {
+  return (
+    <View pointerEvents="none" style={[s.villageSmallHouse, { left, bottom, transform: [{ scale }] }]}>
+      <View style={s.villageSmallHouseRoof} />
+      <View style={s.villageSmallHouseBody} />
+      <View style={s.villageSmallHouseDoor} />
+      <View style={s.villageSmallHouseWindow} />
+    </View>
+  );
+}
+
+function VillageDayNight() {
+  const cycleProgress = useSharedValue(0);
+  const cloudDrift = useSharedValue(0);
+  const windowPulse = useSharedValue(0);
 
   useEffect(() => {
-    lightPulse.value = withRepeat(
+    cycleProgress.value = withRepeat(
       withSequence(
-        withTiming(1, { duration: 1100 }),
-        withTiming(0, { duration: 1300 })
+        withTiming(1, { duration: 28000 }),
+        withTiming(0, { duration: 28000 })
       ),
       -1,
       false
     );
-    waterDrift.value = withRepeat(
-      withTiming(1, { duration: 4200 }),
+    cloudDrift.value = withRepeat(
+      withSequence(
+        withTiming(1, { duration: 22000 }),
+        withTiming(0, { duration: 22000 })
+      ),
+      -1,
+      false
+    );
+    windowPulse.value = withRepeat(
+      withSequence(
+        withTiming(1, { duration: 1500 }),
+        withTiming(0.55, { duration: 1700 })
+      ),
       -1,
       false
     );
   }, []);
 
-  const lightsStyle = useAnimatedStyle(() => ({
-    opacity: 0.72 + lightPulse.value * 0.28,
+  const dayStyle = useAnimatedStyle(() => ({ opacity: 1 - cycleProgress.value }));
+  const nightStyle = useAnimatedStyle(() => ({ opacity: cycleProgress.value }));
+  const sunStyle = useAnimatedStyle(() => ({ opacity: 1 - cycleProgress.value }));
+  const moonStyle = useAnimatedStyle(() => ({ opacity: cycleProgress.value }));
+  const cloudStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: -12 + cloudDrift.value * 24 }],
   }));
-  const waterShimmerStyle = useAnimatedStyle(() => ({
-    opacity: 0.22 + Math.sin(waterDrift.value * Math.PI * 2) * 0.10,
-    transform: [{ translateX: -18 + waterDrift.value * 36 }],
+  const windowStyle = useAnimatedStyle(() => ({
+    opacity: 0.34 + windowPulse.value * 0.48,
   }));
 
   return (
-    <View pointerEvents="none" style={s.festivalDecor} testID="home-festival-hero">
-      <LinearGradient
-        colors={["#080F27", "#1B1D43", "#59304C", "#C06A4E"]}
-        locations={[0, 0.42, 0.76, 1]}
-        style={s.festivalBackdrop}
-      />
-      <View style={s.festivalHorizonGlow} />
-      <FestivalArghyaSun />
-      <View style={s.festivalStarLayer}>
-        {SKY_STARS.map((star, index) => (
+    <View pointerEvents="none" style={s.nightSky} testID="home-village-day-night-hero">
+      <Animated.View style={[s.villageDayLayer, dayStyle]}>
+        <LinearGradient
+          colors={["#63BCEB", "#A8DCEF", "#F4CFA3", "#D79B68"]}
+          locations={[0, 0.42, 0.78, 1]}
+          style={s.villageSkyFill}
+        />
+        <View style={s.villageDayHaze} />
+        <Animated.View style={[s.villageSun, sunStyle]}>
+          <View style={s.villageSunHalo} />
+          <View style={s.villageSunCore} />
+        </Animated.View>
+        <Animated.View style={[s.villageCloudGroup, cloudStyle]}>
+          <VillageCloud left="5%" top={43} scale={0.78} />
+          <VillageCloud left="57%" top={24} scale={0.62} />
+        </Animated.View>
+      </Animated.View>
+
+      <Animated.View style={[s.villageNightLayer, nightStyle]}>
+        <LinearGradient
+          colors={["#07162C", "#142D49", "#33475B", "#765C52"]}
+          locations={[0, 0.48, 0.8, 1]}
+          style={s.villageSkyFill}
+        />
+        <View style={s.villageNightHaze} />
+        <View style={s.villageStarLayer}>
+          {VILLAGE_STARS.map((star, index) => (
+            <View
+              key={index}
+              style={[
+                s.villageStar,
+                {
+                  left: star.left,
+                  top: star.top,
+                  width: star.size,
+                  height: star.size,
+                  opacity: index % 4 === 0 ? 0.95 : 0.62,
+                },
+              ]}
+            />
+          ))}
+        </View>
+        <Animated.View style={[s.villageMoon, moonStyle]}>
+          <View style={s.villageMoonHalo} />
+          <View style={s.villageMoonBody} />
+          <View style={s.villageMoonCut} />
+        </Animated.View>
+      </Animated.View>
+
+      <View style={s.villageFarHorizon} />
+      <View style={s.villageHillBack} />
+      <View style={s.villageHillFront} />
+      <View style={s.villageGround} />
+      <View style={s.villageFieldLineOne} />
+      <View style={s.villageFieldLineTwo} />
+
+      <VillageSmallHouse left="7%" bottom={15} scale={0.68} />
+      <VillageSmallHouse left="78%" bottom={14} scale={0.72} />
+      <VillageSmallHouse left="90%" bottom={12} scale={0.48} />
+      <VillageTree left="-2%" scale={0.75} />
+      <VillageTree left="82%" scale={0.68} />
+
+      <View style={s.villageMainHut} testID="home-village-hut">
+        <View style={s.villageHutShadow} />
+        <View style={s.villageHutBody}>
+          <View style={s.villageHutWallTextureOne} />
+          <View style={s.villageHutWallTextureTwo} />
+          <View style={s.villageHutDoor} />
+          <Animated.View style={[s.villageHutWindowGlow, windowStyle]}>
+            <View style={s.villageHutWindowCross} />
+          </Animated.View>
+        </View>
+        <View style={s.villageHutRoof} />
+        <View style={s.villageHutRoofRidge} />
+        <View style={s.villageHutRoofStrawOne} />
+        <View style={s.villageHutRoofStrawTwo} />
+        <View style={s.villageHutChimney} />
+        <VillageSmoke />
+      </View>
+
+      <View style={s.villageFence}>
+        {[0, 18, 36, 54, 72].map((left) => (
+          <View key={left} style={[s.villageFencePost, { left }]} />
+        ))}
+        <View style={s.villageFenceRail} />
+      </View>
+      <View style={s.villageForegroundGrass}>
+        {[4, 12, 20, 32, 44, 58, 71, 86, 96].map((left, index) => (
           <View
-            key={index}
+            key={left}
             style={[
-              s.festivalStar,
-              {
-                left: star.left,
-                top: star.top,
-                width: star.size,
-                height: star.size,
-                opacity: index % 4 === 0 ? 0.95 : 0.55,
-              },
+              s.villageGrassBlade,
+              { left: `${left}%`, height: 5 + (index % 3) * 3, transform: [{ rotate: index % 2 ? "-18deg" : "18deg" }] },
             ]}
           />
         ))}
       </View>
-
-      <Animated.View style={[s.festivalLightString, lightsStyle]}>
-        <View style={[s.festivalLightWire, s.festivalLightWireLeft]} />
-        <View style={[s.festivalLightWire, s.festivalLightWireRight]} />
-        {FESTIVAL_BULBS.map((bulb, index) => (
-          <View
-            key={index}
-            style={[
-              s.festivalBulb,
-              {
-                left: bulb.left,
-                top: bulb.top,
-                backgroundColor: bulb.color,
-                shadowColor: bulb.color,
-              },
-            ]}
-          />
-        ))}
-      </Animated.View>
-
-      {FESTIVAL_LANTERNS.map((lantern, index) => (
-        <FestivalLantern key={index} {...lantern} />
-      ))}
-
-      {FESTIVAL_FIREWORKS.map((firework, index) => (
-        <FestivalFirework key={index} {...firework} />
-      ))}
-
-      <View style={s.festivalGhatStepOne} />
-      <View style={s.festivalGhatStepTwo} />
-      <View style={s.festivalGhatStepThree} />
-
-      <LinearGradient
-        colors={["rgba(19,75,101,0.04)", "rgba(8,39,63,0.60)"]}
-        style={s.festivalWater}
-      >
-        <Animated.View style={[s.festivalWaterShimmer, waterShimmerStyle]} />
-        {["15%", "39%", "66%", "87%"].map((left, index) => (
-          <View key={left} style={[s.festivalDiya, { left }]}>
-            <View style={[s.festivalDiyaFlame, index % 2 === 0 && s.festivalDiyaFlameBright]} />
-            <View style={s.festivalDiyaBowl} />
-          </View>
-        ))}
-      </LinearGradient>
-
-      <FestivalChhathWoman />
-      <FestivalSugarcane left="61%" bottom={15} />
-      <FestivalSugarcane left="75%" bottom={12} />
-      <FestivalChhathSoop />
+      <View style={s.villageAtmosphereShade} />
     </View>
   );
 }
-
 
 function NightSky() {
   return (
     <View pointerEvents="none" style={s.nightSky}>
-      <FestivalDecor />
+      <VillageDayNight />
     </View>
   );
 }
@@ -1640,169 +1439,65 @@ function SectionTitle({ title, subtitle }: { title: string; subtitle?: string })
 }
 
 const s = StyleSheet.create({
-  festivalDecor: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, zIndex: 20, overflow: "hidden" },
-  festivalBackdrop: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0 },
-  festivalHorizonGlow: { position: "absolute", left: "17%", right: "17%", top: 84, height: 58, borderRadius: 70, backgroundColor: "rgba(251,146,60,0.17)", shadowColor: "#FB923C", shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.42, shadowRadius: 24, elevation: 3 },
-  festivalStarLayer: { position: "absolute", left: 0, right: 0, top: 0, height: 92 },
-  festivalStar: { position: "absolute", borderRadius: 3, backgroundColor: "#EAF7FF", shadowColor: "#8ADFFF", shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.9, shadowRadius: 6, elevation: 2 },
-  festivalLightString: { position: "absolute", left: "6%", right: "6%", top: 57, height: 24, zIndex: 8 },
-  festivalLightWire: { position: "absolute", top: 5, height: 16, borderBottomWidth: 1, borderBottomColor: "rgba(255,211,128,0.76)", borderBottomLeftRadius: 90, borderBottomRightRadius: 90 },
-  festivalLightWireLeft: { left: 0, width: "22%" },
-  festivalLightWireRight: { right: 0, width: "22%" },
-  festivalBulb: { position: "absolute", width: 5, height: 5, borderRadius: 3, borderWidth: 0.5, borderColor: "rgba(255,255,255,0.72)", shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.9, shadowRadius: 7, elevation: 5 },
-  festivalLantern: { position: "absolute", width: 38, height: 62, alignItems: "center", zIndex: 10, overflow: "visible" },
-  festivalLanternGlow: { position: "absolute", top: 5, width: 44, height: 49, borderRadius: 24, backgroundColor: "rgba(255,172,55,0.16)", shadowColor: "#FFB33F", shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.9, shadowRadius: 18, elevation: 6 },
-  festivalLanternString: { position: "absolute", top: -9, width: 1, height: 10, backgroundColor: "rgba(255,225,166,0.84)" },
-  festivalLanternHook: { position: "absolute", top: -11, width: 5, height: 5, borderRadius: 3, borderWidth: 1, borderColor: "#F7D995", backgroundColor: "#8C552B" },
-  festivalLanternCap: { width: 21, height: 4, borderRadius: 3, backgroundColor: "#E6A74D", borderWidth: 0.7, borderColor: "#FFE7B5", zIndex: 2 },
-  festivalLanternBody: { width: 25, height: 37, marginTop: -1, borderTopLeftRadius: 13, borderTopRightRadius: 13, borderBottomLeftRadius: 7, borderBottomRightRadius: 7, borderWidth: 1, borderColor: "#FFE6B0", overflow: "hidden", alignItems: "center", justifyContent: "center", shadowColor: "#FFB84F", shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.52, shadowRadius: 8, elevation: 4 },
-  festivalLanternInnerGlow: { position: "absolute", top: 5, width: 11, height: 24, borderRadius: 8, backgroundColor: "rgba(255,255,225,0.32)", shadowColor: "#FFF7C2", shadowOpacity: 0.7, shadowRadius: 8 },
-  festivalLanternRib: { position: "absolute", left: 3, right: 3, top: 1, bottom: 1, borderLeftWidth: 1, borderRightWidth: 1, borderColor: "rgba(255,246,213,0.7)", borderRadius: 10 },
-  festivalLanternCenterSeam: { position: "absolute", top: 2, bottom: 2, left: "50%", width: 0.8, backgroundColor: "rgba(132,66,27,0.36)" },
-  festivalLanternPaperFoldTop: { position: "absolute", left: 2, right: 2, top: 8, height: 1, backgroundColor: "rgba(255,246,213,0.48)" },
-  festivalLanternPaperFoldBottom: { position: "absolute", left: 3, right: 3, bottom: 8, height: 1, backgroundColor: "rgba(112,55,23,0.32)" },
-  festivalLanternLowerFrame: { width: 15, height: 8, marginTop: -2, alignItems: "center", justifyContent: "center", borderBottomLeftRadius: 4, borderBottomRightRadius: 4, borderWidth: 0.8, borderTopWidth: 0, borderColor: "#F2C47D", backgroundColor: "rgba(91,49,28,0.68)" },
-  festivalLanternBurner: { position: "absolute", top: 1, width: 9, height: 2, borderRadius: 2, backgroundColor: "#7C4A2A" },
-  festivalLanternFlame: { position: "absolute", bottom: 0, width: 7, height: 9, borderRadius: 7, backgroundColor: "#FF9B32", shadowColor: "#FFE58A", shadowOffset: { width: 0, height: 0 }, shadowOpacity: 1, shadowRadius: 7, elevation: 5, alignItems: "center", justifyContent: "center" },
-  festivalLanternFlameInner: { width: 3, height: 6, borderRadius: 4, backgroundColor: "#FFF9D5", shadowColor: "#FFF5B5", shadowOpacity: 1, shadowRadius: 4 },
-  festivalLanternBase: { width: 13, height: 2, marginTop: -1, borderRadius: 2, backgroundColor: "#DDAA59", borderWidth: 0.5, borderColor: "#FFE4A8" },
-  festivalFirework: { position: "absolute", width: 38, height: 38, zIndex: 9 },
-  festivalFireworkRay: { position: "absolute", left: 18, top: 12, width: 2, height: 14, borderRadius: 2, backgroundColor: "#FFE6A3", shadowColor: "#FDBA74", shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.9, shadowRadius: 5, elevation: 3 },
-  festivalFireworkSpark: { position: "absolute", width: 3, height: 3, borderRadius: 2, backgroundColor: "#FFF6D6", shadowColor: "#FDE68A", shadowOffset: { width: 0, height: 0 }, shadowOpacity: 1, shadowRadius: 4, elevation: 3 },
-  festivalFireworkSparkWarm: { backgroundColor: "#FB923C", shadowColor: "#FB923C" },
-  festivalFireworkCore: { position: "absolute", left: 16, top: 16, width: 5, height: 5, borderRadius: 3, backgroundColor: "#FFFFFF", shadowColor: "#FFFFFF", shadowOffset: { width: 0, height: 0 }, shadowOpacity: 1, shadowRadius: 5, elevation: 4 },
-  festivalSugarcaneCluster: { position: "absolute", width: 46, height: 90, zIndex: 14, overflow: "visible" },
-  festivalSugarcaneStalk: { position: "absolute", bottom: 0, width: 6, borderRadius: 4, backgroundColor: "#397C3A", borderWidth: 1, borderColor: "#A7CF72", shadowColor: "#A3D66B", shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.42, shadowRadius: 3, elevation: 2 },
-  festivalSugarcaneNode: { position: "absolute", left: -0.5, right: -0.5, height: 1.5, backgroundColor: "rgba(231,245,174,0.92)", borderRadius: 2 },
-  festivalSugarcaneLeaf: { position: "absolute", width: 29, height: 6, borderRadius: 10, backgroundColor: "#397A35", borderWidth: 0.6, borderColor: "#9FC66D" },
-  festivalChhathSoop: { position: "absolute", left: "43%", bottom: 14, width: 64, height: 40, zIndex: 16, alignItems: "center" },
-  festivalSoopBody: { position: "absolute", bottom: 0, width: 58, height: 23, borderBottomLeftRadius: 30, borderBottomRightRadius: 30, borderWidth: 1.2, borderTopWidth: 0, borderColor: "#E7B875", backgroundColor: "rgba(157,99,45,0.94)", overflow: "hidden" },
-  festivalSoopRim: { position: "absolute", top: 13, width: 64, height: 8, borderRadius: 8, borderWidth: 1.2, borderColor: "#F3D29A", backgroundColor: "#C88B4B" },
-  festivalSoopWeave: { position: "absolute", top: 3, bottom: 2, width: 1.3, backgroundColor: "rgba(255,220,158,0.62)" },
-  festivalPaanLeaf: { position: "absolute", width: 19, height: 27, borderTopLeftRadius: 19, borderTopRightRadius: 3, borderBottomLeftRadius: 3, borderBottomRightRadius: 19, backgroundColor: "#238443", borderWidth: 0.8, borderColor: "#9ED27C", zIndex: 3 },
-  festivalPaanVein: { position: "absolute", left: 8, top: 3, bottom: 3, width: 1, backgroundColor: "rgba(204,245,166,0.92)", borderRadius: 1 },
-  festivalSoopFruitOrange: { position: "absolute", top: 7, left: 9, width: 9, height: 9, borderRadius: 5, backgroundColor: "#F59E0B", borderWidth: 1, borderColor: "#FDE68A", zIndex: 2 },
-  festivalSoopFruitBanana: { position: "absolute", top: 5, left: 39, width: 15, height: 6, borderRadius: 8, backgroundColor: "#FDE68A", borderBottomWidth: 1.5, borderBottomColor: "#D69A35", transform: [{ rotate: "-22deg" }], zIndex: 2 },
-  festivalSoopCoconut: { position: "absolute", top: 3, left: 25, width: 9, height: 9, borderRadius: 5, backgroundColor: "#8B5A35", borderWidth: 1, borderColor: "#D6A16A", zIndex: 2 },
-  festivalChhathWoman: { position: "absolute", left: "5%", bottom: 11, width: 84, height: 108, zIndex: 17, overflow: "visible" },
-  festivalWomanSariBack: { position: "absolute", left: 8, top: 45, width: 43, height: 58, borderTopLeftRadius: 21, borderTopRightRadius: 14, borderBottomLeftRadius: 10, borderBottomRightRadius: 12, backgroundColor: "#9F243B", transform: [{ rotate: "5deg" }] },
-  festivalWomanBody: { position: "absolute", left: 19, top: 38, width: 24, height: 42, borderRadius: 11, backgroundColor: "#B85B3C" },
-  festivalWomanSariDrape: { position: "absolute", left: 9, top: 35, width: 39, height: 58, borderTopLeftRadius: 22, borderTopRightRadius: 8, borderBottomLeftRadius: 5, borderBottomRightRadius: 18, backgroundColor: "#B83246", borderLeftWidth: 2, borderLeftColor: "#F6C56E", transform: [{ rotate: "12deg" }] },
-  festivalWomanGoldBorder: { position: "absolute", left: 12, top: 57, width: 35, height: 3, borderRadius: 2, backgroundColor: "#F4C56D", transform: [{ rotate: "-55deg" }] },
-  festivalWomanNeck: { position: "absolute", left: 23, top: 27, width: 9, height: 12, borderRadius: 4, backgroundColor: "#B97955" },
-  festivalWomanBlouse: { position: "absolute", left: 24, top: 36, width: 21, height: 24, borderRadius: 7, backgroundColor: "#7F1D38" },
-  festivalWomanVeil: { position: "absolute", left: 12, top: 5, width: 29, height: 34, borderTopLeftRadius: 20, borderTopRightRadius: 17, borderBottomLeftRadius: 5, borderBottomRightRadius: 12, backgroundColor: "#A5223B", borderTopWidth: 2, borderTopColor: "#F3C56E", transform: [{ rotate: "-8deg" }], zIndex: 4 },
-  festivalWomanHair: { position: "absolute", left: 12, top: 15, width: 21, height: 20, borderRadius: 11, backgroundColor: "#261A22", zIndex: 5 },
-  festivalWomanFace: { position: "absolute", left: 24, top: 17, width: 18, height: 20, borderRadius: 10, backgroundColor: "#C98A65", zIndex: 6 },
-  festivalWomanEye: { position: "absolute", right: 4, top: 7, width: 2, height: 2, borderRadius: 1, backgroundColor: "#291A18" },
-  festivalWomanNose: { position: "absolute", right: -2, top: 10, width: 5, height: 3, borderTopWidth: 1.4, borderTopColor: "#A9674C", transform: [{ rotate: "12deg" }] },
-  festivalWomanEarring: { position: "absolute", left: 38, top: 31, width: 4, height: 5, borderRadius: 3, borderWidth: 1, borderColor: "#F6D28B", backgroundColor: "#D69A42", zIndex: 7 },
-  festivalWomanOffering: { position: "absolute", left: 0, top: 0, width: 84, height: 54, zIndex: 8 },
-  festivalWomanUpperArm: { position: "absolute", left: 34, top: 29, width: 30, height: 7, borderRadius: 5, backgroundColor: "#B97955", borderWidth: 0.7, borderColor: "#E5B08B", transform: [{ rotate: "-34deg" }] },
-  festivalWomanLowerArm: { position: "absolute", left: 53, top: 12, width: 17, height: 6, borderRadius: 5, backgroundColor: "#C98A65", transform: [{ rotate: "-31deg" }] },
-  festivalWomanSecondArm: { position: "absolute", left: 33, top: 38, width: 30, height: 6, borderRadius: 5, backgroundColor: "#A9664B", borderWidth: 0.6, borderColor: "#E5B08B", transform: [{ rotate: "-27deg" }] },
-  festivalWomanHandTop: { position: "absolute", left: 65, top: 3, width: 9, height: 6, borderRadius: 5, backgroundColor: "#D39A72", transform: [{ rotate: "-28deg" }] },
-  festivalWomanHandBottom: { position: "absolute", left: 64, top: 17, width: 9, height: 6, borderRadius: 5, backgroundColor: "#B97955", transform: [{ rotate: "-25deg" }] },
-  festivalWomanSoop: { position: "absolute", left: 48, top: -2, width: 35, height: 18, alignItems: "center", justifyContent: "flex-end" },
-  festivalWomanSoopRim: { position: "absolute", top: 4, left: 0, width: 35, height: 8, borderRadius: 18, backgroundColor: "#D99B4D", borderWidth: 1.2, borderColor: "#FFE0A1", transform: [{ rotate: "-8deg" }] },
-  festivalWomanSoopBody: { position: "absolute", bottom: 0, left: 4, width: 27, height: 9, borderBottomLeftRadius: 12, borderBottomRightRadius: 12, backgroundColor: "#A76A39", borderBottomWidth: 1.2, borderBottomColor: "#F2C27D", overflow: "hidden" },
-  festivalWomanSoopWeave: { position: "absolute", top: 2, left: 3, right: 3, height: 1, backgroundColor: "rgba(255,225,170,0.9)" },
-  festivalWomanSoopBanana: { position: "absolute", top: -1, left: 17, width: 12, height: 4, borderRadius: 6, backgroundColor: "#FFE28C", transform: [{ rotate: "-12deg" }] },
-  festivalWomanSoopFruit: { position: "absolute", top: 0, left: 8, width: 6, height: 6, borderRadius: 4, backgroundColor: "#F59E0B", borderWidth: 1, borderColor: "#FDE68A" },
-  festivalWomanSoopLeaf: { position: "absolute", top: -4, left: 24, width: 7, height: 9, borderTopLeftRadius: 8, borderBottomRightRadius: 8, backgroundColor: "#39834C", transform: [{ rotate: "28deg" }] },
-  festivalWomanFoot: { position: "absolute", left: 21, bottom: 0, width: 23, height: 5, borderRadius: 4, backgroundColor: "#7D2935" },
-  festivalArghyaSun: { position: "absolute", top: 67, right: "15%", width: 42, height: 42, alignItems: "center", justifyContent: "center", zIndex: 2 },
-  festivalArghyaSunHalo: { position: "absolute", width: 42, height: 42, borderRadius: 21, backgroundColor: "rgba(255,211,135,0.22)", shadowColor: "#FFD27E", shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.9, shadowRadius: 16, elevation: 5 },
-  festivalArghyaSunCore: { width: 25, height: 25, borderRadius: 13, backgroundColor: "#FFE8A3", borderWidth: 1, borderColor: "#FFF5CE", shadowColor: "#FFF3BF", shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.95, shadowRadius: 12, elevation: 6 },
-  festivalGhatStepOne: { position: "absolute", right: "5%", bottom: 9, width: 72, height: 5, borderRadius: 2, backgroundColor: "rgba(151,91,50,0.9)", borderTopWidth: 1, borderTopColor: "rgba(255,218,157,0.86)", zIndex: 11 },
-  festivalGhatStepTwo: { position: "absolute", right: "8%", bottom: 14, width: 58, height: 5, borderRadius: 2, backgroundColor: "rgba(175,112,62,0.88)", borderTopWidth: 1, borderTopColor: "rgba(255,221,163,0.84)", zIndex: 11 },
-  festivalGhatStepThree: { position: "absolute", right: "11%", bottom: 19, width: 44, height: 5, borderRadius: 2, backgroundColor: "rgba(194,135,78,0.9)", borderTopWidth: 1, borderTopColor: "rgba(255,227,177,0.82)", zIndex: 11 },
-  festivalWater: { position: "absolute", left: 0, right: 0, bottom: 0, height: 18, zIndex: 13, overflow: "hidden", borderTopWidth: 1, borderTopColor: "rgba(253,205,124,0.22)" },
-  festivalWaterShimmer: { position: "absolute", left: "22%", top: 5, width: "35%", height: 1.5, borderRadius: 2, backgroundColor: "rgba(255,217,144,0.82)" },
-  festivalDiya: { position: "absolute", bottom: 3, width: 12, height: 12, alignItems: "center", justifyContent: "flex-end" },
-  festivalDiyaFlame: { position: "absolute", top: 0, width: 4, height: 7, borderRadius: 4, backgroundColor: "#FDBA74", shadowColor: "#F59E0B", shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.9, shadowRadius: 5, elevation: 4 },
-  festivalDiyaFlameBright: { backgroundColor: "#FFF4C2", shadowColor: "#FFF4C2" },
-  festivalDiyaBowl: { width: 11, height: 4, borderBottomLeftRadius: 7, borderBottomRightRadius: 7, backgroundColor: "#D97706", borderTopWidth: 1, borderTopColor: "#FDE68A" },
-  serviceCardSmall: { width: width > 768 ? 240 : Math.max(150, (width - (SPACING.lg * 2) - 10) / 2), height: 150, backgroundColor: THEME.white, borderRadius: RADIUS.md, overflow: "hidden", borderWidth: 1, borderColor: THEME.borderSoft },
-  serviceImgSmall: { width: "100%", height: 105 },
-  servicePlaceholder: { alignItems: "center", justifyContent: "center", backgroundColor: "#E0F2FE" },
-  serviceNameSmall: { fontWeight: "800", color: THEME.black, fontSize: 12 },
-  serviceVendorSmall: { fontSize: 10, color: THEME.blackMuted, fontWeight: "600", marginTop: 3 },
-  locationGate: { flex: 1, justifyContent: "center", alignItems: "center", paddingHorizontal: 20, paddingVertical: 40, backgroundColor: THEME.whiteBg },
-  locationGateCard: { width: "100%", maxWidth: 460, backgroundColor: "#fff", borderRadius: 24, padding: 24, alignItems: "center", borderWidth: 1, borderColor: THEME.borderSoft },
-  locationGateIcon: { width: 72, height: 72, borderRadius: 36, alignItems: "center", justifyContent: "center", backgroundColor: "#FFF1E8", marginBottom: 14 },
-  locationGateTitle: { fontSize: 22, fontWeight: "900", color: THEME.black, textAlign: "center" },
-  locationGateText: { marginTop: 8, color: THEME.blackMuted, fontSize: 14, lineHeight: 21, textAlign: "center" },
-  locationGateButton: { marginTop: 20, width: "100%", flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, backgroundColor: THEME.orange, paddingVertical: 14, borderRadius: 14 },
-  locationGateButtonText: { color: "#fff", fontSize: 12, fontWeight: "900" },
-  locationGateError: { marginTop: 10, color: "#B91C1C", fontSize: 11, lineHeight: 16, textAlign: "center" },
-  locationGatePrivacy: { marginTop: 12, color: THEME.blackMuted, fontSize: 10, lineHeight: 15, textAlign: "center" },
-  root: { flex: 1, backgroundColor: THEME.whiteBg },
-  /* Realistic 3D-style sky layers stay behind the existing header/search only */
   heroHeaderShell: { position: "relative", width: "100%", overflow: "visible" },
   nightSky: { position: "absolute", top: 0, left: 0, right: 0, height: HERO_BACKDROP_HEIGHT, overflow: "hidden", zIndex: 0, pointerEvents: "none" },
-  nightGradientLayer: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0 },
-  nightGradient: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0 },
-  cloud: { position: "absolute", width: 164, height: 70, opacity: 0.58 },
-  cloudOne: { top: 60, left: -42 },
-  cloudTwo: { top: 92, right: -62 },
-  cloudPuff: { position: "absolute", borderRadius: 40, shadowColor: "#FFFFFF", shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.16, shadowRadius: 8, elevation: 2 },
-  horizonGlow: { position: "absolute", left: "12%", right: "12%", bottom: 4, height: 68, borderTopLeftRadius: 170, borderTopRightRadius: 170, backgroundColor: "rgba(255,190,130,0.10)" },
-  horizonSilhouette: { position: "absolute", left: 0, right: 0, bottom: 0, height: 18, backgroundColor: "rgba(13,28,38,0.58)" },
-  house: { position: "absolute", bottom: 1, height: 22, zIndex: 3 },
-  houseLeft: { left: "8%", width: 34, height: 20 },
-  houseCenter: { left: "25%", width: 66, height: 34 },
-  houseMainRoof: { left: 1, bottom: 13, borderLeftWidth: 32, borderRightWidth: 32, borderBottomWidth: 18 },
-  houseMainBody: { left: 5, right: 5, bottom: 0, height: 18 },
-  houseMainWindow: { bottom: 5, width: 6, height: 7 },
-  houseRight: { right: "28%", width: 40, height: 19 },
-  houseFarRight: { right: "5%", width: 30, height: 17 },
-  houseRoof: { position: "absolute", left: 0, bottom: 10, width: 0, height: 0, borderLeftWidth: 17, borderRightWidth: 17, borderBottomWidth: 10, borderLeftColor: "transparent", borderRightColor: "transparent" },
-  houseBody: { position: "absolute", left: 4, right: 4, bottom: 0, height: 12, borderTopLeftRadius: 1, borderTopRightRadius: 1 },
-  houseWindow: { position: "absolute", bottom: 3, width: 4, height: 5, borderRadius: 1 },
-  smokeColumn: { position: "absolute", left: "20%", bottom: 20, width: 94, height: 118 },
-  smokePuff: { position: "absolute", borderRadius: 50, backgroundColor: "rgba(206,218,226,0.50)", shadowColor: "#CBD5E1", shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.34, shadowRadius: 14, elevation: 1 },
-  smokeStack: { position: "absolute", bottom: 20, left: "32.5%", width: 8, height: 14, backgroundColor: "#263442", borderTopWidth: 2, borderTopColor: "#526170" },
-  heroTree: { position: "absolute", bottom: 0, width: 62, height: 82, zIndex: 2, transformOrigin: "bottom" } as any,
-  heroTreeLeft: { left: "1%" },
-  heroTreeRight: { right: "2%", width: 58, height: 72 },
-  heroTreeTrunk: { position: "absolute", bottom: 0, left: "44%", width: 8, height: 34, borderTopLeftRadius: 2, borderTopRightRadius: 2 },
-  heroTreeCanopy: { position: "absolute", borderRadius: 50 },
-  heroTreeCanopyLeft: { left: 2, top: 25, width: 39, height: 36 },
-  heroTreeCanopyTop: { left: 16, top: 2, width: 37, height: 39 },
-  heroTreeCanopyRight: { right: 0, top: 25, width: 36, height: 33 },
-  heroTreeCanopyLower: { left: 9, top: 39, width: 45, height: 31 },
-  starLayer: { position: "absolute", top: 0, left: 0, right: 0, height: 92 },
-  star: { position: "absolute", backgroundColor: "#FFFFFF", shadowColor: "#FFFFFF", shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.95, shadowRadius: 5, elevation: 3 },
-  sunGlow: { position: "absolute", top: 10, right: "12%", width: 90, height: 90, alignItems: "center", justifyContent: "center" },
-  sunHaloOuter: { position: "absolute", width: 90, height: 90, borderRadius: 45, backgroundColor: "rgba(255,255,255,0.14)" },
-  sunHalo: { position: "absolute", width: 72, height: 72, borderRadius: 36, backgroundColor: "rgba(255,248,220,0.25)" },
-  sunCore: { width: 50, height: 50, borderRadius: 25, backgroundColor: "#FFF7CC", shadowColor: "#FFFFFF", shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.8, shadowRadius: 20, elevation: 6 },
-  sunsetGlow: { position: "absolute", left: "28%", right: "28%", bottom: 0, height: 78, alignItems: "center", justifyContent: "flex-end" },
-  sunsetHalo: { width: "100%", height: 78, borderTopLeftRadius: 140, borderTopRightRadius: 140, backgroundColor: "rgba(255,190,120,0.16)" },
-  moon: { position: "absolute", top: 12, right: "15%", width: 78, height: 78, alignItems: "center", justifyContent: "center" },
-  moonHalo: { position: "absolute", width: 78, height: 78, borderRadius: 39, backgroundColor: "rgba(226,232,240,0.10)" },
-  moonBody: { width: 46, height: 46, borderRadius: 23, backgroundColor: "#F8FAFC", shadowColor: "#FFFFFF", shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.75, shadowRadius: 18, elevation: 5, overflow: "hidden" },
-  moonCut: { position: "absolute", top: -3, left: 13, width: 40, height: 40, borderRadius: 20, backgroundColor: "#0B1120" },
-  airplane: { position: "absolute", top: 0, left: -20, width: 46, height: 24, alignItems: "center", justifyContent: "center" },
-  airplaneTrail: { position: "absolute", width: 26, height: 2, left: -23, top: 13, borderRadius: 2, backgroundColor: "rgba(255,255,255,0.3)" },
-  cloud: { position: "absolute", width: 164, height: 70, opacity: 0.58 },
-  cloudOne: { top: 60, left: -42 },
-  cloudTwo: { top: 92, right: -62 },
-  cloudPuff: { position: "absolute", borderRadius: 40, shadowColor: "#FFFFFF", shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.16, shadowRadius: 8, elevation: 2 },
-  cloudShade: { position: "absolute", left: 4, right: 4, bottom: 2, height: 28, borderRadius: 20, opacity: 0.34 },
-  cloudHighlightOne: { position: "absolute", left: 42, top: 8, width: 38, height: 10, borderRadius: 10, backgroundColor: "rgba(255,255,255,0.22)" },
-  cloudHighlightTwo: { position: "absolute", left: 38, top: 7, width: 32, height: 9, borderRadius: 10, backgroundColor: "rgba(255,255,255,0.2)" },
-  cloudBase: { position: "absolute", left: 2, right: 2, bottom: 4, height: 24, borderRadius: 18, backgroundColor: "rgba(100,116,139,0.12)" },
-  headerBg: { position: "absolute", top: 0, left: 0, right: 0, height: HERO_BACKDROP_HEIGHT, borderBottomLeftRadius: 30, borderBottomRightRadius: 30, backgroundColor: "transparent", shadowColor: "#FFFFFF", shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.14, shadowRadius: 18, elevation: 7 },
-  skyClearSpace: { height: Platform.OS === "web" ? 90 : 56, alignItems: "center", justifyContent: "center", zIndex: 30, elevation: 30 },
-  skyClearSpaceCollapsed: { height: 0 },
-  searchBarSafeArea: { backgroundColor: "transparent", zIndex: 20, elevation: 0 },
-  searchBarSafeAreaCollapsed: { borderBottomWidth: 1, borderBottomColor: "rgba(226,232,240,0.9)" },
-  searchBarOuter: { paddingHorizontal: SPACING.lg, marginTop: 0 },
-  searchBarOuterCollapsed: { marginTop: 0, paddingBottom: 8 },
-  headerWrap: { paddingHorizontal: SPACING.lg, paddingBottom: SPACING.xs },
-  headerRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingTop: 4 },
+  villageDayLayer: { ...StyleSheet.absoluteFillObject, overflow: "hidden" },
+  villageNightLayer: { ...StyleSheet.absoluteFillObject, overflow: "hidden" },
+  villageSkyFill: { ...StyleSheet.absoluteFillObject },
+  villageDayHaze: { position: "absolute", left: "12%", right: "12%", bottom: 20, height: 60, borderTopLeftRadius: 140, borderTopRightRadius: 140, backgroundColor: "rgba(255,235,197,0.22)" },
+  villageNightHaze: { position: "absolute", left: "18%", right: "18%", bottom: 19, height: 65, borderTopLeftRadius: 130, borderTopRightRadius: 130, backgroundColor: "rgba(255,174,119,0.12)" },
+  villageSun: { position: "absolute", top: 24, right: "13%", width: 76, height: 76, alignItems: "center", justifyContent: "center" },
+  villageSunHalo: { position: "absolute", width: 76, height: 76, borderRadius: 38, backgroundColor: "rgba(255,247,211,0.22)" },
+  villageSunCore: { width: 43, height: 43, borderRadius: 22, backgroundColor: "#FFF3C3", shadowColor: "#FFF1B8", shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.86, shadowRadius: 19, elevation: 6 },
+  villageCloudGroup: { position: "absolute", top: 0, left: 0, right: 0, height: 105 },
+  villageCloud: { position: "absolute", width: 88, height: 40, opacity: 0.74 },
+  villageCloudPuff: { position: "absolute", borderRadius: 30, backgroundColor: "rgba(255,255,255,0.78)" },
+  villageCloudBase: { position: "absolute", borderRadius: 12, backgroundColor: "rgba(255,255,255,0.72)" },
+  villageStarLayer: { position: "absolute", top: 0, left: 0, right: 0, height: 93 },
+  villageStar: { position: "absolute", borderRadius: 3, backgroundColor: "#F4F7FF", shadowColor: "#DCEBFF", shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.9, shadowRadius: 5, elevation: 2 },
+  villageMoon: { position: "absolute", top: 17, right: "14%", width: 64, height: 64, alignItems: "center", justifyContent: "center" },
+  villageMoonHalo: { position: "absolute", width: 64, height: 64, borderRadius: 32, backgroundColor: "rgba(226,238,255,0.11)" },
+  villageMoonBody: { width: 39, height: 39, borderRadius: 20, backgroundColor: "#F5F3DE", shadowColor: "#E7F0FF", shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.78, shadowRadius: 14, elevation: 5 },
+  villageMoonCut: { position: "absolute", top: 7, left: 29, width: 33, height: 33, borderRadius: 17, backgroundColor: "#142D49" },
+  villageFarHorizon: { position: "absolute", left: 0, right: 0, bottom: 27, height: 27, backgroundColor: "rgba(48,94,68,0.26)" },
+  villageHillBack: { position: "absolute", left: "-10%", right: "36%", bottom: 17, height: 50, borderTopLeftRadius: 110, borderTopRightRadius: 100, backgroundColor: "rgba(73,119,79,0.52)" },
+  villageHillFront: { position: "absolute", left: "44%", right: "-12%", bottom: 14, height: 40, borderTopLeftRadius: 100, borderTopRightRadius: 90, backgroundColor: "rgba(47,102,65,0.62)" },
+  villageGround: { position: "absolute", left: 0, right: 0, bottom: 0, height: 30, backgroundColor: "#455C3C", borderTopWidth: 1, borderTopColor: "rgba(229,214,152,0.3)" },
+  villageFieldLineOne: { position: "absolute", left: "42%", bottom: 19, width: "58%", height: 1, backgroundColor: "rgba(213,194,124,0.34)", transform: [{ rotate: "-4deg" }] },
+  villageFieldLineTwo: { position: "absolute", left: "51%", bottom: 9, width: "48%", height: 1, backgroundColor: "rgba(213,194,124,0.26)", transform: [{ rotate: "4deg" }] },
+  villageSmallHouse: { position: "absolute", width: 44, height: 36, zIndex: 4 },
+  villageSmallHouseRoof: { position: "absolute", left: 0, bottom: 19, width: 0, height: 0, borderLeftWidth: 22, borderRightWidth: 22, borderBottomWidth: 20, borderLeftColor: "transparent", borderRightColor: "transparent", borderBottomColor: "#795135" },
+  villageSmallHouseBody: { position: "absolute", left: 5, right: 5, bottom: 0, height: 20, backgroundColor: "#A97852", borderTopLeftRadius: 2, borderTopRightRadius: 2 },
+  villageSmallHouseDoor: { position: "absolute", left: 18, bottom: 0, width: 8, height: 13, backgroundColor: "#493328", borderTopLeftRadius: 4, borderTopRightRadius: 4 },
+  villageSmallHouseWindow: { position: "absolute", left: 8, bottom: 9, width: 5, height: 5, backgroundColor: "#F7C96F", shadowColor: "#FFE19B", shadowOpacity: 0.85, shadowRadius: 4 },
+  villageTree: { position: "absolute", bottom: 10, width: 76, height: 88, zIndex: 5 },
+  villageTreeTrunk: { position: "absolute", bottom: 0, left: "44%", width: 9, height: 40, borderRadius: 3, backgroundColor: "#523B2D" },
+  villageTreeCrown: { position: "absolute", borderRadius: 50, backgroundColor: "#315B3A", borderWidth: 1, borderColor: "rgba(139,174,95,0.24)" },
+  villageTreeCrownLeft: { left: 4, top: 26, width: 43, height: 40 },
+  villageTreeCrownTop: { left: 24, top: 4, width: 42, height: 42 },
+  villageTreeCrownRight: { right: 0, top: 28, width: 39, height: 38 },
+  villageTreeCrownLower: { left: 17, top: 45, width: 48, height: 35 },
+  villageMainHut: { position: "absolute", left: "29%", bottom: 5, width: 128, height: 103, zIndex: 9 },
+  villageHutShadow: { position: "absolute", left: 4, right: 1, bottom: 0, height: 13, borderRadius: 50, backgroundColor: "rgba(22,32,25,0.32)" },
+  villageHutBody: { position: "absolute", left: 10, right: 10, bottom: 6, height: 43, backgroundColor: "#B78356", borderTopWidth: 2, borderTopColor: "#D9AD7B", borderBottomLeftRadius: 3, borderBottomRightRadius: 3, overflow: "hidden" },
+  villageHutWallTextureOne: { position: "absolute", left: 4, right: 4, top: 10, height: 1, backgroundColor: "rgba(102,64,41,0.22)" },
+  villageHutWallTextureTwo: { position: "absolute", left: 6, right: 7, top: 27, height: 1, backgroundColor: "rgba(102,64,41,0.2)" },
+  villageHutDoor: { position: "absolute", left: 47, bottom: 0, width: 22, height: 34, borderTopLeftRadius: 11, borderTopRightRadius: 11, backgroundColor: "#503629", borderWidth: 1, borderColor: "#D0A06B" },
+  villageHutWindowGlow: { position: "absolute", right: 13, bottom: 19, width: 17, height: 15, borderRadius: 2, backgroundColor: "#FFD16C", borderWidth: 2, borderColor: "#70452E", shadowColor: "#FFCB65", shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.95, shadowRadius: 9, elevation: 5 },
+  villageHutWindowCross: { position: "absolute", left: 6, top: 0, width: 2, height: 11, backgroundColor: "#76502F" },
+  villageHutRoof: { position: "absolute", left: 0, bottom: 43, width: 0, height: 0, borderLeftWidth: 64, borderRightWidth: 64, borderBottomWidth: 48, borderLeftColor: "transparent", borderRightColor: "transparent", borderBottomColor: "#75472B" },
+  villageHutRoofRidge: { position: "absolute", left: 6, right: 6, bottom: 41, height: 6, borderRadius: 4, backgroundColor: "#9A6339" },
+  villageHutRoofStrawOne: { position: "absolute", left: 16, bottom: 60, width: 93, height: 3, borderRadius: 3, backgroundColor: "#B27C42", transform: [{ rotate: "-19deg" }] },
+  villageHutRoofStrawTwo: { position: "absolute", left: 17, bottom: 72, width: 92, height: 3, borderRadius: 3, backgroundColor: "#A96F39", transform: [{ rotate: "19deg" }] },
+  villageHutChimney: { position: "absolute", left: 84, bottom: 78, width: 9, height: 17, borderTopWidth: 3, borderTopColor: "#AAB1AE", backgroundColor: "#665346", borderTopLeftRadius: 2, borderTopRightRadius: 2, zIndex: 11 },
+  villageSmokeTrail: { position: "absolute", left: 83, bottom: 89, width: 42, height: 62, zIndex: 12 },
+  villageSmokePuff: { position: "absolute", left: 5, bottom: 0, width: 19, height: 19, borderRadius: 12, backgroundColor: "rgba(232,239,239,0.8)", shadowColor: "#E8F0F2", shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.32, shadowRadius: 8, elevation: 1 },
+  villageFence: { position: "absolute", left: "15%", bottom: 8, width: 78, height: 17, zIndex: 8 },
+  villageFencePost: { position: "absolute", bottom: 0, width: 3, height: 15, borderRadius: 1, backgroundColor: "#836243" },
+  villageFenceRail: { position: "absolute", left: 0, right: 0, bottom: 8, height: 3, backgroundColor: "#A07A53", borderRadius: 2 },
+  villageForegroundGrass: { position: "absolute", left: 0, right: 0, bottom: 0, height: 24, zIndex: 14 },
+  villageGrassBlade: { position: "absolute", bottom: 0, width: 2, borderRadius: 2, backgroundColor: "#A4B76B" },
+  villageAtmosphereShade: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(8,24,36,0.16)", zIndex: 15 },
   locWrap: { flexDirection: "row", gap: 8, alignItems: "center", flex: 1, marginRight: 12, zIndex: 99, elevation: 5 },
   locIconBg: { width: 34, height: 34, borderRadius: 17, backgroundColor: THEME.white, alignItems: "center", justifyContent: "center", ...shadow.soft },
   locLabel: { color: "rgba(255,255,255,0.85)", fontSize: 11, fontWeight: "600" },
