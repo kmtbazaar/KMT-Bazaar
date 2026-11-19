@@ -185,6 +185,7 @@ class UserOut(BaseModel):
     avatar: Optional[str] = None
     vendor_type: Optional[VendorType] = None
     service_type: Optional[ServiceType] = None
+    approval_status: Optional[str] = None
 
 
 class AuthOut(BaseModel):
@@ -399,6 +400,7 @@ def user_to_out(u: dict) -> dict:
             if u.get("role") == Role.VENDOR.value and (u.get("vendor_type") or "store") == VendorType.SERVICE.value
             else None
         ),
+        "approval_status": u.get("approval_status", "approved") if u.get("role") == Role.VENDOR.value and (u.get("vendor_type") or "store") == VendorType.SERVICE.value else None,
     }
 
 
@@ -2177,6 +2179,63 @@ async def admin_update_roojgar_status(
     }
 
 
+@api.post("/admin/service-vendors")
+async def admin_create_service_vendor(
+    data: AdminServiceVendorCreateIn,
+    _=Depends(require_roles("admin"))
+):
+    if data.service_type == ServiceType.DAILY_SERVICE:
+        raise HTTPException(status_code=400, detail="Daily Services are admin-managed listings, not vendor accounts")
+    email = str(data.email).strip().lower()
+    phone = "".join(ch for ch in str(data.phone) if ch.isdigit())
+    if len(phone) != 10:
+        raise HTTPException(status_code=400, detail="Enter a valid 10-digit mobile number")
+    if len(data.password) < 8:
+        raise HTTPException(status_code=400, detail="Password must be at least 8 characters")
+    existing = await db.users.find_one({"$or": [{"email": email}, {"phone": phone}]}, {"_id": 0, "id": 1})
+    if existing:
+        raise HTTPException(status_code=409, detail="Email or mobile number already registered")
+    user_doc = {
+        "id": str(uuid.uuid4()),
+        "name": data.name.strip(),
+        "email": email,
+        "phone": phone,
+        "password": hash_password(data.password),
+        "role": Role.VENDOR.value,
+        "vendor_type": VendorType.SERVICE.value,
+        "service_type": data.service_type.value,
+        "approval_status": "approved",
+        "active": True,
+        "created_at": now_iso(),
+    }
+    if not user_doc["name"]:
+        raise HTTPException(status_code=400, detail="Vendor name is required")
+    await db.users.insert_one(dict(user_doc))
+    return user_to_out(user_doc)
+
+
+@api.put("/admin/service-vendors/{user_id}/approval")
+async def admin_set_service_vendor_approval(
+    user_id: str,
+    data: ServiceVendorApprovalIn,
+    _=Depends(require_roles("admin"))
+):
+    approval = data.approval_status.strip().lower()
+    if approval not in {"approved", "rejected", "pending"}:
+        raise HTTPException(status_code=400, detail="Approval status must be approved, rejected or pending")
+    vendor = await db.users.find_one({"id": user_id}, {"_id": 0, "role": 1, "vendor_type": 1, "service_type": 1})
+    if not vendor or vendor.get("role") != Role.VENDOR.value or vendor.get("vendor_type") != VendorType.SERVICE.value:
+        raise HTTPException(status_code=404, detail="Service vendor not found")
+    if vendor.get("service_type") not in {ServiceType.DECORATOR.value, ServiceType.PHOTOGRAPHY_STUDIO.value}:
+        raise HTTPException(status_code=400, detail="Approval workflow is only for Decorator and Photography Studio")
+    await db.users.update_one(
+        {"id": user_id},
+        {"$set": {"approval_status": approval, "updated_at": now_iso()}}
+    )
+    updated = await db.users.find_one({"id": user_id}, {"_id": 0, "password": 0})
+    return user_to_out(updated)
+
+
 @api.put("/admin/service-vendors/{user_id}")
 async def admin_update_service_vendor(
     user_id: str,
@@ -2861,6 +2920,23 @@ class ServiceBookingIn(BaseModel):
     extra: Dict[str, Any] = {}
 
 
+class ServiceEnquiryIn(BaseModel):
+    service_type: ServiceType
+    service_id: str
+    event_date: str = ""
+    event_time: str = ""
+    location: str = ""
+    budget: Optional[float] = None
+    message: str = ""
+    contact_phone: str = ""
+
+
+class ServiceEnquiryQuoteIn(BaseModel):
+    quote_amount: float
+    message: str = ""
+    valid_until: str = ""
+
+
 @api.get("/service-types")
 async def service_types():
     return list(SERVICE_TYPES.values())
@@ -3172,6 +3248,123 @@ async def create_service_booking(data: ServiceBookingIn, current=Depends(require
     await db.service_bookings.insert_one(dict(doc))
     await _notify_service_booking_created(doc)
     return doc
+
+
+@api.post("/service-enquiries")
+async def create_service_enquiry(data: ServiceEnquiryIn, current=Depends(require_roles("customer"))):
+    service = await db.vendor_services.find_one(
+        {"id": data.service_id, "service_type": data.service_type.value, "active": True},
+        {"_id": 0, "id": 1, "name": 1, "vendor_id": 1, "vendor_name": 1, "service_type": 1}
+    )
+    if not service or not service.get("vendor_id"):
+        raise HTTPException(status_code=404, detail="Service vendor is not available for enquiries")
+    if data.budget is not None and data.budget < 0:
+        raise HTTPException(status_code=400, detail="Budget cannot be negative")
+    enquiry = {
+        "id": "senq-" + uuid.uuid4().hex[:10],
+        "customer_id": current["id"],
+        "customer_name": current.get("name", ""),
+        "customer_phone": data.contact_phone.strip() or current.get("phone", ""),
+        "vendor_id": service["vendor_id"],
+        "vendor_name": service.get("vendor_name", ""),
+        "service_id": service["id"],
+        "service_name": service.get("name", ""),
+        "service_type": data.service_type.value,
+        "event_date": data.event_date.strip(),
+        "event_time": data.event_time.strip(),
+        "location": data.location.strip(),
+        "budget": data.budget,
+        "message": data.message.strip(),
+        "status": "new",
+        "quote_amount": None,
+        "quote_message": "",
+        "created_at": now_iso(),
+        "updated_at": now_iso(),
+    }
+    await db.service_enquiries.insert_one(dict(enquiry))
+    enquiry.pop("_id", None)
+    return enquiry
+
+
+@api.get("/service-enquiries")
+async def customer_service_enquiries(current=Depends(require_roles("customer"))):
+    return await db.service_enquiries.find(
+        {"customer_id": current["id"]}, {"_id": 0}
+    ).sort("created_at", -1).to_list(200)
+
+
+@api.get("/vendor/service-enquiries")
+async def vendor_service_enquiries(current=Depends(require_roles("vendor"))):
+    _require_vendor_type(current, VendorType.SERVICE.value)
+    return await db.service_enquiries.find(
+        {"vendor_id": current["id"]}, {"_id": 0}
+    ).sort("created_at", -1).to_list(200)
+
+
+@api.post("/vendor/service-enquiries/{enquiry_id}/quote")
+async def vendor_quote_service_enquiry(
+    enquiry_id: str,
+    data: ServiceEnquiryQuoteIn,
+    current=Depends(require_roles("vendor"))
+):
+    _require_vendor_type(current, VendorType.SERVICE.value)
+    if data.quote_amount < 0:
+        raise HTTPException(status_code=400, detail="Quote amount cannot be negative")
+    result = await db.service_enquiries.update_one(
+        {"id": enquiry_id, "vendor_id": current["id"], "status": {"$in": ["new", "replied", "quoted"]}},
+        {"$set": {
+            "quote_amount": round(float(data.quote_amount), 2),
+            "quote_message": data.message.strip(),
+            "quote_valid_until": data.valid_until.strip(),
+            "status": "quoted",
+            "updated_at": now_iso(),
+        }}
+    )
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Enquiry not found or no longer available")
+    return await db.service_enquiries.find_one({"id": enquiry_id, "vendor_id": current["id"]}, {"_id": 0})
+
+
+@api.post("/service-enquiries/{enquiry_id}/accept")
+async def customer_accept_service_quote(enquiry_id: str, current=Depends(require_roles("customer"))):
+    enquiry = await db.service_enquiries.find_one(
+        {"id": enquiry_id, "customer_id": current["id"], "status": "quoted"}, {"_id": 0}
+    )
+    if not enquiry:
+        raise HTTPException(status_code=404, detail="Quoted enquiry not found")
+    booking = {
+        "id": "sbk-" + uuid.uuid4().hex[:10],
+        "customer_id": current["id"],
+        "customer_name": current.get("name", ""),
+        "vendor_id": enquiry["vendor_id"],
+        "service_id": enquiry["service_id"],
+        "service_type": enquiry["service_type"],
+        "service_name": enquiry.get("service_name", ""),
+        "vendor_name": enquiry.get("vendor_name", ""),
+        "booking_date": enquiry.get("event_date", ""),
+        "booking_time": enquiry.get("event_time", ""),
+        "address_id": None,
+        "quantity": 1,
+        "notes": enquiry.get("message", ""),
+        "extra": {"location": enquiry.get("location", ""), "quote_amount": enquiry.get("quote_amount"), "enquiry_id": enquiry_id},
+        "quoted_amount": enquiry.get("quote_amount"),
+        "status": "booking_requested",
+        "payment_status": "pending",
+        "created_at": now_iso(),
+        "updated_at": now_iso(),
+    }
+    await db.service_bookings.insert_one(dict(booking))
+    await db.service_enquiries.update_one(
+        {"id": enquiry_id, "customer_id": current["id"], "status": "quoted"},
+        {"$set": {"status": "converted", "booking_id": booking["id"], "updated_at": now_iso()}}
+    )
+    await _notify_service_booking_created(booking)
+    return booking
+
+
+@api.get("/admin/service-enquiries")
+async def admin_service_enquiries(_=Depends(require_roles("admin"))):
+    return await db.service_enquiries.find({}, {"_id": 0}).sort("created_at", -1).to_list(500)
 
 
 @api.get("/service-bookings")
@@ -4428,66 +4621,3 @@ async def seed_db():
 
 
 @app.on_event("startup")
-async def on_startup():
-    await ensure_db_indexes()
-    await seed_db()
-    logging.info("KMT Bazaar API ready. Seed completed.")
-
-
-@app.on_event("shutdown")
-async def on_shutdown():
-    client.close()
-
-
-@api.get("/")
-async def root():
-    return {"app": "KMT Bazaar", "status": "ok"}
-
-@api.post("/ai/chat")
-async def ai_chat(req: AIChatRequest):
-    try:
-        if not GEMINI_API_KEY:
-            raise HTTPException(
-                status_code=500,
-                detail="GEMINI_API_KEY not configured"
-            )
-
-        response = await asyncio.to_thread(
-            gemini_client.models.generate_content,
-            model=GEMINI_MODEL,
-            contents=req.message,
-            config=types.GenerateContentConfig(
-                system_instruction=(
-                    "You are KMT Bazaar AI Assistant. "
-                    "Help customers with products, orders, sellers, "
-                    "delivery and general shopping questions. "
-                    "Be concise, friendly and useful."
-                )
-            ),
-        )
-
-        return {
-            "message": response.text or "Sorry, I could not generate a response."
-        }
-
-    except HTTPException:
-        raise
-    except Exception as e:
-        logging.exception("AI chat failed")
-        raise HTTPException(
-            status_code=500,
-            detail=f"AI service error: {str(e)}",
-        )
-@api.get("/test-db")
-async def test_db(_=Depends(require_roles("admin"))):
-    return {"users": await db.users.count_documents({}), "orders": await db.orders.count_documents({})}
-
-
-
-app.include_router(api)
-# CORS is configured once above with the production and local development origins.
-
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-logger = logging.getLogger(__name__)
-    
-    
