@@ -441,6 +441,17 @@ async def register(data: RegisterIn):
                 status_code=400,
                 detail="Choose Holiday, Car Rental, Decorator or Photography Studio. Daily Services are admin-managed."
             )
+        # Preserve the legacy one-vendor rule for Holiday and Car Rental.
+        if data.service_type.value in {ServiceType.HOLIDAY.value, ServiceType.CAR_RENTAL.value}:
+            existing_service_vendor = await db.users.find_one({
+                "role": Role.VENDOR.value,
+                "vendor_type": VendorType.SERVICE.value,
+                "service_type": data.service_type.value,
+                "active": {"$ne": False},
+            }, {"_id": 1})
+            if existing_service_vendor:
+                label = SERVICE_TYPES.get(data.service_type.value, {}).get("name", data.service_type.value)
+                raise HTTPException(status_code=409, detail=f"{label} vendor account already exists")
     existing = await db.users.find_one({"$or": [{"email": data.email}, {"phone": data.phone}]})
     if existing:
         if existing.get("email") == data.email:
@@ -3132,6 +3143,15 @@ async def admin_create_service_vendor(
 ):
     if data.service_type.value not in PUBLIC_SERVICE_VENDOR_TYPES:
         raise HTTPException(400, "Daily Services are managed separately")
+    if data.service_type.value in {ServiceType.HOLIDAY.value, ServiceType.CAR_RENTAL.value}:
+        existing_service_vendor = await db.users.find_one({
+            "role": Role.VENDOR.value,
+            "vendor_type": VendorType.SERVICE.value,
+            "service_type": data.service_type.value,
+            "active": {"$ne": False},
+        }, {"_id": 1})
+        if existing_service_vendor:
+            raise HTTPException(409, "This service category already has a vendor account")
     name = data.name.strip()
     phone = "".join(ch for ch in data.phone if ch.isdigit())
     if len(name) < 2 or len(phone) != 10 or len(data.password) < 8:
