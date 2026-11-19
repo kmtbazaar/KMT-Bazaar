@@ -1,84 +1,66 @@
-import React, { useCallback, useState } from "react";
-import { View, Text, StyleSheet, FlatList, Pressable, TextInput, Modal, ScrollView, Alert, Platform } from "react-native";
-import { useFocusEffect, useRouter } from "expo-router";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { adminApi } from "@/src/roleApi";
-import { COLORS, RADIUS, SPACING } from "@/src/theme";
+import React,{useCallback,useMemo,useState}from"react";
+import{View,Text,StyleSheet,ScrollView,Pressable,TextInput,Modal,Alert,Platform,ActivityIndicator}from"react-native";
+import{useFocusEffect,useRouter}from"expo-router";
+import{SafeAreaView}from"react-native-safe-area-context";
+import{MaterialCommunityIcons}from"@expo/vector-icons";
+import{adminApi}from"@/src/roleApi";
 
-export default function AdminServiceVendors() {
-  const router=useRouter();
-  const [vendors,setVendors]=useState<any[]>([]);
-  const [services,setServices]=useState<any[]>([]);
-  const [bookings,setBookings]=useState<any[]>([]);
-  const [selected,setSelected]=useState<any>(null);
-  const [modal,setModal]=useState(false);
-  const [form,setForm]=useState<any>({name:"",email:"",phone:""});
+const TYPES:any={
+ holiday:{label:"Holiday",icon:"airplane-takeoff",color:"#2563EB"},
+ car_rental:{label:"Car Rental",icon:"car",color:"#0284C7"},
+ decorator:{label:"Decorator",icon:"party-popper",color:"#C2410C"},
+ photography_studio:{label:"Photography Studio",icon:"camera",color:"#7C3AED"},
+ daily_service:{label:"Daily Services",icon:"tools",color:"#64748B"}
+};
+const normStatus=(x:any)=>x.service_approval_status||(x.service_type==="decorator"||x.service_type==="photography_studio"?"pending":"approved");
 
-  const load=useCallback(async()=>{
-    try{
-      const [u,s,b]=await Promise.all([adminApi.serviceVendors(),adminApi.vendorServices(),adminApi.serviceBookings()]);
-      setVendors((u||[]).filter((x:any)=>x.vendor_type==="service" && ["holiday","car_rental"].includes(x.service_type)));
-      setServices(s||[]); setBookings(b||[]);
-    }catch(e){console.log("service vendor load",e)}
-  },[]);
-  useFocusEffect(useCallback(()=>{load()},[load]));
+export default function AdminServiceVendors(){
+ const router=useRouter();
+ const [vendors,setVendors]=useState<any[]>([]),[services,setServices]=useState<any[]>([]),[bookings,setBookings]=useState<any[]>([]);
+ const [loading,setLoading]=useState(true),[filter,setFilter]=useState("pending"),[selected,setSelected]=useState<any>(null),[modal,setModal]=useState(false);
+ const [edit,setEdit]=useState<any>({name:"",email:"",phone:""}),[createModal,setCreateModal]=useState(false),[saving,setSaving]=useState(false),[error,setError]=useState("");
+ const [create,setCreate]=useState<any>({name:"",business_name:"",email:"",phone:"",password:"",service_type:"decorator"});
+ const load=useCallback(async()=>{setLoading(true);try{const[u,v,b]=await Promise.all([adminApi.serviceVendors(),adminApi.vendorServices(),adminApi.serviceBookings()]);setVendors((u||[]).filter((x:any)=>x.vendor_type==="service"));setServices(v||[]);setBookings(b||[])}catch(e:any){setError(e?.message||"Could not load service vendors")}finally{setLoading(false)}},[]);
+ useFocusEffect(useCallback(()=>{load()},[load]));
+ const visible=useMemo(()=>vendors.filter(x=>filter==="all"||normStatus(x)===filter),[vendors,filter]);
+ const message=(title:string,msg:string)=>Platform.OS==="web"?window.alert(msg):Alert.alert(title,msg);
+ const decide=async(v:any,status:"approved"|"rejected")=>{setSaving(true);try{await adminApi.approveServiceVendor(v.id,status,status==="rejected"?"Please update your business profile and resubmit.":"Profile verified by KMT Bazaar Admin.");await load();if(selected?.id===v.id)setSelected({...v,service_approval_status:status,service_is_approved:status==="approved"});message("Updated",status==="approved"?"Service vendor approved.":"Service vendor rejected.")}catch(e:any){message("Approval failed",e?.message||"Could not update vendor")}finally{setSaving(false)}};
+ const open=(v:any)=>{setSelected(v);setEdit({name:v.name||"",email:v.email||"",phone:v.phone||""});setModal(true)};
+ const saveEdit=async()=>{if(!selected)return;setSaving(true);try{await adminApi.updateServiceVendor(selected.id,edit);setModal(false);await load();message("Saved","Vendor profile updated.")}catch(e:any){message("Save failed",e?.message||"Could not save profile")}finally{setSaving(false)}};
+ const createVendor=async()=>{if(!create.name.trim()||!create.email.trim()||!create.phone.trim()||create.password.length<8){setError("Enter name, email, phone and a password of at least 8 characters.");return}setSaving(true);setError("");try{await adminApi.createServiceVendor(create);setCreateModal(false);setCreate({name:"",business_name:"",email:"",phone:"",password:"",service_type:"decorator"});await load();message("Vendor created","Admin-created service vendor is approved and can sign in.")}catch(e:any){setError(e?.message||"Could not create vendor")}finally{setSaving(false)}};
+ const typeInfo=(v:any)=>TYPES[v.service_type]||TYPES.daily_service;
+ const selectedServices=selected?services.filter((x:any)=>x.vendor_id===selected.id):[];
+ const selectedBookings=selected?bookings.filter((x:any)=>x.vendor_id===selected.id):[];
+ return <SafeAreaView style={s.root} edges={["top"]}>
+  <View style={s.header}><Pressable onPress={()=>router.back()}><MaterialCommunityIcons name="arrow-left" size={24} color="#0F172A"/></Pressable><View style={{flex:1,marginLeft:12}}><Text style={s.title}>Service Partners</Text><Text style={s.sub}>Review Decorator, Studio and existing service vendors</Text></View><Pressable onPress={()=>{setError("");setCreateModal(true)}} style={s.add}><MaterialCommunityIcons name="account-plus-outline" size={21} color="#fff"/></Pressable></View>
+  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.filters}>{["pending","approved","rejected","all"].map(x=><Pressable key={x} onPress={()=>setFilter(x)} style={[s.filter,filter===x&&s.filterActive]}><Text style={[s.filterText,filter===x&&s.filterTextActive]}>{x==="all"?"All":x[0].toUpperCase()+x.slice(1)}</Text><Text style={[s.filterCount,filter===x&&s.filterTextActive]}>{x==="all"?vendors.length:vendors.filter(v=>normStatus(v)===x).length}</Text></Pressable>)}</ScrollView>
+  <ScrollView contentContainerStyle={s.body}>
+   {loading?<ActivityIndicator size="large" color="#0284C7"/>:visible.length===0?<View style={s.empty}><MaterialCommunityIcons name="account-search-outline" size={45} color="#94A3B8"/><Text style={s.emptyTitle}>No {filter==="all"?"service vendors":filter+" vendors"}</Text><Text style={s.sub}>New service partner registrations will appear here.</Text></View>:visible.map(v=>{const t=typeInfo(v),status=normStatus(v);return <View key={v.id} style={s.card}>
+    <View style={s.cardTop}><View style={[s.icon,{backgroundColor:t.color+"18"}]}><MaterialCommunityIcons name={t.icon} size={22} color={t.color}/></View><View style={{flex:1}}><Text style={s.name}>{v.profile?.business_name||v.name}</Text><Text style={s.meta}>{t.label} · {v.name}</Text><Text style={s.meta}>{v.phone||v.email||"Contact details missing"}</Text></View><View style={[s.status,{backgroundColor:status==="approved"?"#DCFCE7":status==="rejected"?"#FEE2E2":"#FEF3C7"}]}><Text style={{fontSize:8,fontWeight:"900",color:status==="approved"?"#166534":status==="rejected"?"#991B1B":"#92400E"}}>{status.toUpperCase()}</Text></View></View>
+    <View style={s.cardActions}><Pressable onPress={()=>open(v)} style={s.viewBtn}><Text style={s.viewText}>View profile</Text></Pressable>{status==="pending"&&<><Pressable disabled={saving} onPress={()=>decide(v,"rejected")} style={s.rejectBtn}><Text style={s.rejectText}>Reject</Text></Pressable><Pressable disabled={saving} onPress={()=>decide(v,"approved")} style={s.approveBtn}><Text style={s.approveText}>Approve</Text></Pressable></>}</View>
+   </View>})}
+  </ScrollView>
 
-  const open=(v:any)=>{setSelected(v);setForm({name:v.name||"",email:v.email||"",phone:v.phone||""});setModal(true)};
-  const save=async()=>{
-    try{await adminApi.updateServiceVendor(selected.id,form);setModal(false);await load();window.alert?.("Vendor profile saved");}catch(e:any){Platform.OS==="web"?window.alert(e?.message||"Update failed"):Alert.alert("Update failed",e?.message||"Update failed")}
-  };
+  <Modal visible={modal} transparent animationType="slide" onRequestClose={()=>setModal(false)}><View style={s.modal}><View style={s.sheet}><ScrollView contentContainerStyle={{paddingBottom:25}}>
+   <View style={s.modalHead}><View><Text style={s.modalTitle}>Service Partner Profile</Text><Text style={s.sub}>{selected?.profile?.business_name||selected?.name}</Text></View><Pressable onPress={()=>setModal(false)}><MaterialCommunityIcons name="close" size={24}/></Pressable></View>
+   <Text style={s.section}>Account details</Text><Field label="Name" value={edit.name} onChange={(v:string)=>setEdit({...edit,name:v})}/><Field label="Email" value={edit.email} onChange={(v:string)=>setEdit({...edit,email:v})}/><Field label="Phone" value={edit.phone} onChange={(v:string)=>setEdit({...edit,phone:v})}/>
+   <Pressable onPress={saveEdit} style={s.save}><Text style={s.saveText}>Save account details</Text></Pressable>
+   <Text style={s.section}>Business information</Text>
+   <Info label="Service type" value={typeInfo(selected||{}).label}/><Info label="Description" value={selected?.profile?.business_description||"Not provided"}/><Info label="Experience" value={(selected?.profile?.experience_years??0)+" years"}/><Info label="Areas" value={(selected?.profile?.service_areas||[]).join(", ")||"Not provided"}/><Info label="Address" value={selected?.profile?.address||"Not provided"}/><Info label="Portfolio images" value={(selected?.profile?.portfolio_images||[]).length}/>
+   <Text style={s.section}>Listings & activity</Text><Info label="Published services" value={selectedServices.length}/><Info label="Bookings" value={selectedBookings.length}/>
+   {selected?.service_type==="decorator"||selected?.service_type==="photography_studio"?<View style={s.cardActions}>{normStatus(selected)==="pending"&&<><Pressable onPress={()=>decide(selected,"rejected")} style={s.rejectBtn}><Text style={s.rejectText}>Reject</Text></Pressable><Pressable onPress={()=>decide(selected,"approved")} style={s.approveBtn}><Text style={s.approveText}>Approve partner</Text></Pressable></>}</View>:null}
+  </ScrollView></View></View></Modal>
 
-  const vendorServices=selected?services.filter((x:any)=>x.vendor_id===selected.id || x.service_type===selected.service_type && x.vendor_id===selected.id):[];
-  const vendorBookings=selected?bookings.filter((x:any)=>x.vendor_id===selected.id || x.vendor_id===selected.id):[];
-  const revenue=vendorBookings.reduce((a:any,x:any)=>a+Number(x.paid_amount||x.total_amount||x.amount||0),0);
-  const completed=vendorBookings.filter((x:any)=>["completed","delivered"].includes(x.status)).length;
-  const pending=vendorBookings.filter((x:any)=>!["completed","cancelled","delivered"].includes(x.status)).length;
-  const payout=Math.round(revenue*(1-(Number((selected as any)?.commission_percent)||10)/100));
-
-  return <SafeAreaView style={s.root} edges={["top"]}>
-    <View style={s.header}><Pressable onPress={()=>router.back()}><MaterialCommunityIcons name="arrow-left" size={24} color={COLORS.text}/></Pressable><Text style={s.title}>Service Vendors</Text><View style={{width:24}}/></View>
-    <FlatList data={vendors} keyExtractor={(x)=>x.id} contentContainerStyle={{padding:SPACING.lg,paddingBottom:60}} ItemSeparatorComponent={()=> <View style={{height:10}}/>}
-      renderItem={({item})=><Pressable style={s.card} onPress={()=>open(item)}>
-        <View style={[s.avatar,{backgroundColor:item.service_type==="holiday"?"#DBEAFE":"#E0F2FE"}]}><MaterialCommunityIcons name={item.service_type==="holiday"?"airplane-takeoff":"car"} size={25} color={item.service_type==="holiday"?"#2563EB":"#0EA5E9"}/></View>
-        <View style={{flex:1}}><Text style={s.name}>{item.name}</Text><Text style={s.meta}>{item.service_type==="holiday"?"Holiday Vendor":"Car Rental Vendor"}</Text><Text style={s.meta}>{item.phone||item.email||"Contact unavailable"}</Text></View>
-        <MaterialCommunityIcons name="chevron-right" size={23} color={COLORS.textMuted}/>
-      </Pressable>}
-      ListEmptyComponent={<View style={s.empty}><MaterialCommunityIcons name="briefcase-off-outline" size={48} color={COLORS.textMuted}/><Text style={s.emptyText}>No Holiday or Car Rental service vendors</Text></View>}
-    />
-    {selected&&<Modal visible={modal} transparent animationType="slide" onRequestClose={()=>setModal(false)}>
-      <View style={m.back}><View style={m.sheet}><ScrollView showsVerticalScrollIndicator={false}>
-        <View style={m.head}><View><Text style={m.title}>{selected.service_type==="holiday"?"Holiday Vendor":"Car Rental Vendor"}</Text><Text style={m.sub}>Admin management profile</Text></View><Pressable onPress={()=>setModal(false)}><MaterialCommunityIcons name="close" size={24}/></Pressable></View>
-        <Text style={m.section}>Vendor Profile</Text>
-        <Field label="Name" value={form.name} onChangeText={(v:string)=>setForm({...form,name:v})}/>
-        <Field label="Email" value={form.email} onChangeText={(v:string)=>setForm({...form,email:v})}/>
-        <Field label="Mobile" value={form.phone} onChangeText={(v:string)=>setForm({...form,phone:v})} keyboardType="phone-pad"/>
-        <Pressable style={m.save} onPress={save}><Text style={m.saveText}>Save Vendor Profile</Text></Pressable>
-
-        <Text style={m.section}>Dashboard Summary</Text>
-        <View style={s.kpiRow}><KPI label="Bookings" value={vendorBookings.length}/><KPI label="Completed" value={completed}/><KPI label="Pending" value={pending}/></View>
-        <View style={s.kpiRow}><KPI label="Revenue" value={`₹${revenue}`}/><KPI label="Est. Payout" value={`₹${payout}`}/></View>
-
-        <Text style={m.section}>{selected.service_type==="holiday"?"Holiday Packages":"Rental Fleet"} ({vendorServices.length})</Text>
-        {vendorServices.map((x:any)=><View key={x.id} style={m.item}><View style={{flex:1}}><Text style={m.itemName}>{x.name}</Text><Text style={m.itemMeta}>{selected.service_type==="car_rental"?`${x.seats||0} seats · ${x.bags||0} bags · ${x.transmission||""} · ₹${x.price||0}/day`:`${x.location||""} · ${x.duration||""} · ₹${x.price||0}/person`}</Text></View><Pressable onPress={()=>{setModal(false);router.push({pathname:"/admin/vendor-services",params:{vendor_id:selected.id}} as any)}}><MaterialCommunityIcons name="pencil-outline" size={20} color={COLORS.brand}/></Pressable></View>)}
-
-        <Text style={m.section}>Bookings & Orders ({vendorBookings.length})</Text>
-        {vendorBookings.length===0?<Text style={m.empty}>No bookings yet.</Text>:vendorBookings.map((x:any)=>{const ex=x.extra||{};return <View key={x.id} style={m.booking}>
-          <View style={m.bookingTop}><View style={{flex:1}}><Text style={m.itemName}>{x.service_name||"Service Booking"}</Text><Text style={m.itemMeta}>{x.customer_name||ex.customer_name||"Customer"}</Text></View><Text style={m.status}>{String(x.status||"pending").toUpperCase()}</Text></View>
-          <Text style={m.detail}>Mobile: {x.customer_phone||ex.customer_phone||"Not provided"}</Text>
-          <Text style={m.detail}>Email: {x.customer_email||ex.customer_email||"Not provided"}</Text>
-          <Text style={m.detail}>Date: {x.booking_date||"Not set"}{x.booking_time?" · "+x.booking_time:""}</Text>
-          <Text style={m.detail}>Pickup/Address: {ex.service_address||ex.pickup_location||"Not provided"}</Text>
-          <Text style={m.detail}>Destination: {ex.destination||ex.location||"Not specified"}</Text>
-          <Text style={m.detail}>Payment: {x.payment_status||"Not recorded"} · {x.paid_amount!=null?"₹"+Number(x.paid_amount).toLocaleString("en-IN"):"-"}/{x.total_amount!=null?"₹"+Number(x.total_amount).toLocaleString("en-IN"):"-"}</Text>
-          <Text style={m.detail}>Reference: {x.gateway_reference||"-"}</Text>
-          <Text style={m.detail}>Notes: {x.notes||"Not provided"}</Text>
-        </View>})}
-      </ScrollView></View></View>
-    </Modal>}
-  </SafeAreaView>;
+  <Modal visible={createModal} transparent animationType="slide" onRequestClose={()=>setCreateModal(false)}><View style={s.modal}><View style={s.sheet}><ScrollView contentContainerStyle={{paddingBottom:25}}>
+   <View style={s.modalHead}><Text style={s.modalTitle}>Add service vendor</Text><Pressable onPress={()=>setCreateModal(false)}><MaterialCommunityIcons name="close" size={24}/></Pressable></View>
+   <Text style={s.sub}>Admin-created partner accounts are approved after creation.</Text>
+   <Field label="Account name *" value={create.name} onChange={(v:string)=>setCreate({...create,name:v})}/><Field label="Business name" value={create.business_name} onChange={(v:string)=>setCreate({...create,business_name:v})}/><Field label="Email *" value={create.email} onChange={(v:string)=>setCreate({...create,email:v})}/><Field label="10-digit phone *" value={create.phone} onChange={(v:string)=>setCreate({...create,phone:v})}/><Field label="Temporary password (8+ chars) *" value={create.password} onChange={(v:string)=>setCreate({...create,password:v})}/>
+   <Text style={s.label}>Service category</Text><View style={s.typeChoices}>{["decorator","photography_studio","holiday","car_rental"].map(t=><Pressable key={t} onPress={()=>setCreate({...create,service_type:t})} style={[s.typeChoice,create.service_type===t&&s.typeChoiceActive]}><Text style={[s.typeChoiceText,create.service_type===t&&{color:"#fff"}]}>{TYPES[t].label}</Text></Pressable>)}</View>
+   {!!error&&<Text style={s.error}>{error}</Text>}
+   <Pressable onPress={createVendor} disabled={saving} style={s.save}>{saving?<ActivityIndicator color="#fff"/>:<Text style={s.saveText}>Create service partner</Text>}</Pressable>
+  </ScrollView></View></View></Modal>
+ </SafeAreaView>;
 }
-function Field(p:any){return <View style={{marginBottom:9}}><Text style={m.label}>{p.label}</Text><TextInput value={p.value} onChangeText={p.onChangeText} keyboardType={p.keyboardType} style={m.input}/></View>}
-function KPI({label,value}:any){return <View style={s.kpi}><Text style={s.kpiVal}>{value}</Text><Text style={s.kpiLab}>{label}</Text></View>}
-const s=StyleSheet.create({root:{flex:1,backgroundColor:"#F8FAFC"},header:{flexDirection:"row",alignItems:"center",justifyContent:"space-between",padding:16,backgroundColor:"#fff",borderBottomWidth:1,borderBottomColor:"#E2E8F0"},title:{fontSize:19,fontWeight:"900"},card:{flexDirection:"row",alignItems:"center",gap:12,backgroundColor:"#fff",padding:14,borderRadius:16,borderWidth:1,borderColor:"#E2E8F0"},avatar:{width:48,height:48,borderRadius:24,alignItems:"center",justifyContent:"center"},name:{fontWeight:"900",fontSize:15},meta:{fontSize:11,color:"#64748B",marginTop:3},empty:{padding:40,alignItems:"center",textAlign:"center",color:"#64748B"},emptyText:{marginTop:10,color:"#64748B"},kpiRow:{flexDirection:"row",gap:8,marginBottom:8},kpi:{flex:1,backgroundColor:"#F8FAFC",padding:12,borderRadius:12},kpiVal:{fontSize:17,fontWeight:"900"},kpiLab:{fontSize:10,color:"#64748B",marginTop:2}});
-const m=StyleSheet.create({back:{flex:1,backgroundColor:"rgba(0,0,0,.55)",justifyContent:"flex-end"},sheet:{backgroundColor:"#fff",maxHeight:"94%",borderTopLeftRadius:24,borderTopRightRadius:24,padding:18},head:{flexDirection:"row",justifyContent:"space-between",alignItems:"center",marginBottom:10},title:{fontSize:20,fontWeight:"900"},sub:{fontSize:11,color:"#64748B"},section:{fontSize:16,fontWeight:"900",marginTop:15,marginBottom:9},label:{fontSize:11,fontWeight:"800",color:"#475569",marginBottom:4},input:{backgroundColor:"#F8FAFC",borderWidth:1,borderColor:"#E2E8F0",borderRadius:10,padding:11,marginBottom:1},save:{backgroundColor:"#F97316",padding:13,borderRadius:12,alignItems:"center",marginTop:2},saveText:{color:"#fff",fontWeight:"900"},item:{flexDirection:"row",alignItems:"center",padding:12,borderRadius:12,backgroundColor:"#F8FAFC",marginBottom:7},itemName:{fontWeight:"900"},itemMeta:{fontSize:11,color:"#64748B",marginTop:3},booking:{padding:12,borderRadius:12,borderWidth:1,borderColor:"#E2E8F0",marginBottom:7},bookingTop:{flexDirection:"row",alignItems:"flex-start"},detail:{fontSize:11,color:"#475569",marginTop:5},status:{fontSize:10,fontWeight:"900",color:"#0284C7",marginTop:5}});
+function Field({label,value,onChange}:any){return <View style={{marginTop:10}}><Text style={s.label}>{label}</Text><TextInput value={String(value??"")} onChangeText={onChange} placeholderTextColor="#94A3B8" style={s.input}/></View>}
+function Info({label,value}:any){return <View style={s.info}><Text style={s.label}>{label}</Text><Text style={s.infoValue}>{String(value??"-")}</Text></View>}
+const s=StyleSheet.create({root:{flex:1,backgroundColor:"#F1F5F9"},header:{flexDirection:"row",alignItems:"center",padding:15,backgroundColor:"#fff",borderBottomWidth:1,borderColor:"#E2E8F0"},title:{fontSize:18,fontWeight:"900",color:"#0F172A"},sub:{fontSize:10,color:"#64748B",marginTop:3},add:{width:38,height:38,borderRadius:12,backgroundColor:"#F97316",alignItems:"center",justifyContent:"center"},filters:{paddingHorizontal:14,paddingVertical:12,gap:7},filter:{paddingHorizontal:12,paddingVertical:8,borderRadius:20,backgroundColor:"#fff",borderWidth:1,borderColor:"#E2E8F0",flexDirection:"row",gap:6},filterActive:{backgroundColor:"#0F172A",borderColor:"#0F172A"},filterText:{fontSize:10,fontWeight:"900",color:"#475569"},filterTextActive:{color:"#fff"},filterCount:{fontSize:10,fontWeight:"900",color:"#64748B"},body:{padding:14,paddingBottom:40},card:{backgroundColor:"#fff",borderRadius:17,padding:14,borderWidth:1,borderColor:"#E2E8F0",marginBottom:10},cardTop:{flexDirection:"row",gap:11,alignItems:"center"},icon:{width:46,height:46,borderRadius:15,alignItems:"center",justifyContent:"center"},name:{fontSize:14,fontWeight:"900",color:"#0F172A"},meta:{fontSize:10,color:"#64748B",marginTop:3},status:{paddingHorizontal:8,paddingVertical:5,borderRadius:12},cardActions:{flexDirection:"row",gap:8,marginTop:13},viewBtn:{flex:1,borderRadius:10,borderWidth:1,borderColor:"#CBD5E1",padding:10,alignItems:"center"},viewText:{fontSize:10,fontWeight:"900",color:"#334155"},rejectBtn:{borderRadius:10,backgroundColor:"#FEE2E2",padding:10,alignItems:"center",minWidth:68},rejectText:{fontSize:10,fontWeight:"900",color:"#991B1B"},approveBtn:{borderRadius:10,backgroundColor:"#0284C7",padding:10,alignItems:"center",minWidth:78},approveText:{fontSize:10,fontWeight:"900",color:"#fff"},empty:{alignItems:"center",padding:55},emptyTitle:{fontSize:17,fontWeight:"900",color:"#0F172A",marginTop:10},modal:{flex:1,backgroundColor:"rgba(15,23,42,.52)",justifyContent:"flex-end"},sheet:{backgroundColor:"#fff",maxHeight:"94%",padding:18,borderTopLeftRadius:24,borderTopRightRadius:24},modalHead:{flexDirection:"row",alignItems:"flex-start",justifyContent:"space-between"},modalTitle:{fontSize:19,fontWeight:"900",color:"#0F172A"},section:{fontSize:13,fontWeight:"900",color:"#0F172A",marginTop:17,marginBottom:6},label:{fontSize:10,fontWeight:"900",color:"#475569",marginBottom:5},input:{borderWidth:1,borderColor:"#E2E8F0",borderRadius:11,padding:11,color:"#0F172A",backgroundColor:"#F8FAFC"},save:{backgroundColor:"#F97316",padding:13,borderRadius:12,alignItems:"center",marginTop:14},saveText:{color:"#fff",fontWeight:"900",fontSize:11},info:{paddingVertical:9,borderBottomWidth:1,borderColor:"#F1F5F9"},infoValue:{fontSize:12,fontWeight:"700",color:"#334155"},typeChoices:{flexDirection:"row",flexWrap:"wrap",gap:7},typeChoice:{paddingVertical:10,paddingHorizontal:12,borderRadius:20,borderWidth:1,borderColor:"#CBD5E1"},typeChoiceActive:{backgroundColor:"#0F172A",borderColor:"#0F172A"},typeChoiceText:{fontSize:10,fontWeight:"900",color:"#475569"},error:{color:"#B91C1C",fontSize:11,marginTop:10}});

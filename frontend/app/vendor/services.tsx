@@ -25,7 +25,9 @@ export default function VendorServices() {
   const { user } = useAuth();
   const serviceType = user?.service_type || "holiday";
   const isCar = serviceType === "car_rental";
-  const currentLabel = isCar ? "Car Rental" : "Holiday";
+  const isCreativeService = serviceType === "decorator" || serviceType === "photography_studio";
+  const currentLabel = isCar ? "Car Rental" : serviceType === "decorator" ? "Decorator" : serviceType === "photography_studio" ? "Photography Studio" : "Holiday";
+  const serviceNoun = serviceType === "decorator" ? "decoration package" : serviceType === "photography_studio" ? "photoshoot package" : isCar ? "rental car" : "holiday package";
   const [items, setItems] = useState<any[]>([]);
   const [modal, setModal] = useState(false);
   const [editing, setEditing] = useState<string | null>(null);
@@ -69,7 +71,7 @@ export default function VendorServices() {
 
   const save = async () => {
     if (!f.name?.trim()) {
-      Platform.OS === "web" ? window.alert(isCar ? "Car name is required" : "Holiday package name is required") : Alert.alert("Required", isCar ? "Car name is required" : "Holiday package name is required");
+      Platform.OS === "web" ? window.alert(isCar ? "Car name is required" : isCreativeService ? currentLabel + " service name is required" : "Holiday package name is required") : Alert.alert("Required", isCar ? "Car name is required" : isCreativeService ? currentLabel + " service name is required" : "Holiday package name is required");
       return;
     }
     const includes = String(f.includesText || "").split(",").map((x: string) => x.trim()).filter(Boolean);
@@ -87,13 +89,13 @@ export default function VendorServices() {
       phone: String(f.phone || "").trim(),
       order: Number(f.order) || 99,
       active: f.active !== false,
-      price: Number(f.adult_price || f.price) || 0,
-      adult_price: Number(f.adult_price || f.price) || 0,
-      child_price: isCar ? 0 : (Number(f.child_price) || ((Number(f.adult_price || f.price) || 0) * 0.5)),
-      unit: isCar ? "day" : "per person",
-      duration: isCar ? String(f.duration || "").trim() : `${nights} ${nights === 1 ? "night" : "nights"} / ${days} ${days === 1 ? "day" : "days"}`,
-      nights: isCar ? 0 : nights,
-      days: isCar ? 0 : days,
+      price: Number(isCreativeService ? f.price : (f.adult_price || f.price)) || 0,
+      adult_price: Number(isCreativeService ? f.price : (f.adult_price || f.price)) || 0,
+      child_price: isCar || isCreativeService ? 0 : (Number(f.child_price) || ((Number(f.adult_price || f.price) || 0) * 0.5)),
+      unit: isCar ? "day" : isCreativeService ? "event" : "per person",
+      duration: isCar || isCreativeService ? String(f.duration || "").trim() : `${nights} ${nights === 1 ? "night" : "nights"} / ${days} ${days === 1 ? "day" : "days"}`,
+      nights: isCar || isCreativeService ? 0 : nights,
+      days: isCar || isCreativeService ? 0 : days,
       seats: isCar ? (Number(f.seats) || 0) : 0,
       bags: isCar ? (Number(f.bags) || 0) : 0,
       transmission: isCar ? String(f.transmission || "") : "",
@@ -130,9 +132,9 @@ export default function VendorServices() {
           <MaterialCommunityIcons name="arrow-left" size={24} color={COLORS.text} />
         </Pressable>
         <View style={{ alignItems: "center", flex: 1 }}>
-          <Text style={s.title}>{isCar ? "Rental Fleet" : "Holiday Packages"}</Text>
-          <Text style={{ fontSize: 10, color: isCar ? "#0EA5E9" : "#2563EB", fontWeight: "900", marginTop: 2 }}>
-            {isCar ? "CAR RENTAL VENDOR" : "HOLIDAY VENDOR"}
+          <Text style={s.title}>{isCar ? "Rental Fleet" : isCreativeService ? serviceType === "decorator" ? "Decoration Packages" : "Photography Packages" : "Holiday Packages"}</Text>
+          <Text style={{ fontSize: 10, color: isCar ? "#0EA5E9" : isCreativeService ? "#C2410C" : "#2563EB", fontWeight: "900", marginTop: 2 }}>
+            {currentLabel.toUpperCase() + " VENDOR"}
           </Text>
         </View>
         <Pressable onPress={openAdd} hitSlop={10}>
@@ -149,7 +151,7 @@ export default function VendorServices() {
         ItemSeparatorComponent={() => <View style={{ height: 10 }} />}
         renderItem={({ item }) => (
           <View style={s.card}>
-            {item.image ? <Image source={{ uri: item.image }} style={s.img} contentFit="cover" /> : <View style={[s.img, s.ph]}><MaterialCommunityIcons name={isCar ? "car" : "airplane-takeoff"} size={30} color={isCar ? "#0EA5E9" : "#2563EB"} /></View>}
+            {item.image ? <Image source={{ uri: item.image }} style={s.img} contentFit="cover" /> : <View style={[s.img, s.ph]}><MaterialCommunityIcons name={isCar ? "car" : isCreativeService ? (serviceType === "decorator" ? "party-popper" : "camera") : "airplane-takeoff"} size={30} color={isCar ? "#0EA5E9" : isCreativeService ? "#C2410C" : "#2563EB"} /></View>}
             <View style={{ width: "100%" }}>
               <Text style={s.name} numberOfLines={2}>{item.name}</Text>
               {isCar ? (
@@ -157,6 +159,12 @@ export default function VendorServices() {
                   {!!item.type && <Text style={s.meta} numberOfLines={1}>{item.type}{item.transmission ? " · " + item.transmission : ""}</Text>}
                   <Text style={s.meta}>{Number(item.seats || 0)} seats · {Number(item.bags || 0)} bags</Text>
                   <Text style={s.price}>₹{Number(item.price || 0).toLocaleString("en-IN")} / day</Text>
+                </>
+              ) : isCreativeService ? (
+                <>
+                  {!!item.category && <Text style={s.meta} numberOfLines={1}>{item.category}</Text>}
+                  {!!item.location && <Text style={s.meta} numberOfLines={1}>{item.location}</Text>}
+                  <Text style={s.price}>₹{Number(item.price || 0).toLocaleString("en-IN")} / event</Text>
                 </>
               ) : (
                 <>
@@ -172,17 +180,17 @@ export default function VendorServices() {
             </View>
           </View>
         )}
-        ListEmptyComponent={<View style={s.empty}><MaterialCommunityIcons name={isCar ? "car-off" : "airplane-off"} size={46} color={COLORS.textMuted}/><Text style={s.emptyText}>No {isCar ? "cars" : "holiday packages"} yet</Text><Text style={s.meta}>Tap + to add your first {isCar ? "rental car" : "holiday package"}.</Text></View>}
+        ListEmptyComponent={<View style={s.empty}><MaterialCommunityIcons name={isCar ? "car-off" : isCreativeService ? (serviceType === "decorator" ? "party-popper" : "camera") : "airplane-off"} size={46} color={COLORS.textMuted}/><Text style={s.emptyText}>No {serviceNoun}s yet</Text><Text style={s.meta}>Tap + to publish your first {serviceNoun}.</Text></View>}
       />
 
       <Modal visible={modal} transparent animationType="slide" onRequestClose={() => setModal(false)}>
         <View style={m.back}>
           <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={m.sheet}>
             <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={true} contentContainerStyle={{ paddingBottom: 28 }}>
-              <Text style={m.title}>{editing ? (isCar ? "Edit Rental Car" : "Edit Holiday Package") : (isCar ? "Add Rental Car" : "Add Holiday Package")}</Text>
-              <Text style={m.helper}>Save करने के बाद listing live catalog में दिखाई देगी.</Text>
+              <Text style={m.title}>{editing ? (isCar ? "Edit Rental Car" : isCreativeService ? "Edit Service Package" : "Edit Holiday Package") : (isCar ? "Add Rental Car" : isCreativeService ? "Add Service Package" : "Add Holiday Package")}</Text>
+              <Text style={m.helper}>Your listing will appear in the customer service marketplace after it is saved.</Text>
 
-              <Field label={isCar ? "Car Name *" : "Package Name *"} value={f.name} onChange={(v:any)=>setF({...f,name:v})} placeholder={isCar ? "Toyota Innova Crysta" : "Goa Beach Escape"} />
+              <Field label={isCar ? "Car Name *" : "Package Name *"} value={f.name} onChange={(v:any)=>setF({...f,name:v})} placeholder={isCar ? "Toyota Innova Crysta" : isCreativeService ? (serviceType === "decorator" ? "Royal Wedding Stage Setup" : "Wedding Photography & Film") : "Goa Beach Escape"} />
 
               {isCar ? (
                 <>
@@ -199,6 +207,15 @@ export default function VendorServices() {
                   <Field label="Tag" value={f.tag} onChange={(v:any)=>setF({...f,tag:v})} placeholder="Family favourite" />
                   <Field label="Description" value={f.description} onChange={(v:any)=>setF({...f,description:v})} placeholder="Premium 7-seater..." multiline />
                   <Field label="Phone" value={f.phone} onChange={(v:any)=>setF({...f,phone:v})} placeholder="Vendor contact" keyboardType="phone-pad" />
+                </>
+              ) : isCreativeService ? (
+                <>
+                  <Field label="Service Area / Venue City" value={f.location} onChange={(v:any)=>setF({...f,location:v})} placeholder="Karmatar, Jamtara" />
+                  <Field label="Event / Service Category" value={f.category} onChange={(v:any)=>setF({...f,category:v})} placeholder={serviceType === "decorator" ? "Wedding / Birthday / Stage / Corporate" : "Wedding / Pre-wedding / Birthday / Studio"} />
+                  <Field label="Starting Package Price (₹)" value={f.price || f.adult_price} onChange={(v:any)=>setF({...f,price:v,adult_price:v})} placeholder="15000" keyboardType="numeric" />
+                  <Field label="Tag" value={f.tag} onChange={(v:any)=>setF({...f,tag:v})} placeholder="Premium package / Popular choice" />
+                  <Field label="Description & What's Included" value={f.description} onChange={(v:any)=>setF({...f,description:v})} placeholder="Describe your setup, crew, equipment, deliverables and travel..." multiline />
+                  <Field label="Contact Phone" value={f.phone} onChange={(v:any)=>setF({...f,phone:v})} placeholder="Vendor contact" keyboardType="phone-pad" />
                 </>
               ) : (
                 <>
@@ -221,15 +238,15 @@ export default function VendorServices() {
                 </>
               )}
 
-              <ImageUploader value={f.image} onChange={(uri)=>setF({...f,image:uri})} label={isCar ? "Car Main Photo" : "Package Cover Photo"} aspect={[16,9]} />
+              <ImageUploader value={f.image} onChange={(uri)=>setF({...f,image:uri})} label={isCar ? "Car Main Photo" : isCreativeService ? "Service Cover Photo" : "Package Cover Photo"} aspect={[16,9]} />
 
-              <Text style={m.galleryTitle}>{isCar ? "Car Photos · 2 Photos" : "Destination Gallery · Up to 5 Photos"}</Text>
+              <Text style={m.galleryTitle}>{isCar ? "Car Photos · 2 Photos" : isCreativeService ? "Portfolio Gallery · Up to 5 Photos" : "Destination Gallery · Up to 5 Photos"}</Text>
               {(isCar ? [0,1] : [0,1,2,3,4]).map((i)=>
                 <ImageUploader
                   key={i}
                   value={f.gallery?.[i] || ""}
                   onChange={(uri)=>setF({...f,gallery:Object.assign([],f.gallery || [], {[i]:uri}).slice(isCar ? 2 : 5)})}
-                  label={isCar ? (i === 0 ? "Main Car Photo" : "Second Car Photo") : `Photo ${i+1}`}
+                  label={isCar ? (i === 0 ? "Main Car Photo" : "Second Car Photo") : isCreativeService ? `Portfolio Photo ${i+1}` : `Photo ${i+1}`}
                   aspect={[4,3]}
                 />
               )}

@@ -26,6 +26,7 @@ export const DEFAULT_ADMIN_ACTIONS: AdminQuickAction[] = [
   { icon: "briefcase-outline", label: "Vendor Service", path: "/admin/service-vendors", color: "#F97316" },
   { icon: "tools", label: "Daily Services", path: "/admin/daily-services", color: "#38BDF8" },
   { icon: "calendar-check-outline", label: "Service Bookings", path: "/admin/service-bookings", color: "#16A34A" },
+  { icon: "message-text-outline", label: "Service Enquiries", path: "/admin/service-enquiries", color: "#8B5CF6" },
   { icon: "image-multiple-outline", label: "Banners", path: "/admin/banners", color: "#38BDF8" },
   { icon: "clipboard-list-outline", label: "All Orders", path: "/admin/orders", color: "#F97316" },
   { icon: "currency-inr", label: "Commission", path: "/admin/commission", color: "#8A5A3B" },

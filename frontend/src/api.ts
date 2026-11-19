@@ -12,7 +12,7 @@ const USER_KEY = "kmt_user";
 
 export type UserRole = "customer" | "vendor" | "delivery" | "admin";
 export type VendorType = "store" | "service";
-export type ServiceType = "holiday" | "car_rental" | "daily_service";
+export type ServiceType = "holiday" | "car_rental" | "daily_service" | "decorator" | "photography_studio";
 
 export interface User {
   id: string;
@@ -23,6 +23,8 @@ export interface User {
   avatar?: string | null;
   vendor_type?: VendorType | null;
   service_type?: ServiceType | null;
+  service_approval_status?: "pending" | "approved" | "rejected" | null;
+  service_is_approved?: boolean | null;
 }
 
 // Storage helpers
@@ -315,6 +317,14 @@ export const api = {
     apiFetch<any[]>("/stores"),
 
   serviceTypes: () => apiFetch<any[]>("/service-types"),
+  serviceVendorProfile: () => apiFetch<any>("/service-vendor/profile"),
+  saveServiceVendorProfile: (data: any) => apiFetch<any>("/service-vendor/profile", { method: "PUT", body: JSON.stringify(data) }),
+  resubmitServiceVendorProfile: () => apiFetch<any>("/service-vendor/resubmit", { method: "POST" }),
+  serviceAvailability: (type: string, vendorId: string) => apiFetch<any>(`/services/availability/${encodeURIComponent(type)}/${encodeURIComponent(vendorId)}`),
+  createDirectServiceBooking: (data: any) => apiFetch<any>("/service-bookings/request", { method: "POST", body: JSON.stringify(data) }),
+  createServiceEnquiry: (data: any) => apiFetch<any>("/service-enquiries", { method: "POST", body: JSON.stringify(data) }),
+  customerServiceEnquiries: () => apiFetch<any[]>("/service-enquiries"),
+  respondServiceEnquiry: (id: string, action: "accept" | "decline", note = "") => apiFetch<any>(`/service-enquiries/${encodeURIComponent(id)}/respond`, { method: "POST", body: JSON.stringify({ action, note }) }),
   holidayBanner: () => apiFetch<any>("/holiday/banner"),
   serviceCatalog: (type: string) => apiFetch<any[]>(`/services/catalog/${encodeURIComponent(type)}`),
   serviceDetail: (type: string, id: string) => apiFetch<any>(`/services/catalog/${encodeURIComponent(type)}/${encodeURIComponent(id)}`),

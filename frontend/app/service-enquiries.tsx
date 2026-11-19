@@ -1,0 +1,29 @@
+import React,{useCallback,useState}from"react";
+import{View,Text,StyleSheet,ScrollView,Pressable,ActivityIndicator,Alert,Platform}from"react-native";
+import{useFocusEffect,useRouter}from"expo-router";
+import{SafeAreaView}from"react-native-safe-area-context";
+import{MaterialCommunityIcons}from"@expo/vector-icons";
+import{api}from"@/src/api";
+
+export default function CustomerServiceEnquiries(){
+ const router=useRouter(),[items,setItems]=useState<any[]>([]),[loading,setLoading]=useState(true),[busy,setBusy]=useState("");
+ const load=useCallback(async()=>{setLoading(true);try{setItems(await api.customerServiceEnquiries())}catch(e:any){setItems([])}finally{setLoading(false)}},[]);
+ useFocusEffect(useCallback(()=>{load()},[load]));
+ const notify=(title:string,msg:string)=>Platform.OS==="web"?window.alert(msg):Alert.alert(title,msg);
+ const respond=async(x:any,action:"accept"|"decline")=>{setBusy(x.id);try{const r=await api.respondServiceEnquiry(x.id,action);await load();if(action==="accept"){notify("Booking request created","The quotation has been accepted. Your booking request is now waiting for vendor confirmation.");router.push("/service-bookings" as any)}else notify("Quotation declined","You declined this quotation.");}catch(e:any){notify("Unable to respond",e?.message||"Please try again.")}finally{setBusy("")}};
+ return <SafeAreaView style={s.root} edges={["top"]}>
+  <View style={s.header}><Pressable onPress={()=>router.back()}><MaterialCommunityIcons name="arrow-left" size={24} color="#0F172A"/></Pressable><View style={{flex:1,marginLeft:12}}><Text style={s.title}>My Service Enquiries</Text><Text style={s.sub}>Track quotations from Decorator and Photography vendors</Text></View><Pressable onPress={load}><MaterialCommunityIcons name="refresh" size={22} color="#0284C7"/></Pressable></View>
+  <ScrollView contentContainerStyle={s.body}>
+   {loading?<ActivityIndicator size="large" color="#0284C7"/>:items.length===0?<View style={s.empty}><MaterialCommunityIcons name="message-text-outline" size={45} color="#94A3B8"/><Text style={s.emptyTitle}>No enquiries yet</Text><Text style={s.emptySub}>Send an enquiry from a service listing to receive a custom quotation.</Text></View>:items.map(x=><View key={x.id} style={s.card}>
+    <View style={s.top}><View style={s.typeIcon}><MaterialCommunityIcons name={x.service_type==="decorator"?"party-popper":"camera"} size={20} color="#0284C7"/></View><View style={{flex:1}}><Text style={s.name}>{x.service_name||"Service enquiry"}</Text><Text style={s.vendor}>{x.vendor_name||"Service partner"}</Text></View><Text style={s.status}>{String(x.status||"new").replaceAll("_"," ").toUpperCase()}</Text></View>
+    <Text style={s.meta}>Event: {x.event_date||"Date flexible"} {x.event_time?"· "+x.event_time:""}</Text>
+    {!!x.event_location&&<Text style={s.meta}>Location: {x.event_location}</Text>}
+    <Text style={s.requirements}>{x.requirements}</Text>
+    {x.quote&&<View style={s.quote}><Text style={s.quoteLabel}>VENDOR QUOTATION</Text><Text style={s.amount}>₹{Number(x.quote.amount||0).toLocaleString("en-IN")}</Text><Text style={s.quoteNote}>{x.quote.notes||"Quotation received"}</Text>{!!x.quote.valid_until&&<Text style={s.quoteNote}>Valid until {x.quote.valid_until}</Text>}</View>}
+    {x.status==="quoted"&&<View style={s.actions}><Pressable disabled={busy===x.id} onPress={()=>respond(x,"decline")} style={s.reject}><Text style={s.rejectText}>Decline</Text></Pressable><Pressable disabled={busy===x.id} onPress={()=>respond(x,"accept")} style={s.accept}>{busy===x.id?<ActivityIndicator color="#fff"/>:<><MaterialCommunityIcons name="check-circle" color="#fff" size={16}/><Text style={s.acceptText}>Accept quotation</Text></>}</Pressable></View>}
+    {x.status==="converted_to_booking"&&<Pressable onPress={()=>router.push("/service-bookings" as any)} style={s.track}><Text style={s.trackText}>View booking request</Text></Pressable>}
+   </View>)}
+  </ScrollView>
+ </SafeAreaView>;
+}
+const s=StyleSheet.create({root:{flex:1,backgroundColor:"#F1F5F9"},header:{flexDirection:"row",alignItems:"center",padding:16,backgroundColor:"#fff",borderBottomWidth:1,borderColor:"#E2E8F0"},title:{fontSize:18,fontWeight:"900",color:"#0F172A"},sub:{fontSize:10,color:"#64748B",marginTop:3},body:{padding:14,paddingBottom:40},card:{backgroundColor:"#fff",padding:15,borderRadius:18,borderWidth:1,borderColor:"#E2E8F0",marginBottom:12},top:{flexDirection:"row",alignItems:"center",gap:10},typeIcon:{width:42,height:42,borderRadius:13,backgroundColor:"#E0F2FE",alignItems:"center",justifyContent:"center"},name:{fontSize:14,fontWeight:"900",color:"#0F172A"},vendor:{fontSize:10,color:"#0284C7",fontWeight:"800",marginTop:3},status:{fontSize:8,fontWeight:"900",color:"#64748B"},meta:{fontSize:10,color:"#64748B",marginTop:7},requirements:{fontSize:12,color:"#334155",lineHeight:18,marginTop:10},quote:{backgroundColor:"#F5F3FF",borderRadius:13,padding:13,marginTop:12},quoteLabel:{fontSize:9,fontWeight:"900",color:"#6D28D9",letterSpacing:1},amount:{fontSize:23,fontWeight:"900",color:"#4C1D95",marginTop:4},quoteNote:{fontSize:11,color:"#475569",marginTop:4},actions:{flexDirection:"row",gap:8,marginTop:12},reject:{flex:1,alignItems:"center",justifyContent:"center",padding:12,borderRadius:11,borderWidth:1,borderColor:"#CBD5E1"},rejectText:{fontSize:11,fontWeight:"900",color:"#475569"},accept:{flex:1,flexDirection:"row",gap:6,alignItems:"center",justifyContent:"center",padding:12,borderRadius:11,backgroundColor:"#0284C7"},acceptText:{fontSize:11,fontWeight:"900",color:"#fff"},track:{marginTop:12,alignItems:"center",padding:11,borderRadius:11,backgroundColor:"#E0F2FE"},trackText:{color:"#0369A1",fontWeight:"900",fontSize:11},empty:{alignItems:"center",padding:54},emptyTitle:{fontSize:17,fontWeight:"900",color:"#0F172A",marginTop:10},emptySub:{fontSize:11,lineHeight:17,color:"#64748B",textAlign:"center",marginTop:6,maxWidth:280}});
