@@ -427,7 +427,7 @@ export default function AdminVendorProducts({ vendorId, selectedStoreId: externa
       <View style={styles.sectionHeader}>
         <View style={{ flex: 1 }}>
           <Text style={styles.sectionTitle}>Store Products</Text>
-          <Text style={styles.sectionSubtitle}>Admin can manage products for this vendor's store.</Text>
+          <Text style={styles.sectionSubtitle}>Admin can manage products for this vendor&apos;s store.</Text>
         </View>
         <View style={styles.countPill}>
           <Text style={styles.countText}>{products.length}</Text>
