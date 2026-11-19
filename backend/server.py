@@ -105,6 +105,22 @@ class ServiceType(str, Enum):
     HOLIDAY = "holiday"
     CAR_RENTAL = "car_rental"
     DAILY_SERVICE = "daily_service"
+    DECORATOR = "decorator"
+    PHOTOGRAPHY_STUDIO = "photography_studio"
+
+
+NEW_SERVICE_VENDOR_TYPES = {ServiceType.DECORATOR.value, ServiceType.PHOTOGRAPHY_STUDIO.value}
+PUBLIC_SERVICE_VENDOR_TYPES = {
+    ServiceType.HOLIDAY.value,
+    ServiceType.CAR_RENTAL.value,
+    *NEW_SERVICE_VENDOR_TYPES,
+}
+
+
+def _service_vendor_is_approved(user: dict) -> bool:
+    if user.get("service_type") not in NEW_SERVICE_VENDOR_TYPES:
+        return True  # Preserve existing Holiday and Car Rental accounts.
+    return user.get("service_is_approved") is True or user.get("service_approval_status") == "approved"
 
 
 def now_iso():
@@ -183,6 +199,8 @@ class UserOut(BaseModel):
     avatar: Optional[str] = None
     vendor_type: Optional[VendorType] = None
     service_type: Optional[ServiceType] = None
+    service_approval_status: Optional[str] = None
+    service_is_approved: Optional[bool] = None
 
 
 class AuthOut(BaseModel):
@@ -397,6 +415,18 @@ def user_to_out(u: dict) -> dict:
             if u.get("role") == Role.VENDOR.value and (u.get("vendor_type") or "store") == VendorType.SERVICE.value
             else None
         ),
+        "service_approval_status": (
+            u.get("service_approval_status") or (
+                "approved" if u.get("service_type") not in NEW_SERVICE_VENDOR_TYPES else "pending"
+            )
+            if u.get("role") == Role.VENDOR.value and (u.get("vendor_type") or "store") == VendorType.SERVICE.value
+            else None
+        ),
+        "service_is_approved": (
+            bool(u.get("service_is_approved", u.get("service_type") not in NEW_SERVICE_VENDOR_TYPES))
+            if u.get("role") == Role.VENDOR.value and (u.get("vendor_type") or "store") == VendorType.SERVICE.value
+            else None
+        ),
     }
 
 
@@ -406,17 +436,11 @@ async def register(data: RegisterIn):
     if data.role == Role.ADMIN:
         raise HTTPException(status_code=403, detail="Admin accounts cannot be created through public registration")
     if data.role == Role.VENDOR and data.vendor_type == VendorType.SERVICE:
-        if data.service_type not in {ServiceType.HOLIDAY, ServiceType.CAR_RENTAL}:
-            raise HTTPException(status_code=400, detail="Only Holiday and Car Rental service vendors are supported. Daily Services are admin-managed.")
-        existing_service_vendor = await db.users.find_one({
-            "role": Role.VENDOR.value,
-            "vendor_type": VendorType.SERVICE.value,
-            "service_type": data.service_type.value,
-            "active": {"$ne": False},
-        }, {"_id": 1})
-        if existing_service_vendor:
-            service_label = SERVICE_TYPES.get(data.service_type.value, {}).get("name", data.service_type.value)
-            raise HTTPException(status_code=409, detail=f"{service_label} vendor account already exists")
+        if data.service_type is None or data.service_type.value not in PUBLIC_SERVICE_VENDOR_TYPES:
+            raise HTTPException(
+                status_code=400,
+                detail="Choose Holiday, Car Rental, Decorator or Photography Studio. Daily Services are admin-managed."
+            )
     existing = await db.users.find_one({"$or": [{"email": data.email}, {"phone": data.phone}]})
     if existing:
         if existing.get("email") == data.email:
@@ -439,7 +463,29 @@ async def register(data: RegisterIn):
         "avatar": None,
         "created_at": now_iso(),
     }
+    if data.role == Role.VENDOR and data.vendor_type == VendorType.SERVICE and data.service_type.value in NEW_SERVICE_VENDOR_TYPES:
+        user_doc["service_approval_status"] = "pending"
+        user_doc["service_is_approved"] = False
+        user_doc["service_registration_source"] = "self"
+
     await db.users.insert_one(user_doc)
+
+    if data.role == Role.VENDOR and data.vendor_type == VendorType.SERVICE and data.service_type.value in NEW_SERVICE_VENDOR_TYPES:
+        await db.service_vendor_profiles.insert_one({
+            "id": "svp-" + uuid.uuid4().hex[:10],
+            "vendor_id": uid,
+            "service_type": data.service_type.value,
+            "business_name": data.name,
+            "business_description": "",
+            "experience_years": 0,
+            "service_areas": [],
+            "address": "",
+            "portfolio_images": [],
+            "verification_documents": [],
+            "created_at": now_iso(),
+            "updated_at": now_iso(),
+        })
+
     token = create_token(uid, data.role.value)
     return {"token": token, "user": user_to_out(user_doc)}
 
@@ -2161,7 +2207,7 @@ async def admin_update_service_vendor(
         raise HTTPException(status_code=404, detail="Vendor not found")
     if user.get("role") != Role.VENDOR.value or user.get("vendor_type") != VendorType.SERVICE.value:
         raise HTTPException(status_code=400, detail="This is not a service vendor")
-    if user.get("service_type") not in {ServiceType.HOLIDAY.value, ServiceType.CAR_RENTAL.value}:
+    if user.get("service_type") not in PUBLIC_SERVICE_VENDOR_TYPES:
         raise HTTPException(status_code=400, detail="Daily Services are admin-managed")
     update = {"name": data.name.strip()}
     if not update["name"]:
@@ -2688,6 +2734,8 @@ async def admin_service_booking_status(booking_id: str, data: OrderStatusIn, _=D
         ServiceType.DAILY_SERVICE.value: {"pending", "confirmed", "cancelled", "completed", "delivered"},
         ServiceType.HOLIDAY.value: {"pending", "confirmed", "travel_scheduled", "completed", "cancelled"},
         ServiceType.CAR_RENTAL.value: {"pending", "booking_requested", "accepted", "vehicle_assigned", "trip_started", "completed", "cancelled"},
+        ServiceType.DECORATOR.value: {"booking_requested", "accepted", "confirmed", "rejected", "completed", "cancelled"},
+        ServiceType.PHOTOGRAPHY_STUDIO.value: {"booking_requested", "accepted", "confirmed", "rejected", "completed", "cancelled"},
     }
     status = data.status.strip().lower()
     if status not in allowed.get(service_type, set()):
@@ -2750,6 +2798,8 @@ async def _notify_service_booking_created(booking: dict):
         ServiceType.DAILY_SERVICE.value: "Daily Service",
         ServiceType.HOLIDAY.value: "Holiday",
         ServiceType.CAR_RENTAL.value: "Car Rental",
+        ServiceType.DECORATOR.value: "Decorator",
+        ServiceType.PHOTOGRAPHY_STUDIO.value: "Photography Studio",
     }.get(service_type, "Service")
     service_name = booking.get("service_name") or label
     customer_name = booking.get("customer_name") or "Customer"
@@ -2773,7 +2823,7 @@ async def _notify_service_booking_created(booking: dict):
         docs.append({**base, "id": str(uuid.uuid4()), "user_id": admin["id"]})
 
     vendor_id = booking.get("vendor_id")
-    if vendor_id and service_type in {ServiceType.HOLIDAY.value, ServiceType.CAR_RENTAL.value}:
+    if vendor_id and service_type in PUBLIC_SERVICE_VENDOR_TYPES:
         docs.append({**base, "id": str(uuid.uuid4()), "user_id": vendor_id})
 
     if docs:
@@ -2800,6 +2850,18 @@ SERVICE_TYPES = {
         "icon": "tools",
         "description": "Repair, mistri, labour and local home services",
     },
+    "decorator": {
+        "id": "decorator",
+        "name": "Decorator",
+        "icon": "party-popper",
+        "description": "Wedding, birthday, stage and event decoration",
+    },
+    "photography_studio": {
+        "id": "photography_studio",
+        "name": "Photography Studio",
+        "icon": "camera",
+        "description": "Wedding photography, videography and studio shoots",
+    },
 }
 
 
@@ -2825,7 +2887,18 @@ async def service_catalog(service_type: ServiceType):
         {"service_type": service_type.value, "active": True},
         {"_id": 0}
     ).sort("order", 1).to_list(200)
-    return items
+    vendor_ids = list({x.get("vendor_id") for x in items if x.get("vendor_id")})
+    if not vendor_ids:
+        return items
+    vendors = await db.users.find(
+        {"id": {"$in": vendor_ids}, "role": Role.VENDOR.value, "vendor_type": VendorType.SERVICE.value},
+        {"_id": 0, "id": 1, "service_type": 1, "service_is_approved": 1, "service_approval_status": 1}
+    ).to_list(500)
+    approved_ids = {
+        x["id"] for x in vendors
+        if x.get("service_type") == service_type.value and _service_vendor_is_approved(x)
+    }
+    return [x for x in items if not x.get("vendor_id") or x.get("vendor_id") in approved_ids]
 
 
 @api.get("/services/catalog/{service_type}/{service_id}")
@@ -2836,6 +2909,13 @@ async def service_catalog_detail(service_type: ServiceType, service_id: str):
     )
     if not item:
         raise HTTPException(404, "Service not found")
+    if item.get("vendor_id"):
+        vendor = await db.users.find_one(
+            {"id": item["vendor_id"], "role": Role.VENDOR.value, "vendor_type": VendorType.SERVICE.value},
+            {"_id": 0, "id": 1, "service_type": 1, "service_is_approved": 1, "service_approval_status": 1}
+        )
+        if not vendor or not _service_vendor_is_approved(vendor):
+            raise HTTPException(404, "Service not found")
     return item
 
 
@@ -2884,6 +2964,13 @@ async def add_service_cart(data: ServiceCartAddIn, current=Depends(require_roles
 
     if not service and not is_mock:
         raise HTTPException(404, "Service is not available")
+    if service and service.get("vendor_id"):
+        vendor = await db.users.find_one(
+            {"id": service["vendor_id"], "role": Role.VENDOR.value, "vendor_type": VendorType.SERVICE.value},
+            {"_id": 0, "id": 1, "service_type": 1, "service_is_approved": 1, "service_approval_status": 1}
+        )
+        if not vendor or not _service_vendor_is_approved(vendor):
+            raise HTTPException(404, "Service is not available")
 
     item = data.dict()
     item["service_type"] = data.service_type.value
@@ -3167,6 +3254,8 @@ async def vendor_service_booking_status(
         "holiday": {"pending", "confirmed", "travel_scheduled", "completed", "cancelled"},
         "car_rental": {"booking_requested", "accepted", "vehicle_assigned", "trip_started", "completed", "cancelled"},
         "daily_service": {"booking_requested", "provider_accepted", "provider_on_the_way", "service_started", "completed", "cancelled"},
+        "decorator": {"booking_requested", "accepted", "confirmed", "rejected", "completed", "cancelled"},
+        "photography_studio": {"booking_requested", "accepted", "confirmed", "rejected", "completed", "cancelled"},
     }
     st = data.status.strip().lower()
     if st not in allowed.get(booking.get("service_type"), set()):
@@ -3200,6 +3289,9 @@ async def vendor_service_type(current=Depends(require_roles("vendor"))):
 def _require_vendor_type(current, expected: str):
     if (current.get("vendor_type") or "store") != expected:
         raise HTTPException(status_code=403, detail=f"{expected.title()} Vendor access required")
+    if expected == "service" and current.get("service_type") in NEW_SERVICE_VENDOR_TYPES:
+        if not _service_vendor_is_approved(current):
+            raise HTTPException(status_code=403, detail="Your service vendor profile is awaiting Admin approval.")
 
 @api.get("/vendor/service-stats")
 async def vendor_service_stats(current=Depends(require_roles("vendor"))):
@@ -3324,7 +3416,7 @@ async def delete_holiday_banner(
 @api.get("/vendor/services")
 async def vendor_list_services(current=Depends(require_roles("vendor"))):
     _require_vendor_type(current, "service")
-    if current.get("service_type") not in {ServiceType.HOLIDAY.value, ServiceType.CAR_RENTAL.value}:
+    if current.get("service_type") not in PUBLIC_SERVICE_VENDOR_TYPES:
         raise HTTPException(status_code=403, detail="Daily Services are managed by Admin only")
     return await db.vendor_services.find(
         {"vendor_id": current["id"], "service_type": current.get("service_type") or ServiceType.DAILY_SERVICE.value},
@@ -3338,7 +3430,7 @@ async def vendor_create_service(
     current=Depends(require_roles("vendor"))
 ):
     _require_vendor_type(current, "service")
-    if current.get("service_type") not in {ServiceType.HOLIDAY.value, ServiceType.CAR_RENTAL.value}:
+    if current.get("service_type") not in PUBLIC_SERVICE_VENDOR_TYPES:
         raise HTTPException(status_code=403, detail="Daily Services are managed by Admin only")
     service_id = "vsvc-" + uuid.uuid4().hex[:8]
     _require_vendor_type(current, "service")
@@ -3363,7 +3455,7 @@ async def vendor_update_service(
     current=Depends(require_roles("vendor"))
 ):
     _require_vendor_type(current, "service")
-    if current.get("service_type") not in {ServiceType.HOLIDAY.value, ServiceType.CAR_RENTAL.value}:
+    if current.get("service_type") not in PUBLIC_SERVICE_VENDOR_TYPES:
         raise HTTPException(status_code=403, detail="Daily Services are managed by Admin only")
     update_data = data.dict()
     update_data["service_type"] = current.get("service_type") or ServiceType.DAILY_SERVICE.value
@@ -3385,7 +3477,7 @@ async def vendor_delete_service(
     current=Depends(require_roles("vendor"))
 ):
     _require_vendor_type(current, "service")
-    if current.get("service_type") not in {ServiceType.HOLIDAY.value, ServiceType.CAR_RENTAL.value}:
+    if current.get("service_type") not in PUBLIC_SERVICE_VENDOR_TYPES:
         raise HTTPException(status_code=403, detail="Daily Services are managed by Admin only")
     result = await db.vendor_services.delete_one(
         {"id": service_id, "vendor_id": current["id"]}
@@ -4150,6 +4242,14 @@ async def ensure_db_indexes():
         db.travel_packages.create_index("id", unique=True),
         db.travel_packages.create_index([("page_id", 1), ("active", 1)]),
         db.travel_carts.create_index("user_id", unique=True),
+        db.service_vendor_profiles.create_index("vendor_id", unique=True),
+        db.service_availability.create_index("vendor_id", unique=True),
+        db.service_enquiries.create_index("id", unique=True),
+        db.service_enquiries.create_index([("vendor_id", 1), ("created_at", -1)]),
+        db.service_enquiries.create_index([("customer_id", 1), ("created_at", -1)]),
+        db.service_bookings.create_index("id", unique=True),
+        db.service_bookings.create_index([("vendor_id", 1), ("created_at", -1)]),
+        db.service_bookings.create_index([("customer_id", 1), ("created_at", -1)]),
     )
 
 
