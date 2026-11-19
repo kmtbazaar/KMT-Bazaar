@@ -4410,6 +4410,14 @@ async def ensure_db_indexes():
         db.travel_packages.create_index("id", unique=True),
         db.travel_packages.create_index([("page_id", 1), ("active", 1)]),
         db.travel_carts.create_index("user_id", unique=True),
+        db.vendor_services.create_index([("vendor_id", 1), ("service_type", 1)]),
+        db.vendor_services.create_index([("service_type", 1), ("active", 1), ("order", 1)]),
+        db.service_bookings.create_index("id", unique=True),
+        db.service_bookings.create_index([("vendor_id", 1), ("created_at", -1)]),
+        db.service_bookings.create_index([("customer_id", 1), ("created_at", -1)]),
+        db.service_enquiries.create_index("id", unique=True),
+        db.service_enquiries.create_index([("vendor_id", 1), ("created_at", -1)]),
+        db.service_enquiries.create_index([("customer_id", 1), ("created_at", -1)]),
     )
 
 
@@ -4622,6 +4630,3 @@ async def seed_db():
                     "timeline": [{"status": "pending", "at": now_iso(), "label": "Order placed"}],
                     "created_at": (base_dt - _td2(days=i)).isoformat(),
                 })
-
-
-@app.on_event("startup")
