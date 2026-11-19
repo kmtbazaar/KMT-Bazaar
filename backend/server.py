@@ -2715,8 +2715,14 @@ def _build_order_invoice_pdf(order, customer):
     return output.getvalue()
 
 
+def _ensure_customer_order_access(current):
+    if current.get("role") != "customer":
+        raise HTTPException(status_code=403, detail="Customer access only")
+
+
 @api.get("/orders/{order_id}/invoice-token")
-async def create_order_invoice_token(order_id: str, current=Depends(require_roles("customer"))):
+async def create_order_invoice_token(order_id: str, current=Depends(get_current_user)):
+    _ensure_customer_order_access(current)
     order = await db.orders.find_one({"id": order_id, "user_id": current["id"]}, {"_id": 0, "id": 1})
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")
@@ -2765,7 +2771,8 @@ async def download_order_invoice(order_id: str, token: str):
 
 
 @api.get("/support/requests")
-async def list_order_support_requests(current=Depends(require_roles("customer"))):
+async def list_order_support_requests(current=Depends(get_current_user)):
+    _ensure_customer_order_access(current)
     return await db.order_support_requests.find(
         {"user_id": current["id"]},
         {"_id": 0},
@@ -2776,8 +2783,9 @@ async def list_order_support_requests(current=Depends(require_roles("customer"))
 async def create_order_support_request(
     order_id: str,
     data: SupportRequestIn,
-    current=Depends(require_roles("customer")),
+    current=Depends(get_current_user),
 ):
+    _ensure_customer_order_access(current)
     order = await db.orders.find_one(
         {"id": order_id, "user_id": current["id"]},
         {"_id": 0, "id": 1, "order_no": 1, "status": 1, "total": 1},
