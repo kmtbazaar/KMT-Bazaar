@@ -1177,7 +1177,7 @@ async def verify_email_signup_otp(data: EmailOtpVerifyIn, request: Request, resp
     if registration.get("role") == Role.VENDOR.value and registration.get("vendor_type") == VendorType.SERVICE.value:
         if registration.get("service_type") not in {ServiceType.HOLIDAY.value, ServiceType.CAR_RENTAL.value, ServiceType.PREMIUM_DECORATOR.value, ServiceType.PHOTOGRAPHY.value}:
             raise HTTPException(status_code=400, detail="Choose a supported service vendor category")
-        if registration.get("service_type") in {ServiceType.HOLIDAY.value, ServiceType.CAR_RENTAL.value, ServiceType.PREMIUM_DECORATOR.value, ServiceType.PHOTOGRAPHY.value}:
+        if registration.get("service_type") in {ServiceType.HOLIDAY.value, ServiceType.CAR_RENTAL.value}:
             existing_service_vendor = await db.users.find_one({
                 "role": Role.VENDOR.value,
                 "vendor_type": VendorType.SERVICE.value,
