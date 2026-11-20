@@ -14,8 +14,25 @@ import Animated, {
 } from "react-native-reanimated";
 import { useEffect } from "react";
 import { COLORS } from "@/src/theme";
+import * as Haptics from "expo-haptics";
 import { useCart } from "@/src/CartContext";
 import RobotCompanion3D from "@/src/components/RobotCompanion3D";
+
+
+function triggerTabPressFeedback() {
+  try {
+    if (Platform.OS === "web") {
+      const webNavigator = (globalThis as any)?.navigator;
+      if (typeof webNavigator?.vibrate === "function") {
+        webNavigator.vibrate(12);
+      }
+      return;
+    }
+    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => undefined);
+  } catch {
+    // Haptics are optional; navigation must always continue even when unavailable.
+  }
+}
 
 function TabIconShell({
   focused,
@@ -136,6 +153,7 @@ export default function TabsLayout() {
   const isMobileTabBar = Platform.OS !== "web" || width <= 1024;
   return (
     <Tabs
+      screenListeners={{ tabPress: () => triggerTabPressFeedback() }}
       screenOptions={{
         headerShown: false,
         tabBarActiveTintColor: COLORS.brand,
