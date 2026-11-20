@@ -1,7 +1,7 @@
 import { LocalizedText as Text, LocalizedTextInput as TextInput } from "@/src/LocalizedText";
 import { router } from "expo-router";
 import React, { useEffect, useRef, useState } from "react";
-import Animated, { Easing, FadeIn, useAnimatedStyle, useSharedValue, withTiming } from "react-native-reanimated";
+import Animated, { Easing, FadeIn, type SharedValue, useAnimatedStyle, useSharedValue, withTiming } from "react-native-reanimated";
 import {
   View,
   StyleSheet,
@@ -27,7 +27,7 @@ type Message = {
 };
 
 type AssistantShutterTransitionProps = {
-  progress: Animated.SharedValue<number>;
+  progress: SharedValue<number>;
 };
 
 function AssistantShutterBlade({
