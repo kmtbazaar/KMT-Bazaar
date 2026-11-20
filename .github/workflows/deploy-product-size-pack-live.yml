@@ -49,6 +49,7 @@ on:
       - "frontend/src/components/RobotAvatar.tsx"
       - "frontend/src/components/RobotCompanion3D.tsx"
       - "frontend/app/(tabs)/_layout.tsx"
+      - "frontend/app/(tabs)/categories.tsx"
       - "frontend/src/api.ts"
       - ".github/workflows/deploy-product-size-pack-live.yml"
   workflow_dispatch:
