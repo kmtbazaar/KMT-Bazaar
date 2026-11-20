@@ -66,7 +66,7 @@ const VILLAGE_STARS = Array.from({ length: 22 }, (_, index) => {
   };
 });
 
-function VillageSmokePuff({ delay, size }: { delay: number; size: number }) {
+function VillageSmokePuff({ delay, size, driftX = 17 }: { delay: number; size: number; driftX?: number }) {
   const drift = useSharedValue(0);
 
   useEffect(() => {
@@ -74,8 +74,8 @@ function VillageSmokePuff({ delay, size }: { delay: number; size: number }) {
       withDelay(
         delay,
         withSequence(
-          withTiming(1, { duration: 3600 }),
-          withTiming(0, { duration: 20 })
+          withTiming(1, { duration: 4300 }),
+          withTiming(0, { duration: 10 })
         )
       ),
       -1,
@@ -84,23 +84,31 @@ function VillageSmokePuff({ delay, size }: { delay: number; size: number }) {
   }, [delay]);
 
   const smokeStyle = useAnimatedStyle(() => ({
-    opacity: 0.34 * (1 - drift.value),
+    opacity: 0.38 - drift.value * 0.22,
     transform: [
-      { translateY: -drift.value * 40 },
-      { translateX: drift.value * 12 },
-      { scale: size * (0.72 + drift.value * 0.8) },
+      { translateY: -drift.value * 52 },
+      { translateX: drift.value * driftX },
+      { scale: size * (0.52 + drift.value * 1.12) },
+      { rotate: `${drift.value * 16}deg` },
     ],
   }));
 
-  return <Animated.View style={[s.villageSmokePuff, smokeStyle]} />;
+  return (
+    <Animated.View style={[s.villageSmokePuff, smokeStyle]}>
+      <View style={s.villageSmokeCore} />
+      <View style={s.villageSmokeHighlight} />
+    </Animated.View>
+  );
 }
 
 function VillageSmoke() {
   return (
     <View pointerEvents="none" style={s.villageSmokeTrail} testID="home-village-chimney-smoke">
-      <VillageSmokePuff delay={0} size={0.85} />
-      <VillageSmokePuff delay={1050} size={1.05} />
-      <VillageSmokePuff delay={2100} size={0.92} />
+      <VillageSmokePuff delay={0} size={0.72} driftX={12} />
+      <VillageSmokePuff delay={760} size={0.9} driftX={15} />
+      <VillageSmokePuff delay={1520} size={1.08} driftX={19} />
+      <VillageSmokePuff delay={2280} size={0.94} driftX={23} />
+      <VillageSmokePuff delay={3040} size={1.16} driftX={26} />
     </View>
   );
 }
@@ -173,8 +181,23 @@ function VillageDayNight() {
 
   const dayStyle = useAnimatedStyle(() => ({ opacity: 1 - cycleProgress.value }));
   const nightStyle = useAnimatedStyle(() => ({ opacity: cycleProgress.value }));
-  const sunStyle = useAnimatedStyle(() => ({ opacity: 1 - cycleProgress.value }));
-  const moonStyle = useAnimatedStyle(() => ({ opacity: cycleProgress.value }));
+  const sunStyle = useAnimatedStyle(() => ({
+    opacity: 1 - cycleProgress.value,
+    transform: [
+      { translateY: cycleProgress.value * 18 },
+      { scale: 1 - cycleProgress.value * 0.12 },
+    ],
+  }));
+  const moonStyle = useAnimatedStyle(() => ({
+    opacity: cycleProgress.value,
+    transform: [
+      { translateY: (1 - cycleProgress.value) * 16 },
+      { scale: 0.88 + cycleProgress.value * 0.12 },
+    ],
+  }));
+  const duskStyle = useAnimatedStyle(() => ({
+    opacity: Math.max(0, 1 - Math.abs(cycleProgress.value - 0.5) / 0.2),
+  }));
   const cloudStyle = useAnimatedStyle(() => ({
     transform: [{ translateX: -12 + cloudDrift.value * 24 }],
   }));
@@ -232,6 +255,7 @@ function VillageDayNight() {
         </Animated.View>
       </Animated.View>
 
+      <Animated.View pointerEvents="none" style={[s.villageDuskOverlay, duskStyle]} />
       <View style={s.villageFarHorizon} />
       <View style={s.villageHillBack} />
       <View style={s.villageHillFront} />
@@ -1435,7 +1459,8 @@ const s = StyleSheet.create({
   villageNightLayer: { ...StyleSheet.absoluteFillObject, overflow: "hidden" },
   villageSkyFill: { ...StyleSheet.absoluteFillObject },
   villageDayHaze: { position: "absolute", left: "12%", right: "12%", bottom: 20, height: 60, borderTopLeftRadius: 140, borderTopRightRadius: 140, backgroundColor: "rgba(255,235,197,0.22)" },
-  villageNightHaze: { position: "absolute", left: "18%", right: "18%", bottom: 19, height: 65, borderTopLeftRadius: 130, borderTopRightRadius: 130, backgroundColor: "rgba(255,174,119,0.12)" },
+  villageNightHaze: { position: "absolute", left: "18%", right: "18%", bottom: 19, height: 65, borderTopLeftRadius: 130, borderTopRightRadius: 130, backgroundColor: "rgba(255,174,119,0.16)" },
+  villageDuskOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(245,126,78,0.2)", zIndex: 2 },
   villageSun: { position: "absolute", top: 24, right: "13%", width: 76, height: 76, alignItems: "center", justifyContent: "center" },
   villageSunHalo: { position: "absolute", width: 76, height: 76, borderRadius: 38, backgroundColor: "rgba(255,247,211,0.22)" },
   villageSunCore: { width: 43, height: 43, borderRadius: 22, backgroundColor: "#FFF3C3", shadowColor: "#FFF1B8", shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.86, shadowRadius: 19, elevation: 6 },
@@ -1480,8 +1505,10 @@ const s = StyleSheet.create({
   villageHutRoofStrawOne: { position: "absolute", left: 16, bottom: 60, width: 93, height: 3, borderRadius: 3, backgroundColor: "#B27C42", transform: [{ rotate: "-19deg" }] },
   villageHutRoofStrawTwo: { position: "absolute", left: 17, bottom: 72, width: 92, height: 3, borderRadius: 3, backgroundColor: "#A96F39", transform: [{ rotate: "19deg" }] },
   villageHutChimney: { position: "absolute", left: 84, bottom: 78, width: 9, height: 17, borderTopWidth: 3, borderTopColor: "#AAB1AE", backgroundColor: "#665346", borderTopLeftRadius: 2, borderTopRightRadius: 2, zIndex: 11 },
-  villageSmokeTrail: { position: "absolute", left: 83, bottom: 89, width: 42, height: 62, zIndex: 12 },
-  villageSmokePuff: { position: "absolute", left: 5, bottom: 0, width: 19, height: 19, borderRadius: 12, backgroundColor: "rgba(232,239,239,0.8)", shadowColor: "#E8F0F2", shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.32, shadowRadius: 8, elevation: 1 },
+  villageSmokeTrail: { position: "absolute", left: 82, bottom: 91, width: 54, height: 76, zIndex: 12, overflow: "visible" },
+  villageSmokePuff: { position: "absolute", left: 5, bottom: 0, width: 25, height: 19, borderRadius: 18, backgroundColor: "rgba(218,229,232,0.24)", shadowColor: "#E8F0F2", shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.24, shadowRadius: 11, elevation: 1, overflow: "hidden" },
+  villageSmokeCore: { position: "absolute", left: 3, top: 4, width: 18, height: 11, borderRadius: 10, backgroundColor: "rgba(239,244,244,0.24)" },
+  villageSmokeHighlight: { position: "absolute", left: 7, top: 3, width: 8, height: 5, borderRadius: 5, backgroundColor: "rgba(255,255,255,0.2)" },
   villageFence: { position: "absolute", left: "15%", bottom: 8, width: 78, height: 17, zIndex: 8 },
   villageFencePost: { position: "absolute", bottom: 0, width: 3, height: 15, borderRadius: 1, backgroundColor: "#836243" },
   villageFenceRail: { position: "absolute", left: 0, right: 0, bottom: 8, height: 3, backgroundColor: "#A07A53", borderRadius: 2 },
