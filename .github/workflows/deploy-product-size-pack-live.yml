@@ -10,7 +10,6 @@ on:
       - "frontend/app/product/**"
       - "frontend/src/components/ProductCard.tsx"
       - "frontend/app/(tabs)/home.tsx"
-      - "frontend/assets/images/kmt-bazaar-flex-board.webp"
       - "frontend/app/search.tsx"
       - "frontend/src/api.ts"
       - "frontend/src/CartContext.tsx"
@@ -182,7 +181,8 @@ jobs:
           const robot = fs.readFileSync("src/components/RobotCompanion3D.tsx", "utf8");
           const assistant = fs.readFileSync("app/assistant.tsx", "utf8");
           assert.ok(home.includes("function NightSky(){") && home.includes("<KarmatarHeroScene/>") && home.includes('testID="home-karmatar-hero"'), "Karmatar landmark hero must replace the old village scene");
-          assert.ok(home.includes('testID="home-kmt-bazaar-flex-board"') && home.includes("kmt-bazaar-flex-board.webp") && fs.existsSync("assets/images/kmt-bazaar-flex-board.webp"), "Uploaded KMT flex board must be bundled locally");
+          assert.ok(!home.includes("home-kmt-bazaar-flex-board") && !home.includes("kmt-bazaar-flex-board.webp") && !fs.existsSync("assets/images/kmt-bazaar-flex-board.webp"), "The flex board image must be removed from the hero and bundle");
+          assert.ok(home.includes('testID="home-karmatar-kmt-neon"') && home.includes("KMT BAZAAR") && home.includes("karmatarBrandNeon") && home.indexOf('testID="home-karmatar-kmt-neon"') < home.indexOf('testID="home-karmatar-home-delivery-room"'), "KMT Bazaar warm neon must sit above the Home Delivery room");
           assert.ok(home.includes("VIDYASAGAR") && home.includes("RAILWAY STATION") && home.includes("RGRG +2 HIGH SCHOOL"), "Vidyasagar station and RGRG school must appear");
           assert.ok(home.includes("HOME DELIVERY") && home.includes("karmatarGrassWall") && home.includes('testID="home-karmatar-home-delivery-room"'), "Grass-wall home delivery room must appear");
           assert.ok(home.includes('testID="home-karmatar-road"') && home.includes('testID="home-karmatar-railway-crossing"'), "Road and railway crossing must appear");
@@ -197,6 +197,7 @@ jobs:
           const searchPosition = home.indexOf('testID="home-search-trigger"');
           const bannerPosition = home.indexOf("<View style={s.bannerCarouselShell}>");
           assert.ok(heroHeightLine && searchStyleLine && searchPosition > 0 && bannerPosition > searchPosition && home.includes("paddingTop: SPACING.lg"), "Home search must render directly below the full hero and above the banner");
+          assert.ok(home.includes("searchBarAnchor: { position: \"absolute\"") && home.includes("top: heroAnimatedHeight") && home.includes("translateY: -44") && home.includes("searchBarOuter: { paddingHorizontal: SPACING.md") && home.includes("marginTop: 0, height: 44"), "Search bottom must align with hero bottom and banner top, using the same 12px side edges as banners");
           assert.ok(home.includes('backgroundColor: "transparent", zIndex: 20, elevation: 0'), "Home search area must not paint a white panel over the animated sky");
           assert.ok(home.includes("onPress={openHomeSearch}") && !home.includes('onPress={() => router.push("/search" as any)}'), "Home search must open in place without pushing a separate screen");
           assert.ok(home.includes('testID="home-search-overlay"') && home.includes("<BlurView"), "Home search must blur the existing page behind its overlay");

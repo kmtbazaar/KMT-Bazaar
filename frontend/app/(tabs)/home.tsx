@@ -56,7 +56,7 @@ const RECENT_SEARCHES_KEY = "kmt_recent_searches";
 const MAX_RECENT_SEARCHES = 5;
 
 // Lightweight Karmatar landmark day/night hero.
-// Karmatar scene uses only local vector-style layers and the compressed bundled KMT flex image.
+// Karmatar scene uses lightweight local vector-style layers.
 // Day/night fade transitions run on Reanimated UI-thread values.
 const KARMATAR_STARS=Array.from({length:14},(_,i)=>({left:(5+(i*19)%90)+"%",top:9+(i*13)%48}));
 function KarmatarHeroScene(){
@@ -64,7 +64,8 @@ function KarmatarHeroScene(){
  useEffect(()=>{cycle.value=withRepeat(withSequence(withTiming(1,{duration:52000}),withTiming(0,{duration:52000})),-1,false);drift.value=withRepeat(withTiming(1,{duration:30000}),-1,true);},[]);
  const day=useAnimatedStyle(()=>({opacity:1-cycle.value})),night=useAnimatedStyle(()=>({opacity:cycle.value}));
  const sun=useAnimatedStyle(()=>({opacity:1-cycle.value,transform:[{translateX:cycle.value*46}]})),moon=useAnimatedStyle(()=>({opacity:cycle.value}));
- const float=useAnimatedStyle(()=>({transform:[{translateY:-1+drift.value*2}]})),neon=useAnimatedStyle(()=>({opacity:.72+cycle.value*.28}));
+ const brandGlow=useAnimatedStyle(()=>({opacity:.76+Math.sin(drift.value*Math.PI*2)*.24,transform:[{scale:1+Math.sin(drift.value*Math.PI*2)*.025}]}));
+ const neon=useAnimatedStyle(()=>({opacity:.72+cycle.value*.28}));
  const gate=useAnimatedStyle(()=>({transform:[{rotate:(-7+drift.value*4)+"deg"}]})),signal=useAnimatedStyle(()=>({opacity:.35+Math.abs(Math.sin(drift.value*Math.PI*4))*.65}));
  const scooter=useAnimatedStyle(()=>({transform:[{translateX:-5+drift.value*28}]}));
  return <View pointerEvents="none" style={s.nightSky} testID="home-karmatar-hero">
@@ -73,7 +74,7 @@ function KarmatarHeroScene(){
  <View style={s.karmatarGroundBack}/>
  <View style={s.karmatarSchool} testID="home-karmatar-rgrg-school"><View style={s.karmatarSchoolRoof}/><View style={s.karmatarSchoolSign}><Text style={s.karmatarSchoolSignText}>RGRG +2 HIGH SCHOOL · KARMATAR</Text></View><View style={s.karmatarSchoolWindows}>{[0,1,2].map(i=><View key={i} style={s.karmatarSchoolWindow}/>)}</View><View style={s.karmatarSchoolDoor}/></View>
  <View style={s.karmatarStation} testID="home-karmatar-vidyasagar-station"><View style={s.karmatarStationRoof}/><View style={s.karmatarStationArch}><View style={s.karmatarStationOpening}/><View style={s.karmatarStationSign}><Text style={s.karmatarStationSignText}>VIDYASAGAR</Text><Text style={s.karmatarStationSignSub}>RAILWAY STATION</Text></View></View></View>
- <Animated.View style={[s.karmatarBoard,float]} testID="home-kmt-bazaar-flex-board"><Image source={require("../../assets/images/kmt-bazaar-flex-board.webp")} style={s.karmatarBoardImage} contentFit="contain" transition={0}/></Animated.View>
+ <Animated.Text testID="home-karmatar-kmt-neon" style={[s.karmatarBrandNeon,brandGlow]}>KMT BAZAAR</Animated.Text>
  <View style={s.karmatarRoom} testID="home-karmatar-home-delivery-room"><View style={s.karmatarRoomRoof}/><View style={s.karmatarGrassWall}><Animated.View style={[s.karmatarNeon,neon]}><Text style={s.karmatarNeonText}>HOME DELIVERY</Text></Animated.View></View><View style={s.karmatarRoomDoor}/><View style={s.karmatarRoomWindow}/></View>
  <View style={s.karmatarRoad} testID="home-karmatar-road"><View style={s.karmatarRoadLine}/><View style={s.karmatarRails}><View style={s.karmatarRail}/><View style={[s.karmatarRail,{right:5}]}/>{[0,1,2,3,4].map(i=><View key={i} style={[s.karmatarSleeper,{top:i*6}]}/>)}</View><Animated.View style={[s.karmatarScooter,scooter]}><View style={s.karmatarScooterBody}/><View style={s.karmatarScooterWheelA}/><View style={s.karmatarScooterWheelB}/></Animated.View></View>
  <View style={s.karmatarGate} testID="home-karmatar-railway-crossing"><Animated.View style={[s.karmatarSignal,signal]}><View style={s.karmatarSignalLight}/></Animated.View><Animated.View style={[s.karmatarGateArm,gate]}>{[0,1,2,3,4,5].map(i=><View key={i} style={[s.karmatarGateStripe,{left:i*12,backgroundColor:i%2?"#D63A36":"#FFF"}]}/>)}</Animated.View></View>
@@ -716,8 +717,9 @@ export default function Home() {
       </RNAnimated.View>
 
       {/* The search bar stays usable while the hero shell slides away after the banner scrolls off. */}
+      <RNAnimated.View style={[s.searchBarAnchor, { top: heroAnimatedHeight }]}>
       <SafeAreaView
-        edges={heroCollapsed ? ["top"] : []}
+        edges={[]}
         style={[s.searchBarSafeArea, heroCollapsed && s.searchBarSafeAreaCollapsed, { backgroundColor: "transparent" }]}
       >
         <View style={[s.searchBarOuter, heroCollapsed && s.searchBarOuterCollapsed]}>
@@ -758,7 +760,7 @@ export default function Home() {
         </Pressable>
         </View>
       </SafeAreaView>
-
+      </RNAnimated.View>
 
       <ScrollView
           contentContainerStyle={{ paddingBottom: 120, flexGrow: 1 }}
@@ -1220,7 +1222,7 @@ const s = StyleSheet.create({
   karmatarCloudTrack:{position:"absolute",left:0,right:0,top:0,height:120},karmatarCloud:{position:"absolute",width:65,height:17,borderRadius:18,backgroundColor:"rgba(255,255,255,.7)"},karmatarStar:{position:"absolute",width:2,height:2,borderRadius:2,backgroundColor:"#FFF7DA",opacity:.75},karmatarGroundBack:{position:"absolute",left:0,right:0,bottom:24,height:30,backgroundColor:"#547B55",borderTopLeftRadius:60,borderTopRightRadius:60},
   karmatarSchool:{position:"absolute",left:"2%",top:126,width:"29%",height:47,backgroundColor:"#E9E9D8",borderWidth:1,borderColor:"#A6B99C",zIndex:5},karmatarSchoolRoof:{position:"absolute",top:0,left:-2,right:-2,height:7,backgroundColor:"#477755",borderTopWidth:2,borderColor:"#D7E2D0"},karmatarSchoolSign:{position:"absolute",top:10,left:2,right:2,height:10,backgroundColor:"#D6E6D2",alignItems:"center",justifyContent:"center"},karmatarSchoolSignText:{fontSize:5,color:"#20553A",fontWeight:"900"},karmatarSchoolWindows:{position:"absolute",top:25,left:5,right:5,flexDirection:"row",justifyContent:"space-between"},karmatarSchoolWindow:{width:12,height:10,backgroundColor:"#648A98",borderWidth:1,borderColor:"#F0F0DC"},karmatarSchoolDoor:{position:"absolute",bottom:0,left:"44%",width:13,height:18,backgroundColor:"#6B624F"},
   karmatarStation:{position:"absolute",left:"34%",top:105,width:"34%",height:60,zIndex:6,alignItems:"center"},karmatarStationRoof:{position:"absolute",top:0,left:0,right:0,height:8,backgroundColor:"#455B6C",borderTopWidth:2,borderColor:"#D5DAD1"},karmatarStationArch:{position:"absolute",top:9,width:"66%",height:51,borderTopLeftRadius:35,borderTopRightRadius:35,borderWidth:4,borderBottomWidth:0,borderColor:"#E5E4D7",backgroundColor:"#8D9F9C",alignItems:"center",overflow:"hidden"},karmatarStationOpening:{position:"absolute",left:7,right:7,top:12,bottom:0,borderTopLeftRadius:23,borderTopRightRadius:23,backgroundColor:"#465D69"},karmatarStationSign:{position:"absolute",top:2,left:0,right:0,alignItems:"center",zIndex:2},karmatarStationSignText:{fontSize:6,color:"#8E302A",fontWeight:"900"},karmatarStationSignSub:{fontSize:4.5,color:"#8E302A",fontWeight:"900"},
-  karmatarBoard:{position:"absolute",left:"26%",top:53,width:"48%",maxWidth:230,aspectRatio:3,zIndex:14,shadowColor:"#0D2030",shadowOffset:{width:0,height:4},shadowOpacity:.4,shadowRadius:5,elevation:8},karmatarBoardImage:{width:"100%",height:"100%",borderWidth:1,borderColor:"#C1C9CE",borderRadius:3},
+  karmatarBrandNeon:{position:"absolute",right:"1.5%",top:91,width:"27%",textAlign:"center",fontSize:10,fontWeight:"900",letterSpacing:1.25,color:"#FFFBEA",textShadowColor:"#FFB928",textShadowOffset:{width:0,height:1},textShadowRadius:9,zIndex:16,elevation:8},
   karmatarRoom:{position:"absolute",right:"1.5%",top:110,width:"27%",height:62,backgroundColor:"#B6BBA4",borderWidth:1,borderColor:"#D6D8C7",zIndex:12},karmatarRoomRoof:{position:"absolute",top:0,left:-3,right:-3,height:8,backgroundColor:"#394C40",borderTopWidth:2,borderColor:"#C2CEB7"},karmatarGrassWall:{position:"absolute",top:11,left:4,right:4,height:32,backgroundColor:"#185638",borderWidth:1,borderColor:"#6A9A60",alignItems:"center",justifyContent:"center"},karmatarNeon:{paddingHorizontal:4,paddingVertical:4,backgroundColor:"rgba(0,30,13,.55)",borderWidth:1,borderColor:"#9CFF9B",borderRadius:3,shadowColor:"#47FF70",shadowOpacity:1,shadowRadius:8,elevation:5},karmatarNeonText:{fontSize:8,fontWeight:"900",letterSpacing:.3,color:"#D9FFD0",textShadowColor:"#39FF65",textShadowRadius:7},karmatarRoomDoor:{position:"absolute",left:7,bottom:0,width:14,height:17,backgroundColor:"#574638"},karmatarRoomWindow:{position:"absolute",right:8,bottom:7,width:13,height:12,backgroundColor:"#A6D3DC",borderWidth:1,borderColor:"#EDF1E4"},
   karmatarRoad:{position:"absolute",left:0,right:0,bottom:0,height:27,backgroundColor:"#29343A",borderTopWidth:2,borderColor:"#B4A98F",zIndex:17,overflow:"hidden"},karmatarRoadLine:{position:"absolute",top:14,left:"5%",right:"5%",height:1,borderStyle:"dashed",borderWidth:1,borderColor:"#E9DFB8"},karmatarRails:{position:"absolute",left:"57%",top:-2,width:34,height:32,transform:[{rotate:"14deg"}]},karmatarRail:{position:"absolute",top:0,bottom:0,left:5,width:3,backgroundColor:"#B9C3C3",borderColor:"#EDF0E6",borderWidth:1},karmatarSleeper:{position:"absolute",left:0,right:0,height:3,backgroundColor:"#795D45"},karmatarScooter:{position:"absolute",left:"10%",bottom:4,width:34,height:17,zIndex:3},karmatarScooterBody:{position:"absolute",left:5,right:3,bottom:5,height:8,borderRadius:5,backgroundColor:"#E8A333",borderWidth:1,borderColor:"#FFE2A0"},karmatarScooterWheelA:{position:"absolute",left:1,bottom:0,width:7,height:7,borderRadius:4,backgroundColor:"#17232A",borderWidth:1,borderColor:"#AAB6B4"},karmatarScooterWheelB:{position:"absolute",right:0,bottom:0,width:7,height:7,borderRadius:4,backgroundColor:"#17232A",borderWidth:1,borderColor:"#AAB6B4"},
   karmatarGate:{position:"absolute",left:"53%",top:121,width:"39%",height:35,zIndex:20},karmatarSignal:{position:"absolute",left:0,top:0,width:10,height:16,backgroundColor:"#26343A",borderWidth:1,borderColor:"#E3E4D7",alignItems:"center",justifyContent:"center"},karmatarSignalLight:{width:5,height:5,borderRadius:3,backgroundColor:"#FA3535",shadowColor:"#FF2525",shadowOpacity:1,shadowRadius:5},karmatarGateArm:{position:"absolute",left:8,top:5,width:76,height:5,backgroundColor:"#FFF",borderWidth:1,borderColor:"#AAA",transform:[{rotate:"-5deg"}],overflow:"hidden"},karmatarGateStripe:{position:"absolute",top:0,bottom:0,width:7},
@@ -1228,9 +1230,10 @@ const s = StyleSheet.create({
   headerBg: { position: "absolute", top: 0, left: 0, right: 0, height: HERO_BACKDROP_HEIGHT, borderBottomLeftRadius: 30, borderBottomRightRadius: 30, backgroundColor: "transparent", shadowColor: "#FFFFFF", shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.14, shadowRadius: 18, elevation: 7 },
   skyClearSpace: { height: Platform.OS === "web" ? 90 : 56, alignItems: "center", justifyContent: "center", zIndex: 30, elevation: 30 },
   skyClearSpaceCollapsed: { height: 0 },
-  searchBarSafeArea: { backgroundColor: "transparent", zIndex: 20, elevation: 0 },
+  searchBarAnchor: { position: "absolute", left: 0, right: 0, zIndex: 25, elevation: 25, transform: [{ translateY: -44 }] },
+  searchBarSafeArea: { backgroundColor: "transparent", zIndex: 25, elevation: 25 },
   searchBarSafeAreaCollapsed: { borderBottomWidth: 1, borderBottomColor: "rgba(226,232,240,0.9)" },
-  searchBarOuter: { paddingHorizontal: SPACING.lg, marginTop: 0 },
+  searchBarOuter: { paddingHorizontal: SPACING.md, marginTop: 0 },
   searchBarOuterCollapsed: { marginTop: 0, paddingBottom: 8 },
   headerWrap: { paddingHorizontal: SPACING.lg, paddingBottom: SPACING.xs },
   headerRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingTop: 4 },
@@ -1258,7 +1261,7 @@ const s = StyleSheet.create({
   bellBadge: { position: "absolute", top: 2, right: 2, backgroundColor: THEME.orange, minWidth: 18, height: 18, borderRadius: 9, paddingHorizontal: 4, alignItems: "center", justifyContent: "center", borderWidth: 1.5, borderColor: THEME.white },
   bellBadgeText: { color: THEME.white, fontSize: 9, fontWeight: "900" },
   
-  searchWrap: { width: "100%", flexDirection: "row", alignItems: "center", backgroundColor: "rgba(22,163,74,0.22)", borderRadius: 8, paddingHorizontal: 14, paddingVertical: 7, marginTop: 14, height: 44, borderWidth: 1, borderColor: "rgba(134,239,172,0.72)", shadowColor: "#000000", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.06, shadowRadius: 8, elevation: 1 },
+  searchWrap: { width: "100%", flexDirection: "row", alignItems: "center", backgroundColor: "rgba(22,163,74,0.22)", borderRadius: 8, paddingHorizontal: 14, paddingVertical: 7, marginTop: 0, height: 44, borderWidth: 1, borderColor: "rgba(134,239,172,0.72)", shadowColor: "#000000", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.06, shadowRadius: 8, elevation: 1 },
   searchPlaceholderText: { fontSize: 16, color: "#FFFFFF", fontWeight: "500", textShadowColor: "rgba(0,0,0,0.38)", textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 2 },
   searchMicBg: { width: 32, height: 32, backgroundColor: THEME.orange, borderRadius: 16, alignItems: "center", justifyContent: "center" },
   searchMicListening: { transform: [{ scale: 1.08 }], backgroundColor: THEME.orangeBright },
