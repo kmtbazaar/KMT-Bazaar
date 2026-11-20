@@ -1201,6 +1201,8 @@ export default function Home() {
             { id: "holiday", title: "Holiday", sub: "Holiday packages", icon: "airplane-takeoff", path: "/holiday" },
             { id: "car_rental", title: "Car Rental", sub: "Cars & trips", icon: "car", path: "/car-rental" },
             { id: "daily_service", title: "Daily Services", sub: "Repair & local work", icon: "tools", path: "/daily-services" },
+            { id: "premium_decorator", title: "Premium Decorator", sub: "Wedding & event decor", icon: "party-popper", path: "/service/premium_decorator" },
+            { id: "photography", title: "Photography", sub: "Event & professional shoots", icon: "camera-outline", path: "/service/photography" },
           ]}
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={{ paddingHorizontal: SPACING.lg, gap: 10, paddingVertical: 4 }}

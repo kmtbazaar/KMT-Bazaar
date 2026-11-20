@@ -107,7 +107,7 @@ export default function AdminDashboard() {
       setServiceVendorCount(
         (serviceVendors || []).filter((x: any) =>
           x.vendor_type === "service" &&
-          ["holiday", "car_rental"].includes(x.service_type)
+          ["holiday", "car_rental", "premium_decorator", "photography"].includes(x.service_type)
         ).length
       );
       setServiceBookingCount(

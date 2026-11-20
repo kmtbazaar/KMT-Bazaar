@@ -33,7 +33,7 @@ interface AuthCtx {
   login: (email: string, password: string) => Promise<User>;
   requestEmailLoginOtp: (email: string, password: string) => Promise<any>;
   verifyEmailLoginOtp: (email: string, otp: string) => Promise<User>;
-  register: (data: { name: string; email: string; phone?: string; password: string; role?: string; vendor_type?: "store" | "service"; service_type?: "holiday" | "car_rental" | "daily_service" }) => Promise<User>;
+  register: (data: { name: string; email: string; phone?: string; password: string; role?: string; vendor_type?: "store" | "service"; service_type?: "holiday" | "car_rental" | "premium_decorator" | "photography" | "daily_service" }) => Promise<User>;
   requestEmailSignupOtp: (data: any) => Promise<any>;
   verifyEmailSignupOtp: (email: string, otp: string) => Promise<User>;
   loginOtp: (phone: string, otp: string, name?: string) => Promise<User>;

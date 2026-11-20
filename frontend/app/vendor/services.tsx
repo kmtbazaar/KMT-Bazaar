@@ -19,6 +19,10 @@ const EMPTY = {
 
 const CAR_TYPES = ["Sedan", "SUV", "MUV", "Traveller", "Hatchback", "Luxury", "Commercial"];
 const FUEL_TYPES = ["Petrol", "Diesel", "CNG", "Electric"];
+const EVENT_CATEGORIES: Record<string, string[]> = {
+  premium_decorator: ["Wedding", "Engagement", "Birthday", "Reception", "Anniversary", "Baby Shower", "Corporate Event", "Festival & Religious", "Other"],
+  photography: ["Wedding Photography", "Pre-wedding Shoot", "Birthday & Event", "Portrait & Family", "Product Photography", "Corporate Photography", "Other"],
+};
 
 function parsePriceAmount(value: unknown): number {
   const normalized = String(value ?? "").replace(/[₹,\s]/g, "");
@@ -32,7 +36,9 @@ export default function VendorServices() {
   const { user } = useAuth();
   const serviceType = user?.service_type || "holiday";
   const isCar = serviceType === "car_rental";
-  const currentLabel = isCar ? "Car Rental" : "Holiday";
+  const isEventService = serviceType === "premium_decorator" || serviceType === "photography";
+  const currentLabel = isCar ? "Car Rental" : serviceType === "premium_decorator" ? "Premium Decorator" : serviceType === "photography" ? "Photography" : "Holiday";
+  const eventCategories = EVENT_CATEGORIES[serviceType] || [];
   const [items, setItems] = useState<any[]>([]);
   const [modal, setModal] = useState(false);
   const [editing, setEditing] = useState<string | null>(null);
@@ -65,7 +71,7 @@ export default function VendorServices() {
 
   const openAdd = () => {
     setEditing(null);
-    setF({ ...EMPTY, unit: isCar ? "day" : "per person" });
+    setF({ ...EMPTY, unit: isCar ? "day" : isEventService ? (serviceType === "premium_decorator" ? "per event" : "per shoot") : "per person" });
     setModal(true);
   };
 
@@ -77,14 +83,20 @@ export default function VendorServices() {
 
   const save = async () => {
     if (!f.name?.trim()) {
-      Platform.OS === "web" ? window.alert(isCar ? "Car name is required" : "Holiday package name is required") : Alert.alert("Required", isCar ? "Car name is required" : "Holiday package name is required");
+      const message = isCar ? "Car name is required" : isEventService ? "Package name is required" : "Holiday package name is required";
+      Platform.OS === "web" ? window.alert(message) : Alert.alert("Required", message);
+      return;
+    }
+    if (isEventService && !String(f.category || "").trim()) {
+      const message = serviceType === "premium_decorator" ? "Choose the event type" : "Choose the photography category";
+      Platform.OS === "web" ? window.alert(message) : Alert.alert("Required", message);
       return;
     }
     const includes = String(f.includesText || "").split(",").map((x: string) => x.trim()).filter(Boolean);
     const nights = Math.max(0, Number(f.nights) || 0);
     const days = Math.max(0, Number(f.days) || 0);
     const hourlyPrice = isCar ? parsePriceAmount(f.hourly_price) : 0;
-    const dailyPrice = isCar ? parsePriceAmount(f.price) : parsePriceAmount(f.adult_price || f.price);
+    const dailyPrice = isCar || isEventService ? parsePriceAmount(f.price) : parsePriceAmount(f.adult_price || f.price);
     const data = {
       name: f.name.trim(),
       vendor_name: String(f.vendor_name || user?.name || "").trim(),
@@ -100,11 +112,11 @@ export default function VendorServices() {
       price: dailyPrice,
       hourly_price: hourlyPrice,
       adult_price: dailyPrice,
-      child_price: isCar ? 0 : (Number(f.child_price) || ((Number(f.adult_price || f.price) || 0) * 0.5)),
-      unit: isCar ? "day" : "per person",
-      duration: isCar ? String(f.duration || "").trim() : `${nights} ${nights === 1 ? "night" : "nights"} / ${days} ${days === 1 ? "day" : "days"}`,
-      nights: isCar ? 0 : nights,
-      days: isCar ? 0 : days,
+      child_price: isCar || isEventService ? 0 : (Number(f.child_price) || ((Number(f.adult_price || f.price) || 0) * 0.5)),
+      unit: isCar ? "day" : isEventService ? (serviceType === "premium_decorator" ? "per event" : "per shoot") : "per person",
+      duration: isCar || isEventService ? String(f.duration || "").trim() : `${nights} ${nights === 1 ? "night" : "nights"} / ${days} ${days === 1 ? "day" : "days"}`,
+      nights: isCar || isEventService ? 0 : nights,
+      days: isCar || isEventService ? 0 : days,
       seats: isCar ? (Number(f.seats) || 0) : 0,
       bags: isCar ? (Number(f.bags) || 0) : 0,
       transmission: isCar ? String(f.transmission || "") : "",
@@ -158,9 +170,9 @@ export default function VendorServices() {
           <MaterialCommunityIcons name="arrow-left" size={24} color={COLORS.text} />
         </Pressable>
         <View style={{ alignItems: "center", flex: 1 }}>
-          <Text style={s.title}>{isCar ? "Rental Fleet" : "Holiday Packages"}</Text>
-          <Text style={{ fontSize: 10, color: isCar ? "#0EA5E9" : "#2563EB", fontWeight: "900", marginTop: 2 }}>
-            {isCar ? "CAR RENTAL VENDOR" : "HOLIDAY VENDOR"}
+          <Text style={s.title}>{isCar ? "Rental Fleet" : isEventService ? (serviceType === "premium_decorator" ? "Event Decoration Packages" : "Photography Packages") : "Holiday Packages"}</Text>
+          <Text style={{ fontSize: 10, color: isCar ? "#0EA5E9" : isEventService ? "#BE185D" : "#2563EB", fontWeight: "900", marginTop: 2 }}>
+            {isCar ? "CAR RENTAL VENDOR" : isEventService ? currentLabel.toUpperCase() + " VENDOR" : "HOLIDAY VENDOR"}
           </Text>
         </View>
         <Pressable onPress={openAdd} hitSlop={10}>
@@ -177,7 +189,7 @@ export default function VendorServices() {
         ItemSeparatorComponent={() => <View style={{ height: 10 }} />}
         renderItem={({ item }) => (
           <View style={s.card}>
-            {item.image ? <Image source={{ uri: item.image }} style={s.img} contentFit="cover" /> : <View style={[s.img, s.ph]}><MaterialCommunityIcons name={isCar ? "car" : "airplane-takeoff"} size={30} color={isCar ? "#0EA5E9" : "#2563EB"} /></View>}
+            {item.image ? <Image source={{ uri: item.image }} style={s.img} contentFit="cover" /> : <View style={[s.img, s.ph]}><MaterialCommunityIcons name={isCar ? "car" : isEventService ? (serviceType === "premium_decorator" ? "party-popper" : "camera-outline") : "airplane-takeoff"} size={30} color={isCar ? "#0EA5E9" : isEventService ? "#BE185D" : "#2563EB"} /></View>}
             <View style={{ width: "100%" }}>
               <Text style={s.name} numberOfLines={2}>{item.name}</Text>
               {isCar ? (
@@ -190,6 +202,13 @@ export default function VendorServices() {
                       ? `₹${Number(item.hourly_price).toLocaleString("en-IN")} / hour`
                       : "Hourly rate not set"}
                   </Text>
+                </>
+              ) : isEventService ? (
+                <>
+                  {!!item.category && <Text style={s.meta} numberOfLines={1}>{item.category}</Text>}
+                  {!!item.location && <Text style={s.meta} numberOfLines={1}>{item.location}</Text>}
+                  <Text style={s.price}>₹{Number(item.price || 0).toLocaleString("en-IN")} / {serviceType === "premium_decorator" ? "event" : "shoot"}</Text>
+                  {!!item.duration && <Text style={s.meta}>{item.duration}</Text>}
                 </>
               ) : (
                 <>
@@ -205,14 +224,14 @@ export default function VendorServices() {
             </View>
           </View>
         )}
-        ListEmptyComponent={<View style={s.empty}><MaterialCommunityIcons name={isCar ? "car-off" : "airplane-off"} size={46} color={COLORS.textMuted}/><Text style={s.emptyText}>No {isCar ? "cars" : "holiday packages"} yet</Text><Text style={s.meta}>Tap + to add your first {isCar ? "rental car" : "holiday package"}.</Text></View>}
+        ListEmptyComponent={<View style={s.empty}><MaterialCommunityIcons name={isCar ? "car-off" : isEventService ? (serviceType === "premium_decorator" ? "party-popper" : "camera-outline") : "airplane-off"} size={46} color={COLORS.textMuted}/><Text style={s.emptyText}>No {isCar ? "cars" : isEventService ? (serviceType === "premium_decorator" ? "event packages" : "photography packages") : "holiday packages"} yet</Text><Text style={s.meta}>Tap + to add your first package.</Text></View>}
       />
 
       <Modal visible={modal} transparent animationType="slide" onRequestClose={() => setModal(false)}>
         <View style={m.back}>
           <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={m.sheet}>
             <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={true} contentContainerStyle={{ paddingBottom: 28 }}>
-              <Text style={m.title}>{editing ? (isCar ? "Edit Rental Car" : "Edit Holiday Package") : (isCar ? "Add Rental Car" : "Add Holiday Package")}</Text>
+              <Text style={m.title}>{editing ? (isCar ? "Edit Rental Car" : isEventService ? "Edit " + currentLabel + " Package" : "Edit Holiday Package") : (isCar ? "Add Rental Car" : isEventService ? "Add " + currentLabel + " Package" : "Add Holiday Package")}</Text>
               <Text style={m.helper}>Save करने के बाद listing live catalog में दिखाई देगी.</Text>
 
               <Field label={isCar ? "Car Name *" : "Package Name *"} value={f.name} onChange={(v:any)=>setF({...f,name:v})} placeholder={isCar ? "Toyota Innova Crysta" : "Goa Beach Escape"} />
@@ -232,6 +251,18 @@ export default function VendorServices() {
                   <Text style={m.priceHint}>Enter an hourly rate only when hourly rentals are offered.</Text>
                   <Field label="Tag" value={f.tag} onChange={(v:any)=>setF({...f,tag:v})} placeholder="Family favourite" />
                   <Field label="Description" value={f.description} onChange={(v:any)=>setF({...f,description:v})} placeholder="Premium 7-seater..." multiline />
+                </>
+              ) : isEventService ? (
+                <>
+                  <SelectRow label={serviceType === "premium_decorator" ? "Event Type *" : "Photography Category *"} options={eventCategories} value={f.category} onChange={(v:any)=>setF({...f,category:v})} />
+                  <Field label="Package Tier / Style" value={f.type} onChange={(v:any)=>setF({...f,type:v})} placeholder="Premium / Signature / Classic" />
+                  <Field label="Service City / Coverage Area" value={f.location} onChange={(v:any)=>setF({...f,location:v})} placeholder="Patna / Nearby cities" />
+                  <Field label={serviceType === "premium_decorator" ? "Event Duration" : "Shoot Duration"} value={f.duration} onChange={(v:any)=>setF({...f,duration:v})} placeholder={serviceType === "premium_decorator" ? "Full event / 6 hours" : "4 hours / Full day"} />
+                  <Field label={serviceType === "premium_decorator" ? "Package Price / Event (₹)" : "Package Price / Shoot (₹)"} value={f.price} onChange={(v:any)=>setF({...f,price:v})} placeholder="25000" keyboardType="numeric" />
+                  <Field label="Tag" value={f.tag} onChange={(v:any)=>setF({...f,tag:v})} placeholder="Premium / Popular / Custom" />
+                  <Field label="Description" value={f.description} onChange={(v:any)=>setF({...f,description:v})} placeholder="Describe your package and service..." multiline />
+                  <Field label="Includes / Deliverables (comma separated)" value={f.includesText} onChange={(v:any)=>setF({...f,includesText:v})} placeholder={serviceType === "premium_decorator" ? "Stage, flowers, lighting, entrance decor" : "Edited photos, album, candid coverage"} />
+                  <Field label="Contact Phone (optional)" value={f.phone} onChange={(v:any)=>setF({...f,phone:v})} placeholder="Vendor contact" keyboardType="phone-pad" />
                 </>
               ) : (
                 <>

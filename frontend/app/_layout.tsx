@@ -33,7 +33,8 @@ function RoleRouteGuard({ children }: { children: React.ReactNode }) {
       first === "holiday" ||
       first === "car-rental" ||
       first === "daily-services" ||
-      first === "daily-service-booking";
+      first === "daily-service-booking" ||
+      (first === "service" && ["premium_decorator", "photography"].includes(second));
 
     // Guests can browse customer-facing pages and view an empty cart.
     // Account, order, address, and checkout routes remain protected.
@@ -63,6 +64,7 @@ function RoleRouteGuard({ children }: { children: React.ReactNode }) {
       first === "service-checkout" ||
       first === "service-payment" ||
       first === "service-booking-confirmed" ||
+      first === "service" ||
       first === "service-bookings" ||
       first === "cart" ||
       first === "orders" ||

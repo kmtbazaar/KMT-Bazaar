@@ -280,7 +280,7 @@ export function isProductDeliveryAvailableAtPincode(pincode: unknown): boolean {
 
 export type UserRole = "customer" | "vendor" | "delivery" | "admin";
 export type VendorType = "store" | "service";
-export type ServiceType = "holiday" | "car_rental" | "daily_service";
+export type ServiceType = "holiday" | "car_rental" | "premium_decorator" | "photography" | "daily_service";
 
 export interface User {
   id: string;

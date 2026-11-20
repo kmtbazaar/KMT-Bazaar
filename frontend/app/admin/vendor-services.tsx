@@ -19,12 +19,19 @@ const EMPTY = {
 const CAR_TYPES = ["Sedan","SUV","MUV","Traveller","Hatchback","Luxury"];
 const FUEL_TYPES = ["Petrol","Diesel","CNG","Electric"];
 const TRANSMISSIONS = ["Automatic","Manual"];
+const EVENT_CATEGORIES: Record<string,string[]> = {
+ premium_decorator:["Wedding","Engagement","Birthday","Reception","Anniversary","Baby Shower","Corporate Event","Festival & Religious","Other"],
+ photography:["Wedding Photography","Pre-wedding Shoot","Birthday & Event","Portrait & Family","Product Photography","Corporate Photography","Other"]
+};
 
 export default function AdminVendorServices() {
   const router = useRouter();
   const { vendor_id, service_type, vendor_name } = useLocalSearchParams<{vendor_id?:string;service_type?:string;vendor_name?:string}>();
   const isVendorMode = !!vendor_id;
   const isCar = (service_type || "") === "car_rental";
+  const isEventService = ["premium_decorator","photography"].includes(service_type || "");
+  const eventCategories = EVENT_CATEGORIES[service_type || ""] || [];
+  const serviceLabel = service_type === "premium_decorator" ? "Premium Decorator" : service_type === "photography" ? "Photography" : isCar ? "Car Rental" : "Holiday";
 
   const [items,setItems]=useState<any[]>([]);
   const [modal,setModal]=useState(false);
@@ -64,7 +71,7 @@ export default function AdminVendorServices() {
 
   const openAdd=()=>{
     setEditingId(null);
-    setF({...EMPTY, vendor_name: String(vendor_name||items[0]?.vendor_name||""), unit:isCar?"day":"per person"});
+    setF({...EMPTY, vendor_name: String(vendor_name||items[0]?.vendor_name||""), unit:isCar?"day":isEventService?(service_type==="premium_decorator"?"per event":"per shoot"):"per person"});
     setModal(true);
   };
 
@@ -76,7 +83,12 @@ export default function AdminVendorServices() {
 
   const save=async()=>{
     if(!String(f.name||"").trim()){
-      const msg=isCar?"Car name is required":"Holiday package name is required";
+      const msg=isCar?"Car name is required":isEventService?"Package name is required":"Holiday package name is required";
+      Platform.OS==="web"?window.alert(msg):Alert.alert("Required",msg);
+      return;
+    }
+    if(isEventService && !String(f.category||"").trim()){
+      const msg=service_type==="premium_decorator"?"Choose the event type":"Choose the photography category";
       Platform.OS==="web"?window.alert(msg):Alert.alert("Required",msg);
       return;
     }
@@ -98,14 +110,14 @@ export default function AdminVendorServices() {
       phone:String(f.phone||"").trim(),
       order:Number(f.order)||99,
       active:f.active!==false,
-      price:isCar?(Number(f.price)||0):adultPrice,
+      price:isCar||isEventService?(Number(f.price)||0):adultPrice,
       hourly_price:isCar?(Number(f.hourly_price)||0):0,
-      adult_price:isCar?(Number(f.price)||0):adultPrice,
-      child_price:isCar?0:childPrice,
-      unit:isCar?"day":"per person",
-      duration:isCar?String(f.duration||"").trim():`${nights} ${nights===1?"night":"nights"} / ${days} ${days===1?"day":"days"}`,
-      nights:isCar?0:nights,
-      days:isCar?0:days,
+      adult_price:isCar||isEventService?(Number(f.price)||0):adultPrice,
+      child_price:isCar||isEventService?0:childPrice,
+      unit:isCar?"day":isEventService?(service_type==="premium_decorator"?"per event":"per shoot"):"per person",
+      duration:isCar||isEventService?String(f.duration||"").trim():`${nights} ${nights===1?"night":"nights"} / ${days} ${days===1?"day":"days"}`,
+      nights:isCar||isEventService?0:nights,
+      days:isCar||isEventService?0:days,
       seats:isCar?(Number(f.seats)||0):0,
       bags:isCar?(Number(f.bags)||0):0,
       transmission:isCar?String(f.transmission||""):"",
@@ -144,8 +156,8 @@ export default function AdminVendorServices() {
     <View style={s.header}>
       <Pressable onPress={()=>router.back()} hitSlop={12}><MaterialCommunityIcons name="arrow-left" size={23} color={COLORS.text}/></Pressable>
       <View style={{alignItems:"center",flex:1}}>
-        <Text style={s.title}>{isVendorMode?(isCar?"Rental Fleet":"Holiday Packages"):`Vendor Service (${items.length})`}</Text>
-        {isVendorMode?<Text style={{fontSize:10,fontWeight:"900",color:isCar?"#0EA5E9":"#2563EB",marginTop:2}}>{isCar?"CAR RENTAL ADMIN":"HOLIDAY ADMIN"}</Text>:null}
+        <Text style={s.title}>{isVendorMode?(isCar?"Rental Fleet":isEventService?serviceLabel+" Packages":"Holiday Packages"):`Vendor Service (${items.length})`}</Text>
+        {isVendorMode?<Text style={{fontSize:10,fontWeight:"900",color:isCar?"#0EA5E9":isEventService?"#BE185D":"#2563EB",marginTop:2}}>{isCar?"CAR RENTAL ADMIN":isEventService?serviceLabel.toUpperCase()+" ADMIN":"HOLIDAY ADMIN"}</Text>:null}
       </View>
       <Pressable onPress={openAdd} hitSlop={12}><MaterialCommunityIcons name="plus-circle" size={27} color={isCar?"#0EA5E9":COLORS.brand}/></Pressable>
     </View>
@@ -158,13 +170,18 @@ export default function AdminVendorServices() {
       columnWrapperStyle={{gap:10}}
       ItemSeparatorComponent={()=> <View style={{height:10}}/>}
       renderItem={({item})=><View style={s.card}>
-        {item.image?<Image source={{uri:item.image}} style={s.img} contentFit="cover"/>:<View style={[s.img,s.placeholder]}><MaterialCommunityIcons name={isCar?"car":"airplane-takeoff"} size={30} color={isCar?"#0EA5E9":"#2563EB"}/></View>}
+        {item.image?<Image source={{uri:item.image}} style={s.img} contentFit="cover"/>:<View style={[s.img,s.placeholder]}><MaterialCommunityIcons name={isCar?"car":isEventService?(service_type==="premium_decorator"?"party-popper":"camera-outline"):"airplane-takeoff"} size={30} color={isCar?"#0EA5E9":isEventService?"#BE185D":"#2563EB"}/></View>}
         <Text style={s.name} numberOfLines={2}>{item.name}</Text>
         {isCar?<>
           {!!item.type&&<Text style={s.meta} numberOfLines={1}>{item.type}{item.transmission?" · "+item.transmission:""}</Text>}
           <Text style={s.meta}>{Number(item.seats||0)} seats · {Number(item.bags||0)} bags</Text>
           <Text style={s.price}>₹{Number(item.price||0).toLocaleString("en-IN")} / day</Text>
           <Text style={Number(item.hourly_price||0)>0?s.hourlyPrice:s.hourlyUnset}>{Number(item.hourly_price||0)>0?`₹${Number(item.hourly_price).toLocaleString("en-IN")} / hour`:"Hourly rate not set"}</Text>
+        </>:isEventService? <>
+          {!!item.category&&<Text style={s.meta} numberOfLines={1}>{item.category}</Text>}
+          {!!item.location&&<Text style={s.meta} numberOfLines={1}>{item.location}</Text>}
+          <Text style={s.price}>₹{Number(item.price||0).toLocaleString("en-IN")} / {service_type==="premium_decorator"?"event":"shoot"}</Text>
+          {!!item.duration&&<Text style={s.meta}>{item.duration}</Text>}
         </>:<>
           {!!item.location&&<Text style={s.meta} numberOfLines={1}>{item.location}</Text>}
           <Text style={s.meta}>{item.duration||"Flexible trip"}</Text>
@@ -184,13 +201,13 @@ export default function AdminVendorServices() {
           <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator contentContainerStyle={{paddingBottom:30}}>
             <View style={m.topRow}>
               <View style={{flex:1}}>
-                <Text style={m.modalTitle}>{editingId?(isCar?"Edit Rental Car":"Edit Holiday Package"):(isCar?"Add Rental Car":"Add Holiday Package")}</Text>
+                <Text style={m.modalTitle}>{editingId?(isCar?"Edit Rental Car":isEventService?"Edit "+serviceLabel+" Package":"Edit Holiday Package"):(isCar?"Add Rental Car":isEventService?"Add "+serviceLabel+" Package":"Add Holiday Package")}</Text>
                 <Text style={m.helper}>Admin changes save directly to the live catalog.</Text>
               </View>
               <Pressable onPress={()=>setModal(false)}><MaterialCommunityIcons name="close" size={22} color={COLORS.text}/></Pressable>
             </View>
 
-            <Field label={isCar?"Car Name *":"Package Name *"} value={f.name} onChange={(v:string)=>setF({...f,name:v})} placeholder={isCar?"Toyota Innova Crysta":"Goa Beach Escape"}/>
+            <Field label={isCar?"Car Name *":"Package Name *"} value={f.name} onChange={(v:string)=>setF({...f,name:v})} placeholder={isCar?"Toyota Innova Crysta":isEventService?"Premium Wedding Stage Decor":"Goa Beach Escape"}/>
             <Field label="Vendor Display Name" value={f.vendor_name} onChange={(v:string)=>setF({...f,vendor_name:v})} placeholder="Vendor name shown to customers"/>
 
             {isCar?<>
@@ -208,6 +225,16 @@ export default function AdminVendorServices() {
               <Text style={m.helper}>Optional. Set an hourly rate when hourly rentals are offered.</Text>
               <Field label="Tag" value={f.tag} onChange={(v:string)=>setF({...f,tag:v})} placeholder="Family favourite"/>
               <Field label="Description" value={f.description} onChange={(v:string)=>setF({...f,description:v})} placeholder="Premium 7-seater..." multiline/>
+              <Field label="Phone" value={f.phone} onChange={(v:string)=>setF({...f,phone:v})} placeholder="Vendor contact" keyboardType="phone-pad"/>
+            </>:isEventService? <>
+              <SelectRow label={service_type==="premium_decorator"?"Event Type *":"Photography Category *"} options={eventCategories} value={f.category} onChange={(v:string)=>setF({...f,category:v})}/>
+              <Field label="Package Tier / Style" value={f.type} onChange={(v:string)=>setF({...f,type:v})} placeholder="Premium / Signature / Classic"/>
+              <Field label="Service City / Coverage Area" value={f.location} onChange={(v:string)=>setF({...f,location:v})} placeholder="Patna / Nearby cities"/>
+              <Field label={service_type==="premium_decorator"?"Event Duration":"Shoot Duration"} value={f.duration} onChange={(v:string)=>setF({...f,duration:v})} placeholder={service_type==="premium_decorator"?"Full event / 6 hours":"4 hours / Full day"}/>
+              <Field label={service_type==="premium_decorator"?"Package Price / Event (₹)":"Package Price / Shoot (₹)"} value={f.price} onChange={(v:string)=>setF({...f,price:v})} placeholder="25000" keyboardType="numeric"/>
+              <Field label="Tag" value={f.tag} onChange={(v:string)=>setF({...f,tag:v})} placeholder="Premium / Popular / Custom"/>
+              <Field label="Description" value={f.description} onChange={(v:string)=>setF({...f,description:v})} placeholder="Describe the service package..." multiline/>
+              <Field label="Includes / Deliverables" value={f.includesText} onChange={(v:string)=>setF({...f,includesText:v})} placeholder={service_type==="premium_decorator"?"Stage, flowers, lighting, entrance decor":"Edited photos, album, candid coverage"}/>
               <Field label="Phone" value={f.phone} onChange={(v:string)=>setF({...f,phone:v})} placeholder="Vendor contact" keyboardType="phone-pad"/>
             </>:<>
               <Field label="Destination / Location" value={f.location} onChange={(v:string)=>setF({...f,location:v})} placeholder="Goa"/>

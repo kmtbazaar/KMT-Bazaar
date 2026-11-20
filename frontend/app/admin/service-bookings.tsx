@@ -9,7 +9,9 @@ import{adminApi}from"@/src/roleApi";
 const TYPE:any={
  daily_service:{label:"Daily Service",icon:"tools"},
  holiday:{label:"Holiday",icon:"airplane-takeoff"},
- car_rental:{label:"Car Rental",icon:"car"}
+ car_rental:{label:"Car Rental",icon:"car"},
+ premium_decorator:{label:"Premium Decorator",icon:"party-popper"},
+ photography:{label:"Photography",icon:"camera-outline"}
 };
 
 export default function AdminServiceBookings(){
@@ -39,7 +41,7 @@ export default function AdminServiceBookings(){
  return <SafeAreaView style={s.root}>
   <View style={s.h}>
    <Pressable onPress={()=>r.back()}><MaterialCommunityIcons name="arrow-left" size={24}/></Pressable>
-   <View style={{flex:1}}><Text style={s.t}>Service Bookings</Text><Text style={s.sub}>Admin approval queue · Daily Service, Holiday & Car Rental</Text></View><View style={s.bell}><MaterialCommunityIcons name="bell-outline" size={20} color="#0284C7"/>{d.filter((x:any)=>["pending","booking_requested"].includes(String(x.status||"").toLowerCase())).length>0&&<View style={s.badge}><Text style={s.badgeText}>{d.filter((x:any)=>["pending","booking_requested"].includes(String(x.status||"").toLowerCase())).length}</Text></View>}</View>
+   <View style={{flex:1}}><Text style={s.t}>Service Bookings</Text><Text style={s.sub}>Admin approval queue · Daily Service, Holiday, Car Rental, Decorator & Photography</Text></View><View style={s.bell}><MaterialCommunityIcons name="bell-outline" size={20} color="#0284C7"/>{d.filter((x:any)=>["pending","booking_requested"].includes(String(x.status||"").toLowerCase())).length>0&&<View style={s.badge}><Text style={s.badgeText}>{d.filter((x:any)=>["pending","booking_requested"].includes(String(x.status||"").toLowerCase())).length}</Text></View>}</View>
   </View>
 
   <ScrollView contentContainerStyle={s.b}>

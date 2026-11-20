@@ -30,6 +30,8 @@ const VENDOR_TYPES = [
 const SERVICE_TYPES = [
 { id: "holiday", label: "Holiday", icon: "airplane-takeoff" },
 { id: "car_rental", label: "Car Rental", icon: "car" },
+{ id: "premium_decorator", label: "Premium Decorator", icon: "party-popper" },
+{ id: "photography", label: "Photography", icon: "camera-outline" },
 ];
 
 export default function Register() {
@@ -46,7 +48,7 @@ const [password, setPassword] = useState("");
 const [confirmPassword, setConfirmPassword] = useState("");
 const [role, setRole] = useState("customer");
 const [vendorType, setVendorType] = useState<"store" | "service">("store");
-const [serviceType, setServiceType] = useState<"holiday" | "car_rental">("holiday");
+const [serviceType, setServiceType] = useState<"holiday" | "car_rental" | "premium_decorator" | "photography">("holiday");
 const [loading, setLoading] = useState(false);
 const [error, setError] = useState<string | null>(null);
 const [otpStep, setOtpStep] = useState(false);

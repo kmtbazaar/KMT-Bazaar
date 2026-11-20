@@ -23,7 +23,7 @@ export default function AdminServiceVendors() {
   const load=useCallback(async()=>{
     try{
       const [u,s,b]=await Promise.all([adminApi.serviceVendors(),adminApi.vendorServices(),adminApi.serviceBookings()]);
-      setVendors((u||[]).filter((x:any)=>x.vendor_type==="service" && ["holiday","car_rental"].includes(x.service_type)));
+      setVendors((u||[]).filter((x:any)=>x.vendor_type==="service" && ["holiday","car_rental","premium_decorator","photography"].includes(x.service_type)));
       setServices(s||[]); setBookings(b||[]);
     }catch(e){console.log("service vendor load",e)}
   },[]);
@@ -63,15 +63,15 @@ export default function AdminServiceVendors() {
     <View style={s.header}><Pressable onPress={()=>router.back()}><MaterialCommunityIcons name="arrow-left" size={24} color={COLORS.text}/></Pressable><Text style={s.title}>Service Vendors</Text><View style={{width:24}}/></View>
     <FlatList data={vendors} keyExtractor={(x)=>x.id} contentContainerStyle={{padding:SPACING.lg,paddingBottom:60}} ItemSeparatorComponent={()=> <View style={{height:10}}/>}
       renderItem={({item})=><Pressable style={s.card} onPress={()=>open(item)}>
-        <View style={[s.avatar,{backgroundColor:item.service_type==="holiday"?"#DBEAFE":"#E0F2FE"}]}><MaterialCommunityIcons name={item.service_type==="holiday"?"airplane-takeoff":"car"} size={25} color={item.service_type==="holiday"?"#2563EB":"#0EA5E9"}/></View>
-        <View style={{flex:1}}><Text style={s.name}>{item.name}</Text><Text style={s.meta}>{item.service_type==="holiday"?"Holiday Vendor":"Car Rental Vendor"}</Text><Text style={s.meta}>{item.phone||item.email||"Contact unavailable"}</Text></View>
+        <View style={[s.avatar,{backgroundColor:item.service_type==="holiday"?"#DBEAFE":item.service_type==="car_rental"?"#E0F2FE":"#FCE7F3"}]}><MaterialCommunityIcons name={item.service_type==="holiday"?"airplane-takeoff":item.service_type==="car_rental"?"car":item.service_type==="premium_decorator"?"party-popper":"camera-outline"} size={25} color={item.service_type==="holiday"?"#2563EB":item.service_type==="car_rental"?"#0EA5E9":"#BE185D"}/></View>
+        <View style={{flex:1}}><Text style={s.name}>{item.name}</Text><Text style={s.meta}>{({holiday:"Holiday",car_rental:"Car Rental",premium_decorator:"Premium Decorator",photography:"Photography"} as any)[item.service_type]||"Service"} Vendor</Text><Text style={s.meta}>{item.phone||item.email||"Contact unavailable"}</Text></View>
         <MaterialCommunityIcons name="chevron-right" size={23} color={COLORS.textMuted}/>
       </Pressable>}
-      ListEmptyComponent={<View style={s.empty}><MaterialCommunityIcons name="briefcase-off-outline" size={48} color={COLORS.textMuted}/><Text style={s.emptyText}>No Holiday or Car Rental service vendors</Text></View>}
+      ListEmptyComponent={<View style={s.empty}><MaterialCommunityIcons name="briefcase-off-outline" size={48} color={COLORS.textMuted}/><Text style={s.emptyText}>No service vendors registered yet</Text></View>}
     />
     {selected&&<Modal visible={modal} transparent animationType="slide" onRequestClose={()=>setModal(false)}>
       <View style={m.back}><View style={m.sheet}><ScrollView showsVerticalScrollIndicator={false}>
-        <View style={m.head}><View><Text style={m.title}>{selected.service_type==="holiday"?"Holiday Vendor":"Car Rental Vendor"}</Text><Text style={m.sub}>Admin management profile</Text></View><Pressable onPress={()=>setModal(false)}><MaterialCommunityIcons name="close" size={24}/></Pressable></View>
+        <View style={m.head}><View><Text style={m.title}>{({holiday:"Holiday",car_rental:"Car Rental",premium_decorator:"Premium Decorator",photography:"Photography"} as any)[selected.service_type]||"Service"} Vendor</Text><Text style={m.sub}>Admin management profile</Text></View><Pressable onPress={()=>setModal(false)}><MaterialCommunityIcons name="close" size={24}/></Pressable></View>
         <Text style={m.section}>Vendor Profile</Text>
         <Field label="Name" value={form.name} onChangeText={(v:string)=>setForm({...form,name:v})}/>
         <Field label="Email" value={form.email} onChangeText={(v:string)=>setForm({...form,email:v})}/>
@@ -108,8 +108,8 @@ export default function AdminServiceVendors() {
         <View style={s.kpiRow}><KPI label="Bookings" value={vendorBookings.length}/><KPI label="Completed" value={completed}/><KPI label="Pending" value={pending}/></View>
         <View style={s.kpiRow}><KPI label="Revenue" value={`₹${revenue}`}/><KPI label="Est. Payout" value={`₹${payout}`}/></View>
 
-        <Text style={m.section}>{selected.service_type==="holiday"?"Holiday Packages":"Rental Fleet"} ({vendorServices.length})</Text>
-        {vendorServices.map((x:any)=><View key={x.id} style={m.item}><View style={{flex:1}}><Text style={m.itemName}>{x.name}</Text><Text style={m.itemMeta}>{selected.service_type==="car_rental"?`${x.seats||0} seats · ${x.bags||0} bags · ${x.transmission||""} · ₹${x.price||0}/day${Number(x.hourly_price||0)>0?` · ₹${Number(x.hourly_price).toLocaleString("en-IN")}/hour`:""}`:`${x.location||""} · ${x.duration||""} · ₹${x.price||0}/person`}</Text></View><Pressable onPress={()=>{setModal(false);router.push({pathname:"/admin/vendor-services",params:{vendor_id:selected.id,service_type:selected.service_type,vendor_name:selected.name}} as any)}}><MaterialCommunityIcons name="pencil-outline" size={20} color={COLORS.brand}/></Pressable></View>)}
+        <Text style={m.section}>{selected.service_type==="car_rental"?"Rental Fleet":selected.service_type==="holiday"?"Holiday Packages":"Service Packages"} ({vendorServices.length})</Text>
+        {vendorServices.map((x:any)=><View key={x.id} style={m.item}><View style={{flex:1}}><Text style={m.itemName}>{x.name}</Text><Text style={m.itemMeta}>{selected.service_type==="car_rental"?`${x.seats||0} seats · ${x.bags||0} bags · ${x.transmission||""} · ₹${x.price||0}/day${Number(x.hourly_price||0)>0?` · ₹${Number(x.hourly_price).toLocaleString("en-IN")}/hour`:""}`:["premium_decorator","photography"].includes(selected.service_type)?`${x.category||"Service"} · ${x.location||""} · ₹${x.price||0}/${x.unit||"package"}`:`${x.location||""} · ${x.duration||""} · ₹${x.price||0}/person`}</Text></View><Pressable onPress={()=>{setModal(false);router.push({pathname:"/admin/vendor-services",params:{vendor_id:selected.id,service_type:selected.service_type,vendor_name:selected.name}} as any)}}><MaterialCommunityIcons name="pencil-outline" size={20} color={COLORS.brand}/></Pressable></View>)}
 
         <Text style={m.section}>Bookings & Orders ({vendorBookings.length})</Text>
         {vendorBookings.length===0?<Text style={m.empty}>No bookings yet.</Text>:vendorBookings.map((x:any)=>{const ex=x.extra||{};return <View key={x.id} style={m.booking}>

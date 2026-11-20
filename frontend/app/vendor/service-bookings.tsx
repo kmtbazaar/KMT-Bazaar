@@ -5,15 +5,18 @@ import{useRouter}from"expo-router";
 import{SafeAreaView}from"react-native-safe-area-context";
 import{MaterialCommunityIcons}from"@expo/vector-icons";
 import{vendorApi}from"@/src/roleApi";
+import{useAuth}from"@/src/AuthContext";
 
 const NEXT:any={
  holiday:["confirmed","travel_scheduled","completed"],
  car_rental:["accepted","vehicle_assigned","trip_started","completed"],
+ premium_decorator:["confirmed","event_planning","completed"],
+ photography:["confirmed","shoot_scheduled","shoot_completed","completed"],
  daily_service:["provider_accepted","provider_on_the_way","service_started","completed"]
 };
 
 export default function VendorBookings(){
- const r=useRouter(),[d,setD]=useState<any[]>([]),[selected,setSelected]=useState<any>(null);
+ const r=useRouter(),{user}=useAuth(),[d,setD]=useState<any[]>([]),[selected,setSelected]=useState<any>(null);
  const load=()=>vendorApi.serviceBookings().then(setD).catch(()=>setD([]));
  useEffect(()=>{load()},[]);
  const update=async(x:any)=>{
@@ -22,7 +25,8 @@ export default function VendorBookings(){
   try{await vendorApi.updateServiceBooking(x.id,st);await load();setSelected(null)}
   catch(e:any){Platform.OS==="web"?window.alert(e?.message):Alert.alert("Booking",e?.message)}
  };
- const label=selected?.service_type==="car_rental"?"Car Rental":selected?.service_type==="holiday"?"Holiday":"Daily Service";
+ const currentType=selected?.service_type||user?.service_type;
+ const label=currentType==="car_rental"?"Car Rental":currentType==="holiday"?"Holiday":currentType==="premium_decorator"?"Premium Decorator":currentType==="photography"?"Photography":"Daily Service";
  return <SafeAreaView style={s.root}>
   <View style={s.h}>
    <Pressable onPress={()=>r.back()}><MaterialCommunityIcons name="arrow-left" size={24}/></Pressable>
@@ -32,7 +36,7 @@ export default function VendorBookings(){
    {d.length===0?<Text style={s.e}>No bookings yet.</Text>:d.map(x=>{
     const a=NEXT[x.service_type]||[],i=a.indexOf(x.status),next=i>=0?a[i+1]:a[0];
     const ex=x.extra||{};
-    const title=x.service_type==="car_rental"?"Rental Booking":x.service_type==="daily_service"?"Daily Service Booking":"Holiday Booking";
+    const title=x.service_type==="car_rental"?"Rental Booking":x.service_type==="premium_decorator"?"Decoration Event Booking":x.service_type==="photography"?"Photography Booking":x.service_type==="daily_service"?"Daily Service Booking":"Holiday Booking";
     return <Pressable key={x.id} onPress={()=>setSelected(x)} style={s.c}>
       <View style={s.row}><View style={{flex:1}}><Text style={s.n}>{x.service_name||title}</Text><Text style={s.customer}>{x.customer_name||ex.customer_name||"Customer"} · {x.customer_phone||ex.customer_phone||"Mobile not provided"}</Text></View><Text style={s.st}>{String(x.status||"pending").toUpperCase()}</Text></View>
       <Text style={s.meta}>{x.booking_date||"Date not set"}{x.booking_time?" · "+x.booking_time:""}</Text>
@@ -47,10 +51,10 @@ export default function VendorBookings(){
   </ScrollView>
   <Modal visible={!!selected} transparent animationType="slide" onRequestClose={()=>setSelected(null)}>
    <View style={m.back}><View style={m.sheet}><ScrollView contentContainerStyle={{paddingBottom:26}}>
-    {selected&&(()=>{const ex=selected.extra||{},a=NEXT[selected.service_type]||[],i=a.indexOf(selected.status),next=i>=0?a[i+1]:a[0],type=selected.service_type==="car_rental"?"Car Rental":selected.service_type==="holiday"?"Holiday":"Daily Service";return <>
+    {selected&&(()=>{const ex=selected.extra||{},a=NEXT[selected.service_type]||[],i=a.indexOf(selected.status),next=i>=0?a[i+1]:a[0],type=selected.service_type==="car_rental"?"Car Rental":selected.service_type==="holiday"?"Holiday":selected.service_type==="premium_decorator"?"Premium Decorator":selected.service_type==="photography"?"Photography":"Daily Service";return <>
       <View style={m.head}><View><Text style={m.title}>{type} Booking</Text><Text style={m.id}>{selected.id}</Text></View><Pressable onPress={()=>setSelected(null)}><MaterialCommunityIcons name="close" size={24}/></Pressable></View>
       <Group title="Customer"><Info label="Name" value={selected.customer_name||ex.customer_name}/><Info label="Mobile" value={selected.customer_phone||ex.customer_phone}/>{selected.service_type!=="daily_service"&&<Info label="Email" value={selected.customer_email||ex.customer_email||"Not provided"}/>}</Group>
-      <Group title="Order"><Info label="Service" value={selected.service_name}/><Info label={type==="Daily Service"?"Service Date":"Date"} value={selected.booking_date}/><Info label={type==="Daily Service"?"Service Time":"Time"} value={selected.booking_time||"Not specified"}/><Info label="Address / Pickup" value={ex.service_address||ex.pickup_location||"Not provided"}/><Info label="Destination" value={ex.destination||ex.location||"Not specified"}/><Info label="Notes" value={selected.notes||"Not provided"}/></Group>
+      <Group title="Order"><Info label="Service" value={selected.service_name}/>{["premium_decorator","photography"].includes(selected.service_type)&&<Info label="Event / Shoot Category" value={ex.service_category||ex.category||"Not specified"}/>}<Info label={type==="Daily Service"?"Service Date":"Date"} value={selected.booking_date}/><Info label={type==="Daily Service"?"Service Time":"Time"} value={selected.booking_time||"Not specified"}/><Info label="Address / Pickup" value={ex.service_address||ex.pickup_location||"Not provided"}/><Info label="Destination" value={ex.destination||ex.location||"Not specified"}/><Info label="Notes" value={selected.notes||"Not provided"}/></Group>
       <Group title="Payment"><Info label="Status" value={selected.payment_status||"Not recorded"}/><Info label="Plan" value={selected.payment_plan||"-"}/><Info label="Paid" value={selected.paid_amount!=null?"₹"+Number(selected.paid_amount).toLocaleString("en-IN"):"-"}/><Info label="Total" value={selected.total_amount!=null?"₹"+Number(selected.total_amount).toLocaleString("en-IN"):"-"}/><Info label="Reference" value={selected.gateway_reference||"-"}/></Group>
       <Text style={m.status}>Current status: {String(selected.status||"pending").toUpperCase()}</Text>
       {next&&<View style={s.actions}>
