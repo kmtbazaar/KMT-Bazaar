@@ -142,9 +142,8 @@ export default function TabsLayout() {
         tabBarInactiveTintColor: "#475569",
         tabBarStyle: {
           position: "absolute",
-          // Move the customer bar below the reported mobile safe-area gap; leave desktop/iOS as-is.
-          // Lower the complete mobile bar by 8px while keeping its content above the safe-area edge.
-          bottom: isMobileTabBar ? -18 : -18,
+          // Lower compact mobile-web navigation by 10px; preserve native and desktop positioning.
+          bottom: isMobileTabBar && Platform.OS === "web" ? -28 : -18,
           borderTopColor: COLORS.border,
           backgroundColor:
             Platform.OS === "ios" ? "transparent" : "#FFFFFF",
