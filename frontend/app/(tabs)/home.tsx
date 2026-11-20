@@ -55,27 +55,40 @@ const SEARCH_PLACEHOLDERS = [
 const RECENT_SEARCHES_KEY = "kmt_recent_searches";
 const MAX_RECENT_SEARCHES = 5;
 
-// Premium village hero: a slow day-to-night sky cycle with a lived-in rural hamlet.
-const VILLAGE_STARS = Array.from({ length: 22 }, (_, index) => {
+// Cinematic rural day/night hero with a slow sun path and a continuously rising hearth smoke trail.
+const CINEMATIC_STARS = Array.from({ length: 24 }, (_, index) => {
   const point = Math.floor(index / 2);
-  const isLeftSide = index % 2 === 0;
+  const left = index % 2 === 0
+    ? 3 + ((point * 7) % 22)
+    : 77 + ((point * 9) % 20);
   return {
-    left: `${isLeftSide ? 4 + ((point * 8) % 21) : 76 + ((point * 9) % 19)}%`,
-    top: 8 + ((index * 17 + 11) % 58),
-    size: index % 6 === 0 ? 2.5 : 1.6,
+    left: String(left) + "%",
+    top: 7 + ((index * 13 + 9) % 52),
+    size: index % 5 === 0 ? 2.4 : 1.5,
+    opacity: 0.52 + ((index % 4) * 0.12),
   };
 });
 
-function VillageSmokePuff({ delay, size, driftX = 17 }: { delay: number; size: number; driftX?: number }) {
-  const drift = useSharedValue(0);
+function HearthSmokeWisp({
+  delay,
+  left,
+  size,
+  drift,
+}: {
+  delay: number;
+  left: number;
+  size: number;
+  drift: number;
+}) {
+  const rise = useSharedValue(0);
 
   useEffect(() => {
-    drift.value = withRepeat(
+    rise.value = withRepeat(
       withDelay(
         delay,
         withSequence(
-          withTiming(1, { duration: 4300 }),
-          withTiming(0, { duration: 10 })
+          withTiming(1, { duration: 5200 }),
+          withTiming(0, { duration: 20 })
         )
       ),
       -1,
@@ -83,240 +96,241 @@ function VillageSmokePuff({ delay, size, driftX = 17 }: { delay: number; size: n
     );
   }, [delay]);
 
-  const smokeStyle = useAnimatedStyle(() => ({
-    opacity: 0.38 - drift.value * 0.22,
+  const wispStyle = useAnimatedStyle(() => ({
+    opacity: 0.3 * (1 - rise.value * 0.88),
     transform: [
-      { translateY: -drift.value * 52 },
-      { translateX: drift.value * driftX },
-      { scale: size * (0.52 + drift.value * 1.12) },
-      { rotate: `${drift.value * 16}deg` },
+      { translateY: -rise.value * 66 },
+      { translateX: rise.value * drift + Math.sin(rise.value * Math.PI) * 5 },
+      { scale: size * (0.58 + rise.value * 1.15) },
+      { rotate: (rise.value * 22) + "deg" },
     ],
   }));
 
   return (
-    <Animated.View style={[s.villageSmokePuff, smokeStyle]}>
-      <View style={s.villageSmokeCore} />
-      <View style={s.villageSmokeHighlight} />
+    <Animated.View style={[s.sceneSmokeWisp, { left }, wispStyle]}>
+      <View style={s.sceneSmokeSoftCore} />
+      <View style={s.sceneSmokeLightEdge} />
     </Animated.View>
   );
 }
 
-function VillageSmoke() {
+function HearthSmoke() {
   return (
-    <View pointerEvents="none" style={s.villageSmokeTrail} testID="home-village-chimney-smoke">
-      <VillageSmokePuff delay={0} size={0.72} driftX={12} />
-      <VillageSmokePuff delay={760} size={0.9} driftX={15} />
-      <VillageSmokePuff delay={1520} size={1.08} driftX={19} />
-      <VillageSmokePuff delay={2280} size={0.94} driftX={23} />
-      <VillageSmokePuff delay={3040} size={1.16} driftX={26} />
+    <View pointerEvents="none" style={s.sceneSmokeTrail} testID="home-cinematic-chimney-smoke">
+      <HearthSmokeWisp delay={0} left={7} size={0.76} drift={9} />
+      <HearthSmokeWisp delay={650} left={14} size={0.96} drift={13} />
+      <HearthSmokeWisp delay={1320} left={4} size={1.12} drift={17} />
+      <HearthSmokeWisp delay={2030} left={19} size={1.02} drift={20} />
+      <HearthSmokeWisp delay={2760} left={10} size={1.2} drift={24} />
     </View>
   );
 }
 
-function VillageCloud({ left, top, scale = 1 }: { left: string; top: number; scale?: number }) {
+function SceneCloud({ left, top, scale = 1 }: { left: string; top: number; scale?: number }) {
   return (
-    <View pointerEvents="none" style={[s.villageCloud, { left, top, transform: [{ scale }] }]}>
-      <View style={[s.villageCloudPuff, { left: 13, top: 17, width: 38, height: 18 }]} />
-      <View style={[s.villageCloudPuff, { left: 29, top: 8, width: 34, height: 25 }]} />
-      <View style={[s.villageCloudPuff, { left: 49, top: 16, width: 35, height: 17 }]} />
-      <View style={[s.villageCloudBase, { left: 22, top: 23, width: 54, height: 12 }]} />
+    <View pointerEvents="none" style={[s.sceneCloud, { left, top, transform: [{ scale }] }]}>
+      <View style={[s.sceneCloudShape, { left: 9, top: 15, width: 43, height: 18 }]} />
+      <View style={[s.sceneCloudShape, { left: 25, top: 5, width: 39, height: 27 }]} />
+      <View style={[s.sceneCloudShape, { left: 49, top: 14, width: 39, height: 20 }]} />
+      <View style={[s.sceneCloudBase, { left: 17, top: 23, width: 62, height: 12 }]} />
     </View>
   );
 }
 
-function VillageTree({ left, scale = 1 }: { left: string; scale?: number }) {
+function SceneTree({ left, scale = 1 }: { left: string; scale?: number }) {
   return (
-    <View pointerEvents="none" style={[s.villageTree, { left, transform: [{ scale }] }]}>
-      <View style={s.villageTreeTrunk} />
-      <View style={[s.villageTreeCrown, s.villageTreeCrownLeft]} />
-      <View style={[s.villageTreeCrown, s.villageTreeCrownTop]} />
-      <View style={[s.villageTreeCrown, s.villageTreeCrownRight]} />
-      <View style={[s.villageTreeCrown, s.villageTreeCrownLower]} />
+    <View pointerEvents="none" style={[s.sceneTree, { left, transform: [{ scale }] }]}>
+      <View style={s.sceneTreeTrunk} />
+      <View style={[s.sceneTreeLeaf, s.sceneTreeLeafA]} />
+      <View style={[s.sceneTreeLeaf, s.sceneTreeLeafB]} />
+      <View style={[s.sceneTreeLeaf, s.sceneTreeLeafC]} />
+      <View style={[s.sceneTreeLeaf, s.sceneTreeLeafD]} />
+      <View style={[s.sceneTreeLeaf, s.sceneTreeLeafE]} />
+      <View style={[s.sceneTreeLeaf, s.sceneTreeLeafF]} />
     </View>
   );
 }
 
-function VillageSmallHouse({ left, bottom, scale = 1 }: { left: string; bottom: number; scale?: number }) {
-  return (
-    <View pointerEvents="none" style={[s.villageSmallHouse, { left, bottom, transform: [{ scale }] }]}>
-      <View style={s.villageSmallHouseRoof} />
-      <View style={s.villageSmallHouseBody} />
-      <View style={s.villageSmallHouseDoor} />
-      <View style={s.villageSmallHouseWindow} />
-    </View>
-  );
-}
-
-function VillageDayNight() {
-  const cycleProgress = useSharedValue(0);
+function CinematicDayNightScene() {
+  const cycle = useSharedValue(0);
   const cloudDrift = useSharedValue(0);
-  const windowPulse = useSharedValue(0);
+  const windowFlicker = useSharedValue(0);
+  const { width: sceneWidth } = useWindowDimensions();
 
   useEffect(() => {
-    cycleProgress.value = withRepeat(
+    cycle.value = withRepeat(
       withSequence(
-        withTiming(1, { duration: 28000 }),
-        withTiming(0, { duration: 28000 })
+        withTiming(1, { duration: 52000 }),
+        withTiming(0, { duration: 52000 })
       ),
       -1,
       false
     );
     cloudDrift.value = withRepeat(
-      withSequence(
-        withTiming(1, { duration: 22000 }),
-        withTiming(0, { duration: 22000 })
-      ),
+      withTiming(1, { duration: 46000 }),
       -1,
-      false
+      true
     );
-    windowPulse.value = withRepeat(
+    windowFlicker.value = withRepeat(
       withSequence(
-        withTiming(1, { duration: 1500 }),
-        withTiming(0.55, { duration: 1700 })
+        withTiming(1, { duration: 1900 }),
+        withTiming(0.55, { duration: 2400 }),
+        withTiming(0.82, { duration: 1700 })
       ),
       -1,
       false
     );
   }, []);
 
-  const dayStyle = useAnimatedStyle(() => ({ opacity: 1 - cycleProgress.value }));
-  const nightStyle = useAnimatedStyle(() => ({ opacity: cycleProgress.value }));
+  const dayStyle = useAnimatedStyle(() => ({ opacity: 1 - cycle.value }));
+  const nightStyle = useAnimatedStyle(() => ({ opacity: cycle.value }));
+  const starsStyle = useAnimatedStyle(() => ({ opacity: cycle.value }));
+  const duskStyle = useAnimatedStyle(() => ({
+    opacity: Math.max(0, 1 - Math.abs(cycle.value - 0.5) / 0.2),
+  }));
   const sunStyle = useAnimatedStyle(() => ({
-    opacity: 1 - cycleProgress.value,
+    opacity: 1 - cycle.value,
     transform: [
-      { translateY: cycleProgress.value * 18 },
-      { scale: 1 - cycleProgress.value * 0.12 },
+      { translateX: cycle.value * sceneWidth * 0.66 },
+      { translateY: cycle.value * 20 },
+      { scale: 1 - cycle.value * 0.1 },
     ],
   }));
   const moonStyle = useAnimatedStyle(() => ({
-    opacity: cycleProgress.value,
+    opacity: cycle.value,
     transform: [
-      { translateY: (1 - cycleProgress.value) * 16 },
-      { scale: 0.88 + cycleProgress.value * 0.12 },
+      { translateX: (1 - cycle.value) * sceneWidth * 0.48 },
+      { translateY: (1 - cycle.value) * 11 },
     ],
   }));
-  const duskStyle = useAnimatedStyle(() => ({
-    opacity: Math.max(0, 1 - Math.abs(cycleProgress.value - 0.5) / 0.2),
-  }));
   const cloudStyle = useAnimatedStyle(() => ({
-    transform: [{ translateX: -12 + cloudDrift.value * 24 }],
+    transform: [{ translateX: -17 + cloudDrift.value * 34 }],
   }));
   const windowStyle = useAnimatedStyle(() => ({
-    opacity: 0.34 + windowPulse.value * 0.48,
+    opacity: 0.4 + cycle.value * 0.42 + windowFlicker.value * 0.12,
   }));
 
   return (
-    <View pointerEvents="none" style={s.nightSky} testID="home-village-day-night-hero">
-      <Animated.View style={[s.villageDayLayer, dayStyle]}>
+    <View pointerEvents="none" style={s.nightSky} testID="home-cinematic-day-night-hero">
+      <Animated.View style={[s.sceneDaySky, dayStyle]}>
         <LinearGradient
-          colors={["#63BCEB", "#A8DCEF", "#F4CFA3", "#D79B68"]}
+          colors={["#58B9EA", "#9ED7E8", "#F6D6A6", "#E9A36E"]}
           locations={[0, 0.42, 0.78, 1]}
-          style={s.villageSkyFill}
+          style={s.sceneSkyFill}
         />
-        <View style={s.villageDayHaze} />
-        <Animated.View style={[s.villageSun, sunStyle]}>
-          <View style={s.villageSunHalo} />
-          <View style={s.villageSunCore} />
+        <View style={s.sceneDayGlow} />
+        <Animated.View style={[s.sceneSun, sunStyle]}>
+          <View style={s.sceneSunHalo} />
+          <View style={s.sceneSunCore} />
         </Animated.View>
-        <Animated.View style={[s.villageCloudGroup, cloudStyle]}>
-          <VillageCloud left="5%" top={43} scale={0.78} />
-          <VillageCloud left="57%" top={24} scale={0.62} />
+        <Animated.View style={[s.sceneCloudTrack, cloudStyle]}>
+          <SceneCloud left="7%" top={39} scale={0.72} />
+          <SceneCloud left="55%" top={22} scale={0.56} />
         </Animated.View>
       </Animated.View>
 
-      <Animated.View style={[s.villageNightLayer, nightStyle]}>
+      <Animated.View style={[s.sceneNightSky, nightStyle]}>
         <LinearGradient
-          colors={["#07162C", "#142D49", "#33475B", "#765C52"]}
+          colors={["#09172E", "#142A49", "#304B66", "#805B59"]}
           locations={[0, 0.48, 0.8, 1]}
-          style={s.villageSkyFill}
+          style={s.sceneSkyFill}
         />
-        <View style={s.villageNightHaze} />
-        <View style={s.villageStarLayer}>
-          {VILLAGE_STARS.map((star, index) => (
+        <View style={s.sceneNightHorizonGlow} />
+        <Animated.View style={[s.sceneStars, starsStyle]}>
+          {CINEMATIC_STARS.map((star, index) => (
             <View
               key={index}
               style={[
-                s.villageStar,
+                s.sceneStar,
                 {
                   left: star.left,
                   top: star.top,
                   width: star.size,
                   height: star.size,
-                  opacity: index % 4 === 0 ? 0.95 : 0.62,
+                  opacity: star.opacity,
                 },
               ]}
             />
           ))}
-        </View>
-        <Animated.View style={[s.villageMoon, moonStyle]}>
-          <View style={s.villageMoonHalo} />
-          <View style={s.villageMoonBody} />
-          <View style={s.villageMoonCut} />
+        </Animated.View>
+        <Animated.View style={[s.sceneMoon, moonStyle]}>
+          <View style={s.sceneMoonHalo} />
+          <View style={s.sceneMoonDisc} />
+          <View style={s.sceneMoonShadow} />
         </Animated.View>
       </Animated.View>
 
-      <Animated.View pointerEvents="none" style={[s.villageDuskOverlay, duskStyle]} />
-      <View style={s.villageFarHorizon} />
-      <View style={s.villageHillBack} />
-      <View style={s.villageHillFront} />
-      <View style={s.villageGround} />
-      <View style={s.villageFieldLineOne} />
-      <View style={s.villageFieldLineTwo} />
+      <Animated.View style={[s.sceneTwilight, duskStyle]} />
 
-      <VillageSmallHouse left="7%" bottom={15} scale={0.68} />
-      <VillageSmallHouse left="78%" bottom={14} scale={0.72} />
-      <VillageSmallHouse left="90%" bottom={12} scale={0.48} />
-      <VillageTree left="-2%" scale={0.75} />
-      <VillageTree left="82%" scale={0.68} />
+      <View style={s.sceneDistantRidge} />
+      <View style={s.sceneFarFields} />
+      <View style={s.sceneBackHill} />
+      <View style={s.sceneFrontHill} />
+      <View style={s.sceneFieldRows}>
+        <View style={[s.sceneFieldRow, { top: 2, width: "56%" }]} />
+        <View style={[s.sceneFieldRow, { top: 9, width: "72%" }]} />
+        <View style={[s.sceneFieldRow, { top: 16, width: "86%" }]} />
+      </View>
+      <Animated.View style={[s.sceneNightLandscapeTint, nightStyle]} />
 
-      <View style={s.villageMainHut} testID="home-village-hut">
-        <View style={s.villageHutShadow} />
-        <View style={s.villageHutBody}>
-          <View style={s.villageHutWallTextureOne} />
-          <View style={s.villageHutWallTextureTwo} />
-          <View style={s.villageHutDoor} />
-          <Animated.View style={[s.villageHutWindowGlow, windowStyle]}>
-            <View style={s.villageHutWindowCross} />
+      <SceneTree left="-4%" scale={0.7} />
+      <SceneTree left="84%" scale={0.58} />
+
+      <View style={s.sceneHut} testID="home-cinematic-hut">
+        <View style={s.sceneHutGroundShadow} />
+        <View style={s.sceneHutWall}>
+          <View style={s.sceneHutPlasterTextureA} />
+          <View style={s.sceneHutPlasterTextureB} />
+          <View style={s.sceneHutDoor} />
+          <Animated.View style={[s.sceneHutWindow, windowStyle]}>
+            <View style={s.sceneHutWindowBarV} />
+            <View style={s.sceneHutWindowBarH} />
           </Animated.View>
+          <View style={s.sceneHutWallBase} />
         </View>
-        <View style={s.villageHutRoof} />
-        <View style={s.villageHutRoofRidge} />
-        <View style={s.villageHutRoofStrawOne} />
-        <View style={s.villageHutRoofStrawTwo} />
-        <View style={s.villageHutChimney} />
-        <VillageSmoke />
-      </View>
-
-      <View style={s.villageFence}>
-        {[0, 18, 36, 54, 72].map((left) => (
-          <View key={left} style={[s.villageFencePost, { left }]} />
-        ))}
-        <View style={s.villageFenceRail} />
-      </View>
-      <View style={s.villageForegroundGrass}>
-        {[4, 12, 20, 32, 44, 58, 71, 86, 96].map((left, index) => (
+        <View style={s.sceneHutRoof} />
+        <View style={s.sceneHutRoofRidge} />
+        <View style={s.sceneHutRoofEdge} />
+        {[0, 1, 2, 3, 4, 5, 6].map((strand) => (
           <View
-            key={left}
+            key={strand}
             style={[
-              s.villageGrassBlade,
-              { left: `${left}%`, height: 5 + (index % 3) * 3, transform: [{ rotate: index % 2 ? "-18deg" : "18deg" }] },
+              s.sceneHutThatchedStrand,
+              {
+                left: 17 + strand * 16,
+                transform: [{ rotate: strand < 3 ? "-16deg" : "16deg" }],
+                opacity: 0.55 + (strand % 3) * 0.12,
+              },
             ]}
           />
         ))}
+        <View style={s.sceneHutChimney} />
+        <HearthSmoke />
       </View>
-      <View style={s.villageAtmosphereShade} />
+
+      <View style={s.scenePath} />
+      <View style={s.sceneForegroundBank} />
+      {[5, 13, 23, 36, 49, 62, 76, 89, 97].map((left, index) => (
+        <View
+          key={left}
+          style={[
+            s.sceneGrassBlade,
+            {
+              left: String(left) + "%",
+              height: 5 + (index % 4) * 2,
+              transform: [{ rotate: index % 2 ? "-20deg" : "17deg" }],
+            },
+          ]}
+        />
+      ))}
+      <View style={s.sceneEdgeShade} />
     </View>
   );
 }
 
 function NightSky() {
-  return (
-    <View pointerEvents="none" style={s.nightSky}>
-      <VillageDayNight />
-    </View>
-  );
+  return <CinematicDayNightScene />;
 }
-
 
 export default function Home() {
   const { user } = useAuth();
@@ -1455,66 +1469,64 @@ function SectionTitle({ title, subtitle }: { title: string; subtitle?: string })
 const s = StyleSheet.create({
   heroHeaderShell: { position: "relative", width: "100%", overflow: "visible" },
   nightSky: { position: "absolute", top: 0, left: 0, right: 0, height: HERO_BACKDROP_HEIGHT, overflow: "hidden", zIndex: 0, pointerEvents: "none" },
-  villageDayLayer: { ...StyleSheet.absoluteFillObject, overflow: "hidden" },
-  villageNightLayer: { ...StyleSheet.absoluteFillObject, overflow: "hidden" },
-  villageSkyFill: { ...StyleSheet.absoluteFillObject },
-  villageDayHaze: { position: "absolute", left: "12%", right: "12%", bottom: 20, height: 60, borderTopLeftRadius: 140, borderTopRightRadius: 140, backgroundColor: "rgba(255,235,197,0.22)" },
-  villageNightHaze: { position: "absolute", left: "18%", right: "18%", bottom: 19, height: 65, borderTopLeftRadius: 130, borderTopRightRadius: 130, backgroundColor: "rgba(255,174,119,0.16)" },
-  villageDuskOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(245,126,78,0.2)", zIndex: 2 },
-  villageSun: { position: "absolute", top: 24, right: "13%", width: 76, height: 76, alignItems: "center", justifyContent: "center" },
-  villageSunHalo: { position: "absolute", width: 76, height: 76, borderRadius: 38, backgroundColor: "rgba(255,247,211,0.22)" },
-  villageSunCore: { width: 43, height: 43, borderRadius: 22, backgroundColor: "#FFF3C3", shadowColor: "#FFF1B8", shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.86, shadowRadius: 19, elevation: 6 },
-  villageCloudGroup: { position: "absolute", top: 0, left: 0, right: 0, height: 105 },
-  villageCloud: { position: "absolute", width: 88, height: 40, opacity: 0.74 },
-  villageCloudPuff: { position: "absolute", borderRadius: 30, backgroundColor: "rgba(255,255,255,0.78)" },
-  villageCloudBase: { position: "absolute", borderRadius: 12, backgroundColor: "rgba(255,255,255,0.72)" },
-  villageStarLayer: { position: "absolute", top: 0, left: 0, right: 0, height: 93 },
-  villageStar: { position: "absolute", borderRadius: 3, backgroundColor: "#F4F7FF", shadowColor: "#DCEBFF", shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.9, shadowRadius: 5, elevation: 2 },
-  villageMoon: { position: "absolute", top: 17, right: "14%", width: 64, height: 64, alignItems: "center", justifyContent: "center" },
-  villageMoonHalo: { position: "absolute", width: 64, height: 64, borderRadius: 32, backgroundColor: "rgba(226,238,255,0.11)" },
-  villageMoonBody: { width: 39, height: 39, borderRadius: 20, backgroundColor: "#F5F3DE", shadowColor: "#E7F0FF", shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.78, shadowRadius: 14, elevation: 5 },
-  villageMoonCut: { position: "absolute", top: 7, left: 29, width: 33, height: 33, borderRadius: 17, backgroundColor: "#142D49" },
-  villageFarHorizon: { position: "absolute", left: 0, right: 0, bottom: 27, height: 27, backgroundColor: "rgba(48,94,68,0.26)" },
-  villageHillBack: { position: "absolute", left: "-10%", right: "36%", bottom: 17, height: 50, borderTopLeftRadius: 110, borderTopRightRadius: 100, backgroundColor: "rgba(73,119,79,0.52)" },
-  villageHillFront: { position: "absolute", left: "44%", right: "-12%", bottom: 14, height: 40, borderTopLeftRadius: 100, borderTopRightRadius: 90, backgroundColor: "rgba(47,102,65,0.62)" },
-  villageGround: { position: "absolute", left: 0, right: 0, bottom: 0, height: 30, backgroundColor: "#455C3C", borderTopWidth: 1, borderTopColor: "rgba(229,214,152,0.3)" },
-  villageFieldLineOne: { position: "absolute", left: "42%", bottom: 19, width: "58%", height: 1, backgroundColor: "rgba(213,194,124,0.34)", transform: [{ rotate: "-4deg" }] },
-  villageFieldLineTwo: { position: "absolute", left: "51%", bottom: 9, width: "48%", height: 1, backgroundColor: "rgba(213,194,124,0.26)", transform: [{ rotate: "4deg" }] },
-  villageSmallHouse: { position: "absolute", width: 44, height: 36, zIndex: 4 },
-  villageSmallHouseRoof: { position: "absolute", left: 0, bottom: 19, width: 0, height: 0, borderLeftWidth: 22, borderRightWidth: 22, borderBottomWidth: 20, borderLeftColor: "transparent", borderRightColor: "transparent", borderBottomColor: "#795135" },
-  villageSmallHouseBody: { position: "absolute", left: 5, right: 5, bottom: 0, height: 20, backgroundColor: "#A97852", borderTopLeftRadius: 2, borderTopRightRadius: 2 },
-  villageSmallHouseDoor: { position: "absolute", left: 18, bottom: 0, width: 8, height: 13, backgroundColor: "#493328", borderTopLeftRadius: 4, borderTopRightRadius: 4 },
-  villageSmallHouseWindow: { position: "absolute", left: 8, bottom: 9, width: 5, height: 5, backgroundColor: "#F7C96F", shadowColor: "#FFE19B", shadowOpacity: 0.85, shadowRadius: 4 },
-  villageTree: { position: "absolute", bottom: 10, width: 76, height: 88, zIndex: 5 },
-  villageTreeTrunk: { position: "absolute", bottom: 0, left: "44%", width: 9, height: 40, borderRadius: 3, backgroundColor: "#523B2D" },
-  villageTreeCrown: { position: "absolute", borderRadius: 50, backgroundColor: "#315B3A", borderWidth: 1, borderColor: "rgba(139,174,95,0.24)" },
-  villageTreeCrownLeft: { left: 4, top: 26, width: 43, height: 40 },
-  villageTreeCrownTop: { left: 24, top: 4, width: 42, height: 42 },
-  villageTreeCrownRight: { right: 0, top: 28, width: 39, height: 38 },
-  villageTreeCrownLower: { left: 17, top: 45, width: 48, height: 35 },
-  villageMainHut: { position: "absolute", left: "29%", bottom: 5, width: 128, height: 103, zIndex: 9 },
-  villageHutShadow: { position: "absolute", left: 4, right: 1, bottom: 0, height: 13, borderRadius: 50, backgroundColor: "rgba(22,32,25,0.32)" },
-  villageHutBody: { position: "absolute", left: 10, right: 10, bottom: 6, height: 43, backgroundColor: "#B78356", borderTopWidth: 2, borderTopColor: "#D9AD7B", borderBottomLeftRadius: 3, borderBottomRightRadius: 3, overflow: "hidden" },
-  villageHutWallTextureOne: { position: "absolute", left: 4, right: 4, top: 10, height: 1, backgroundColor: "rgba(102,64,41,0.22)" },
-  villageHutWallTextureTwo: { position: "absolute", left: 6, right: 7, top: 27, height: 1, backgroundColor: "rgba(102,64,41,0.2)" },
-  villageHutDoor: { position: "absolute", left: 47, bottom: 0, width: 22, height: 34, borderTopLeftRadius: 11, borderTopRightRadius: 11, backgroundColor: "#503629", borderWidth: 1, borderColor: "#D0A06B" },
-  villageHutWindowGlow: { position: "absolute", right: 13, bottom: 19, width: 17, height: 15, borderRadius: 2, backgroundColor: "#FFD16C", borderWidth: 2, borderColor: "#70452E", shadowColor: "#FFCB65", shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.95, shadowRadius: 9, elevation: 5 },
-  villageHutWindowCross: { position: "absolute", left: 6, top: 0, width: 2, height: 11, backgroundColor: "#76502F" },
-  villageHutRoof: { position: "absolute", left: 0, bottom: 43, width: 0, height: 0, borderLeftWidth: 64, borderRightWidth: 64, borderBottomWidth: 48, borderLeftColor: "transparent", borderRightColor: "transparent", borderBottomColor: "#75472B" },
-  villageHutRoofRidge: { position: "absolute", left: 6, right: 6, bottom: 41, height: 6, borderRadius: 4, backgroundColor: "#9A6339" },
-  villageHutRoofStrawOne: { position: "absolute", left: 16, bottom: 60, width: 93, height: 3, borderRadius: 3, backgroundColor: "#B27C42", transform: [{ rotate: "-19deg" }] },
-  villageHutRoofStrawTwo: { position: "absolute", left: 17, bottom: 72, width: 92, height: 3, borderRadius: 3, backgroundColor: "#A96F39", transform: [{ rotate: "19deg" }] },
-  villageHutChimney: { position: "absolute", left: 84, bottom: 78, width: 9, height: 17, borderTopWidth: 3, borderTopColor: "#AAB1AE", backgroundColor: "#665346", borderTopLeftRadius: 2, borderTopRightRadius: 2, zIndex: 11 },
-  villageSmokeTrail: { position: "absolute", left: 82, bottom: 91, width: 54, height: 76, zIndex: 12, overflow: "visible" },
-  villageSmokePuff: { position: "absolute", left: 5, bottom: 0, width: 25, height: 19, borderRadius: 18, backgroundColor: "rgba(218,229,232,0.24)", shadowColor: "#E8F0F2", shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.24, shadowRadius: 11, elevation: 1, overflow: "hidden" },
-  villageSmokeCore: { position: "absolute", left: 3, top: 4, width: 18, height: 11, borderRadius: 10, backgroundColor: "rgba(239,244,244,0.24)" },
-  villageSmokeHighlight: { position: "absolute", left: 7, top: 3, width: 8, height: 5, borderRadius: 5, backgroundColor: "rgba(255,255,255,0.2)" },
-  villageFence: { position: "absolute", left: "15%", bottom: 8, width: 78, height: 17, zIndex: 8 },
-  villageFencePost: { position: "absolute", bottom: 0, width: 3, height: 15, borderRadius: 1, backgroundColor: "#836243" },
-  villageFenceRail: { position: "absolute", left: 0, right: 0, bottom: 8, height: 3, backgroundColor: "#A07A53", borderRadius: 2 },
-  villageForegroundGrass: { position: "absolute", left: 0, right: 0, bottom: 0, height: 24, zIndex: 14 },
-  villageGrassBlade: { position: "absolute", bottom: 0, width: 2, borderRadius: 2, backgroundColor: "#A4B76B" },
-  villageAtmosphereShade: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(8,24,36,0.16)", zIndex: 15 },
+  sceneDaySky: { ...StyleSheet.absoluteFillObject, overflow: "hidden" },
+  sceneNightSky: { ...StyleSheet.absoluteFillObject, overflow: "hidden" },
+  sceneSkyFill: { ...StyleSheet.absoluteFillObject },
+  sceneDayGlow: { position: "absolute", left: "7%", right: "7%", bottom: 18, height: 74, borderTopLeftRadius: 150, borderTopRightRadius: 150, backgroundColor: "rgba(255,226,179,0.2)" },
+  sceneNightHorizonGlow: { position: "absolute", left: "12%", right: "12%", bottom: 18, height: 72, borderTopLeftRadius: 150, borderTopRightRadius: 150, backgroundColor: "rgba(250,151,117,0.16)" },
+  sceneSun: { position: "absolute", left: "8%", top: 25, width: 68, height: 68, alignItems: "center", justifyContent: "center" },
+  sceneSunHalo: { position: "absolute", width: 68, height: 68, borderRadius: 34, backgroundColor: "rgba(255,244,205,0.22)" },
+  sceneSunCore: { width: 41, height: 41, borderRadius: 22, backgroundColor: "#FFF0BD", shadowColor: "#FFF0BD", shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.9, shadowRadius: 19, elevation: 7 },
+  sceneCloudTrack: { position: "absolute", top: 0, left: 0, right: 0, height: 100 },
+  sceneCloud: { position: "absolute", width: 94, height: 42, opacity: 0.67 },
+  sceneCloudShape: { position: "absolute", borderRadius: 30, backgroundColor: "rgba(255,255,255,0.78)" },
+  sceneCloudBase: { position: "absolute", borderRadius: 15, backgroundColor: "rgba(255,255,255,0.72)" },
+  sceneStars: { position: "absolute", top: 0, left: 0, right: 0, height: 98 },
+  sceneStar: { position: "absolute", borderRadius: 4, backgroundColor: "#F6F4E8", shadowColor: "#DAE9FF", shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.92, shadowRadius: 5, elevation: 2 },
+  sceneMoon: { position: "absolute", top: 16, left: "68%", width: 62, height: 62, alignItems: "center", justifyContent: "center" },
+  sceneMoonHalo: { position: "absolute", width: 62, height: 62, borderRadius: 31, backgroundColor: "rgba(225,237,255,0.13)" },
+  sceneMoonDisc: { width: 39, height: 39, borderRadius: 20, backgroundColor: "#F5F1D9", shadowColor: "#E7F0FF", shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.85, shadowRadius: 15, elevation: 6 },
+  sceneMoonShadow: { position: "absolute", top: 7, left: 30, width: 32, height: 32, borderRadius: 17, backgroundColor: "#142A49" },
+  sceneTwilight: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(242,119,85,0.2)", zIndex: 2 },
+  sceneDistantRidge: { position: "absolute", left: "-8%", right: "-10%", bottom: 30, height: 51, borderTopLeftRadius: 140, borderTopRightRadius: 130, backgroundColor: "rgba(60,98,86,0.34)" },
+  sceneFarFields: { position: "absolute", left: 0, right: 0, bottom: 25, height: 29, backgroundColor: "rgba(61,111,79,0.34)" },
+  sceneBackHill: { position: "absolute", left: "-12%", right: "44%", bottom: 17, height: 48, borderTopLeftRadius: 110, borderTopRightRadius: 100, backgroundColor: "rgba(62,111,71,0.68)" },
+  sceneFrontHill: { position: "absolute", left: "43%", right: "-12%", bottom: 13, height: 44, borderTopLeftRadius: 100, borderTopRightRadius: 90, backgroundColor: "rgba(35,83,56,0.78)" },
+  sceneFieldRows: { position: "absolute", left: "48%", right: "-5%", bottom: 16, height: 21, transform: [{ rotate: "-5deg" }] },
+  sceneFieldRow: { position: "absolute", right: 0, height: 1, backgroundColor: "rgba(224,202,139,0.3)" },
+  sceneNightLandscapeTint: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(3,15,31,0.34)", zIndex: 6 },
+  sceneTree: { position: "absolute", bottom: 13, width: 84, height: 91, zIndex: 7 },
+  sceneTreeTrunk: { position: "absolute", bottom: 0, left: "46%", width: 8, height: 40, borderRadius: 3, backgroundColor: "#493A2D" },
+  sceneTreeLeaf: { position: "absolute", borderRadius: 40, backgroundColor: "#244D37", borderWidth: 1, borderColor: "rgba(153,177,113,0.18)" },
+  sceneTreeLeafA: { left: 5, top: 31, width: 40, height: 38 },
+  sceneTreeLeafB: { left: 27, top: 11, width: 43, height: 43 },
+  sceneTreeLeafC: { right: 0, top: 34, width: 39, height: 39 },
+  sceneTreeLeafD: { left: 18, top: 48, width: 48, height: 37 },
+  sceneTreeLeafE: { left: 0, top: 49, width: 34, height: 28 },
+  sceneTreeLeafF: { right: 5, top: 13, width: 31, height: 31 },
+  sceneHut: { position: "absolute", left: "30%", bottom: 3, width: 151, height: 112, zIndex: 10 },
+  sceneHutGroundShadow: { position: "absolute", left: 2, right: 0, bottom: 0, height: 14, borderRadius: 50, backgroundColor: "rgba(11,22,18,0.42)" },
+  sceneHutWall: { position: "absolute", left: 13, right: 10, bottom: 7, height: 48, backgroundColor: "#A9764E", borderTopWidth: 2, borderTopColor: "#D1A071", borderBottomLeftRadius: 3, borderBottomRightRadius: 3, overflow: "hidden" },
+  sceneHutPlasterTextureA: { position: "absolute", left: 7, right: 7, top: 11, height: 1, backgroundColor: "rgba(75,48,34,0.28)" },
+  sceneHutPlasterTextureB: { position: "absolute", left: 9, right: 11, top: 29, height: 1, backgroundColor: "rgba(75,48,34,0.25)" },
+  sceneHutDoor: { position: "absolute", left: 52, bottom: 0, width: 23, height: 36, borderTopLeftRadius: 12, borderTopRightRadius: 12, backgroundColor: "#402E25", borderWidth: 1, borderColor: "#C38D5D" },
+  sceneHutWindow: { position: "absolute", right: 15, bottom: 20, width: 18, height: 15, borderRadius: 2, backgroundColor: "#FFD47C", borderWidth: 2, borderColor: "#66442F", shadowColor: "#FFCF76", shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.95, shadowRadius: 11, elevation: 6 },
+  sceneHutWindowBarV: { position: "absolute", left: 6, top: 0, width: 2, height: 11, backgroundColor: "#705034" },
+  sceneHutWindowBarH: { position: "absolute", left: 0, right: 0, top: 6, height: 2, backgroundColor: "#705034" },
+  sceneHutWallBase: { position: "absolute", left: 0, right: 0, bottom: 0, height: 4, backgroundColor: "#7E523A" },
+  sceneHutRoof: { position: "absolute", left: -1, bottom: 52, width: 0, height: 0, borderLeftWidth: 77, borderRightWidth: 77, borderBottomWidth: 53, borderLeftColor: "transparent", borderRightColor: "transparent", borderBottomColor: "#593B2D" },
+  sceneHutRoofRidge: { position: "absolute", left: 8, right: 8, bottom: 51, height: 7, borderRadius: 5, backgroundColor: "#8B5B39" },
+  sceneHutRoofEdge: { position: "absolute", left: 4, right: 4, bottom: 51, height: 5, borderRadius: 3, backgroundColor: "#A7774A" },
+  sceneHutThatchedStrand: { position: "absolute", bottom: 68, width: 42, height: 3, borderRadius: 2, backgroundColor: "#C08A4D" },
+  sceneHutChimney: { position: "absolute", left: 103, bottom: 86, width: 11, height: 18, borderTopWidth: 3, borderTopColor: "#B9B6A9", backgroundColor: "#5B4A3D", borderTopLeftRadius: 2, borderTopRightRadius: 2, zIndex: 12 },
+  sceneSmokeTrail: { position: "absolute", left: 98, bottom: 98, width: 60, height: 80, zIndex: 13, overflow: "visible" },
+  sceneSmokeWisp: { position: "absolute", bottom: 0, width: 26, height: 19, borderRadius: 16, backgroundColor: "rgba(227,235,237,0.48)", shadowColor: "#F5F7F7", shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.32, shadowRadius: 10, elevation: 2, overflow: "hidden" },
+  sceneSmokeSoftCore: { position: "absolute", left: 3, top: 3, width: 18, height: 12, borderRadius: 10, backgroundColor: "rgba(248,250,250,0.25)" },
+  sceneSmokeLightEdge: { position: "absolute", left: 8, top: 2, width: 8, height: 5, borderRadius: 5, backgroundColor: "rgba(255,255,255,0.32)" },
+  scenePath: { position: "absolute", left: "45%", bottom: 4, width: "27%", height: 22, borderTopLeftRadius: 50, borderTopRightRadius: 50, backgroundColor: "rgba(177,143,96,0.2)", transform: [{ rotate: "-7deg" }] },
+  sceneForegroundBank: { position: "absolute", left: 0, right: 0, bottom: 0, height: 21, backgroundColor: "#344E39", borderTopWidth: 1, borderTopColor: "rgba(222,207,151,0.25)", zIndex: 14 },
+  sceneGrassBlade: { position: "absolute", bottom: 0, width: 2, borderRadius: 2, backgroundColor: "#A3B36C", zIndex: 15 },
+  sceneEdgeShade: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(5,17,28,0.08)", zIndex: 16 },
   root: { flex: 1, backgroundColor: THEME.whiteBg },
   headerBg: { position: "absolute", top: 0, left: 0, right: 0, height: HERO_BACKDROP_HEIGHT, borderBottomLeftRadius: 30, borderBottomRightRadius: 30, backgroundColor: "transparent", shadowColor: "#FFFFFF", shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.14, shadowRadius: 18, elevation: 7 },
   skyClearSpace: { height: Platform.OS === "web" ? 90 : 56, alignItems: "center", justifyContent: "center", zIndex: 30, elevation: 30 },
