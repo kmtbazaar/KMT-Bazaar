@@ -46,6 +46,7 @@ on:
       - "frontend/components/AIAssistant.tsx"
       - "frontend/components/BotHeader.tsx"
       - "frontend/app/assistant.tsx"
+      - "frontend/app/RoojgarForm.tsx"
       - "frontend/src/components/RobotAvatar.tsx"
       - "frontend/src/components/RobotCompanion3D.tsx"
       - "frontend/app/(tabs)/_layout.tsx"
@@ -421,6 +422,21 @@ jobs:
           assert.ok(backend.includes('PRODUCT_DELIVERY_PINCODE = "815352"') && backend.includes("delivery_pincode != PRODUCT_DELIVERY_PINCODE"), "Backend checkout must enforce PIN 815352");
           assert.ok(backend.includes('update_data.pop("latitude", None)') && backend.includes('update_data.pop("longitude", None)'), "Address PIN edits must preserve saved GPS coordinates");
           console.log("SINGLE_PIN_PRODUCT_DELIVERY_VALIDATION_PASS");
+          NODE
+
+      - name: Validate Roojgar success navigation to home
+        working-directory: frontend
+        run: |
+          node <<'NODE'
+          const fs = require("node:fs");
+          const assert = require("node:assert/strict");
+          const form = fs.readFileSync("app/RoojgarForm.tsx", "utf8");
+          assert.ok(form.includes('import { useRouter } from "expo-router";'), "Roojgar form must use Expo Router for explicit home navigation");
+          assert.ok(form.includes('router.replace("/(tabs)/home" as any)'), "Successful application submission must route directly to customer Home");
+          assert.ok(form.includes('onPress={() => navigation.goBack()}'), "The form header back button must preserve its existing previous-screen behavior");
+          const successButton = form.match(/<TouchableOpacity\\s+style={styles\\.successButton}[\\s\\S]*?onPress=\\{([^}]+)\\}/);
+          assert.ok(successButton && successButton[1].includes('router.replace("/(tabs)/home"'), "The success screen Back to Home button must not depend on navigation history");
+          console.log("ROOJGAR_SUCCESS_HOME_NAVIGATION_VALIDATION_PASS");
           NODE
 
       - name: Build web app
