@@ -99,9 +99,9 @@ function HearthSmokeWisp({
   const wispStyle = useAnimatedStyle(() => ({
     opacity: 0.3 * (1 - rise.value * 0.88),
     transform: [
-      { translateY: -rise.value * 66 },
-      { translateX: rise.value * drift + Math.sin(rise.value * Math.PI) * 5 },
-      { scale: size * (0.58 + rise.value * 1.15) },
+      { translateY: -rise.value * 76 },
+      { translateX: rise.value * drift + Math.sin(rise.value * Math.PI) * 7 },
+      { scale: size * (0.62 + rise.value * 1.3) },
       { rotate: (rise.value * 22) + "deg" },
     ],
   }));
@@ -117,11 +117,11 @@ function HearthSmokeWisp({
 function HearthSmoke() {
   return (
     <View pointerEvents="none" style={s.sceneSmokeTrail} testID="home-cinematic-chimney-smoke">
-      <HearthSmokeWisp delay={0} left={7} size={0.76} drift={9} />
-      <HearthSmokeWisp delay={650} left={14} size={0.96} drift={13} />
-      <HearthSmokeWisp delay={1320} left={4} size={1.12} drift={17} />
-      <HearthSmokeWisp delay={2030} left={19} size={1.02} drift={20} />
-      <HearthSmokeWisp delay={2760} left={10} size={1.2} drift={24} />
+      <HearthSmokeWisp delay={0} left={9} size={0.86} drift={10} />
+      <HearthSmokeWisp delay={650} left={19} size={1.02} drift={14} />
+      <HearthSmokeWisp delay={1320} left={3} size={1.16} drift={18} />
+      <HearthSmokeWisp delay={2030} left={26} size={1.08} drift={21} />
+      <HearthSmokeWisp delay={2760} left={13} size={1.24} drift={25} />
     </View>
   );
 }
@@ -209,6 +209,13 @@ function CinematicDayNightScene() {
   const windowStyle = useAnimatedStyle(() => ({
     opacity: 0.4 + cycle.value * 0.42 + windowFlicker.value * 0.12,
   }));
+  const pondRippleStyle = useAnimatedStyle(() => ({
+    opacity: 0.2 + windowFlicker.value * 0.38,
+    transform: [
+      { translateX: -5 + windowFlicker.value * 10 },
+      { scaleX: 0.82 + windowFlicker.value * 0.28 },
+    ],
+  }));
 
   return (
     <View pointerEvents="none" style={s.nightSky} testID="home-cinematic-day-night-hero">
@@ -276,9 +283,42 @@ function CinematicDayNightScene() {
       <SceneTree left="-4%" scale={0.7} />
       <SceneTree left="84%" scale={0.58} />
 
+      <View pointerEvents="none" style={s.scenePond} testID="home-cinematic-pond">
+        <View style={s.scenePondOuterBank} />
+        <LinearGradient
+          colors={["#C0B58A", "#8C805D", "#665D43"]}
+          locations={[0, 0.52, 1]}
+          start={{ x: 0.12, y: 0 }}
+          end={{ x: 0.88, y: 1 }}
+          style={s.scenePondRim}
+        >
+          <LinearGradient
+            colors={["#9CC9BB", "#4C9291", "#245F69", "#183F4D"]}
+            locations={[0, 0.34, 0.72, 1]}
+            start={{ x: 0.18, y: 0 }}
+            end={{ x: 0.82, y: 1 }}
+            style={s.scenePondWater}
+          >
+            <View style={s.scenePondReflectionLong} />
+            <View style={s.scenePondReflectionShort} />
+            <Animated.View style={[s.scenePondRipple, pondRippleStyle]} />
+            <Animated.View style={[s.scenePondNightTint, nightStyle]} />
+          </LinearGradient>
+        </LinearGradient>
+        <View style={s.scenePondReedLeft} />
+        <View style={s.scenePondReedRight} />
+      </View>
+
       <View style={s.sceneHut} testID="home-cinematic-hut">
         <View style={s.sceneHutGroundShadow} />
-        <View style={s.sceneHutWall}>
+        <View style={s.sceneHutSideWall} />
+        <LinearGradient
+          colors={["#D5A876", "#A9764E", "#704A35"]}
+          locations={[0, 0.48, 1]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={s.sceneHutWall}
+        >
           <View style={s.sceneHutPlasterTextureA} />
           <View style={s.sceneHutPlasterTextureB} />
           <View style={s.sceneHutDoor} />
@@ -287,7 +327,7 @@ function CinematicDayNightScene() {
             <View style={s.sceneHutWindowBarH} />
           </Animated.View>
           <View style={s.sceneHutWallBase} />
-        </View>
+        </LinearGradient>
         <View style={s.sceneHutRoof} />
         <View style={s.sceneHutRoofRidge} />
         <View style={s.sceneHutRoofEdge} />
@@ -304,7 +344,10 @@ function CinematicDayNightScene() {
             ]}
           />
         ))}
-        <View style={s.sceneHutChimney} />
+        <View style={s.sceneHutChimney}>
+          <View style={s.sceneHutChimneyMouth} />
+          <View style={s.sceneHutChimneyHighlight} />
+        </View>
         <HearthSmoke />
       </View>
 
@@ -1504,27 +1547,40 @@ const s = StyleSheet.create({
   sceneTreeLeafD: { left: 18, top: 48, width: 48, height: 37 },
   sceneTreeLeafE: { left: 0, top: 49, width: 34, height: 28 },
   sceneTreeLeafF: { right: 5, top: 13, width: 31, height: 31 },
-  sceneHut: { position: "absolute", left: "30%", bottom: 3, width: 151, height: 112, zIndex: 10 },
+  scenePond: { position: "absolute", left: "67%", bottom: 14, width: "29%", height: 39, zIndex: 14, transform: [{ rotate: "-3deg" }] },
+  scenePondOuterBank: { position: "absolute", left: -4, right: -4, bottom: -3, height: 15, borderRadius: 30, backgroundColor: "#625A43", borderWidth: 1, borderColor: "rgba(214,199,151,0.42)", shadowColor: "#132B2D", shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.34, shadowRadius: 5, elevation: 3 },
+  scenePondRim: { position: "absolute", left: 0, right: 0, top: 0, bottom: 0, borderRadius: 28, borderWidth: 1.5, borderColor: "#B6A77A", overflow: "hidden", shadowColor: "#D9D0A5", shadowOffset: { width: 0, height: -1 }, shadowOpacity: 0.36, shadowRadius: 3, elevation: 2 },
+  scenePondWater: { position: "absolute", left: 4, right: 4, top: 4, bottom: 4, borderRadius: 23, overflow: "hidden" },
+  scenePondReflectionLong: { position: "absolute", left: "15%", top: "27%", width: "61%", height: 2, borderRadius: 4, backgroundColor: "rgba(229,248,231,0.48)", transform: [{ rotate: "-5deg" }] },
+  scenePondReflectionShort: { position: "absolute", right: "13%", bottom: "26%", width: "26%", height: 2, borderRadius: 4, backgroundColor: "rgba(188,230,218,0.38)", transform: [{ rotate: "7deg" }] },
+  scenePondRipple: { position: "absolute", left: "25%", top: "22%", width: "52%", height: "58%", borderWidth: 1, borderColor: "rgba(218,247,237,0.52)", borderRadius: 100, backgroundColor: "rgba(167,224,210,0.05)" },
+  scenePondNightTint: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(4,18,38,0.42)", borderRadius: 23 },
+  scenePondReedLeft: { position: "absolute", left: 5, top: -7, width: 2, height: 15, borderRadius: 3, backgroundColor: "#718252", transform: [{ rotate: "-18deg" }] },
+  scenePondReedRight: { position: "absolute", right: 5, top: -8, width: 2, height: 16, borderRadius: 3, backgroundColor: "#718252", transform: [{ rotate: "16deg" }] },
+  sceneHut: { position: "absolute", left: "21%", bottom: 3, width: 164, height: 120, zIndex: 10 },
   sceneHutGroundShadow: { position: "absolute", left: 2, right: 0, bottom: 0, height: 14, borderRadius: 50, backgroundColor: "rgba(11,22,18,0.42)" },
-  sceneHutWall: { position: "absolute", left: 13, right: 10, bottom: 7, height: 48, backgroundColor: "#A9764E", borderTopWidth: 2, borderTopColor: "#D1A071", borderBottomLeftRadius: 3, borderBottomRightRadius: 3, overflow: "hidden" },
+  sceneHutSideWall: { position: "absolute", right: 3, bottom: 7, width: 20, height: 51, borderTopRightRadius: 4, backgroundColor: "#684735", transform: [{ skewY: "-2deg" }] },
+  sceneHutWall: { position: "absolute", left: 13, right: 11, bottom: 7, height: 52, borderTopWidth: 2, borderTopColor: "#D1A071", borderBottomLeftRadius: 3, borderBottomRightRadius: 3, overflow: "hidden" },
   sceneHutPlasterTextureA: { position: "absolute", left: 7, right: 7, top: 11, height: 1, backgroundColor: "rgba(75,48,34,0.28)" },
   sceneHutPlasterTextureB: { position: "absolute", left: 9, right: 11, top: 29, height: 1, backgroundColor: "rgba(75,48,34,0.25)" },
-  sceneHutDoor: { position: "absolute", left: 52, bottom: 0, width: 23, height: 36, borderTopLeftRadius: 12, borderTopRightRadius: 12, backgroundColor: "#402E25", borderWidth: 1, borderColor: "#C38D5D" },
-  sceneHutWindow: { position: "absolute", right: 15, bottom: 20, width: 18, height: 15, borderRadius: 2, backgroundColor: "#FFD47C", borderWidth: 2, borderColor: "#66442F", shadowColor: "#FFCF76", shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.95, shadowRadius: 11, elevation: 6 },
+  sceneHutDoor: { position: "absolute", left: 55, bottom: 0, width: 25, height: 39, borderTopLeftRadius: 13, borderTopRightRadius: 13, backgroundColor: "#402E25", borderWidth: 1, borderColor: "#C38D5D" },
+  sceneHutWindow: { position: "absolute", right: 17, bottom: 22, width: 19, height: 16, borderRadius: 2, backgroundColor: "#FFD47C", borderWidth: 2, borderColor: "#66442F", shadowColor: "#FFCF76", shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.95, shadowRadius: 11, elevation: 6 },
   sceneHutWindowBarV: { position: "absolute", left: 6, top: 0, width: 2, height: 11, backgroundColor: "#705034" },
   sceneHutWindowBarH: { position: "absolute", left: 0, right: 0, top: 6, height: 2, backgroundColor: "#705034" },
   sceneHutWallBase: { position: "absolute", left: 0, right: 0, bottom: 0, height: 4, backgroundColor: "#7E523A" },
-  sceneHutRoof: { position: "absolute", left: -1, bottom: 52, width: 0, height: 0, borderLeftWidth: 77, borderRightWidth: 77, borderBottomWidth: 53, borderLeftColor: "transparent", borderRightColor: "transparent", borderBottomColor: "#593B2D" },
-  sceneHutRoofRidge: { position: "absolute", left: 8, right: 8, bottom: 51, height: 7, borderRadius: 5, backgroundColor: "#8B5B39" },
-  sceneHutRoofEdge: { position: "absolute", left: 4, right: 4, bottom: 51, height: 5, borderRadius: 3, backgroundColor: "#A7774A" },
-  sceneHutThatchedStrand: { position: "absolute", bottom: 68, width: 42, height: 3, borderRadius: 2, backgroundColor: "#C08A4D" },
-  sceneHutChimney: { position: "absolute", left: 103, bottom: 86, width: 11, height: 18, borderTopWidth: 3, borderTopColor: "#B9B6A9", backgroundColor: "#5B4A3D", borderTopLeftRadius: 2, borderTopRightRadius: 2, zIndex: 12 },
-  sceneSmokeTrail: { position: "absolute", left: 98, bottom: 98, width: 60, height: 80, zIndex: 13, overflow: "visible" },
-  sceneSmokeWisp: { position: "absolute", bottom: 0, width: 26, height: 19, borderRadius: 16, backgroundColor: "rgba(227,235,237,0.48)", shadowColor: "#F5F7F7", shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.32, shadowRadius: 10, elevation: 2, overflow: "hidden" },
+  sceneHutRoof: { position: "absolute", left: -2, bottom: 55, width: 0, height: 0, borderLeftWidth: 84, borderRightWidth: 84, borderBottomWidth: 59, borderLeftColor: "transparent", borderRightColor: "transparent", borderBottomColor: "#593B2D", shadowColor: "#34251D", shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.32, shadowRadius: 5, elevation: 3 },
+  sceneHutRoofRidge: { position: "absolute", left: 8, right: 8, bottom: 54, height: 8, borderRadius: 5, backgroundColor: "#8B5B39" },
+  sceneHutRoofEdge: { position: "absolute", left: 3, right: 3, bottom: 54, height: 6, borderRadius: 3, backgroundColor: "#A7774A" },
+  sceneHutThatchedStrand: { position: "absolute", bottom: 73, width: 45, height: 3, borderRadius: 2, backgroundColor: "#C08A4D" },
+  sceneHutChimney: { position: "absolute", left: 112, bottom: 91, width: 16, height: 29, borderTopWidth: 4, borderTopColor: "#D3C6AE", borderLeftWidth: 2, borderLeftColor: "#947052", borderRightWidth: 1, borderRightColor: "#3D3028", backgroundColor: "#604332", borderTopLeftRadius: 2, borderTopRightRadius: 2, zIndex: 12, shadowColor: "#241A14", shadowOffset: { width: 1, height: 1 }, shadowOpacity: 0.28, shadowRadius: 2, elevation: 2 },
+  sceneHutChimneyMouth: { position: "absolute", left: 3, right: 3, top: 1, height: 3, borderRadius: 2, backgroundColor: "#302821" },
+  sceneHutChimneyHighlight: { position: "absolute", left: 2, top: 6, width: 2, bottom: 3, borderRadius: 2, backgroundColor: "rgba(221,190,151,0.42)" },
+  sceneSmokeTrail: { position: "absolute", left: 106, bottom: 109, width: 78, height: 94, zIndex: 13, overflow: "visible" },
+  sceneSmokeWisp: { position: "absolute", bottom: 0, width: 30, height: 22, borderRadius: 18, backgroundColor: "rgba(220,231,233,0.42)", shadowColor: "#F5F7F7", shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.28, shadowRadius: 12, elevation: 2, overflow: "hidden" },
   sceneSmokeSoftCore: { position: "absolute", left: 3, top: 3, width: 18, height: 12, borderRadius: 10, backgroundColor: "rgba(248,250,250,0.25)" },
   sceneSmokeLightEdge: { position: "absolute", left: 8, top: 2, width: 8, height: 5, borderRadius: 5, backgroundColor: "rgba(255,255,255,0.32)" },
   scenePath: { position: "absolute", left: "45%", bottom: 4, width: "27%", height: 22, borderTopLeftRadius: 50, borderTopRightRadius: 50, backgroundColor: "rgba(177,143,96,0.2)", transform: [{ rotate: "-7deg" }] },
-  sceneForegroundBank: { position: "absolute", left: 0, right: 0, bottom: 0, height: 21, backgroundColor: "#344E39", borderTopWidth: 1, borderTopColor: "rgba(222,207,151,0.25)", zIndex: 14 },
+  sceneForegroundBank: { position: "absolute", left: 0, right: 0, bottom: 0, height: 21, backgroundColor: "#344E39", borderTopWidth: 1, borderTopColor: "rgba(222,207,151,0.25)", zIndex: 13 },
   sceneGrassBlade: { position: "absolute", bottom: 0, width: 2, borderRadius: 2, backgroundColor: "#A3B36C", zIndex: 15 },
   sceneEdgeShade: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(5,17,28,0.08)", zIndex: 16 },
   root: { flex: 1, backgroundColor: THEME.whiteBg },

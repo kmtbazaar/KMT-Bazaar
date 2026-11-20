@@ -253,7 +253,10 @@ export default function RoojgarForm() {
               <TouchableOpacity
                 style={styles.successButton}
                 activeOpacity={0.85}
-                onPress={() => router.replace("/(tabs)/home" as any)}
+                onPress={() => router.navigate("/(tabs)/home" as any)}
+                accessibilityRole="button"
+                accessibilityLabel="Back to Home"
+                testID="roojgar-success-back-home"
               >
                 <Text style={styles.successButtonText}>
                   Back to Home

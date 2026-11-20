@@ -184,6 +184,10 @@ jobs:
           assert.ok(home.includes("function CinematicDayNightScene()") && home.includes("sceneDaySky") && home.includes("sceneNightSky") && home.includes("withTiming(1, { duration: 52000 })"), "New day and night sky layers must cross-fade on a slower natural cycle");
           assert.ok(home.includes("sceneSunCore") && home.includes("sceneMoonDisc") && home.includes("CINEMATIC_STARS") && home.includes("SceneCloud"), "The new sky must include a moving sun, moon, stars and drifting clouds");
           assert.ok(home.includes('testID="home-cinematic-hut"') && home.includes("sceneHutRoof") && home.includes("sceneHutWindow"), "The replacement hero must include a detailed traditional hut and warm window");
+          assert.ok(home.includes('testID="home-cinematic-pond"') && home.includes("scenePondWater") && home.includes("scenePondRipple") && home.includes("const pondRippleStyle = useAnimatedStyle"), "The home hero must include a layered pond with subtle moving water reflections");
+          assert.ok(home.includes('sceneHut: { position: "absolute", left: "21%", bottom: 3, width: 164, height: 120') && home.includes('width: 16, height: 29') && home.includes("sceneHutChimneyMouth"), "The rural hut and chimney must be larger, with a dimensional chimney opening");
+          assert.ok(home.includes('sceneSmokeTrail: { position: "absolute", left: 106, bottom: 109, width: 78, height: 94') && home.includes("duration: 5200"), "The enlarged chimney must keep slow, layered rising smoke");
+          assert.ok(home.includes("const pondRippleStyle = useAnimatedStyle") && home.includes("windowFlicker.value * 0.28"), "Pond reflections must reuse the existing animation clock to avoid extra frame loops");
           assert.ok(home.includes('testID="home-cinematic-chimney-smoke"') && home.includes("function HearthSmokeWisp") && home.includes("sceneSmokeWisp") && home.includes("duration: 5200"), "Layered smoke wisps must rise continuously from the new chimney");
           assert.ok(home.includes("SceneTree") && home.includes("sceneFieldRows") && home.includes("scenePath") && home.includes("sceneForegroundBank"), "The replacement hero must include a complete layered rural landscape");
           assert.ok(!home.includes("VillageDayNight") && !home.includes("VillageSmokePuff") && !home.includes("villageMainHut") && !home.includes("villageDayLayer"), "The old village animation must be fully removed");
@@ -265,7 +269,7 @@ jobs:
 
       - name: Lint changed product and branding screens
         working-directory: frontend
-        run: npx eslint "app/vendor/store/[id].tsx" "app/vendor/products.tsx" "app/product/[id].tsx" "src/components/ProductCard.tsx" "src/components/AnimatedBrandLogo.tsx" "app/auth/login.tsx" "app/admin/index.tsx" "app/delivery/index.tsx" "app/vendor/holiday-dashboard.tsx" "app/vendor/car-rental-dashboard.tsx" "app/role/[role].tsx" "app/(tabs)/profile.tsx" "app/(tabs)/cart.tsx" "app/addresses.tsx" "app/checkout.tsx" "app/index.tsx" "app/search.tsx" "src/components/ParticleLogoSplash.tsx" "components/AIAssistant.tsx" "components/BotHeader.tsx" "app/assistant.tsx" "components/ChatBubble.tsx" "components/TypingIndicator.tsx" "src/components/RobotAvatar.tsx" "src/components/RobotCompanion3D.tsx" "app/(tabs)/_layout.tsx" "app/orders/[id].tsx" "app/support/returns.tsx" "src/api.ts" "src/components/AdminVendorProducts.tsx" --no-cache
+        run: npx eslint "app/vendor/store/[id].tsx" "app/vendor/products.tsx" "app/product/[id].tsx" "src/components/ProductCard.tsx" "src/components/AnimatedBrandLogo.tsx" "app/auth/login.tsx" "app/admin/index.tsx" "app/delivery/index.tsx" "app/vendor/holiday-dashboard.tsx" "app/vendor/car-rental-dashboard.tsx" "app/role/[role].tsx" "app/(tabs)/profile.tsx" "app/(tabs)/cart.tsx" "app/addresses.tsx" "app/checkout.tsx" "app/index.tsx" "app/search.tsx" "src/components/ParticleLogoSplash.tsx" "components/AIAssistant.tsx" "components/BotHeader.tsx" "app/assistant.tsx" "components/ChatBubble.tsx" "components/TypingIndicator.tsx" "src/components/RobotAvatar.tsx" "src/components/RobotCompanion3D.tsx" "app/(tabs)/_layout.tsx" "app/(tabs)/home.tsx" "app/RoojgarForm.tsx" "app/orders/[id].tsx" "app/support/returns.tsx" "src/api.ts" "src/components/AdminVendorProducts.tsx" --no-cache
 
       - name: Validate customer billing, invoice PDF, refund/return help and order item navigation
         working-directory: frontend
@@ -432,12 +436,12 @@ jobs:
           const assert = require("node:assert/strict");
           const form = fs.readFileSync("app/RoojgarForm.tsx", "utf8");
           assert.ok(form.includes('import { useRouter } from "expo-router";'), "Roojgar form must use Expo Router for explicit home navigation");
-          assert.ok(form.includes('router.replace("/(tabs)/home" as any)'), "Successful application submission must route directly to customer Home");
+          assert.ok(form.includes('router.navigate("/(tabs)/home" as any)'), "Successful application submission must navigate to the existing customer Home tab");
           assert.ok(form.includes('onPress={() => navigation.goBack()}'), "The form header back button must preserve its existing previous-screen behavior");
           const successStart = form.indexOf("style={styles.successButton}");
           const successEnd = form.indexOf("</TouchableOpacity>", successStart);
           const successButton = form.slice(successStart, successEnd);
-          assert.ok(successStart >= 0 && successEnd > successStart && successButton.includes('onPress={() => router.replace("/(tabs)/home" as any)}'), "The success screen Back to Home button must not depend on navigation history");
+          assert.ok(successStart >= 0 && successEnd > successStart && successButton.includes('onPress={() => router.navigate("/(tabs)/home" as any)}') && successButton.includes('testID="roojgar-success-back-home"'), "The success screen Back to Home button must navigate to the Home tab directly");
           console.log("ROOJGAR_SUCCESS_HOME_NAVIGATION_VALIDATION_PASS");
           NODE
 
