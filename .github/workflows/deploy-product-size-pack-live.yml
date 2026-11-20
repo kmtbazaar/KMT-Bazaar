@@ -170,7 +170,7 @@ jobs:
           console.log("PRODUCT_SIZE_PACK_UI_VALIDATION_PASS");
           NODE
 
-      - name: Validate premium day-night village hero, chimney smoke, neon brand and home search placement
+      - name: Validate cinematic day-night hero, chimney smoke, tab haptics, neon brand and home search placement
         working-directory: frontend
         run: |
           node <<'NODE'
@@ -179,12 +179,13 @@ jobs:
           const home = fs.readFileSync("app/(tabs)/home.tsx", "utf8");
           const robot = fs.readFileSync("src/components/RobotCompanion3D.tsx", "utf8");
           const assistant = fs.readFileSync("app/assistant.tsx", "utf8");
-          assert.ok(home.includes("function NightSky()") && home.includes("<VillageDayNight />"), "The premium day/night village scene must render in the home hero");
-          assert.ok(home.includes("function VillageDayNight()") && home.includes("villageDayLayer") && home.includes("villageNightLayer") && home.includes("withTiming(1, { duration: 28000 })"), "Day and night sky layers must cross-fade smoothly");
-          assert.ok(home.includes("villageSunCore") && home.includes("villageMoonBody") && home.includes("VILLAGE_STARS") && home.includes("VillageCloud"), "Village sky must include sun, moon, stars and soft drifting clouds");
-          assert.ok(home.includes('testID="home-village-hut"') && home.includes("villageHutRoof") && home.includes("villageHutWindowGlow"), "A traditional village hut with a thatched roof and warm window light must be present");
-          assert.ok(home.includes('testID="home-village-chimney-smoke"') && home.includes("function VillageSmokePuff") && home.includes("villageSmokePuff"), "Animated smoke must visibly rise from the hut chimney");
-          assert.ok(home.includes("VillageSmallHouse") && home.includes("VillageTree") && home.includes("villageFieldLineOne") && home.includes("villageFence"), "The hero must show a complete rural village atmosphere");
+          assert.ok(home.includes("function NightSky()") && home.includes("<CinematicDayNightScene />"), "The new cinematic day/night scene must render in the home hero");
+          assert.ok(home.includes("function CinematicDayNightScene()") && home.includes("sceneDaySky") && home.includes("sceneNightSky") && home.includes("withTiming(1, { duration: 52000 })"), "New day and night sky layers must cross-fade on a slower natural cycle");
+          assert.ok(home.includes("sceneSunCore") && home.includes("sceneMoonDisc") && home.includes("CINEMATIC_STARS") && home.includes("SceneCloud"), "The new sky must include a moving sun, moon, stars and drifting clouds");
+          assert.ok(home.includes('testID="home-cinematic-hut"') && home.includes("sceneHutRoof") && home.includes("sceneHutWindow"), "The replacement hero must include a detailed traditional hut and warm window");
+          assert.ok(home.includes('testID="home-cinematic-chimney-smoke"') && home.includes("function HearthSmokeWisp") && home.includes("sceneSmokeWisp") && home.includes("duration: 5200"), "Layered smoke wisps must rise continuously from the new chimney");
+          assert.ok(home.includes("SceneTree") && home.includes("sceneFieldRows") && home.includes("scenePath") && home.includes("sceneForegroundBank"), "The replacement hero must include a complete layered rural landscape");
+          assert.ok(!home.includes("VillageDayNight") && !home.includes("VillageSmokePuff") && !home.includes("villageMainHut") && !home.includes("villageDayLayer"), "The old village animation must be fully removed");
           assert.ok(!home.includes("FestivalDecor") && !home.includes("FESTIVAL_FIREWORKS") && !home.includes("home-chhath-soop"), "The previous festival ghat scene must be replaced");
           assert.ok(!home.includes("chhath-hero-240-q26.webp"), "The hero must remain animated CSS/View layers, not a flat replacement image");
           assert.ok(!home.includes('testID="home-location-neon-glow"') && !home.includes("headerNeonGlow"), "Neon bar between location and notification must remain removed");
@@ -222,15 +223,18 @@ jobs:
           assert.ok(home.includes("ref={bannerListRef}") && !home.includes("ref={(ref) =>") && home.includes("bannerScrollOffsetRef.current") && home.includes("Math.abs(bannerScrollOffsetRef.current - targetOffset) > 2"), "Carousel must use one stable list ref and avoid duplicate scroll animations during re-renders");
           assert.ok(home.includes('decelerationRate="fast"') && home.includes("disableIntervalMomentum") && home.includes('snapToAlignment="start"'), "Home banner swipes must snap cleanly and smoothly to one banner");
           assert.ok(home.includes("sectionIndicator: { width: 4, height: 16, backgroundColor: THEME.orange"), "The orange Shop by Category indicator must remain in its original position and styling");
-          assert.ok(home.includes("const VILLAGE_STARS = Array.from({ length: 22 }") && home.includes("isLeftSide ? 4 + ((point * 8) % 21) : 76 + ((point * 9) % 19)"), "Village night stars must stay to the sides and leave the KMT Bazaar wordmark clear");
-          assert.ok(home.includes("villageDayLayer") && home.includes("villageNightLayer") && home.includes("VillageCloud") && home.includes("villageMoonBody"), "The day-night village sky must cross-fade with drifting clouds and a moon");
+          assert.ok(home.includes("const CINEMATIC_STARS = Array.from({ length: 24 }") && home.includes("? 3 + ((point * 7) % 22)") && home.includes(": 77 + ((point * 9) % 20)"), "Replacement hero stars must stay at the sides and keep the KMT Bazaar wordmark clear");
+          assert.ok(home.includes("sceneDaySky") && home.includes("sceneNightSky") && home.includes("SceneCloud") && home.includes("sceneMoonDisc"), "The cinematic sky must cross-fade with drifting clouds and a moon");
           assert.ok(home.includes('heroBrandNeon: { color: "#FFFBEA", fontSize: 21') && home.includes("zIndex: 30, elevation: 30") && home.includes("textShadowRadius: 11"), "KMT Bazaar hero wordmark must be bright, elevated and clearly visible");
           assert.ok(home.includes("api.products({ trending: true, limit: 12 })") && !home.includes("api.vendorServices()") && home.includes("sections independently"), "Home first paint must use a limited trending payload and avoid the unused vendor-services request");
           assert.ok(robot.includes("1000 / 60") && robot.includes("lastRenderedAt") && robot.includes("1.15"), "3D taskbar robot idle rendering must be capped at 60 FPS with a lower render pixel ratio");
-          assert.ok(home.includes('testID="home-village-hut"') && home.includes("villageHutRoof") && home.includes("villageHutWindowGlow") && home.includes("villageMainHut"), "The village hero must retain the detailed thatched hut and warm window");
+          assert.ok(home.includes('testID="home-cinematic-hut"') && home.includes("sceneHutRoof") && home.includes("sceneHutWindow") && home.includes("sceneHutChimney"), "The new cinematic hero must retain the detailed hut and warm window");
           assert.ok(assistant.includes("shiftKeyButton") && assistant.includes("shiftKeyLabel") && assistant.includes("SHIFT") && assistant.includes('name="arrow-up-bold"') && assistant.includes('onPress={() => router.push("/RoojgarForm")}'), "Roojgar and Jobs shortcut must look like a laptop Shift key and keep its existing navigation");
-          assert.ok(home.includes('testID="home-village-chimney-smoke"') && home.includes("function VillageSmokePuff") && home.includes("withTiming(1, { duration: 3600 })"), "Smoke must animate upward from the village hut chimney");
-          assert.ok(home.includes("VillageSmallHouse") && home.includes("VillageTree") && home.includes("villageFieldLineOne") && home.includes("villageFence"), "Village houses, trees, field lines and fencing must remain part of the scene");
+          assert.ok(home.includes('testID="home-cinematic-chimney-smoke"') && home.includes("function HearthSmokeWisp") && home.includes("withTiming(1, { duration: 5200 })"), "New smoke wisps must animate upward from the cinematic hut chimney");
+          assert.ok(home.includes("SceneTree") && home.includes("sceneFieldRows") && home.includes("sceneGrassBlade"), "The replacement landscape must preserve trees, field rows and foreground detail");
+          const tabsLayout = fs.readFileSync("app/(tabs)/_layout.tsx", "utf8");
+          assert.ok(tabsLayout.includes('import * as Haptics from "expo-haptics"') && tabsLayout.includes("screenListeners={{ tabPress: () => triggerTabPressFeedback() }}"), "Bottom navigation must trigger a haptic response on tab press");
+          assert.ok(tabsLayout.includes("Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)") && tabsLayout.includes("webNavigator.vibrate(12)"), "Native and supported mobile browsers must provide light vibration on navigation taps");
           assert.ok(!home.includes("function FestivalChhathWoman()") && !home.includes("function FestivalLantern(") && !home.includes("function FestivalFirework("), "Old seasonal festival illustrations must be removed from the hero");
           console.log("HOME_HERO_NEON_AND_SEARCH_SUGGESTIONS_VALIDATION_PASS");
           console.log("DAY_NIGHT_VILLAGE_HERO_VALIDATION_PASS");
