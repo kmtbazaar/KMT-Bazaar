@@ -434,8 +434,10 @@ jobs:
           assert.ok(form.includes('import { useRouter } from "expo-router";'), "Roojgar form must use Expo Router for explicit home navigation");
           assert.ok(form.includes('router.replace("/(tabs)/home" as any)'), "Successful application submission must route directly to customer Home");
           assert.ok(form.includes('onPress={() => navigation.goBack()}'), "The form header back button must preserve its existing previous-screen behavior");
-          const successButton = form.match(/<TouchableOpacity\\s+style={styles\\.successButton}[\\s\\S]*?onPress=\\{([^}]+)\\}/);
-          assert.ok(successButton && successButton[1].includes('router.replace("/(tabs)/home"'), "The success screen Back to Home button must not depend on navigation history");
+          const successStart = form.indexOf("style={styles.successButton}");
+          const successEnd = form.indexOf("</TouchableOpacity>", successStart);
+          const successButton = form.slice(successStart, successEnd);
+          assert.ok(successStart >= 0 && successEnd > successStart && successButton.includes('onPress={() => router.replace("/(tabs)/home" as any)}'), "The success screen Back to Home button must not depend on navigation history");
           console.log("ROOJGAR_SUCCESS_HOME_NAVIGATION_VALIDATION_PASS");
           NODE
 
