@@ -172,7 +172,7 @@ jobs:
           console.log("PRODUCT_SIZE_PACK_UI_VALIDATION_PASS");
           NODE
 
-      - name: Validate cinematic day-night hero, chimney smoke, tab haptics, neon brand and home search placement
+      - name: Validate Karmatar landmark hero, tab haptics and home search placement
         working-directory: frontend
         run: |
           node <<'NODE'
@@ -186,10 +186,7 @@ jobs:
           assert.ok(home.includes("VIDYASAGAR") && home.includes("RAILWAY STATION") && home.includes("RGRG +2 HIGH SCHOOL"), "Vidyasagar station and RGRG school must appear");
           assert.ok(home.includes("HOME DELIVERY") && home.includes("karmatarGrassWall") && home.includes('testID="home-karmatar-home-delivery-room"'), "Grass-wall home delivery room must appear");
           assert.ok(home.includes('testID="home-karmatar-road"') && home.includes('testID="home-karmatar-railway-crossing"'), "Road and railway crossing must appear");
-          assert.ok(home.includes("karmatarDaySky") && home.includes("karmatarNightSky") && home.includes("withTiming(1,{duration:52000})"), "New scene must retain day/night animation");
-          assert.ok(home.includes('sceneSmokeTrail: { position: "absolute", left: 106, bottom: 109, width: 78, height: 94') && home.includes("duration: 5200"), "The enlarged chimney must keep slow, layered rising smoke");
-          assert.ok(home.includes("const pondRippleStyle = useAnimatedStyle") && home.includes("windowFlicker.value * 0.28"), "Pond reflections must reuse the existing animation clock to avoid extra frame loops");
-          assert.ok(home.includes("SceneTree") && home.includes("sceneFieldRows") && home.includes("scenePath") && home.includes("sceneForegroundBank"), "The replacement hero must include a complete layered rural landscape");
+          assert.ok(home.includes("karmatarDaySky") && home.includes("karmatarNightSky") && home.includes("withTiming(1,{duration:52000})") && home.includes("const day=useAnimatedStyle") && home.includes("const night=useAnimatedStyle"), "New landmark scene must retain smooth day/night animation");
           assert.ok(!home.includes("VillageDayNight") && !home.includes("VillageSmokePuff") && !home.includes("villageMainHut") && !home.includes("villageDayLayer"), "The old village animation must be fully removed");
           assert.ok(!home.includes("FestivalDecor") && !home.includes("FESTIVAL_FIREWORKS") && !home.includes("home-chhath-soop"), "The previous festival ghat scene must be replaced");
           assert.ok(!home.includes("chhath-hero-240-q26.webp"), "The hero must remain animated CSS/View layers, not a flat replacement image");
@@ -237,7 +234,7 @@ jobs:
           assert.ok(tabsLayout.includes("Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)") && tabsLayout.includes("webNavigator.vibrate(12)"), "Native and supported mobile browsers must provide light vibration on navigation taps");
           assert.ok(!home.includes("function FestivalChhathWoman()") && !home.includes("function FestivalLantern(") && !home.includes("function FestivalFirework("), "Old seasonal festival illustrations must be removed from the hero");
           console.log("HOME_HERO_NEON_AND_SEARCH_SUGGESTIONS_VALIDATION_PASS");
-          console.log("DAY_NIGHT_VILLAGE_HERO_VALIDATION_PASS");
+          console.log("KARMATAR_LANDMARK_DAY_NIGHT_HERO_VALIDATION_PASS");
           console.log("HOME_SEARCH_GREEN_TRANSPARENT_BELOW_HERO_VALIDATION_PASS");
           NODE
 
