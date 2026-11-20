@@ -186,7 +186,7 @@ jobs:
           assert.ok(home.includes("VIDYASAGAR") && home.includes("RAILWAY STATION") && home.includes("RGRG +2 HIGH SCHOOL"), "Vidyasagar station and RGRG school must appear");
           assert.ok(home.includes("HOME DELIVERY") && home.includes("karmatarGrassWall") && home.includes('testID="home-karmatar-home-delivery-room"'), "Grass-wall home delivery room must appear");
           assert.ok(home.includes('testID="home-karmatar-road"') && home.includes('testID="home-karmatar-railway-crossing"'), "Road and railway crossing must appear");
-          assert.ok(home.includes("karmatarDaySky") && home.includes("karmatarNightSky") && home.includes("withTiming(1,{duration:52000})") && home.includes("const day=useAnimatedStyle") && home.includes("const night=useAnimatedStyle"), "New landmark scene must retain smooth day/night animation");
+          assert.ok(home.includes("karmatarDaySky") && home.includes("karmatarNightSky") && home.includes("withTiming(1,{duration:52000})") && home.includes("const day=useAnimatedStyle") && home.includes("night=useAnimatedStyle"), "New landmark scene must retain smooth day/night animation");
           assert.ok(!home.includes("VillageDayNight") && !home.includes("VillageSmokePuff") && !home.includes("villageMainHut") && !home.includes("villageDayLayer"), "The old village animation must be fully removed");
           assert.ok(!home.includes("FestivalDecor") && !home.includes("FESTIVAL_FIREWORKS") && !home.includes("home-chhath-soop"), "The previous festival ghat scene must be replaced");
           assert.ok(!home.includes("chhath-hero-240-q26.webp"), "The hero must remain animated CSS/View layers, not a flat replacement image");
