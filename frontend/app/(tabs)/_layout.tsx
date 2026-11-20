@@ -46,16 +46,13 @@ function TabIcon3D({
   color,
   size,
   focused,
-  offsetY = 0,
 }: {
   name: string;
   color: string;
   size: number;
   focused: boolean;
-  offsetY?: number;
 }) {
   return (
-    <View style={offsetY ? { transform: [{ translateY: offsetY }] } : undefined}>
     <TabIconShell focused={focused}>
       <View style={s.navGlyphStack}>
         <MaterialCommunityIcons
@@ -72,7 +69,6 @@ function TabIcon3D({
         />
       </View>
     </TabIconShell>
-    </View>
   );
 }
 
@@ -176,8 +172,9 @@ export default function TabsLayout() {
           fontSize: isMobileTabBar ? 12 : 13,
           lineHeight: isMobileTabBar ? 16 : 18,
           fontWeight: "800",
-          marginTop: isMobileTabBar ? 1 : 2,
+          marginTop: isMobileTabBar ? 5 : 2,
           marginBottom: 0,
+          transform: isMobileTabBar ? [{ translateY: 2 }] : undefined,
           includeFontPadding: false,
         },
       }}
@@ -188,7 +185,7 @@ export default function TabsLayout() {
         options={{
           title: t("Home"),
           tabBarIcon: ({ color, size, focused }) => (
-            <TabIcon3D name="home-variant" color={color} size={size + 6} focused={focused} offsetY={6} />
+            <TabIcon3D name="home-variant" color={color} size={size + 6} focused={focused} />
           ),
         }}
       />
@@ -199,7 +196,7 @@ export default function TabsLayout() {
         options={{
           title: t("Categories"),
           tabBarIcon: ({ color, size, focused }) => (
-            <TabIcon3D name="view-grid" color={color} size={size + 6} focused={focused} offsetY={6} />
+            <TabIcon3D name="view-grid" color={color} size={size + 6} focused={focused} />
           ),
         }}
       />
@@ -231,12 +228,14 @@ export default function TabsLayout() {
         options={{
           title: t("AI"),
           tabBarIcon: ({ focused }) => (
-            <View style={[s.assistantTabIcon, focused && s.assistantTabIconActive]}>
-              <RobotCompanion3D
-                size={48}
-                interactive
-                onActivate={() => router.push("/assistant")}
-              />
+            <View style={s.assistantTabStage}>
+              <View style={[s.assistantTabIcon, focused && s.assistantTabIconActive]}>
+                <RobotCompanion3D
+                  size={48}
+                  interactive
+                  onActivate={() => router.push("/assistant")}
+                />
+              </View>
             </View>
           ),
         }}
@@ -323,11 +322,17 @@ const s = StyleSheet.create({
     textShadowOffset: { width: 0, height: -1 },
     textShadowRadius: 1,
   },
+  assistantTabStage: {
+    width: 54,
+    height: 48,
+    alignItems: "center",
+    justifyContent: "center",
+    overflow: "visible",
+  },
   assistantTabIcon: {
-    width: 62,
-    height: 62,
-    borderRadius: 31,
-    marginTop: -4,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     alignItems: "center",
     justifyContent: "center",
     overflow: "visible",
