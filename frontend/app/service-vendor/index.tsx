@@ -3,7 +3,8 @@ import { View, ActivityIndicator } from "react-native";
 import { useAuth } from "@/src/AuthContext";
 import HolidayVendorDashboardScreen from "../vendor/holiday-dashboard";
 import CarRentalVendorDashboardScreen from "../vendor/car-rental-dashboard";
-import EventServiceVendorDashboard from "../vendor/event-service-dashboard";
+import DecoratorVendorDashboard from "../vendor/decorator-dashboard";
+import PhotographyVendorDashboard from "../vendor/photography-dashboard";
 
 export default function ServiceVendorDashboard() {
   const { user, loading } = useAuth();
@@ -24,8 +25,12 @@ export default function ServiceVendorDashboard() {
     return <CarRentalVendorDashboardScreen />;
   }
 
-  if (user.service_type === "premium_decorator" || user.service_type === "photography") {
-    return <EventServiceVendorDashboard />;
+  if (user.service_type === "premium_decorator") {
+    return <DecoratorVendorDashboard />;
+  }
+
+  if (user.service_type === "photography") {
+    return <PhotographyVendorDashboard />;
   }
 
   return <HolidayVendorDashboardScreen />;
