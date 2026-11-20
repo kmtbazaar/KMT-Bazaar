@@ -15,6 +15,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
+import { useRouter } from "expo-router";
 import { apiFetch } from "@/src/api";
 
 const LEATHER_BG_URL =
@@ -47,6 +48,7 @@ const DEFAULT_CATEGORIES = [
 
 export default function RoojgarForm() {
   const navigation = useNavigation();
+  const router = useRouter();
 
   const [name, setName] = useState("");
   const [mobile, setMobile] = useState("");
@@ -251,7 +253,7 @@ export default function RoojgarForm() {
               <TouchableOpacity
                 style={styles.successButton}
                 activeOpacity={0.85}
-                onPress={() => navigation.goBack()}
+                onPress={() => router.replace("/(tabs)/home" as any)}
               >
                 <Text style={styles.successButtonText}>
                   Back to Home
