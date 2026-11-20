@@ -10,6 +10,7 @@ on:
       - "frontend/app/product/**"
       - "frontend/src/components/ProductCard.tsx"
       - "frontend/app/(tabs)/home.tsx"
+      - "frontend/assets/images/kmt-bazaar-flex-board.webp"
       - "frontend/app/search.tsx"
       - "frontend/src/api.ts"
       - "frontend/src/CartContext.tsx"
@@ -180,21 +181,19 @@ jobs:
           const home = fs.readFileSync("app/(tabs)/home.tsx", "utf8");
           const robot = fs.readFileSync("src/components/RobotCompanion3D.tsx", "utf8");
           const assistant = fs.readFileSync("app/assistant.tsx", "utf8");
-          assert.ok(home.includes("function NightSky()") && home.includes("<CinematicDayNightScene />"), "The new cinematic day/night scene must render in the home hero");
-          assert.ok(home.includes("function CinematicDayNightScene()") && home.includes("sceneDaySky") && home.includes("sceneNightSky") && home.includes("withTiming(1, { duration: 52000 })"), "New day and night sky layers must cross-fade on a slower natural cycle");
-          assert.ok(home.includes("sceneSunCore") && home.includes("sceneMoonDisc") && home.includes("CINEMATIC_STARS") && home.includes("SceneCloud"), "The new sky must include a moving sun, moon, stars and drifting clouds");
-          assert.ok(home.includes('testID="home-cinematic-hut"') && home.includes("sceneHutRoof") && home.includes("sceneHutWindow"), "The replacement hero must include a detailed traditional hut and warm window");
-          assert.ok(home.includes('testID="home-cinematic-pond"') && home.includes("scenePondWater") && home.includes("scenePondRipple") && home.includes("const pondRippleStyle = useAnimatedStyle"), "The home hero must include a layered pond with subtle moving water reflections");
-          assert.ok(home.includes('sceneHut: { position: "absolute", left: "21%", bottom: 3, width: 164, height: 120') && home.includes('width: 16, height: 29') && home.includes("sceneHutChimneyMouth"), "The rural hut and chimney must be larger, with a dimensional chimney opening");
+          assert.ok(home.includes("function NightSky()") && home.includes("<KarmatarHeroScene />") && home.includes('testID="home-karmatar-hero"'), "Karmatar landmark hero must replace the old village scene");
+          assert.ok(home.includes('testID="home-kmt-bazaar-flex-board"') && home.includes("kmt-bazaar-flex-board.webp") && fs.existsSync("assets/images/kmt-bazaar-flex-board.webp"), "Uploaded KMT flex board must be bundled locally");
+          assert.ok(home.includes("VIDYASAGAR") && home.includes("RAILWAY STATION") && home.includes("RGRG +2 HIGH SCHOOL"), "Vidyasagar station and RGRG school must appear");
+          assert.ok(home.includes("HOME DELIVERY") && home.includes("karmatarGrassWall") && home.includes('testID="home-karmatar-home-delivery-room"'), "Grass-wall home delivery room must appear");
+          assert.ok(home.includes('testID="home-karmatar-road"') && home.includes('testID="home-karmatar-railway-crossing"'), "Road and railway crossing must appear");
+          assert.ok(home.includes("karmatarDaySky") && home.includes("karmatarNightSky") && home.includes("withTiming(1,{duration:52000})"), "New scene must retain day/night animation");
           assert.ok(home.includes('sceneSmokeTrail: { position: "absolute", left: 106, bottom: 109, width: 78, height: 94') && home.includes("duration: 5200"), "The enlarged chimney must keep slow, layered rising smoke");
           assert.ok(home.includes("const pondRippleStyle = useAnimatedStyle") && home.includes("windowFlicker.value * 0.28"), "Pond reflections must reuse the existing animation clock to avoid extra frame loops");
-          assert.ok(home.includes('testID="home-cinematic-chimney-smoke"') && home.includes("function HearthSmokeWisp") && home.includes("sceneSmokeWisp") && home.includes("duration: 5200"), "Layered smoke wisps must rise continuously from the new chimney");
           assert.ok(home.includes("SceneTree") && home.includes("sceneFieldRows") && home.includes("scenePath") && home.includes("sceneForegroundBank"), "The replacement hero must include a complete layered rural landscape");
           assert.ok(!home.includes("VillageDayNight") && !home.includes("VillageSmokePuff") && !home.includes("villageMainHut") && !home.includes("villageDayLayer"), "The old village animation must be fully removed");
           assert.ok(!home.includes("FestivalDecor") && !home.includes("FESTIVAL_FIREWORKS") && !home.includes("home-chhath-soop"), "The previous festival ghat scene must be replaced");
           assert.ok(!home.includes("chhath-hero-240-q26.webp"), "The hero must remain animated CSS/View layers, not a flat replacement image");
           assert.ok(!home.includes('testID="home-location-neon-glow"') && !home.includes("headerNeonGlow"), "Neon bar between location and notification must remain removed");
-          assert.ok(home.includes('testID="home-hero-brand-neon"') && home.includes("KMT BAZAAR") && home.includes("heroBrandNeon:") && home.includes('textShadowColor: "#FFB928"'), "Pre-GIF KMT Bazaar hero neon text must render");
           assert.ok(home.includes('backgroundColor: "rgba(22,163,74,0.22)"') && home.includes('borderColor: "rgba(134,239,172,0.72)"') && home.includes("borderRadius: 8"), "Home search field must retain translucent green styling and square corners");
           const heroHeightLine = home.includes("const heroExpandedHeight = HERO_BACKDROP_HEIGHT;");
           const searchStyleLine = home.includes("style={s.searchWrap}") && !home.includes("translateY: -24");
@@ -221,25 +220,18 @@ jobs:
           assert.ok(home.includes("width: Math.min((width - SPACING.lg * 2 - 10) / 2, 190)") && home.includes("storeCardSmall: { width: Math.min((width - SPACING.lg * 2 - 10) / 2, 190), height: 112") && home.includes("storeImgSmall: { width: \"100%\", height: 64 }"), "Nearby store cards must fit exactly two across the screen while preserving the original card and image heights");
           assert.ok(!home.includes("Search 'medicines'..."), "Medicine must be removed from animated home search suggestions");
           assert.ok(["Search 'groceries'...", "Search 'fresh food'...", "Search 'electronics'...", "Search 'daily essentials'..."].every((suggestion) => home.includes(suggestion)), "All other animated search suggestions must remain");
-          assert.ok(home.includes('heroBrandNeon: { color: "#FFFBEA", fontSize: 21') && home.includes("transform: [{ translateY: -26 }]"), "KMT Bazaar hero neon text must be shifted above its previous position");
           assert.ok(home.includes('searchPlaceholderText: { fontSize: 16, color: "#FFFFFF", fontWeight: "500"'), "Home search suggestion text must be larger, white, and less bold");
           assert.ok(home.includes("const BANNER_W = Math.max(0, width - 24);") && home.includes("paddingHorizontal: SPACING.md") && home.includes("bannerItemWrap: { width: BANNER_W, flexShrink: 0"), "Home banners must be wider with consistent 12px side gutters");
           assert.ok(home.includes('bannerCarouselShell: { position: "relative", width: "100%", alignSelf: "stretch", minWidth: 0, overflow: "hidden"') && home.includes('overflowY: "hidden"'), "Banner carousel must stay clipped to its own viewport so it cannot cross the Shop by Category orange indicator");
           assert.ok(home.includes("ref={bannerListRef}") && !home.includes("ref={(ref) =>") && home.includes("bannerScrollOffsetRef.current") && home.includes("Math.abs(bannerScrollOffsetRef.current - targetOffset) > 2"), "Carousel must use one stable list ref and avoid duplicate scroll animations during re-renders");
           assert.ok(home.includes('decelerationRate="fast"') && home.includes("disableIntervalMomentum") && home.includes('snapToAlignment="start"'), "Home banner swipes must snap cleanly and smoothly to one banner");
           assert.ok(home.includes("sectionIndicator: { width: 4, height: 16, backgroundColor: THEME.orange"), "The orange Shop by Category indicator must remain in its original position and styling");
-          assert.ok(home.includes("const CINEMATIC_STARS = Array.from({ length: 24 }") && home.includes("? 3 + ((point * 7) % 22)") && home.includes(": 77 + ((point * 9) % 20)"), "Replacement hero stars must stay at the sides and keep the KMT Bazaar wordmark clear");
-          assert.ok(home.includes("sceneDaySky") && home.includes("sceneNightSky") && home.includes("SceneCloud") && home.includes("sceneMoonDisc"), "The cinematic sky must cross-fade with drifting clouds and a moon");
-          assert.ok(home.includes('heroBrandNeon: { color: "#FFFBEA", fontSize: 21') && home.includes("zIndex: 30, elevation: 30") && home.includes("textShadowRadius: 11"), "KMT Bazaar hero wordmark must be bright, elevated and clearly visible");
           assert.ok(home.includes("api.products({ trending: true, limit: 12 })") && !home.includes("api.vendorServices()") && home.includes("sections independently"), "Home first paint must use a limited trending payload and avoid the unused vendor-services request");
           assert.ok(robot.includes("1000 / 60") && robot.includes("lastRenderedAt") && robot.includes("1.15"), "3D taskbar robot idle rendering must be capped at 60 FPS with a lower render pixel ratio");
-          assert.ok(home.includes('testID="home-cinematic-hut"') && home.includes("sceneHutRoof") && home.includes("sceneHutWindow") && home.includes("sceneHutChimney"), "The new cinematic hero must retain the detailed hut and warm window");
           assert.ok(assistant.includes("shiftKeyButton") && assistant.includes("shiftKeyLabel") && assistant.includes("SHIFT") && assistant.includes('name="arrow-up-bold"') && assistant.includes('onPress={() => router.push("/RoojgarForm")}'), "Roojgar and Jobs shortcut must look like a laptop Shift key and keep its existing navigation");
           assert.ok(assistant.includes("function AssistantShutterTransition()") && assistant.includes('testID="assistant-shutter-transition"') && assistant.includes("AssistantShutterBlade") && assistant.includes("angle={300}"), "Opening the AI assistant must show the six-blade camera shutter transition");
           assert.ok(assistant.includes("duration: 920") && assistant.includes("Easing.out(Easing.cubic)") && assistant.includes("FadeIn.duration(520)") && !assistant.includes("ZoomIn.duration(320)"), "AI assistant entry must use a smooth eased shutter reveal and fade-in instead of the old zoom pop");
           assert.ok(assistant.includes("pointerEvents=\"none\"") && assistant.includes("styles.shutterOverlay"), "The shutter transition must not block chat or voice controls");
-          assert.ok(home.includes('testID="home-cinematic-chimney-smoke"') && home.includes("function HearthSmokeWisp") && home.includes("withTiming(1, { duration: 5200 })"), "New smoke wisps must animate upward from the cinematic hut chimney");
-          assert.ok(home.includes("SceneTree") && home.includes("sceneFieldRows") && home.includes("sceneGrassBlade"), "The replacement landscape must preserve trees, field rows and foreground detail");
           const tabsLayout = fs.readFileSync("app/(tabs)/_layout.tsx", "utf8");
           assert.ok(tabsLayout.includes('import * as Haptics from "expo-haptics"') && tabsLayout.includes("screenListeners={{ tabPress: () => triggerTabPressFeedback() }}"), "Bottom navigation must trigger a haptic response on tab press");
           assert.ok(tabsLayout.includes("Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)") && tabsLayout.includes("webNavigator.vibrate(12)"), "Native and supported mobile browsers must provide light vibration on navigation taps");

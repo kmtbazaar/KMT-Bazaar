@@ -55,325 +55,29 @@ const SEARCH_PLACEHOLDERS = [
 const RECENT_SEARCHES_KEY = "kmt_recent_searches";
 const MAX_RECENT_SEARCHES = 5;
 
-// Cinematic rural day/night hero with a slow sun path and a continuously rising hearth smoke trail.
-const CINEMATIC_STARS = Array.from({ length: 24 }, (_, index) => {
-  const point = Math.floor(index / 2);
-  const left = index % 2 === 0
-    ? 3 + ((point * 7) % 22)
-    : 77 + ((point * 9) % 20);
-  return {
-    left: String(left) + "%",
-    top: 7 + ((index * 13 + 9) % 52),
-    size: index % 5 === 0 ? 2.4 : 1.5,
-    opacity: 0.52 + ((index % 4) * 0.12),
-  };
-});
-
-function HearthSmokeWisp({
-  delay,
-  left,
-  size,
-  drift,
-}: {
-  delay: number;
-  left: number;
-  size: number;
-  drift: number;
-}) {
-  const rise = useSharedValue(0);
-
-  useEffect(() => {
-    rise.value = withRepeat(
-      withDelay(
-        delay,
-        withSequence(
-          withTiming(1, { duration: 5200 }),
-          withTiming(0, { duration: 20 })
-        )
-      ),
-      -1,
-      false
-    );
-  }, [delay]);
-
-  const wispStyle = useAnimatedStyle(() => ({
-    opacity: 0.3 * (1 - rise.value * 0.88),
-    transform: [
-      { translateY: -rise.value * 76 },
-      { translateX: rise.value * drift + Math.sin(rise.value * Math.PI) * 7 },
-      { scale: size * (0.62 + rise.value * 1.3) },
-      { rotate: (rise.value * 22) + "deg" },
-    ],
-  }));
-
-  return (
-    <Animated.View style={[s.sceneSmokeWisp, { left }, wispStyle]}>
-      <View style={s.sceneSmokeSoftCore} />
-      <View style={s.sceneSmokeLightEdge} />
-    </Animated.View>
-  );
+// Lightweight Karmatar landmark day/night hero.
+const KARMATAR_STARS=Array.from({length:14},(_,i)=>({left:(5+(i*19)%90)+"%",top:9+(i*13)%48}));
+function KarmatarHeroScene(){
+ const cycle=useSharedValue(0),drift=useSharedValue(0);
+ useEffect(()=>{cycle.value=withRepeat(withSequence(withTiming(1,{duration:52000}),withTiming(0,{duration:52000})),-1,false);drift.value=withRepeat(withTiming(1,{duration:30000}),-1,true);},[]);
+ const day=useAnimatedStyle(()=>({opacity:1-cycle.value})),night=useAnimatedStyle(()=>({opacity:cycle.value}));
+ const sun=useAnimatedStyle(()=>({opacity:1-cycle.value,transform:[{translateX:cycle.value*46}]})),moon=useAnimatedStyle(()=>({opacity:cycle.value}));
+ const float=useAnimatedStyle(()=>({transform:[{translateY:-1+drift.value*2}]})),neon=useAnimatedStyle(()=>({opacity:.72+cycle.value*.28}));
+ const gate=useAnimatedStyle(()=>({transform:[{rotate:(-7+drift.value*4)+"deg"}]})),signal=useAnimatedStyle(()=>({opacity:.35+Math.abs(Math.sin(drift.value*Math.PI*4))*.65}));
+ const scooter=useAnimatedStyle(()=>({transform:[{translateX:-5+drift.value*28}]}));
+ return <View pointerEvents="none" style={s.nightSky} testID="home-karmatar-hero">
+ <Animated.View style={[StyleSheet.absoluteFillObject,day]}><LinearGradient colors={["#54B5E2","#B4DCE7","#F0C49B"]} style={StyleSheet.absoluteFillObject}/><Animated.View style={[s.karmatarSun,sun]}/><View style={s.karmatarCloudTrack}><View style={[s.karmatarCloud,{left:"12%",top:68}]}/><View style={[s.karmatarCloud,{left:"72%",top:42}]}/></View></Animated.View>
+ <Animated.View style={[StyleSheet.absoluteFillObject,night]}><LinearGradient colors={["#08172C","#203C59","#755E5A"]} style={StyleSheet.absoluteFillObject}/>{KARMATAR_STARS.map((v,i)=><View key={i} style={[s.karmatarStar,{left:v.left,top:v.top}]}/>)}<Animated.View style={[s.karmatarMoon,moon]}/></Animated.View>
+ <View style={s.karmatarGroundBack}/>
+ <View style={s.karmatarSchool} testID="home-karmatar-rgrg-school"><View style={s.karmatarSchoolRoof}/><View style={s.karmatarSchoolSign}><Text style={s.karmatarSchoolSignText}>RGRG +2 HIGH SCHOOL · KARMATAR</Text></View><View style={s.karmatarSchoolWindows}>{[0,1,2].map(i=><View key={i} style={s.karmatarSchoolWindow}/>)}</View><View style={s.karmatarSchoolDoor}/></View>
+ <View style={s.karmatarStation} testID="home-karmatar-vidyasagar-station"><View style={s.karmatarStationRoof}/><View style={s.karmatarStationArch}><View style={s.karmatarStationOpening}/><View style={s.karmatarStationSign}><Text style={s.karmatarStationSignText}>VIDYASAGAR</Text><Text style={s.karmatarStationSignSub}>RAILWAY STATION</Text></View></View></View>
+ <Animated.View style={[s.karmatarBoard,float]} testID="home-kmt-bazaar-flex-board"><Image source={require("../../assets/images/kmt-bazaar-flex-board.webp")} style={s.karmatarBoardImage} contentFit="contain" transition={0}/></Animated.View>
+ <View style={s.karmatarRoom} testID="home-karmatar-home-delivery-room"><View style={s.karmatarRoomRoof}/><View style={s.karmatarGrassWall}><Animated.View style={[s.karmatarNeon,neon]}><Text style={s.karmatarNeonText}>HOME DELIVERY</Text></Animated.View></View><View style={s.karmatarRoomDoor}/><View style={s.karmatarRoomWindow}/></View>
+ <View style={s.karmatarRoad} testID="home-karmatar-road"><View style={s.karmatarRoadLine}/><View style={s.karmatarRails}><View style={s.karmatarRail}/><View style={[s.karmatarRail,{right:5}]}/>{[0,1,2,3,4].map(i=><View key={i} style={[s.karmatarSleeper,{top:i*6}]}/>)}</View><Animated.View style={[s.karmatarScooter,scooter]}><View style={s.karmatarScooterBody}/><View style={s.karmatarScooterWheelA}/><View style={s.karmatarScooterWheelB}/></Animated.View></View>
+ <View style={s.karmatarGate} testID="home-karmatar-railway-crossing"><Animated.View style={[s.karmatarSignal,signal]}><View style={s.karmatarSignalLight}/></Animated.View><Animated.View style={[s.karmatarGateArm,gate]}>{[0,1,2,3,4,5].map(i=><View key={i} style={[s.karmatarGateStripe,{left:i*12,backgroundColor:i%2?"#D63A36":"#FFF"}]}/>)}</Animated.View></View>
+ </View>;
 }
-
-function HearthSmoke() {
-  return (
-    <View pointerEvents="none" style={s.sceneSmokeTrail} testID="home-cinematic-chimney-smoke">
-      <HearthSmokeWisp delay={0} left={9} size={0.86} drift={10} />
-      <HearthSmokeWisp delay={650} left={19} size={1.02} drift={14} />
-      <HearthSmokeWisp delay={1320} left={3} size={1.16} drift={18} />
-      <HearthSmokeWisp delay={2030} left={26} size={1.08} drift={21} />
-      <HearthSmokeWisp delay={2760} left={13} size={1.24} drift={25} />
-    </View>
-  );
-}
-
-function SceneCloud({ left, top, scale = 1 }: { left: string; top: number; scale?: number }) {
-  return (
-    <View pointerEvents="none" style={[s.sceneCloud, { left, top, transform: [{ scale }] }]}>
-      <View style={[s.sceneCloudShape, { left: 9, top: 15, width: 43, height: 18 }]} />
-      <View style={[s.sceneCloudShape, { left: 25, top: 5, width: 39, height: 27 }]} />
-      <View style={[s.sceneCloudShape, { left: 49, top: 14, width: 39, height: 20 }]} />
-      <View style={[s.sceneCloudBase, { left: 17, top: 23, width: 62, height: 12 }]} />
-    </View>
-  );
-}
-
-function SceneTree({ left, scale = 1 }: { left: string; scale?: number }) {
-  return (
-    <View pointerEvents="none" style={[s.sceneTree, { left, transform: [{ scale }] }]}>
-      <View style={s.sceneTreeTrunk} />
-      <View style={[s.sceneTreeLeaf, s.sceneTreeLeafA]} />
-      <View style={[s.sceneTreeLeaf, s.sceneTreeLeafB]} />
-      <View style={[s.sceneTreeLeaf, s.sceneTreeLeafC]} />
-      <View style={[s.sceneTreeLeaf, s.sceneTreeLeafD]} />
-      <View style={[s.sceneTreeLeaf, s.sceneTreeLeafE]} />
-      <View style={[s.sceneTreeLeaf, s.sceneTreeLeafF]} />
-    </View>
-  );
-}
-
-function CinematicDayNightScene() {
-  const cycle = useSharedValue(0);
-  const cloudDrift = useSharedValue(0);
-  const windowFlicker = useSharedValue(0);
-  const { width: sceneWidth } = useWindowDimensions();
-
-  useEffect(() => {
-    cycle.value = withRepeat(
-      withSequence(
-        withTiming(1, { duration: 52000 }),
-        withTiming(0, { duration: 52000 })
-      ),
-      -1,
-      false
-    );
-    cloudDrift.value = withRepeat(
-      withTiming(1, { duration: 46000 }),
-      -1,
-      true
-    );
-    windowFlicker.value = withRepeat(
-      withSequence(
-        withTiming(1, { duration: 1900 }),
-        withTiming(0.55, { duration: 2400 }),
-        withTiming(0.82, { duration: 1700 })
-      ),
-      -1,
-      false
-    );
-  }, []);
-
-  const dayStyle = useAnimatedStyle(() => ({ opacity: 1 - cycle.value }));
-  const nightStyle = useAnimatedStyle(() => ({ opacity: cycle.value }));
-  const starsStyle = useAnimatedStyle(() => ({ opacity: cycle.value }));
-  const duskStyle = useAnimatedStyle(() => ({
-    opacity: Math.max(0, 1 - Math.abs(cycle.value - 0.5) / 0.2),
-  }));
-  const sunStyle = useAnimatedStyle(() => ({
-    opacity: 1 - cycle.value,
-    transform: [
-      { translateX: cycle.value * sceneWidth * 0.66 },
-      { translateY: cycle.value * 20 },
-      { scale: 1 - cycle.value * 0.1 },
-    ],
-  }));
-  const moonStyle = useAnimatedStyle(() => ({
-    opacity: cycle.value,
-    transform: [
-      { translateX: (1 - cycle.value) * sceneWidth * 0.48 },
-      { translateY: (1 - cycle.value) * 11 },
-    ],
-  }));
-  const cloudStyle = useAnimatedStyle(() => ({
-    transform: [{ translateX: -17 + cloudDrift.value * 34 }],
-  }));
-  const windowStyle = useAnimatedStyle(() => ({
-    opacity: 0.4 + cycle.value * 0.42 + windowFlicker.value * 0.12,
-  }));
-  const pondRippleStyle = useAnimatedStyle(() => ({
-    opacity: 0.2 + windowFlicker.value * 0.38,
-    transform: [
-      { translateX: -5 + windowFlicker.value * 10 },
-      { scaleX: 0.82 + windowFlicker.value * 0.28 },
-    ],
-  }));
-
-  return (
-    <View pointerEvents="none" style={s.nightSky} testID="home-cinematic-day-night-hero">
-      <Animated.View style={[s.sceneDaySky, dayStyle]}>
-        <LinearGradient
-          colors={["#58B9EA", "#9ED7E8", "#F6D6A6", "#E9A36E"]}
-          locations={[0, 0.42, 0.78, 1]}
-          style={s.sceneSkyFill}
-        />
-        <View style={s.sceneDayGlow} />
-        <Animated.View style={[s.sceneSun, sunStyle]}>
-          <View style={s.sceneSunHalo} />
-          <View style={s.sceneSunCore} />
-        </Animated.View>
-        <Animated.View style={[s.sceneCloudTrack, cloudStyle]}>
-          <SceneCloud left="7%" top={39} scale={0.72} />
-          <SceneCloud left="55%" top={22} scale={0.56} />
-        </Animated.View>
-      </Animated.View>
-
-      <Animated.View style={[s.sceneNightSky, nightStyle]}>
-        <LinearGradient
-          colors={["#09172E", "#142A49", "#304B66", "#805B59"]}
-          locations={[0, 0.48, 0.8, 1]}
-          style={s.sceneSkyFill}
-        />
-        <View style={s.sceneNightHorizonGlow} />
-        <Animated.View style={[s.sceneStars, starsStyle]}>
-          {CINEMATIC_STARS.map((star, index) => (
-            <View
-              key={index}
-              style={[
-                s.sceneStar,
-                {
-                  left: star.left,
-                  top: star.top,
-                  width: star.size,
-                  height: star.size,
-                  opacity: star.opacity,
-                },
-              ]}
-            />
-          ))}
-        </Animated.View>
-        <Animated.View style={[s.sceneMoon, moonStyle]}>
-          <View style={s.sceneMoonHalo} />
-          <View style={s.sceneMoonDisc} />
-          <View style={s.sceneMoonShadow} />
-        </Animated.View>
-      </Animated.View>
-
-      <Animated.View style={[s.sceneTwilight, duskStyle]} />
-
-      <View style={s.sceneDistantRidge} />
-      <View style={s.sceneFarFields} />
-      <View style={s.sceneBackHill} />
-      <View style={s.sceneFrontHill} />
-      <View style={s.sceneFieldRows}>
-        <View style={[s.sceneFieldRow, { top: 2, width: "56%" }]} />
-        <View style={[s.sceneFieldRow, { top: 9, width: "72%" }]} />
-        <View style={[s.sceneFieldRow, { top: 16, width: "86%" }]} />
-      </View>
-      <Animated.View style={[s.sceneNightLandscapeTint, nightStyle]} />
-
-      <SceneTree left="-4%" scale={0.7} />
-      <SceneTree left="84%" scale={0.58} />
-
-      <View pointerEvents="none" style={s.scenePond} testID="home-cinematic-pond">
-        <View style={s.scenePondOuterBank} />
-        <LinearGradient
-          colors={["#C0B58A", "#8C805D", "#665D43"]}
-          locations={[0, 0.52, 1]}
-          start={{ x: 0.12, y: 0 }}
-          end={{ x: 0.88, y: 1 }}
-          style={s.scenePondRim}
-        >
-          <LinearGradient
-            colors={["#9CC9BB", "#4C9291", "#245F69", "#183F4D"]}
-            locations={[0, 0.34, 0.72, 1]}
-            start={{ x: 0.18, y: 0 }}
-            end={{ x: 0.82, y: 1 }}
-            style={s.scenePondWater}
-          >
-            <View style={s.scenePondReflectionLong} />
-            <View style={s.scenePondReflectionShort} />
-            <Animated.View style={[s.scenePondRipple, pondRippleStyle]} />
-            <Animated.View style={[s.scenePondNightTint, nightStyle]} />
-          </LinearGradient>
-        </LinearGradient>
-        <View style={s.scenePondReedLeft} />
-        <View style={s.scenePondReedRight} />
-      </View>
-
-      <View style={s.sceneHut} testID="home-cinematic-hut">
-        <View style={s.sceneHutGroundShadow} />
-        <View style={s.sceneHutSideWall} />
-        <LinearGradient
-          colors={["#D5A876", "#A9764E", "#704A35"]}
-          locations={[0, 0.48, 1]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={s.sceneHutWall}
-        >
-          <View style={s.sceneHutPlasterTextureA} />
-          <View style={s.sceneHutPlasterTextureB} />
-          <View style={s.sceneHutDoor} />
-          <Animated.View style={[s.sceneHutWindow, windowStyle]}>
-            <View style={s.sceneHutWindowBarV} />
-            <View style={s.sceneHutWindowBarH} />
-          </Animated.View>
-          <View style={s.sceneHutWallBase} />
-        </LinearGradient>
-        <View style={s.sceneHutRoof} />
-        <View style={s.sceneHutRoofRidge} />
-        <View style={s.sceneHutRoofEdge} />
-        {[0, 1, 2, 3, 4, 5, 6].map((strand) => (
-          <View
-            key={strand}
-            style={[
-              s.sceneHutThatchedStrand,
-              {
-                left: 17 + strand * 16,
-                transform: [{ rotate: strand < 3 ? "-16deg" : "16deg" }],
-                opacity: 0.55 + (strand % 3) * 0.12,
-              },
-            ]}
-          />
-        ))}
-        <View style={s.sceneHutChimney}>
-          <View style={s.sceneHutChimneyMouth} />
-          <View style={s.sceneHutChimneyHighlight} />
-        </View>
-        <HearthSmoke />
-      </View>
-
-      <View style={s.scenePath} />
-      <View style={s.sceneForegroundBank} />
-      {[5, 13, 23, 36, 49, 62, 76, 89, 97].map((left, index) => (
-        <View
-          key={left}
-          style={[
-            s.sceneGrassBlade,
-            {
-              left: String(left) + "%",
-              height: 5 + (index % 4) * 2,
-              transform: [{ rotate: index % 2 ? "-20deg" : "17deg" }],
-            },
-          ]}
-        />
-      ))}
-      <View style={s.sceneEdgeShade} />
-    </View>
-  );
-}
-
-function NightSky() {
-  return <CinematicDayNightScene />;
-}
+function NightSky(){return <KarmatarHeroScene/>;}
 
 export default function Home() {
   const { user } = useAuth();
@@ -1006,11 +710,7 @@ export default function Home() {
         </View>
 
       </SafeAreaView>
-      <View style={s.skyClearSpace} pointerEvents="none" testID="home-hero-brand-space">
-        <Animated.Text testID="home-hero-brand-neon" style={[s.heroBrandNeon, animatedFlashStyle]}>
-          KMT BAZAAR
-        </Animated.Text>
-      </View>
+      <View style={s.skyClearSpace} pointerEvents="none" testID="home-hero-brand-space" />
       </RNAnimated.View>
 
       {/* The search bar stays usable while the hero shell slides away after the banner scrolls off. */}
@@ -1511,78 +1211,15 @@ function SectionTitle({ title, subtitle }: { title: string; subtitle?: string })
 
 const s = StyleSheet.create({
   heroHeaderShell: { position: "relative", width: "100%", overflow: "visible" },
-  nightSky: { position: "absolute", top: 0, left: 0, right: 0, height: HERO_BACKDROP_HEIGHT, overflow: "hidden", zIndex: 0, pointerEvents: "none" },
-  sceneDaySky: { ...StyleSheet.absoluteFillObject, overflow: "hidden" },
-  sceneNightSky: { ...StyleSheet.absoluteFillObject, overflow: "hidden" },
-  sceneSkyFill: { ...StyleSheet.absoluteFillObject },
-  sceneDayGlow: { position: "absolute", left: "7%", right: "7%", bottom: 18, height: 74, borderTopLeftRadius: 150, borderTopRightRadius: 150, backgroundColor: "rgba(255,226,179,0.2)" },
-  sceneNightHorizonGlow: { position: "absolute", left: "12%", right: "12%", bottom: 18, height: 72, borderTopLeftRadius: 150, borderTopRightRadius: 150, backgroundColor: "rgba(250,151,117,0.16)" },
-  sceneSun: { position: "absolute", left: "8%", top: 25, width: 68, height: 68, alignItems: "center", justifyContent: "center" },
-  sceneSunHalo: { position: "absolute", width: 68, height: 68, borderRadius: 34, backgroundColor: "rgba(255,244,205,0.22)" },
-  sceneSunCore: { width: 41, height: 41, borderRadius: 22, backgroundColor: "#FFF0BD", shadowColor: "#FFF0BD", shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.9, shadowRadius: 19, elevation: 7 },
-  sceneCloudTrack: { position: "absolute", top: 0, left: 0, right: 0, height: 100 },
-  sceneCloud: { position: "absolute", width: 94, height: 42, opacity: 0.67 },
-  sceneCloudShape: { position: "absolute", borderRadius: 30, backgroundColor: "rgba(255,255,255,0.78)" },
-  sceneCloudBase: { position: "absolute", borderRadius: 15, backgroundColor: "rgba(255,255,255,0.72)" },
-  sceneStars: { position: "absolute", top: 0, left: 0, right: 0, height: 98 },
-  sceneStar: { position: "absolute", borderRadius: 4, backgroundColor: "#F6F4E8", shadowColor: "#DAE9FF", shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.92, shadowRadius: 5, elevation: 2 },
-  sceneMoon: { position: "absolute", top: 16, left: "68%", width: 62, height: 62, alignItems: "center", justifyContent: "center" },
-  sceneMoonHalo: { position: "absolute", width: 62, height: 62, borderRadius: 31, backgroundColor: "rgba(225,237,255,0.13)" },
-  sceneMoonDisc: { width: 39, height: 39, borderRadius: 20, backgroundColor: "#F5F1D9", shadowColor: "#E7F0FF", shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.85, shadowRadius: 15, elevation: 6 },
-  sceneMoonShadow: { position: "absolute", top: 7, left: 30, width: 32, height: 32, borderRadius: 17, backgroundColor: "#142A49" },
-  sceneTwilight: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(242,119,85,0.2)", zIndex: 2 },
-  sceneDistantRidge: { position: "absolute", left: "-8%", right: "-10%", bottom: 30, height: 51, borderTopLeftRadius: 140, borderTopRightRadius: 130, backgroundColor: "rgba(60,98,86,0.34)" },
-  sceneFarFields: { position: "absolute", left: 0, right: 0, bottom: 25, height: 29, backgroundColor: "rgba(61,111,79,0.34)" },
-  sceneBackHill: { position: "absolute", left: "-12%", right: "44%", bottom: 17, height: 48, borderTopLeftRadius: 110, borderTopRightRadius: 100, backgroundColor: "rgba(62,111,71,0.68)" },
-  sceneFrontHill: { position: "absolute", left: "43%", right: "-12%", bottom: 13, height: 44, borderTopLeftRadius: 100, borderTopRightRadius: 90, backgroundColor: "rgba(35,83,56,0.78)" },
-  sceneFieldRows: { position: "absolute", left: "48%", right: "-5%", bottom: 16, height: 21, transform: [{ rotate: "-5deg" }] },
-  sceneFieldRow: { position: "absolute", right: 0, height: 1, backgroundColor: "rgba(224,202,139,0.3)" },
-  sceneNightLandscapeTint: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(3,15,31,0.34)", zIndex: 6 },
-  sceneTree: { position: "absolute", bottom: 13, width: 84, height: 91, zIndex: 7 },
-  sceneTreeTrunk: { position: "absolute", bottom: 0, left: "46%", width: 8, height: 40, borderRadius: 3, backgroundColor: "#493A2D" },
-  sceneTreeLeaf: { position: "absolute", borderRadius: 40, backgroundColor: "#244D37", borderWidth: 1, borderColor: "rgba(153,177,113,0.18)" },
-  sceneTreeLeafA: { left: 5, top: 31, width: 40, height: 38 },
-  sceneTreeLeafB: { left: 27, top: 11, width: 43, height: 43 },
-  sceneTreeLeafC: { right: 0, top: 34, width: 39, height: 39 },
-  sceneTreeLeafD: { left: 18, top: 48, width: 48, height: 37 },
-  sceneTreeLeafE: { left: 0, top: 49, width: 34, height: 28 },
-  sceneTreeLeafF: { right: 5, top: 13, width: 31, height: 31 },
-  scenePond: { position: "absolute", left: "67%", bottom: 14, width: "29%", height: 39, zIndex: 14, transform: [{ rotate: "-3deg" }] },
-  scenePondOuterBank: { position: "absolute", left: -4, right: -4, bottom: -3, height: 15, borderRadius: 30, backgroundColor: "#625A43", borderWidth: 1, borderColor: "rgba(214,199,151,0.42)", shadowColor: "#132B2D", shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.34, shadowRadius: 5, elevation: 3 },
-  scenePondRim: { position: "absolute", left: 0, right: 0, top: 0, bottom: 0, borderRadius: 28, borderWidth: 1.5, borderColor: "#B6A77A", overflow: "hidden", shadowColor: "#D9D0A5", shadowOffset: { width: 0, height: -1 }, shadowOpacity: 0.36, shadowRadius: 3, elevation: 2 },
-  scenePondWater: { position: "absolute", left: 4, right: 4, top: 4, bottom: 4, borderRadius: 23, overflow: "hidden" },
-  scenePondReflectionLong: { position: "absolute", left: "15%", top: "27%", width: "61%", height: 2, borderRadius: 4, backgroundColor: "rgba(229,248,231,0.48)", transform: [{ rotate: "-5deg" }] },
-  scenePondReflectionShort: { position: "absolute", right: "13%", bottom: "26%", width: "26%", height: 2, borderRadius: 4, backgroundColor: "rgba(188,230,218,0.38)", transform: [{ rotate: "7deg" }] },
-  scenePondRipple: { position: "absolute", left: "25%", top: "22%", width: "52%", height: "58%", borderWidth: 1, borderColor: "rgba(218,247,237,0.52)", borderRadius: 100, backgroundColor: "rgba(167,224,210,0.05)" },
-  scenePondNightTint: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(4,18,38,0.42)", borderRadius: 23 },
-  scenePondReedLeft: { position: "absolute", left: 5, top: -7, width: 2, height: 15, borderRadius: 3, backgroundColor: "#718252", transform: [{ rotate: "-18deg" }] },
-  scenePondReedRight: { position: "absolute", right: 5, top: -8, width: 2, height: 16, borderRadius: 3, backgroundColor: "#718252", transform: [{ rotate: "16deg" }] },
-  sceneHut: { position: "absolute", left: "21%", bottom: 3, width: 164, height: 120, zIndex: 10 },
-  sceneHutGroundShadow: { position: "absolute", left: 2, right: 0, bottom: 0, height: 14, borderRadius: 50, backgroundColor: "rgba(11,22,18,0.42)" },
-  sceneHutSideWall: { position: "absolute", right: 3, bottom: 7, width: 20, height: 51, borderTopRightRadius: 4, backgroundColor: "#684735", transform: [{ skewY: "-2deg" }] },
-  sceneHutWall: { position: "absolute", left: 13, right: 11, bottom: 7, height: 52, borderTopWidth: 2, borderTopColor: "#D1A071", borderBottomLeftRadius: 3, borderBottomRightRadius: 3, overflow: "hidden" },
-  sceneHutPlasterTextureA: { position: "absolute", left: 7, right: 7, top: 11, height: 1, backgroundColor: "rgba(75,48,34,0.28)" },
-  sceneHutPlasterTextureB: { position: "absolute", left: 9, right: 11, top: 29, height: 1, backgroundColor: "rgba(75,48,34,0.25)" },
-  sceneHutDoor: { position: "absolute", left: 55, bottom: 0, width: 25, height: 39, borderTopLeftRadius: 13, borderTopRightRadius: 13, backgroundColor: "#402E25", borderWidth: 1, borderColor: "#C38D5D" },
-  sceneHutWindow: { position: "absolute", right: 17, bottom: 22, width: 19, height: 16, borderRadius: 2, backgroundColor: "#FFD47C", borderWidth: 2, borderColor: "#66442F", shadowColor: "#FFCF76", shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.95, shadowRadius: 11, elevation: 6 },
-  sceneHutWindowBarV: { position: "absolute", left: 6, top: 0, width: 2, height: 11, backgroundColor: "#705034" },
-  sceneHutWindowBarH: { position: "absolute", left: 0, right: 0, top: 6, height: 2, backgroundColor: "#705034" },
-  sceneHutWallBase: { position: "absolute", left: 0, right: 0, bottom: 0, height: 4, backgroundColor: "#7E523A" },
-  sceneHutRoof: { position: "absolute", left: -2, bottom: 55, width: 0, height: 0, borderLeftWidth: 84, borderRightWidth: 84, borderBottomWidth: 59, borderLeftColor: "transparent", borderRightColor: "transparent", borderBottomColor: "#593B2D", shadowColor: "#34251D", shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.32, shadowRadius: 5, elevation: 3 },
-  sceneHutRoofRidge: { position: "absolute", left: 8, right: 8, bottom: 54, height: 8, borderRadius: 5, backgroundColor: "#8B5B39" },
-  sceneHutRoofEdge: { position: "absolute", left: 3, right: 3, bottom: 54, height: 6, borderRadius: 3, backgroundColor: "#A7774A" },
-  sceneHutThatchedStrand: { position: "absolute", bottom: 73, width: 45, height: 3, borderRadius: 2, backgroundColor: "#C08A4D" },
-  sceneHutChimney: { position: "absolute", left: 112, bottom: 91, width: 16, height: 29, borderTopWidth: 4, borderTopColor: "#D3C6AE", borderLeftWidth: 2, borderLeftColor: "#947052", borderRightWidth: 1, borderRightColor: "#3D3028", backgroundColor: "#604332", borderTopLeftRadius: 2, borderTopRightRadius: 2, zIndex: 12, shadowColor: "#241A14", shadowOffset: { width: 1, height: 1 }, shadowOpacity: 0.28, shadowRadius: 2, elevation: 2 },
-  sceneHutChimneyMouth: { position: "absolute", left: 3, right: 3, top: 1, height: 3, borderRadius: 2, backgroundColor: "#302821" },
-  sceneHutChimneyHighlight: { position: "absolute", left: 2, top: 6, width: 2, bottom: 3, borderRadius: 2, backgroundColor: "rgba(221,190,151,0.42)" },
-  sceneSmokeTrail: { position: "absolute", left: 106, bottom: 109, width: 78, height: 94, zIndex: 13, overflow: "visible" },
-  sceneSmokeWisp: { position: "absolute", bottom: 0, width: 30, height: 22, borderRadius: 18, backgroundColor: "rgba(220,231,233,0.42)", shadowColor: "#F5F7F7", shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.28, shadowRadius: 12, elevation: 2, overflow: "hidden" },
-  sceneSmokeSoftCore: { position: "absolute", left: 3, top: 3, width: 18, height: 12, borderRadius: 10, backgroundColor: "rgba(248,250,250,0.25)" },
-  sceneSmokeLightEdge: { position: "absolute", left: 8, top: 2, width: 8, height: 5, borderRadius: 5, backgroundColor: "rgba(255,255,255,0.32)" },
-  scenePath: { position: "absolute", left: "45%", bottom: 4, width: "27%", height: 22, borderTopLeftRadius: 50, borderTopRightRadius: 50, backgroundColor: "rgba(177,143,96,0.2)", transform: [{ rotate: "-7deg" }] },
-  sceneForegroundBank: { position: "absolute", left: 0, right: 0, bottom: 0, height: 21, backgroundColor: "#344E39", borderTopWidth: 1, borderTopColor: "rgba(222,207,151,0.25)", zIndex: 13 },
-  sceneGrassBlade: { position: "absolute", bottom: 0, width: 2, borderRadius: 2, backgroundColor: "#A3B36C", zIndex: 15 },
-  sceneEdgeShade: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(5,17,28,0.08)", zIndex: 16 },
+  nightSky:{position:"absolute",top:0,left:0,right:0,height:HERO_BACKDROP_HEIGHT,overflow:"hidden",zIndex:0,pointerEvents:"none"},
+  karmatarSun:{position:"absolute",left:"9%",top:54,width:29,height:29,borderRadius:15,backgroundColor:"#FFF0BD",shadowColor:"#FFE6A2",shadowOpacity:.9,shadowRadius:12,elevation:5},karmatarMoon:{position:"absolute",right:"9%",top:55,width:27,height:27,borderRadius:14,backgroundColor:"#F4F1D9",shadowColor:"#EAF2FF",shadowOpacity:.8,shadowRadius:10,elevation:4},
+  karmatarCloudTrack:{position:"absolute",left:0,right:0,top:0,height:120},karmatarCloud:{position:"absolute",width:65,height:17,borderRadius:18,backgroundColor:"rgba(255,255,255,.7)"},karmatarStar:{position:"absolute",width:2,height:2,borderRadius:2,backgroundColor:"#FFF7DA",opacity:.75},karmatarGroundBack:{position:"absolute",left:0,right:0,bottom:24,height:30,backgroundColor:"#547B55",borderTopLeftRadius:60,borderTopRightRadius:60},
+  karmatarSchool:{position:"absolute",left:"2%",top:126,width:"29%",height:47,backgroundColor:"#E9E9D8",borderWidth:1,borderColor:"#A6B99C",zIndex:5},karmatarSchoolRoof:{position:"absolute",top:0,left:-2,right:-2,height:7,backgroundColor:"#477755",borderTopWidth:2,borderColor:"#D7E2D0"},karmatarSchoolSign:{position:"absolute",top:10,left:2,right:2,height:10,backgroundColor:"#D6E6D2",alignItems:"center",justifyContent:"center"},karmatarSchoolSignText:{fontSize:5,color:"#20553A",fontWeight:"900"},karmatarSchoolWindows:{position:"absolute",top:25,left:5,right:5,flexDirection:"row",justifyContent:"space-between"},karmatarSchoolWindow:{width:12,height:10,backgroundColor:"#648A98",borderWidth:1,borderColor:"#F0F0DC"},karmatarSchoolDoor:{position:"absolute",bottom:0,left:"44%",width:13,height:18,backgroundColor:"#6B624F"},
+  karmatarStation:{position:"absolute",left:"34%",top:105,width:"34%",height:60,zIndex:6,alignItems:"center"},karmatarStationRoof:{position:"absolute",top:0,left:0,right:0,height:8,backgroundColor:"#455B6C",borderTopWidth:2,borderColor:"#D5DAD1"},karmatarStationArch:{position:"absolute",top:9,width:"66%",height:51,borderTopLeftRadius:35,borderTopRightRadius:35,borderWidth:4,borderBottomWidth:0,borderColor:"#E5E4D7",backgroundColor:"#8D9F9C",alignItems:"center",overflow:"hidden"},karmatarStationOpening:{position:"absolute",left:7,right:7,top:12,bottom:0,borderTopLeftRadius:23,borderTopRightRadius:23,backgroundColor:"#465D69"},karmatarStationSign:{position:"absolute",top:2,left:0,right:0,alignItems:"center",zIndex:2},karmatarStationSignText:{fontSize:6,color:"#8E302A",fontWeight:"900"},karmatarStationSignSub:{fontSize:4.5,color:"#8E302A",fontWeight:"900"},
+  karmatarBoard:{position:"absolute",left:"26%",top:53,width:"48%",maxWidth:230,aspectRatio:3,zIndex:14,shadowColor:"#0D2030",shadowOffset:{width:0,height:4},shadowOpacity:.4,shadowRadius:5,elevation:8},karmatarBoardImage:{width:"100%",height:"100%",borderWidth:1,borderColor:"#C1C9CE",borderRadius:3},
+  karmatarRoom:{position:"absolute",right:"1.5%",top:110,width:"27%",height:62,backgroundColor:"#B6BBA4",borderWidth:1,borderColor:"#D6D8C7",zIndex:12},karmatarRoomRoof:{position:"absolute",top:0,left:-3,right:-3,height:8,backgroundColor:"#394C40",borderTopWidth:2,borderColor:"#C2CEB7"},karmatarGrassWall:{position:"absolute",top:11,left:4,right:4,height:32,backgroundColor:"#185638",borderWidth:1,borderColor:"#6A9A60",alignItems:"center",justifyContent:"center"},karmatarNeon:{paddingHorizontal:4,paddingVertical:4,backgroundColor:"rgba(0,30,13,.55)",borderWidth:1,borderColor:"#9CFF9B",borderRadius:3,shadowColor:"#47FF70",shadowOpacity:1,shadowRadius:8,elevation:5},karmatarNeonText:{fontSize:8,fontWeight:"900",letterSpacing:.3,color:"#D9FFD0",textShadowColor:"#39FF65",textShadowRadius:7},karmatarRoomDoor:{position:"absolute",left:7,bottom:0,width:14,height:17,backgroundColor:"#574638"},karmatarRoomWindow:{position:"absolute",right:8,bottom:7,width:13,height:12,backgroundColor:"#A6D3DC",borderWidth:1,borderColor:"#EDF1E4"},
+  karmatarRoad:{position:"absolute",left:0,right:0,bottom:0,height:27,backgroundColor:"#29343A",borderTopWidth:2,borderColor:"#B4A98F",zIndex:17,overflow:"hidden"},karmatarRoadLine:{position:"absolute",top:14,left:"5%",right:"5%",height:1,borderStyle:"dashed",borderWidth:1,borderColor:"#E9DFB8"},karmatarRails:{position:"absolute",left:"57%",top:-2,width:34,height:32,transform:[{rotate:"14deg"}]},karmatarRail:{position:"absolute",top:0,bottom:0,left:5,width:3,backgroundColor:"#B9C3C3",borderColor:"#EDF0E6",borderWidth:1},karmatarSleeper:{position:"absolute",left:0,right:0,height:3,backgroundColor:"#795D45"},karmatarScooter:{position:"absolute",left:"10%",bottom:4,width:34,height:17,zIndex:3},karmatarScooterBody:{position:"absolute",left:5,right:3,bottom:5,height:8,borderRadius:5,backgroundColor:"#E8A333",borderWidth:1,borderColor:"#FFE2A0"},karmatarScooterWheelA:{position:"absolute",left:1,bottom:0,width:7,height:7,borderRadius:4,backgroundColor:"#17232A",borderWidth:1,borderColor:"#AAB6B4"},karmatarScooterWheelB:{position:"absolute",right:0,bottom:0,width:7,height:7,borderRadius:4,backgroundColor:"#17232A",borderWidth:1,borderColor:"#AAB6B4"},
+  karmatarGate:{position:"absolute",left:"53%",top:121,width:"39%",height:35,zIndex:20},karmatarSignal:{position:"absolute",left:0,top:0,width:10,height:16,backgroundColor:"#26343A",borderWidth:1,borderColor:"#E3E4D7",alignItems:"center",justifyContent:"center"},karmatarSignalLight:{width:5,height:5,borderRadius:3,backgroundColor:"#FA3535",shadowColor:"#FF2525",shadowOpacity:1,shadowRadius:5},karmatarGateArm:{position:"absolute",left:8,top:5,width:76,height:5,backgroundColor:"#FFF",borderWidth:1,borderColor:"#AAA",transform:[{rotate:"-5deg"}],overflow:"hidden"},karmatarGateStripe:{position:"absolute",top:0,bottom:0,width:7},
   root: { flex: 1, backgroundColor: THEME.whiteBg },
   headerBg: { position: "absolute", top: 0, left: 0, right: 0, height: HERO_BACKDROP_HEIGHT, borderBottomLeftRadius: 30, borderBottomRightRadius: 30, backgroundColor: "transparent", shadowColor: "#FFFFFF", shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.14, shadowRadius: 18, elevation: 7 },
   skyClearSpace: { height: Platform.OS === "web" ? 90 : 56, alignItems: "center", justifyContent: "center", zIndex: 30, elevation: 30 },
@@ -1612,7 +1249,6 @@ const s = StyleSheet.create({
   locLabel: { color: "rgba(255,255,255,0.85)", fontSize: 11, fontWeight: "600" },
   locValue: { color: THEME.white, fontSize: 14, fontWeight: "800" },
   locationErrorText: { color: "#FEF3C7", fontSize: 9, fontWeight: "700", marginTop: 2, maxWidth: 260 },
-  heroBrandNeon: { color: "#FFFBEA", fontSize: 21, fontWeight: "900", letterSpacing: 3.2, textAlign: "center", includeFontPadding: false, zIndex: 30, elevation: 30, transform: [{ translateY: -26 }], textShadowColor: "#FFB928", textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 11 },
   headerActions: { flexDirection: "row", alignItems: "center" },
   iconBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: "rgba(255,255,255,0.2)", alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: "rgba(255,255,255,0.3)" },
   bellBadge: { position: "absolute", top: 2, right: 2, backgroundColor: THEME.orange, minWidth: 18, height: 18, borderRadius: 9, paddingHorizontal: 4, alignItems: "center", justifyContent: "center", borderWidth: 1.5, borderColor: THEME.white },
