@@ -1,7 +1,7 @@
 import { LocalizedText as Text, LocalizedTextInput as TextInput } from "@/src/LocalizedText";
 import { router } from "expo-router";
 import React, { useEffect, useRef, useState } from "react";
-import Animated, { ZoomIn } from "react-native-reanimated";
+import Animated, { Easing, FadeIn, useAnimatedStyle, useSharedValue, withTiming } from "react-native-reanimated";
 import {
   View,
   StyleSheet,
@@ -25,6 +25,70 @@ type Message = {
   text: string;
   isUser: boolean;
 };
+
+type AssistantShutterTransitionProps = {
+  progress: Animated.SharedValue<number>;
+};
+
+function AssistantShutterBlade({
+  progress,
+  angle,
+}: AssistantShutterTransitionProps & { angle: number }) {
+  const bladeStyle = useAnimatedStyle(() => ({
+    opacity: 1 - progress.value,
+    transform: [
+      { rotate: `${angle}deg` },
+      { scaleX: 1 - progress.value },
+      { scaleY: 1 - progress.value * 0.72 },
+    ],
+  }));
+
+  return <Animated.View pointerEvents="none" style={[styles.shutterBlade, bladeStyle]} />;
+}
+
+function AssistantShutterTransition() {
+  const progress = useSharedValue(0);
+  const [visible, setVisible] = useState(true);
+  const backdropStyle = useAnimatedStyle(() => ({
+    opacity: 1 - progress.value,
+  }));
+  const irisStyle = useAnimatedStyle(() => ({
+    opacity: 1 - progress.value,
+    transform: [{ scale: 0.62 + progress.value * 1.28 }],
+  }));
+  const innerIrisStyle = useAnimatedStyle(() => ({
+    opacity: 1 - progress.value,
+    transform: [{ scale: 0.42 + progress.value * 1.7 }],
+  }));
+
+  useEffect(() => {
+    progress.value = withTiming(1, {
+      duration: 920,
+      easing: Easing.out(Easing.cubic),
+    });
+    const timer = setTimeout(() => setVisible(false), 980);
+    return () => clearTimeout(timer);
+  }, []);
+
+  if (!visible) return null;
+
+  return (
+    <Animated.View
+      pointerEvents="none"
+      style={[styles.shutterOverlay, backdropStyle]}
+      testID="assistant-shutter-transition"
+    >
+      <AssistantShutterBlade progress={progress} angle={0} />
+      <AssistantShutterBlade progress={progress} angle={60} />
+      <AssistantShutterBlade progress={progress} angle={120} />
+      <AssistantShutterBlade progress={progress} angle={180} />
+      <AssistantShutterBlade progress={progress} angle={240} />
+      <AssistantShutterBlade progress={progress} angle={300} />
+      <Animated.View style={[styles.shutterIrisRing, irisStyle]} />
+      <Animated.View style={[styles.shutterInnerRing, innerIrisStyle]} />
+    </Animated.View>
+  );
+}
 
 export default function AssistantScreen() {
   const scrollRef = useRef<ScrollView>(null);
@@ -397,7 +461,7 @@ export default function AssistantScreen() {
         colors={["rgba(1,8,20,0.78)", "rgba(3,29,46,0.62)", "rgba(1,7,18,0.80)"]}
         style={StyleSheet.absoluteFillObject}
       />
-      <Animated.View entering={ZoomIn.duration(320).springify()} style={styles.panel}>
+      <Animated.View entering={FadeIn.duration(520)} style={styles.panel}>
       <BlurView intensity={52} tint="dark" style={StyleSheet.absoluteFillObject} />
       <LinearGradient
         pointerEvents="none"
@@ -496,11 +560,58 @@ export default function AssistantScreen() {
         </View>
       </KeyboardAvoidingView>
       </Animated.View>
+      <AssistantShutterTransition />
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  shutterOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 1000,
+    elevation: 30,
+    alignItems: "center",
+    justifyContent: "center",
+    overflow: "hidden",
+    backgroundColor: "#020814",
+  },
+  shutterBlade: {
+    position: "absolute",
+    left: "-25%",
+    top: "34%",
+    width: "150%",
+    height: "32%",
+    borderRadius: 42,
+    borderWidth: 1,
+    borderColor: "rgba(103,232,249,0.14)",
+    backgroundColor: "#020814",
+  },
+  shutterIrisRing: {
+    position: "absolute",
+    width: 176,
+    height: 176,
+    borderRadius: 88,
+    borderWidth: 2,
+    borderColor: "rgba(103,232,249,0.92)",
+    shadowColor: "#22D3EE",
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.8,
+    shadowRadius: 22,
+    elevation: 10,
+  },
+  shutterInnerRing: {
+    position: "absolute",
+    width: 112,
+    height: 112,
+    borderRadius: 56,
+    borderWidth: 1,
+    borderColor: "rgba(186,230,253,0.78)",
+    shadowColor: "#67E8F9",
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.55,
+    shadowRadius: 14,
+    elevation: 7,
+  },
   container: {
     flex: 1,
     alignItems: "center",
