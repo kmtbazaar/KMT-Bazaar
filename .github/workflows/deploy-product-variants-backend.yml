@@ -160,7 +160,7 @@ jobs:
           candidate_source = candidate_path.read_text(encoding="utf-8")
 
           # Bring the live API service categories in sync with the validated repository enum.
-          service_type_pattern = re.compile(r"(?ms)^class ServiceType\\(str, Enum\\):\\n(?:^[ \\t]+[^\\n]*\\n)+")
+          service_type_pattern = re.compile(r"(?ms)^class ServiceType\(str, Enum\):\n(?:^[ \t]+[^\n]*\n)+")
           candidate_service_types = service_type_pattern.findall(candidate_source)
           live_service_types = service_type_pattern.findall(source)
           if len(candidate_service_types) != 1 or len(live_service_types) != 1:
