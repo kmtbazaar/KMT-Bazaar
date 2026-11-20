@@ -1,9 +1,9 @@
 import { LocalizedText as Text } from "@/src/LocalizedText";
-import React, { useCallback, useEffect, useState, useRef } from "react";
-import { View, ScrollView, StyleSheet, Pressable, ActivityIndicator, Animated, Text as NativeText } from "react-native";
+import React, { useCallback, useEffect, useMemo, useState, useRef } from "react";
+import { View, ScrollView, StyleSheet, Pressable, ActivityIndicator, Animated, Text as NativeText, Platform, useWindowDimensions } from "react-native";
 import { Image } from "expo-image";
 import { useRouter, useNavigation, useLocalSearchParams, useFocusEffect } from "expo-router";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { api } from "@/src/api";
 import { COLORS, IMAGE_FALLBACK_URL, RADIUS, SPACING } from "@/src/theme";
@@ -209,14 +209,25 @@ export default function Categories() {
   const [products, setProducts] = useState<any[]>([]);
   const [loadingProducts, setLoadingProducts] = useState(false);
   const { itemCount } = useCart();
+  const { width } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
+  const isMobileTabBar = Platform.OS !== "web" || width <= 1024;
+  const categoriesTabBarStyle = useMemo(() => ({
+    position: "absolute" as const,
+    bottom: isMobileTabBar && Platform.OS === "web" ? -28 : -18,
+    borderTopColor: "#E2E8F0",
+    backgroundColor: Platform.OS === "ios" ? "transparent" : "#FFFFFF",
+    height: isMobileTabBar ? 92 + insets.bottom : 82,
+    paddingTop: 0,
+    paddingBottom: isMobileTabBar ? insets.bottom + 8 : 0,
+  }), [insets.bottom, isMobileTabBar]);
 
   // Animated Value for Slide Up / Slide Down Animation (0 = Visible, 100 = Hidden Below Screen)
   const translateYAnim = useRef(new Animated.Value(0)).current;
   const lastOffsetY = useRef(0);
   const isHidden = useRef(false);
 
-  // A route-specific tabBarStyle must never leak after leaving Categories.
-  // Keep the same 82px geometry as the shared tab layout on focus and blur.
+  // Keep Categories on the same safe-area-aware tab-bar geometry as Home.
   useFocusEffect(
     useCallback(() => {
       const restoreTabBar = () => {
@@ -224,21 +235,12 @@ export default function Categories() {
         translateYAnim.setValue(0);
         lastOffsetY.current = 0;
         isHidden.current = false;
-        navigation.setOptions({
-          tabBarStyle: {
-            position: "absolute",
-            borderTopColor: COLORS.border,
-            backgroundColor: "#FFFFFF",
-            height: 82,
-            paddingTop: 1,
-            paddingBottom: 8,
-          },
-        });
+        navigation.setOptions({ tabBarStyle: categoriesTabBarStyle });
       };
 
       restoreTabBar();
       return restoreTabBar;
-    }, [navigation, translateYAnim])
+    }, [navigation, translateYAnim, categoriesTabBarStyle])
   );
 
   const handleScroll = (event: any) => {
@@ -258,12 +260,7 @@ export default function Categories() {
           if (finished) {
             navigation.setOptions({
               tabBarStyle: {
-                position: "absolute",
-                borderTopColor: COLORS.border,
-                backgroundColor: "#FFFFFF",
-                height: 82,
-                paddingTop: 1,
-                paddingBottom: 8,
+                ...categoriesTabBarStyle,
                 transform: [{ translateY: 100 }],
               },
             });
@@ -274,12 +271,7 @@ export default function Categories() {
         isHidden.current = false;
         navigation.setOptions({
           tabBarStyle: {
-            position: "absolute",
-            borderTopColor: COLORS.border,
-            backgroundColor: "#FFFFFF",
-            height: 82,
-            paddingTop: 1,
-            paddingBottom: 8,
+            ...categoriesTabBarStyle,
             transform: [{ translateY: translateYAnim }],
           },
         });
