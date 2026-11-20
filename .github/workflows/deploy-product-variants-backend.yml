@@ -159,6 +159,24 @@ jobs:
           original = source
           candidate_source = candidate_path.read_text(encoding="utf-8")
 
+          # Bring the live API service categories in sync with the validated repository enum.
+          service_type_pattern = re.compile(r"(?ms)^class ServiceType\\(str, Enum\\):\\n(?:^[ \\t]+[^\\n]*\\n)+")
+          candidate_service_types = service_type_pattern.findall(candidate_source)
+          live_service_types = service_type_pattern.findall(source)
+          if len(candidate_service_types) != 1 or len(live_service_types) != 1:
+              raise SystemExit("STOP: Could not uniquely locate ServiceType enum; no VPS changes made.")
+          required_service_values = (
+              '    HOLIDAY = "holiday"',
+              '    CAR_RENTAL = "car_rental"',
+              '    PREMIUM_DECORATOR = "premium_decorator"',
+              '    PHOTOGRAPHY = "photography"',
+              '    DAILY_SERVICE = "daily_service"',
+          )
+          candidate_service_block = candidate_service_types[0]
+          if not all(value in candidate_service_block for value in required_service_values):
+              raise SystemExit("STOP: Candidate ServiceType enum is incomplete; no VPS changes made.")
+          source = service_type_pattern.sub(candidate_service_block, source, count=1)
+
           def extract_marked_block(candidate, start_marker, end_marker, label):
               if candidate.count(start_marker) != 1 or candidate.count(end_marker) != 1:
                   raise SystemExit(f"STOP: Candidate {label} markers are missing or duplicated; no VPS changes made.")
@@ -466,6 +484,13 @@ jobs:
           PY
           then
             echo "STOP: Backend source did not match the expected targeted patch structure."
+            exit 1
+          fi
+
+          if ! grep -Fq '    PHOTOGRAPHY = "photography"' "$TARGET" \
+            || ! grep -Fq '    PREMIUM_DECORATOR = "premium_decorator"' "$TARGET"; then
+            echo "BACKEND_SERVICE_VENDOR_CATEGORY_ENUM_MISSING"
+            rollback
             exit 1
           fi
 
