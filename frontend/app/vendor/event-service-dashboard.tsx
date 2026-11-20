@@ -10,10 +10,10 @@ import { vendorApi } from "@/src/roleApi";
 import { COLORS, SPACING } from "@/src/theme";
 import AnimatedBrandLogo, { BrandingFooter } from "@/src/components/AnimatedBrandLogo";
 
-export default function EventServiceVendorDashboard() {
+export default function EventServiceVendorDashboard({ serviceType }: { serviceType?: "premium_decorator" | "photography" }) {
   const router = useRouter();
   const { user, logout } = useAuth();
-  const isDecorator = user?.service_type === "premium_decorator";
+  const isDecorator = (serviceType || user?.service_type) === "premium_decorator";
   const title = isDecorator ? "Premium Decorator" : "Photography";
   const [stats, setStats] = useState<any>(null);
   const [pendingBookings, setPendingBookings] = useState(0);
