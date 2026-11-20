@@ -181,7 +181,7 @@ jobs:
           const home = fs.readFileSync("app/(tabs)/home.tsx", "utf8");
           const robot = fs.readFileSync("src/components/RobotCompanion3D.tsx", "utf8");
           const assistant = fs.readFileSync("app/assistant.tsx", "utf8");
-          assert.ok(home.includes("function NightSky(){") && home.includes("<KarmatarHeroScene />") && home.includes('testID="home-karmatar-hero"'), "Karmatar landmark hero must replace the old village scene");
+          assert.ok(home.includes("function NightSky(){") && home.includes("<KarmatarHeroScene/>") && home.includes('testID="home-karmatar-hero"'), "Karmatar landmark hero must replace the old village scene");
           assert.ok(home.includes('testID="home-kmt-bazaar-flex-board"') && home.includes("kmt-bazaar-flex-board.webp") && fs.existsSync("assets/images/kmt-bazaar-flex-board.webp"), "Uploaded KMT flex board must be bundled locally");
           assert.ok(home.includes("VIDYASAGAR") && home.includes("RAILWAY STATION") && home.includes("RGRG +2 HIGH SCHOOL"), "Vidyasagar station and RGRG school must appear");
           assert.ok(home.includes("HOME DELIVERY") && home.includes("karmatarGrassWall") && home.includes('testID="home-karmatar-home-delivery-room"'), "Grass-wall home delivery room must appear");
