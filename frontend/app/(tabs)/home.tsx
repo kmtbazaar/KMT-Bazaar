@@ -56,6 +56,7 @@ const RECENT_SEARCHES_KEY = "kmt_recent_searches";
 const MAX_RECENT_SEARCHES = 5;
 
 // Lightweight Karmatar landmark day/night hero.
+// Karmatar scene uses only local vector-style layers and the compressed bundled KMT flex image.
 const KARMATAR_STARS=Array.from({length:14},(_,i)=>({left:(5+(i*19)%90)+"%",top:9+(i*13)%48}));
 function KarmatarHeroScene(){
  const cycle=useSharedValue(0),drift=useSharedValue(0);
