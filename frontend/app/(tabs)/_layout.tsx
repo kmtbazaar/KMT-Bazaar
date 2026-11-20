@@ -188,7 +188,7 @@ export default function TabsLayout() {
         options={{
           title: t("Home"),
           tabBarIcon: ({ color, size, focused }) => (
-            <TabIcon3D name="home-variant" color={color} size={size + 6} focused={focused} offsetY={12} />
+            <TabIcon3D name="home-variant" color={color} size={size + 6} focused={focused} offsetY={6} />
           ),
         }}
       />

@@ -1,12 +1,12 @@
 import { LocalizedText as Text } from "@/src/LocalizedText";
 import React, { useEffect, useState, useCallback, useRef, useMemo } from "react";
-import { View, ScrollView, StyleSheet, Pressable, FlatList, Dimensions, RefreshControl, Platform, ActivityIndicator, Animated as RNAnimated, TextInput, BackHandler } from "react-native";
+import { View, ScrollView, StyleSheet, Pressable, FlatList, Dimensions, RefreshControl, Platform, ActivityIndicator, Animated as RNAnimated, TextInput, BackHandler, useWindowDimensions } from "react-native";
 import { BlurView } from "expo-blur";
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRouter, useFocusEffect, useNavigation } from "expo-router";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import Animated, { 
   FadeIn, 
@@ -298,6 +298,18 @@ export default function Home() {
   const { user } = useAuth();
   const router = useRouter();
   const navigation = useNavigation();
+  const { width: viewportWidth } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
+  const isMobileTabBar = Platform.OS !== "web" || viewportWidth <= 1024;
+  const homeTabBarStyle = useMemo(() => ({
+    position: "absolute" as const,
+    bottom: isMobileTabBar && Platform.OS === "web" ? -28 : -18,
+    borderTopColor: THEME.borderSoft,
+    backgroundColor: Platform.OS === "ios" ? "transparent" : "#FFFFFF",
+    height: isMobileTabBar ? 92 + insets.bottom : 82,
+    paddingTop: 0,
+    paddingBottom: isMobileTabBar ? insets.bottom + 8 : 0,
+  }), [insets.bottom, isMobileTabBar]);
   const [banners, setBanners] = useState<any[]>([]);
   const [brokenImages, setBrokenImages] = useState<Record<string, boolean>>({});
   const [cats, setCats] = useState<any[]>([]);
@@ -415,12 +427,7 @@ export default function Home() {
           if (finished) {
             navigation.setOptions({
               tabBarStyle: {
-                position: "absolute",
-                borderTopColor: THEME.borderSoft,
-                backgroundColor: "#FFFFFF",
-                height: 82,
-                paddingTop: 1,
-                paddingBottom: 8,
+                ...homeTabBarStyle,
                 transform: [{ translateY: 100 }],
               },
             });
@@ -430,12 +437,7 @@ export default function Home() {
         homeTabHidden.current = false;
         navigation.setOptions({
           tabBarStyle: {
-            position: "absolute",
-            borderTopColor: THEME.borderSoft,
-            backgroundColor: "#FFFFFF",
-            height: 82,
-            paddingTop: 1,
-            paddingBottom: 8,
+            ...homeTabBarStyle,
             transform: [{ translateY: tabBarTranslateY }],
           },
         });
@@ -448,7 +450,7 @@ export default function Home() {
 
       lastHomeOffsetY.current = currentOffsetY;
     }
-  }, [navigation, tabBarTranslateY, heroCollapsed, heroCollapseProgress]);
+  }, [navigation, tabBarTranslateY, heroCollapsed, heroCollapseProgress, homeTabBarStyle]);
 
   useFocusEffect(
     useCallback(() => {
@@ -458,14 +460,7 @@ export default function Home() {
       heroCollapseProgress.setValue(0);
       tabBarTranslateY.setValue(0);
       navigation.setOptions({
-        tabBarStyle: {
-          position: "absolute",
-          borderTopColor: THEME.borderSoft,
-          backgroundColor: "#FFFFFF",
-          height: 82,
-          paddingTop: 1,
-          paddingBottom: 8,
-        },
+        tabBarStyle: homeTabBarStyle,
       });
 
       return () => {
@@ -474,17 +469,10 @@ export default function Home() {
         heroCollapseProgress.setValue(0);
         tabBarTranslateY.setValue(0);
         navigation.setOptions({
-          tabBarStyle: {
-            position: "absolute",
-            borderTopColor: THEME.borderSoft,
-            backgroundColor: "#FFFFFF",
-            height: 82,
-            paddingTop: 1,
-            paddingBottom: 8,
-          },
+          tabBarStyle: homeTabBarStyle,
         });
       };
-    }, [navigation, tabBarTranslateY, heroCollapseProgress])
+    }, [navigation, tabBarTranslateY, heroCollapseProgress, homeTabBarStyle])
   );
 
   // Customer delivery location state
