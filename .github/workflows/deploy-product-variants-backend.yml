@@ -81,7 +81,7 @@ jobs:
           for function_name in ("vendor_list_services", "vendor_create_service", "vendor_update_service", "vendor_delete_service"):
               route_start = source.find("async def " + function_name + "(")
               assert route_start >= 0, f"Missing package management route: {function_name}"
-              route_end = source.find("\\n@api.", route_start + 1)
+              route_end = source.find("\n@api.", route_start + 1)
               if route_end < 0:
                   route_end = len(source)
               route_block = source[route_start:route_end]
@@ -148,6 +148,15 @@ jobs:
           test -s "$TARGET"
           test -s "$CANDIDATE_PATH"
           trap 'rm -f "$CANDIDATE_PATH"' EXIT
+
+          # The immediately preceding attempt was stopped during a deployment-script
+          # boundary review. Restore its pre-attempt backup before applying this safe patch.
+          PREVIOUS_TARGET_BACKUP="$(find /root -maxdepth 1 -type f -name 'kmtbazaar-backend-backup-389c95ec7136-*.py' -print | sort | tail -n 1)"
+          if [ -n "$PREVIOUS_TARGET_BACKUP" ]; then
+            cp -a "$PREVIOUS_TARGET_BACKUP" "$TARGET"
+            echo "RESTORED_PREVIOUS_PRODUCTION_SOURCE=$PREVIOUS_TARGET_BACKUP"
+          fi
+
           BACKUP="/root/kmtbazaar-backend-backup-${DEPLOY_SHA:0:12}-$(date +%Y%m%d-%H%M%S).py"
           cp -a "$TARGET" "$BACKUP"
 
@@ -223,7 +232,7 @@ jobs:
                   start = text.find(marker)
                   if start < 0 or text.find(marker, start + len(marker)) >= 0:
                       raise SystemExit(f"STOP: Could not uniquely locate {function_name}; no VPS changes made.")
-                  route_end = text.find("\\n@api.", start + len(marker))
+                  route_end = text.find("\n@api.", start + len(marker))
                   end = route_end if route_end >= 0 else len(text)
                   return start, end
               live_start, live_end = bounds(live_source)
@@ -562,7 +571,7 @@ jobs:
           source = Path(sys.argv[1]).read_text(encoding="utf-8")
           name = sys.argv[2]
           start = source.find("async def " + name + "(")
-          end = source.find("\\n@api.", start + 1) if start >= 0 else -1
+          end = source.find("\n@api.", start + 1) if start >= 0 else -1
           block = source[start:end if end >= 0 else len(source)] if start >= 0 else ""
           ok = (
               "ServiceType.PHOTOGRAPHY.value" in block
