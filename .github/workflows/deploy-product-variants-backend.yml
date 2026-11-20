@@ -177,6 +177,32 @@ jobs:
               raise SystemExit("STOP: Candidate ServiceType enum is incomplete; no VPS changes made.")
           source = service_type_pattern.sub(candidate_service_block, source, count=1)
 
+          # Sync only service-vendor signup validation blocks; preserve all other VPS-only code.
+          def replace_route_block(live_source, candidate, function_name, start_marker, end_marker):
+              def get_block(text, marker, end):
+                  route_start = text.find(f"async def {function_name}(")
+                  if route_start < 0:
+                      raise SystemExit(f"STOP: Missing {function_name}; no VPS changes made.")
+                  start = text.find(marker, route_start)
+                  finish = text.find(end, start + len(marker)) if start >= 0 else -1
+                  if start < 0 or finish <= start:
+                      raise SystemExit(f"STOP: Could not isolate {function_name} validation; no VPS changes made.")
+                  return start, finish, text[start:finish]
+              _, _, candidate_block = get_block(candidate, start_marker, end_marker)
+              live_start, live_end, _ = get_block(live_source, start_marker, end_marker)
+              return live_source[:live_start] + candidate_block + live_source[live_end:]
+
+          source = replace_route_block(
+              source, candidate_source, "request_email_signup_otp",
+              "    if data.role == Role.VENDOR and data.vendor_type == VendorType.SERVICE:",
+              "    existing_email = await db.users.find_one({\"email\": email})",
+          )
+          source = replace_route_block(
+              source, candidate_source, "verify_email_signup_otp",
+              '    if registration.get("role") == Role.VENDOR.value and registration.get("vendor_type") == VendorType.SERVICE.value:',
+              "    if existing_google_user_id:",
+          )
+
           def extract_marked_block(candidate, start_marker, end_marker, label):
               if candidate.count(start_marker) != 1 or candidate.count(end_marker) != 1:
                   raise SystemExit(f"STOP: Candidate {label} markers are missing or duplicated; no VPS changes made.")
