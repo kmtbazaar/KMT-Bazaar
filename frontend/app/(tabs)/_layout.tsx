@@ -46,13 +46,16 @@ function TabIcon3D({
   color,
   size,
   focused,
+  offsetY = 0,
 }: {
   name: string;
   color: string;
   size: number;
   focused: boolean;
+  offsetY?: number;
 }) {
   return (
+    <View style={offsetY ? { transform: [{ translateY: offsetY }] } : undefined}>
     <TabIconShell focused={focused}>
       <View style={s.navGlyphStack}>
         <MaterialCommunityIcons
@@ -69,6 +72,7 @@ function TabIcon3D({
         />
       </View>
     </TabIconShell>
+    </View>
   );
 }
 
@@ -184,7 +188,7 @@ export default function TabsLayout() {
         options={{
           title: t("Home"),
           tabBarIcon: ({ color, size, focused }) => (
-            <TabIcon3D name="home-variant" color={color} size={size + 6} focused={focused} />
+            <TabIcon3D name="home-variant" color={color} size={size + 6} focused={focused} offsetY={6} />
           ),
         }}
       />
@@ -195,7 +199,7 @@ export default function TabsLayout() {
         options={{
           title: t("Categories"),
           tabBarIcon: ({ color, size, focused }) => (
-            <TabIcon3D name="view-grid" color={color} size={size + 6} focused={focused} />
+            <TabIcon3D name="view-grid" color={color} size={size + 6} focused={focused} offsetY={6} />
           ),
         }}
       />
