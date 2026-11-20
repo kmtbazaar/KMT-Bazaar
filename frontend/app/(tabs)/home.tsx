@@ -911,7 +911,7 @@ export default function Home() {
 
   return (
     <View style={[s.root, Platform.OS === 'web' ? ({ height: '100vh', overflow: 'hidden' } as any) : {}]} testID="home-screen">
-      {/* Animated Chhath–Diwali hero: ghat, diyas, fireworks, lanterns and offerings */}
+      {/* New cinematic day/night hero: moving sun, moonrise, layered countryside and chimney smoke */}
       <RNAnimated.View
         pointerEvents={heroCollapsed ? "none" : "auto"}
         style={[
