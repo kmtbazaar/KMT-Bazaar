@@ -187,7 +187,7 @@ jobs:
             assert.ok(config.includes(label), `Missing category-specific option label: ${label}`);
           }
           assert.ok(vendor.includes("getProductCategoryConfig"), "Vendor Add/Edit must load the selected Shop Category configuration.");
-          assert.ok(vendor.includes("categoryConfig.showVariants && categoryConfig.variantOptions.length > 0"), "Preset variant chips must only render when relevant to this category.");
+          assert.ok(vendor.split("PRODUCT_UNIT_OPTIONS.map((option) =>").length - 1 === 2 && vendor.includes("vendor-store-add-product-size-pack-picker") && vendor.includes("vendor-store-edit-product-size-pack-picker"), "Store Vendor Add/Edit must retain the full shared size/pack option list.");
           assert.ok(vendor.includes("{categoryConfig.showColors ? ("), "Colour/Shade fields must be conditional on category settings.");
           assert.ok(vendor.includes("{categoryConfig.showDescription ? ("), "Description must be conditional on category settings.");
           assert.ok(vendor.includes("imagesByColor={form.color_images}") && vendor.includes("imagesByColor={editProductForm.color_images}"), "Vendor must upload separate colour-specific photo galleries in Add and Edit.");
