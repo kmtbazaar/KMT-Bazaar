@@ -22,15 +22,6 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import ProductImagesUploader from "@/src/components/ProductImagesUploader";
 import { getProductCategoryConfig } from "@/src/productCategoryConfig";
 
-const PRODUCT_UNIT_OPTIONS = [
-  "XS", "S", "M", "L", "XL", "XXL",
-  "UK 3", "UK 4", "UK 5", "UK 6", "UK 7", "UK 8", "UK 9",
-  "UK 10", "UK 11", "UK 12", "UK 13", "UK 14",
-  "1 pc", "250 g", "500 g", "1 kg", "250 ml", "500 ml", "750 ml", "1 L", "2 L",
-];
-
-// Shared size and pack options remain available in both Store Vendor Add and Edit Product.
-
 const PRODUCT_COLOR_OPTIONS = [
   { label: "Black", hex: "#171717" },
   { label: "White", hex: "#FFFFFF" },
@@ -48,15 +39,16 @@ const PRODUCT_COLOR_OPTIONS = [
   { label: "Beige", hex: "#D6C1A1" },
 ];
 
-type ProductVariantDraft = { id: string; unit: string; price: string; mrp: string; stock: string };
+type ProductVariantDraft = { id: string; unit: string; price: string; mrp: string; stock: string; description: string };
 
-const buildVariantPayload = (base: any, extras: ProductVariantDraft[], baseVariantId = "") => [
+const buildVariantPayload = (base: any, extras: ProductVariantDraft[], baseVariantId = "", baseDescription = "") => [
   {
     ...(baseVariantId ? { id: baseVariantId } : {}),
     unit: String(base.unit || "").trim(),
     price: Number.parseFloat(String(base.price)),
     mrp: base.mrp ? Number.parseFloat(String(base.mrp)) : Number.parseFloat(String(base.price)),
     stock: Number.parseInt(String(base.stock), 10),
+    description: String(baseDescription || "").trim(),
   },
   ...extras.map((variant) => ({
     ...(variant.id ? { id: variant.id } : {}),
@@ -64,10 +56,11 @@ const buildVariantPayload = (base: any, extras: ProductVariantDraft[], baseVaria
     price: Number.parseFloat(String(variant.price)),
     mrp: variant.mrp ? Number.parseFloat(String(variant.mrp)) : Number.parseFloat(String(variant.price)),
     stock: Number.parseInt(String(variant.stock), 10),
+    description: String(variant.description || "").trim(),
   })),
 ];
 
-const validateVariantDrafts = (variants: any[]) => {
+const validateVariantDrafts = (variants: any[], requireDescriptions = false) => {
   if (variants.some((variant) =>
     !variant.unit ||
     !Number.isFinite(variant.price) || variant.price < 0 ||
@@ -76,9 +69,24 @@ const validateVariantDrafts = (variants: any[]) => {
   )) {
     return "Every size/pack option needs a label, valid price/MRP, and non-negative stock.";
   }
+  if (requireDescriptions && variants.some((variant) => !String(variant.description || "").trim())) {
+    return "Add a description for every option when a product has multiple variants.";
+  }
   const labels = variants.map((variant) => variant.unit.toLowerCase());
   if (new Set(labels).size !== labels.length) {
     return "Each size/pack option must have a unique label.";
+  }
+  return "";
+};
+
+const validateRequiredColors = (config: any, colors: string[], imagesByColor: Record<string, string[]>) => {
+  if (config.requiresColor && !colors.length) return "Select at least one colour for this product category.";
+  if (config.requiresColorImages) {
+    const missing = colors.filter((color) => {
+      const key = Object.keys(imagesByColor || {}).find((item) => item.toLowerCase() === color.toLowerCase());
+      return !key || !Array.isArray(imagesByColor[key]) || !imagesByColor[key].some((url) => String(url || "").trim());
+    });
+    if (missing.length) return "Upload at least one matching photo for each selected colour: " + missing.join(", ");
   }
   return "";
 };
@@ -191,6 +199,8 @@ export default function VendorStoreDetail() {
   const [addVariantDrafts, setAddVariantDrafts] = useState<ProductVariantDraft[]>([]);
   const [editVariantDrafts, setEditVariantDrafts] = useState<ProductVariantDraft[]>([]);
   const [editBaseVariantId, setEditBaseVariantId] = useState("");
+  const [addBaseVariantDescription, setAddBaseVariantDescription] = useState("");
+  const [editBaseVariantDescription, setEditBaseVariantDescription] = useState("");
   const [form, setForm] = useState({
     name: "",
     category_id: "",
@@ -202,6 +212,7 @@ export default function VendorStoreDetail() {
     images: [] as string[],
     colors: [] as string[],
     color_images: {} as Record<string, string[]>,
+    attributes: {} as Record<string, string>,
     description: "",
     trending: false,
     item_category: "",
@@ -221,6 +232,7 @@ export default function VendorStoreDetail() {
     images: [] as string[],
     colors: [] as string[],
     color_images: {} as Record<string, string[]>,
+    attributes: {} as Record<string, string>,
     description: "",
     trending: false,
     item_category: "",
@@ -471,12 +483,14 @@ export default function VendorStoreDetail() {
       images: [],
       colors: [],
       color_images: {},
+      attributes: {},
       description: "",
       trending: false,
       item_category: "",
       item_category_id: "",
     });
     setAddVariantDrafts([]);
+    setAddBaseVariantDescription("");
   };
 
   const handleAddProduct = async () => {
@@ -489,8 +503,15 @@ export default function VendorStoreDetail() {
       Alert.alert("Error", "Name, Price, and shop category are required.");
       return;
     }
-    const variants = buildVariantPayload(form, addVariantDrafts);
-    const variantError = validateVariantDrafts(variants);
+    const colorError = validateRequiredColors(categoryConfig, form.colors, form.color_images);
+    if (colorError) {
+      Alert.alert("Select product colour", colorError);
+      return;
+    }
+    const variants = categoryConfig.showVariants
+      ? buildVariantPayload(form, addVariantDrafts, "", addBaseVariantDescription)
+      : undefined;
+    const variantError = variants ? validateVariantDrafts(variants, variants.length > 1) : "";
     if (variantError) {
       Alert.alert("Check product sizes", variantError);
       return;
@@ -499,7 +520,8 @@ export default function VendorStoreDetail() {
     try {
       await vendorApi.createProduct({
         ...form,
-        variants,
+        ...(variants ? { variants } : {}),
+        attributes: form.attributes || {},
         colors: categoryConfig.showColors ? form.colors : [],
         color_images: categoryConfig.showColors ? form.color_images : {},
         category_id: store.category_id,
@@ -525,12 +547,14 @@ export default function VendorStoreDetail() {
     const savedVariants = Array.isArray(prod.variants) ? prod.variants : [];
     const primaryVariant = savedVariants[0];
     setEditBaseVariantId(primaryVariant?.id || "");
+    setEditBaseVariantDescription(String(primaryVariant?.description || ""));
     setEditVariantDrafts(savedVariants.slice(1).map((variant: any) => ({
       id: String(variant.id || ""),
       unit: String(variant.unit || ""),
       price: String(variant.price ?? ""),
       mrp: String(variant.mrp ?? variant.price ?? ""),
       stock: String(variant.stock ?? 0),
+      description: String(variant.description || ""),
     })));
     setEditProductForm({
       name: prod.name,
@@ -543,6 +567,7 @@ export default function VendorStoreDetail() {
       images: Array.from(new Set([...(Array.isArray(prod.images) ? prod.images : []), prod.image].filter((url: any) => typeof url === "string" && url.trim()))),
       colors: Array.isArray(prod.colors) ? prod.colors.map((color: any) => String(color)) : [],
       color_images: prod.color_images && typeof prod.color_images === "object" ? prod.color_images : {},
+      attributes: prod.attributes && typeof prod.attributes === "object" ? { ...prod.attributes } : {},
       description: prod.description || "",
       trending: !!prod.trending,
       item_category: prod.item_category || "",
@@ -568,8 +593,15 @@ export default function VendorStoreDetail() {
       Alert.alert("Error", "Name and Price are required.");
       return;
     }
-    const variants = buildVariantPayload(editProductForm, editVariantDrafts, editBaseVariantId);
-    const variantError = validateVariantDrafts(variants);
+    const colorError = validateRequiredColors(categoryConfig, editProductForm.colors, editProductForm.color_images);
+    if (colorError) {
+      Alert.alert("Select product colour", colorError);
+      return;
+    }
+    const variants = categoryConfig.showVariants
+      ? buildVariantPayload(editProductForm, editVariantDrafts, editBaseVariantId, editBaseVariantDescription)
+      : undefined;
+    const variantError = variants ? validateVariantDrafts(variants, variants.length > 1) : "";
     if (variantError) {
       Alert.alert("Check product sizes", variantError);
       return;
@@ -578,7 +610,8 @@ export default function VendorStoreDetail() {
     try {
       await vendorApi.updateProduct(selectedProductId, {
         ...editProductForm,
-        variants,
+        ...(variants ? { variants } : {}),
+        attributes: editProductForm.attributes || {},
         colors: categoryConfig.showColors ? editProductForm.colors : [],
         color_images: categoryConfig.showColors ? editProductForm.color_images : {},
         category_id: store?.category_id || editProductForm.category_id,
@@ -860,35 +893,47 @@ export default function VendorStoreDetail() {
                 textAlignVertical="top"
               />
 
-              <View style={s.unitPickerPanel} testID="vendor-store-add-product-size-pack-picker">
-                <Text style={s.sectionLabel}>Choose product size / pack</Text>
-                <Text style={s.unitPickerHint}>Tap one option. Your selection fills the Unit field.</Text>
-                <View style={s.unitChipContainer}>
-                  {PRODUCT_UNIT_OPTIONS.map((option) => {
-                    const active = form.unit.trim().toLowerCase() === option.toLowerCase();
-                    return (
-                      <Pressable
-                        key={option}
-                        accessibilityRole="button"
-                        accessibilityLabel={`Select product unit ${option}`}
-                        accessibilityState={{ selected: active }}
-                        testID={`vendor-store-add-product-unit-${option.toLowerCase().replaceAll(" ", "-")}`}
-                        style={[s.catChip, s.unitChip, active && s.catChipActive]}
-                        onPress={() => setForm((current) => ({ ...current, unit: option }))}
-                      >
-                        <Text style={[s.catChipText, active && s.catChipTextActive]}>{option}</Text>
-                      </Pressable>
-                    );
-                  })}
+              {categoryConfig.showVariants && categoryConfig.variantOptions.length > 0 ? (
+                <View style={s.unitPickerPanel} testID="vendor-store-add-product-size-pack-picker">
+                  <Text style={s.sectionLabel}>Choose {categoryConfig.variantLabel}</Text>
+                  <Text style={s.unitPickerHint}>Only options configured for this category are shown.</Text>
+                  <View style={s.unitChipContainer}>
+                    {categoryConfig.variantOptions.map((option) => {
+                      const active = form.unit.trim().toLowerCase() === option.toLowerCase();
+                      return (
+                        <Pressable key={option} accessibilityRole="button"
+                          accessibilityLabel={"Select " + categoryConfig.variantLabel + " " + option}
+                          accessibilityState={{ selected: active }}
+                          testID={"vendor-store-add-product-unit-" + option.toLowerCase().replace(/\s+/g, "-")}
+                          style={[s.catChip, s.unitChip, active && s.catChipActive]}
+                          onPress={() => setForm((current) => ({ ...current, unit: option }))}>
+                          <Text style={[s.catChipText, active && s.catChipTextActive]}>{option}</Text>
+                        </Pressable>
+                      );
+                    })}
+                  </View>
                 </View>
-              </View>
+              ) : null}
 
-              {categoryConfig.showColors ? (
+              {categoryConfig.showColors ? (              {categoryConfig.showColors ? (
               <ProductColorPicker value={form.colors} colorLabel={categoryConfig.colorLabel}
                 onChange={(colors) => setForm((current) => ({ ...current, colors }))}
                 imagesByColor={form.color_images}
                 onImagesChange={(color_images) => setForm((current) => ({ ...current, color_images }))}
                 testID="vendor-store-add-product-colours" />
+              ) : null}
+
+              {categoryConfig.productAttributes.length ? (
+                <View style={s.productDescriptionPanel} testID="vendor-store-add-product-attributes">
+                  <Text style={s.sectionLabel}>Category-specific specifications</Text>
+                  {categoryConfig.productAttributes.map((attribute) => (
+                    <TextInput key={attribute.key} placeholder={attribute.label + (attribute.required ? " *" : "")}
+                      placeholderTextColor="#9CA3AF"
+                      value={form.attributes?.[attribute.key] || ""}
+                      onChangeText={(value) => setForm((current) => ({ ...current, attributes: { ...(current.attributes || {}), [attribute.key]: value } }))}
+                      style={s.inputCompact} />
+                  ))}
+                </View>
               ) : null}
 
                 <View style={s.itemCategoryPanel} testID="vendor-store-add-product-item-category-picker">
@@ -975,52 +1020,67 @@ export default function VendorStoreDetail() {
                   style={[s.inputCompact, s.flex1]}
                   keyboardType="numeric"
                 />
-                <TextInput placeholder="Unit (e.g. 1 kg)" placeholderTextColor="#9CA3AF"
+                <TextInput placeholder={categoryConfig.showVariants ? categoryConfig.variantLabel : "Unit (e.g. 1 pc)"} placeholderTextColor="#9CA3AF"
                   value={form.unit} onChangeText={(t) => setForm({ ...form, unit: t })}
                   style={[s.inputCompact, s.flex1]} />
               </View>
 
+              {categoryConfig.showVariants ? (
               <View style={s.variantManagerPanel} testID="vendor-store-add-product-variants">
-                <View style={s.variantManagerHeader}>
-                  <View style={{ flex: 1 }}>
-                    <Text style={s.variantManagerTitle}>Sell in more sizes</Text>
-                    <Text style={s.variantManagerHint}>Add each size/pack with its own label, price, MRP and stock.</Text>
-                  </View>
-                  <Pressable testID="vendor-store-add-variant" accessibilityRole="button"
-                    onPress={() => setAddVariantDrafts((current) => [...current, { id: "", unit: "", price: "", mrp: "", stock: "10" }])}
-                    style={s.addVariantButton}>
-                    <MaterialCommunityIcons name="plus" size={17} color="#FFFFFF" />
-                    <Text style={s.addVariantButtonText}>Add size</Text>
-                  </Pressable>
-                </View>
-                {addVariantDrafts.map((variant, index) => (
-                  <View key={`${variant.id || "new"}-${index}`} style={s.variantDraftCard}>
-                    <View style={s.variantDraftTopRow}>
-                      <Text style={s.variantDraftLabel}>Option {index + 2}</Text>
-                      <Pressable accessibilityRole="button" accessibilityLabel={`Remove size option ${index + 2}`}
-                        onPress={() => setAddVariantDrafts((current) => current.filter((_, itemIndex) => itemIndex !== index))}
-                        style={s.removeVariantButton}>
-                        <MaterialCommunityIcons name="trash-can-outline" size={17} color="#B91C1C" />
-                      </Pressable>
-                    </View>
-                    <TextInput placeholder="Size / pack (e.g. 500 g)" placeholderTextColor="#64748B"
-                      value={variant.unit}
-                      onChangeText={(value) => setAddVariantDrafts((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, unit: value } : item))}
-                      style={s.inputCompact} />
-                    <View style={s.rowCompact}>
-                      <TextInput placeholder="Price" placeholderTextColor="#64748B" value={variant.price}
-                        onChangeText={(value) => setAddVariantDrafts((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, price: value } : item))}
-                        style={[s.inputCompact, s.flex1]} keyboardType="numeric" />
-                      <TextInput placeholder="MRP" placeholderTextColor="#64748B" value={variant.mrp}
-                        onChangeText={(value) => setAddVariantDrafts((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, mrp: value } : item))}
-                        style={[s.inputCompact, s.flex1]} keyboardType="numeric" />
-                      <TextInput placeholder="Stock" placeholderTextColor="#64748B" value={variant.stock}
-                        onChangeText={(value) => setAddVariantDrafts((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, stock: value } : item))}
-                        style={[s.inputCompact, s.flex1]} keyboardType="numeric" />
-                    </View>
-                  </View>
-                ))}
-              </View>
+                              <View style={s.variantManagerHeader}>
+                                <View style={{ flex: 1 }}>
+                                  <Text style={s.variantManagerTitle}>Sell in more sizes</Text>
+                                  <Text style={s.variantManagerHint}>Add each size/pack with its own label, price, MRP and stock.</Text>
+                                </View>
+                                <Pressable testID="vendor-store-add-variant" accessibilityRole="button"
+                                  onPress={() => setAddVariantDrafts((current) => [...current, { id: "", unit: "", price: "", mrp: "", stock: "10", description: "" }])}
+                                  style={s.addVariantButton}>
+                                  <MaterialCommunityIcons name="plus" size={17} color="#FFFFFF" />
+                                  <Text style={s.addVariantButtonText}>Add size</Text>
+                                </Pressable>
+                              </View>
+                              {addVariantDrafts.length > 0 ? (
+                                <View style={s.variantDraftCard}>
+                                  <Text style={s.variantDraftLabel}>Description for the first option</Text>
+                                  <TextInput placeholder="Describe the differences for this option" placeholderTextColor="#64748B"
+                                    value={addBaseVariantDescription} onChangeText={setAddBaseVariantDescription}
+                                    style={[s.inputCompact, { minHeight: 64, textAlignVertical: "top" }]} multiline />
+                                </View>
+                              ) : null}
+                              {addVariantDrafts.map((variant, index) => (
+                                <View key={`${variant.id || "new"}-${index}`} style={s.variantDraftCard}>
+                                  <View style={s.variantDraftTopRow}>
+                                    <Text style={s.variantDraftLabel}>Option {index + 2}</Text>
+                                    <Pressable accessibilityRole="button" accessibilityLabel={`Remove size option ${index + 2}`}
+                                      onPress={() => setAddVariantDrafts((current) => current.filter((_, itemIndex) => itemIndex !== index))}
+                                      style={s.removeVariantButton}>
+                                      <MaterialCommunityIcons name="trash-can-outline" size={17} color="#B91C1C" />
+                                    </Pressable>
+                                  </View>
+                                  <TextInput placeholder={categoryConfig.variantLabel} placeholderTextColor="#64748B"
+                                    value={variant.unit}
+                                    onChangeText={(value) => setAddVariantDrafts((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, unit: value } : item))}
+                                    style={s.inputCompact} />
+                                  <Text style={s.variantManagerHint}>Description for this option</Text>
+                                  <TextInput placeholder="Describe the differences for this option" placeholderTextColor="#64748B"
+                                    value={variant.description}
+                                    onChangeText={(value) => setAddVariantDrafts((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, description: value } : item))}
+                                    style={[s.inputCompact, { minHeight: 64, textAlignVertical: "top" }]} multiline />
+                                  <View style={s.rowCompact}>
+                                    <TextInput placeholder="Price" placeholderTextColor="#64748B" value={variant.price}
+                                      onChangeText={(value) => setAddVariantDrafts((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, price: value } : item))}
+                                      style={[s.inputCompact, s.flex1]} keyboardType="numeric" />
+                                    <TextInput placeholder="MRP" placeholderTextColor="#64748B" value={variant.mrp}
+                                      onChangeText={(value) => setAddVariantDrafts((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, mrp: value } : item))}
+                                      style={[s.inputCompact, s.flex1]} keyboardType="numeric" />
+                                    <TextInput placeholder="Stock" placeholderTextColor="#64748B" value={variant.stock}
+                                      onChangeText={(value) => setAddVariantDrafts((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, stock: value } : item))}
+                                      style={[s.inputCompact, s.flex1]} keyboardType="numeric" />
+                                  </View>
+                                </View>
+                              ))}
+                            </View>
+              ) : null}
 
               <ProductImagesUploader
                 value={form.images}
@@ -1111,35 +1171,47 @@ export default function VendorStoreDetail() {
                 textAlignVertical="top"
               />
 
-              <View style={s.unitPickerPanel} testID="vendor-store-edit-product-size-pack-picker">
-                <Text style={s.sectionLabel}>Choose product size / pack</Text>
-                <Text style={s.unitPickerHint}>Tap one option. Your selection fills the Unit field.</Text>
-                <View style={s.unitChipContainer}>
-                  {PRODUCT_UNIT_OPTIONS.map((option) => {
-                    const active = editProductForm.unit.trim().toLowerCase() === option.toLowerCase();
-                    return (
-                      <Pressable
-                        key={option}
-                        accessibilityRole="button"
-                        accessibilityLabel={`Select product unit ${option}`}
-                        accessibilityState={{ selected: active }}
-                        testID={`vendor-store-edit-product-unit-${option.toLowerCase().replaceAll(" ", "-")}`}
-                        style={[s.catChip, s.unitChip, active && s.catChipActive]}
-                        onPress={() => setEditProductForm((current) => ({ ...current, unit: option }))}
-                      >
-                        <Text style={[s.catChipText, active && s.catChipTextActive]}>{option}</Text>
-                      </Pressable>
-                    );
-                  })}
+              {categoryConfig.showVariants && categoryConfig.variantOptions.length > 0 ? (
+                <View style={s.unitPickerPanel} testID="vendor-store-edit-product-size-pack-picker">
+                  <Text style={s.sectionLabel}>Choose {categoryConfig.variantLabel}</Text>
+                  <Text style={s.unitPickerHint}>Only options configured for this category are shown.</Text>
+                  <View style={s.unitChipContainer}>
+                    {categoryConfig.variantOptions.map((option) => {
+                      const active = editProductForm.unit.trim().toLowerCase() === option.toLowerCase();
+                      return (
+                        <Pressable key={option} accessibilityRole="button"
+                          accessibilityLabel={"Select " + categoryConfig.variantLabel + " " + option}
+                          accessibilityState={{ selected: active }}
+                          testID={"vendor-store-edit-product-unit-" + option.toLowerCase().replace(/\s+/g, "-")}
+                          style={[s.catChip, s.unitChip, active && s.catChipActive]}
+                          onPress={() => setEditProductForm((current) => ({ ...current, unit: option }))}>
+                          <Text style={[s.catChipText, active && s.catChipTextActive]}>{option}</Text>
+                        </Pressable>
+                      );
+                    })}
+                  </View>
                 </View>
-              </View>
+              ) : null}
 
-              {categoryConfig.showColors ? (
+              {categoryConfig.showColors ? (              {categoryConfig.showColors ? (
               <ProductColorPicker value={editProductForm.colors} colorLabel={categoryConfig.colorLabel}
                 onChange={(colors) => setEditProductForm((current) => ({ ...current, colors }))}
                 imagesByColor={editProductForm.color_images}
                 onImagesChange={(color_images) => setEditProductForm((current) => ({ ...current, color_images }))}
                 testID="vendor-store-edit-product-colours" />
+              ) : null}
+
+              {categoryConfig.productAttributes.length ? (
+                <View style={s.productDescriptionPanel} testID="vendor-store-edit-product-attributes">
+                  <Text style={s.sectionLabel}>Category-specific specifications</Text>
+                  {categoryConfig.productAttributes.map((attribute) => (
+                    <TextInput key={attribute.key} placeholder={attribute.label + (attribute.required ? " *" : "")}
+                      placeholderTextColor="#9CA3AF"
+                      value={editProductForm.attributes?.[attribute.key] || ""}
+                      onChangeText={(value) => setEditProductForm((current) => ({ ...current, attributes: { ...(current.attributes || {}), [attribute.key]: value } }))}
+                      style={s.inputCompact} />
+                  ))}
+                </View>
               ) : null}
 
                 <View style={s.itemCategoryPanel} testID="vendor-store-edit-product-item-category-picker">
@@ -1232,52 +1304,67 @@ export default function VendorStoreDetail() {
                   style={[s.inputCompact, s.flex1]}
                   keyboardType="numeric"
                 />
-                <TextInput placeholder="Unit (e.g. 1 kg)" placeholderTextColor="#9CA3AF"
+                <TextInput placeholder={categoryConfig.showVariants ? categoryConfig.variantLabel : "Unit (e.g. 1 pc)"} placeholderTextColor="#9CA3AF"
                   value={editProductForm.unit} onChangeText={(t) => setEditProductForm({ ...editProductForm, unit: t })}
                   style={[s.inputCompact, s.flex1]} />
               </View>
 
+              {categoryConfig.showVariants ? (
               <View style={s.variantManagerPanel} testID="vendor-store-edit-product-variants">
-                <View style={s.variantManagerHeader}>
-                  <View style={{ flex: 1 }}>
-                    <Text style={s.variantManagerTitle}>Sell in more sizes</Text>
-                    <Text style={s.variantManagerHint}>Add each size/pack with its own label, price, MRP and stock.</Text>
-                  </View>
-                  <Pressable testID="vendor-store-edit-variant" accessibilityRole="button"
-                    onPress={() => setEditVariantDrafts((current) => [...current, { id: "", unit: "", price: "", mrp: "", stock: "10" }])}
-                    style={s.addVariantButton}>
-                    <MaterialCommunityIcons name="plus" size={17} color="#FFFFFF" />
-                    <Text style={s.addVariantButtonText}>Add size</Text>
-                  </Pressable>
-                </View>
-                {editVariantDrafts.map((variant, index) => (
-                  <View key={`${variant.id || "new"}-${index}`} style={s.variantDraftCard}>
-                    <View style={s.variantDraftTopRow}>
-                      <Text style={s.variantDraftLabel}>Option {index + 2}</Text>
-                      <Pressable accessibilityRole="button" accessibilityLabel={`Remove size option ${index + 2}`}
-                        onPress={() => setEditVariantDrafts((current) => current.filter((_, itemIndex) => itemIndex !== index))}
-                        style={s.removeVariantButton}>
-                        <MaterialCommunityIcons name="trash-can-outline" size={17} color="#B91C1C" />
-                      </Pressable>
-                    </View>
-                    <TextInput placeholder="Size / pack (e.g. 500 g)" placeholderTextColor="#64748B"
-                      value={variant.unit}
-                      onChangeText={(value) => setEditVariantDrafts((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, unit: value } : item))}
-                      style={s.inputCompact} />
-                    <View style={s.rowCompact}>
-                      <TextInput placeholder="Price" placeholderTextColor="#64748B" value={variant.price}
-                        onChangeText={(value) => setEditVariantDrafts((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, price: value } : item))}
-                        style={[s.inputCompact, s.flex1]} keyboardType="numeric" />
-                      <TextInput placeholder="MRP" placeholderTextColor="#64748B" value={variant.mrp}
-                        onChangeText={(value) => setEditVariantDrafts((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, mrp: value } : item))}
-                        style={[s.inputCompact, s.flex1]} keyboardType="numeric" />
-                      <TextInput placeholder="Stock" placeholderTextColor="#64748B" value={variant.stock}
-                        onChangeText={(value) => setEditVariantDrafts((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, stock: value } : item))}
-                        style={[s.inputCompact, s.flex1]} keyboardType="numeric" />
-                    </View>
-                  </View>
-                ))}
-              </View>
+                              <View style={s.variantManagerHeader}>
+                                <View style={{ flex: 1 }}>
+                                  <Text style={s.variantManagerTitle}>Sell in more sizes</Text>
+                                  <Text style={s.variantManagerHint}>Add each size/pack with its own label, price, MRP and stock.</Text>
+                                </View>
+                                <Pressable testID="vendor-store-edit-variant" accessibilityRole="button"
+                                  onPress={() => setEditVariantDrafts((current) => [...current, { id: "", unit: "", price: "", mrp: "", stock: "10", description: "" }])}
+                                  style={s.addVariantButton}>
+                                  <MaterialCommunityIcons name="plus" size={17} color="#FFFFFF" />
+                                  <Text style={s.addVariantButtonText}>Add size</Text>
+                                </Pressable>
+                              </View>
+                              {editVariantDrafts.length > 0 ? (
+                                <View style={s.variantDraftCard}>
+                                  <Text style={s.variantDraftLabel}>Description for the first option</Text>
+                                  <TextInput placeholder="Describe the differences for this option" placeholderTextColor="#64748B"
+                                    value={editBaseVariantDescription} onChangeText={setEditBaseVariantDescription}
+                                    style={[s.inputCompact, { minHeight: 64, textAlignVertical: "top" }]} multiline />
+                                </View>
+                              ) : null}
+                              {editVariantDrafts.map((variant, index) => (
+                                <View key={`${variant.id || "new"}-${index}`} style={s.variantDraftCard}>
+                                  <View style={s.variantDraftTopRow}>
+                                    <Text style={s.variantDraftLabel}>Option {index + 2}</Text>
+                                    <Pressable accessibilityRole="button" accessibilityLabel={`Remove size option ${index + 2}`}
+                                      onPress={() => setEditVariantDrafts((current) => current.filter((_, itemIndex) => itemIndex !== index))}
+                                      style={s.removeVariantButton}>
+                                      <MaterialCommunityIcons name="trash-can-outline" size={17} color="#B91C1C" />
+                                    </Pressable>
+                                  </View>
+                                  <TextInput placeholder={categoryConfig.variantLabel} placeholderTextColor="#64748B"
+                                    value={variant.unit}
+                                    onChangeText={(value) => setEditVariantDrafts((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, unit: value } : item))}
+                                    style={s.inputCompact} />
+                                  <Text style={s.variantManagerHint}>Description for this option</Text>
+                                  <TextInput placeholder="Describe the differences for this option" placeholderTextColor="#64748B"
+                                    value={variant.description}
+                                    onChangeText={(value) => setEditVariantDrafts((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, description: value } : item))}
+                                    style={[s.inputCompact, { minHeight: 64, textAlignVertical: "top" }]} multiline />
+                                  <View style={s.rowCompact}>
+                                    <TextInput placeholder="Price" placeholderTextColor="#64748B" value={variant.price}
+                                      onChangeText={(value) => setEditVariantDrafts((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, price: value } : item))}
+                                      style={[s.inputCompact, s.flex1]} keyboardType="numeric" />
+                                    <TextInput placeholder="MRP" placeholderTextColor="#64748B" value={variant.mrp}
+                                      onChangeText={(value) => setEditVariantDrafts((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, mrp: value } : item))}
+                                      style={[s.inputCompact, s.flex1]} keyboardType="numeric" />
+                                    <TextInput placeholder="Stock" placeholderTextColor="#64748B" value={variant.stock}
+                                      onChangeText={(value) => setEditVariantDrafts((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, stock: value } : item))}
+                                      style={[s.inputCompact, s.flex1]} keyboardType="numeric" />
+                                  </View>
+                                </View>
+                              ))}
+                            </View>
+              ) : null}
 
               <ProductImagesUploader
                 value={editProductForm.images}
