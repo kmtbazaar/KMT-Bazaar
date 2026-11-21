@@ -45,17 +45,12 @@ jobs:
           const vendorOrders = fs.readFileSync("app/vendor/orders.tsx", "utf8");
           const customerOrder = fs.readFileSync("app/orders/[id].tsx", "utf8");
           const adminOrder = fs.readFileSync("app/admin/order/[id].tsx", "utf8");
+          const config = fs.readFileSync("src/productCategoryConfig.ts", "utf8");
+          const adminVendor = fs.readFileSync("src/components/AdminVendorProducts.tsx", "utf8");
 
-          const options = [
-            "XS", "S", "M", "L", "XL", "XXL",
-            "1 pc", "250 g", "500 g", "1 kg",
-            "250 ml", "500 ml", "750 ml", "1 L", "2 L"
-          ];
-
-          assert.ok(vendor.includes("const PRODUCT_UNIT_OPTIONS = ["), "Vendor size/pack options are missing.");
-          for (const option of options) {
-            assert.ok(vendor.includes(JSON.stringify(option)), `Missing vendor option: ${option}`);
-          }
+          assert.ok(vendor.includes("categoryConfig.variantOptions.map") && !vendor.includes("PRODUCT_UNIT_OPTIONS"), "Vendor must use category-specific variant options, not a universal size list.");
+          assert.ok(adminVendor.includes("categoryConfig.variantOptions.map") && !adminVendor.includes("PRODUCT_UNIT_OPTIONS"), "Admin Vendor editor must use category-specific variant options.");
+          assert.ok(config.includes('variant_label: "RAM / Storage"') && config.includes('variant_options: ["4 GB / 64 GB"') && config.includes('variant_label: "Clothing size"') && config.includes('variant_label: "Shoe size"'), "Mobile, fashion and footwear must have dedicated option systems.");
           assert.ok(vendor.includes("vendor-store-add-product-size-pack-picker"), "Store vendor Add Product screen must render the size/pack picker.");
           assert.ok(vendor.includes("onPress={() => setForm((current) => ({ ...current, unit: option }))}"), "Selecting a chip in Add Product must update the unit.");
           assert.ok(vendor.includes("vendor-store-edit-product-size-pack-picker"), "Store vendor Edit Product screen must render the size/pack picker.");
@@ -72,13 +67,16 @@ jobs:
           assert.ok(vendor.includes("vendor-store-add-product-shop-category") && vendor.includes("vendor-store-edit-product-shop-category"), "Shop category must remain in the top-right header.");
           assert.ok(vendor.includes('backgroundColor: "#ECFDF5"'), "Item category panel must retain its distinct color.");
 
-          assert.ok(vendor.includes("...form,") && vendor.includes("variants,"), "Product payload must send the selected size/pack variant list.");
+          assert.ok(vendor.includes("...form,") && vendor.includes("...(variants ? { variants } : {})"), "Product payload must send the selected category variant list when enabled.");
           assert.ok(vendor.includes("vendor-store-add-product-variants") && vendor.includes("vendor-store-edit-product-variants"), "Vendor Add/Edit forms must support multiple size/pack rows.");
-          assert.ok(vendor.includes("validateVariantDrafts"), "Vendor variant prices, stock, and duplicate labels must be validated.");
+          assert.ok(vendor.includes("validateVariantDrafts") && vendor.includes("variants.length > 1"), "Vendor variant prices, stock, duplicate labels and multi-option descriptions must be validated.");
+          assert.ok(vendor.includes("categoryConfig.productAttributes.map") && adminVendor.includes("categoryConfig.productAttributes.map"), "Vendor and Admin must render category-specific product specifications.");
+          assert.ok(vendor.includes("color_images: categoryConfig.showColors ? form.color_images : {}") && adminVendor.includes("form.color_images"), "Both product editors must save colour-specific galleries.");
           assert.ok(customer.includes('testID="product-size-pack-selector"'), "Customer product details must render the size/pack selector.");
           assert.ok(customer.includes("selectedVariant?.price") && customer.includes("selectedVariant?.stock"), "Selected variant price and stock must drive customer detail.");
           assert.ok(customer.includes("await add(p.id, 1, selectedVariant?.id, selectedColor)"), "Customer Add to Cart must send the selected size and colour.");
           assert.ok(customer.includes("selectedPrice"), "Customer price and bottom cart CTA must reflect the selected variant.");
+          assert.ok(customer.includes("product-selected-variant-description") && customer.includes("product-category-attributes"), "Customer detail must show the selected option description and category specifications.");
           assert.ok(vendor.includes('testID="vendor-store-add-product-colours"') && vendor.includes('testID="vendor-store-edit-product-colours"'), "Vendor Add/Edit forms must save product colour options.");
           assert.ok(customer.includes('testID="product-colour-selector"') && customer.includes("setSelectedColor"), "Customer must be able to choose a product colour.");
           assert.ok(!customer.includes("variantChoicePriceRow"), "Customer size buttons must show the size label only, not a price.");
