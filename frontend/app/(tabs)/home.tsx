@@ -1216,7 +1216,7 @@ function SectionTitle({ title, subtitle }: { title: string; subtitle?: string })
 const s = StyleSheet.create({
   heroHeaderShell: { position: "relative", width: "100%", overflow: "visible" },
   nightSky:{position:"absolute",top:0,left:0,right:0,height:HERO_BACKDROP_HEIGHT,overflow:"hidden",zIndex:0,pointerEvents:"none"},
-  karmatarSceneLift:{position:"absolute",top:0,left:0,right:0,bottom:0},
+  karmatarSceneLift:{position:"absolute",top:0,left:0,right:0,bottom:0,transform:[{translateY:8}]},
   karmatarDaySky:{...StyleSheet.absoluteFillObject,overflow:"hidden"},
   karmatarNightSky:{...StyleSheet.absoluteFillObject,overflow:"hidden"},
   karmatarSun:{position:"absolute",left:"9%",top:54,width:29,height:29,borderRadius:15,backgroundColor:"#FFF0BD",shadowColor:"#FFE6A2",shadowOpacity:.9,shadowRadius:12,elevation:5},karmatarMoon:{position:"absolute",right:"9%",top:55,width:27,height:27,borderRadius:14,backgroundColor:"#F4F1D9",shadowColor:"#EAF2FF",shadowOpacity:.8,shadowRadius:10,elevation:4},
@@ -1230,7 +1230,7 @@ const s = StyleSheet.create({
   headerBg: { position: "absolute", top: 0, left: 0, right: 0, height: HERO_BACKDROP_HEIGHT, borderBottomLeftRadius: 30, borderBottomRightRadius: 30, backgroundColor: "transparent", shadowColor: "#FFFFFF", shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.14, shadowRadius: 18, elevation: 7 },
   skyClearSpace: { height: Platform.OS === "web" ? 90 : 56, alignItems: "center", justifyContent: "center", zIndex: 30, elevation: 30 },
   skyClearSpaceCollapsed: { height: 0 },
-  searchBarAnchor: { position: "absolute", left: 0, right: 0, zIndex: 25, elevation: 25, transform: [{ translateY: -44 }] },
+  searchBarAnchor: { position: "absolute", left: 0, right: 0, zIndex: 25, elevation: 25, transform: [{ translateY: -52 }] },
   searchBarSafeArea: { backgroundColor: "transparent", zIndex: 25, elevation: 25 },
   searchBarSafeAreaCollapsed: { borderBottomWidth: 1, borderBottomColor: "rgba(226,232,240,0.9)" },
   searchBarOuter: { paddingHorizontal: SPACING.md, marginTop: 0 },
