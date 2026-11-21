@@ -610,28 +610,23 @@ export default function AdminVendorProducts({ vendorId, selectedStoreId: externa
                 placeholderTextColor="#9CA3AF"
                 style={styles.input}
               />
-              <View style={styles.unitPickerPanel} testID="admin-vendor-product-size-pack-picker">
-                <Text style={styles.sectionLabel}>Choose product size / pack</Text>
-                <Text style={styles.unitPickerHint}>Tap one option. Your selection fills the Unit field.</Text>
-                <View style={styles.unitChipContainer}>
-                  {PRODUCT_UNIT_OPTIONS.map((option) => {
-                    const active = form.unit.trim().toLowerCase() === option.toLowerCase();
-                    return (
-                      <Pressable
-                        key={option}
-                        accessibilityRole="button"
-                        accessibilityLabel={`Select product unit ${option}`}
+              {categoryConfig.showVariants && categoryConfig.variantOptions.length > 0 ? (
+                <View style={styles.unitPickerPanel} testID="admin-vendor-product-size-pack-picker">
+                  <Text style={styles.sectionLabel}>Choose {categoryConfig.variantLabel}</Text>
+                  <Text style={styles.unitPickerHint}>Only options configured for this shop category are shown.</Text>
+                  <View style={styles.unitChipContainer}>
+                    {categoryConfig.variantOptions.map((option) => {
+                      const active = form.unit.trim().toLowerCase() === option.toLowerCase();
+                      return <Pressable key={option} accessibilityRole="button"
                         accessibilityState={{ selected: active }}
-                        testID={`admin-vendor-product-unit-${option.toLowerCase().replaceAll(" ", "-")}`}
-                        style={[styles.unitChip, active && styles.unitChipActive]}
                         onPress={() => setForm((current) => ({ ...current, unit: option }))}
-                      >
+                        style={[styles.unitChip, active && styles.unitChipActive]}>
                         <Text style={[styles.unitChipText, active && styles.unitChipTextActive]}>{option}</Text>
-                      </Pressable>
-                    );
-                  })}
+                      </Pressable>;
+                    })}
+                  </View>
                 </View>
-              </View>
+              ) : null}
               <View style={styles.shopCategoryBlock}>
                 <Text style={styles.formLabel}>Shop Category</Text>
                 <Text style={styles.shopCategoryText}>{shopCategoryName}</Text>
@@ -705,11 +700,12 @@ export default function AdminVendorProducts({ vendorId, selectedStoreId: externa
                 <TextInput
                   value={form.unit}
                   onChangeText={(value) => setForm((current) => ({ ...current, unit: value }))}
-                  placeholder="Unit (e.g. 1 kg)"
+                  placeholder={categoryConfig.showVariants ? categoryConfig.variantLabel : "Unit (e.g. 1 pc)"}
                   placeholderTextColor="#9CA3AF"
                   style={[styles.input, styles.flexInput]}
                 />
               </View>
+              {categoryConfig.showVariants ? (
               <View style={styles.variantManagerPanel} testID="admin-vendor-product-variants">
                 <View style={styles.variantManagerHeader}>
                   <View style={{ flex: 1 }}>
@@ -719,13 +715,21 @@ export default function AdminVendorProducts({ vendorId, selectedStoreId: externa
                   <Pressable
                     testID="admin-vendor-product-add-variant"
                     accessibilityRole="button"
-                    onPress={() => setVariantDrafts((current) => [...current, { id: "", unit: "", price: "", mrp: "", stock: "10" }])}
+                    onPress={() => setVariantDrafts((current) => [...current, { id: "", unit: "", price: "", mrp: "", stock: "10", description: "" }])}
                     style={styles.addVariantButton}
                   >
                     <MaterialCommunityIcons name="plus" size={17} color="#FFFFFF" />
                     <Text style={styles.addVariantButtonText}>Add size</Text>
                   </Pressable>
                 </View>
+                {variantDrafts.length > 0 ? (
+                  <View style={styles.variantDraftCard}>
+                    <Text style={styles.variantDraftLabel}>Description for the first option</Text>
+                    <TextInput value={baseVariantDescription} onChangeText={setBaseVariantDescription}
+                      placeholder="Describe the differences for this option" placeholderTextColor="#64748B"
+                      style={[styles.input, styles.descriptionInput]} multiline />
+                  </View>
+                ) : null}
                 {variantDrafts.map((variant, index) => (
                   <View key={`${variant.id || "new"}-${index}`} style={styles.variantDraftCard}>
                     <View style={styles.variantDraftTopRow}>
@@ -746,6 +750,10 @@ export default function AdminVendorProducts({ vendorId, selectedStoreId: externa
                       onChangeText={(value) => setVariantDrafts((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, unit: value } : item))}
                       style={styles.input}
                     />
+                    <TextInput value={variant.description}
+                      onChangeText={(value) => setVariantDrafts((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, description: value } : item))}
+                      placeholder="Description for this option" placeholderTextColor="#64748B"
+                      style={[styles.input, styles.descriptionInput]} multiline />
                     <View style={styles.formRow}>
                       <TextInput
                         placeholder="Price"
@@ -775,7 +783,57 @@ export default function AdminVendorProducts({ vendorId, selectedStoreId: externa
                   </View>
                 ))}
               </View>
+              ) : null}
               <ProductImagesUploader value={form.images} onChange={(images) => setForm((current) => ({ ...current, images, image: images[0] || "" }))} label="Product Photos (minimum 3)" testID="admin-vendor-product-images" />
+              {categoryConfig.showColors ? (
+                <View style={styles.variantManagerPanel} testID="admin-vendor-product-colours">
+                  <Text style={styles.variantManagerTitle}>{categoryConfig.colorLabel} options</Text>
+                  <Text style={styles.variantManagerHint}>Select colours, then attach a matching photo gallery to each.</Text>
+                  <View style={styles.unitChipContainer}>
+                    {PRODUCT_COLOR_OPTIONS.map((color) => {
+                      const active = form.colors.includes(color);
+                      return <Pressable key={color} onPress={() => {
+                        setForm((current) => {
+                          const selected = current.colors.includes(color);
+                          const colors = selected ? current.colors.filter((value: string) => value !== color) : [...current.colors, color];
+                          const color_images = { ...(current.color_images || {}) };
+                          if (selected) delete color_images[color];
+                          return { ...current, colors, color_images };
+                        });
+                        setActiveProductColor((current) => current === color ? "" : color);
+                      }} style={[styles.unitChip, active && styles.unitChipActive]}>
+                        <Text style={[styles.unitChipText, active && styles.unitChipTextActive]}>{color}</Text>
+                      </Pressable>;
+                    })}
+                  </View>
+                  {form.colors.length ? (
+                    <View style={styles.unitChipContainer}>
+                      {form.colors.map((color: string) => <Pressable key={color} onPress={() => setActiveProductColor(color)}
+                        style={[styles.unitChip, activeProductColor === color && styles.unitChipActive]}>
+                        <Text style={[styles.unitChipText, activeProductColor === color && styles.unitChipTextActive]}>{color} photos</Text>
+                      </Pressable>)}
+                    </View>
+                  ) : null}
+                  {activeProductColor && form.colors.includes(activeProductColor) ? (
+                    <ProductImagesUploader value={form.color_images[activeProductColor] || []}
+                      onChange={(images) => setForm((current) => ({ ...current, color_images: { ...(current.color_images || {}), [activeProductColor]: images } }))}
+                      label={activeProductColor + " photos"} minCount={1} maxCount={6}
+                      testID={"admin-vendor-product-colour-images-" + activeProductColor.toLowerCase()} />
+                  ) : null}
+                </View>
+              ) : null}
+              {categoryConfig.productAttributes.length ? (
+                <View style={styles.shopCategoryBlock} testID="admin-vendor-product-attributes">
+                  <Text style={styles.formLabel}>Category-specific specifications</Text>
+                  {categoryConfig.productAttributes.map((attribute) => (
+                    <TextInput key={attribute.key} value={form.attributes?.[attribute.key] || ""}
+                      onChangeText={(value) => setForm((current) => ({ ...current, attributes: { ...(current.attributes || {}), [attribute.key]: value } }))}
+                      placeholder={attribute.label + (attribute.required ? " *" : "")}
+                      placeholderTextColor="#9CA3AF" style={styles.input} />
+                  ))}
+                </View>
+              ) : null}
+
               <TextInput
                 value={form.description}
                 onChangeText={(value) => setForm((current) => ({ ...current, description: value }))}
