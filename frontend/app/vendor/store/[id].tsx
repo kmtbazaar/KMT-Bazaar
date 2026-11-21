@@ -915,7 +915,7 @@ export default function VendorStoreDetail() {
                 </View>
               ) : null}
 
-              {categoryConfig.showColors ? (              {categoryConfig.showColors ? (
+              {categoryConfig.showColors ? (
               <ProductColorPicker value={form.colors} colorLabel={categoryConfig.colorLabel}
                 onChange={(colors) => setForm((current) => ({ ...current, colors }))}
                 imagesByColor={form.color_images}
@@ -1193,7 +1193,7 @@ export default function VendorStoreDetail() {
                 </View>
               ) : null}
 
-              {categoryConfig.showColors ? (              {categoryConfig.showColors ? (
+              {categoryConfig.showColors ? (
               <ProductColorPicker value={editProductForm.colors} colorLabel={categoryConfig.colorLabel}
                 onChange={(colors) => setEditProductForm((current) => ({ ...current, colors }))}
                 imagesByColor={editProductForm.color_images}
