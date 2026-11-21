@@ -171,6 +171,37 @@ jobs:
           console.log("PRODUCT_SIZE_PACK_UI_VALIDATION_PASS");
           NODE
 
+      - name: Validate category-specific product fields and colour image galleries
+        working-directory: frontend
+        run: |
+          node <<'NODE'
+          const assert = require("node:assert/strict");
+          const fs = require("node:fs");
+          const config = fs.readFileSync("src/productCategoryConfig.ts", "utf8");
+          const vendor = fs.readFileSync("app/vendor/store/[id].tsx", "utf8");
+          const customer = fs.readFileSync("app/product/[id].tsx", "utf8");
+          const admin = fs.readFileSync("app/admin/categories.tsx", "utf8");
+          const backend = fs.readFileSync("../backend/server.py", "utf8");
+
+          for (const label of ["RAM / Storage / Model", "Clothing size", "Shoe size", "Pack size / Weight", "Portion / Serving", "Pack / Strength"]) {
+            assert.ok(config.includes(label), `Missing category-specific option label: ${label}`);
+          }
+          assert.ok(vendor.includes("getProductCategoryConfig"), "Vendor Add/Edit must load the selected Shop Category configuration.");
+          assert.ok(vendor.includes("categoryConfig.showVariants && categoryConfig.variantOptions.length > 0"), "Preset variant chips must only render when relevant to this category.");
+          assert.ok(vendor.includes("{categoryConfig.showColors ? ("), "Colour/Shade fields must be conditional on category settings.");
+          assert.ok(vendor.includes("{categoryConfig.showDescription ? ("), "Description must be conditional on category settings.");
+          assert.ok(vendor.includes("imagesByColor={form.color_images}") && vendor.includes("imagesByColor={editProductForm.color_images}"), "Vendor must upload separate colour-specific photo galleries in Add and Edit.");
+          assert.ok(vendor.includes("color_images: categoryConfig.showColors ? form.color_images : {}"), "Irrelevant category colour data must not be submitted by Add Product.");
+          assert.ok(customer.includes("categoryConfig.showColors && Array.isArray(p.colors)"), "Customer colour selector must respect the Shop Category.");
+          assert.ok(customer.includes("p?.color_images") && customer.includes("productColorThumb"), "Customer must show matching colour photos below the main product gallery.");
+          assert.ok(customer.includes("{categoryConfig.showVariants ? (") && customer.includes("{categoryConfig.showDescription ? ("), "Customer detail options and description must respect category settings.");
+          assert.ok(admin.includes("category-product-field-settings") && (admin.match(/<Switch/g) || []).length === 3, "Admin must configure variant, colour and description fields for each category.");
+          assert.ok(backend.includes("color_images: Optional[Dict[str, List[str]]] = None"), "Backend ProductIn must accept per-colour photos.");
+          assert.ok(backend.includes("product_fields: Optional[Dict[str, bool]] = None"), "Backend CategoryIn must persist the category field configuration.");
+          assert.ok(backend.includes("def _normalize_product_color_images"), "Backend must validate colour-specific photo mappings.");
+          console.log("CATEGORY_SPECIFIC_VENDOR_CUSTOMER_PRODUCT_FIELDS_PASS");
+          NODE
+
       - name: Validate Karmatar landmark hero, tab haptics and home search placement
         working-directory: frontend
         run: |

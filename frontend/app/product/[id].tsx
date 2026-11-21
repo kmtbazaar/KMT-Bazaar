@@ -14,6 +14,7 @@ import { useCart } from "@/src/CartContext";
 import { COLORS, RADIUS, SPACING, shadow } from "@/src/theme";
 import CheckoutBar from "@/src/components/CheckoutBar";
 import { useWishlist } from "@/src/WishlistContext";
+import { getProductCategoryConfig } from "@/src/productCategoryConfig";
 
 const PRODUCT_COLOR_SWATCHES: Record<string, string> = {
   black: "#171717", white: "#FFFFFF", red: "#DC2626", blue: "#2563EB",
@@ -30,6 +31,8 @@ export default function Product() {
   const { add, update, cart, itemCount } = useCart();
   const { isWishlisted, toggle: toggleWishlist, ready: wishlistReady } = useWishlist();
   const [p, setP] = useState<any>(null);
+  const [productCategory, setProductCategory] = useState<any>(null);
+  const categoryConfig = getProductCategoryConfig(productCategory || { name: p?.category_name });
   const [selectedVariantId, setSelectedVariantId] = useState<string | null>(null);
   const [selectedColor, setSelectedColor] = useState<string | null>(null);
   const [imageViewerVisible, setImageViewerVisible] = useState(false);
@@ -65,7 +68,7 @@ export default function Product() {
   const selectedVariant = Array.isArray(p?.variants)
     ? p.variants.find((variant: any) => String(variant.id) === String(selectedVariantId)) || p.variants[0] || null
     : null;
-  const selectedUnit = String(selectedVariant?.unit || p?.unit || "Standard");
+  const selectedUnit = String(selectedVariant?.unit || (categoryConfig.showVariants ? p?.unit : "") || "Standard");
   const selectedPrice = Number(selectedVariant?.price ?? p?.price ?? 0);
   const selectedMrp = Number(selectedVariant?.mrp ?? p?.mrp ?? selectedPrice);
   const availableStock = Math.max(0, Number(selectedVariant?.stock ?? p?.stock ?? p?.available_quantity ?? p?.quantity_in_stock ?? 0));
@@ -88,8 +91,16 @@ export default function Product() {
     (async () => {
       try {
         const data = await api.product(id as string);
+        let categoryList: any[] = [];
+        try {
+          const loadedCategories = await api.categories();
+          categoryList = Array.isArray(loadedCategories) ? loadedCategories : [];
+        } catch {}
+        const matchedCategory = categoryList.find((item: any) => String(item.id) === String(data?.category_id)) || { name: data?.category_name || "" };
+        const resolvedCategoryConfig = getProductCategoryConfig(matchedCategory);
+        setProductCategory(matchedCategory);
         setSelectedVariantId(Array.isArray(data?.variants) && data.variants.length ? String(data.variants[0].id) : null);
-        setSelectedColor(Array.isArray(data?.colors) && data.colors.length ? String(data.colors[0]) : null);
+        setSelectedColor(resolvedCategoryConfig.showColors && Array.isArray(data?.colors) && data.colors.length ? String(data.colors[0]) : null);
         setP(data);
       } catch (e) {
         console.error(e);
@@ -176,9 +187,25 @@ export default function Product() {
   }, [p?.id, p?.category_id, p?.store_id]);
 
   // FIX 1: Quantity ko hardcoded 1 rakhne ke bajaye Context wale Cart state se read karenge
-  const productImages = useMemo(() => Array.from(new Set([...(Array.isArray(p?.images) ? p.images : []), p?.image].filter((url: any) => typeof url === "string" && url.trim()))), [p?.images, p?.image]);
+  const productImages = useMemo(() => {
+    const colorImageKey = categoryConfig.showColors && selectedColor && p?.color_images && typeof p.color_images === "object"
+      ? Object.keys(p.color_images).find((key) => key.toLowerCase() === String(selectedColor).toLowerCase())
+      : undefined;
+    const selectedColorImages = colorImageKey && Array.isArray(p.color_images[colorImageKey]) ? p.color_images[colorImageKey] : [];
+    const sourceImages = selectedColorImages.length
+      ? selectedColorImages
+      : [...(Array.isArray(p?.images) ? p.images : []), p?.image];
+    return Array.from(new Set(sourceImages.filter((url: any) => typeof url === "string" && url.trim())));
+  }, [p?.images, p?.image, p?.color_images, selectedColor, categoryConfig.showColors]);
   // Render one matching copy after the original set so the loop can wrap without reversing direction.
   const carouselImages = useMemo(() => productImages.length > 1 ? [...productImages, ...productImages] : productImages, [productImages]);
+
+  useEffect(() => {
+    carouselPageRef.current = 0;
+    setSelectedImageIndex(0);
+    setViewerImageIndex(0);
+    productCarouselRef.current?.scrollTo({ x: 0, animated: false });
+  }, [selectedColor]);
 
   const openImageViewer = (index: number) => {
     setViewerImageIndex(index);
@@ -318,7 +345,7 @@ export default function Product() {
   };
 
   if (loading || !p) return <View style={s.center}><ActivityIndicator color={COLORS.brand} size="large" /></View>;
-  const variantOptions = Array.isArray(p.variants) && p.variants.length
+  const variantOptions = !categoryConfig.showVariants ? [] : Array.isArray(p.variants) && p.variants.length
     ? p.variants
     : [{ id: null, unit: selectedUnit, price: p.price, mrp: p.mrp, stock: p.stock }];
   const discount = selectedMrp > selectedPrice && selectedMrp > 0
@@ -399,10 +426,45 @@ export default function Product() {
             <Text style={s.carouselCount}>{selectedImageIndex + 1} / {productImages.length}</Text>
           </View>
         ) : null}
+        {categoryConfig.showColors && Array.isArray(p.colors) && p.colors.length ? (
+          <View style={s.productColorSelector} testID="product-colour-selector">
+            <View style={s.productColorHeader}>
+              <Text style={s.productColorTitle}>Choose {categoryConfig.colorLabel.toLowerCase()}</Text>
+              {selectedColor ? <Text style={s.productColorSelected}>{selectedColor}</Text> : null}
+            </View>
+            <View style={s.productColorOptions}>
+              {p.colors.map((color: string) => {
+                const active = String(selectedColor || "").toLowerCase() === String(color).toLowerCase();
+                const swatch = PRODUCT_COLOR_SWATCHES[String(color).toLowerCase()] || "#94A3B8";
+                const colorImageKey = p?.color_images && typeof p.color_images === "object"
+                  ? Object.keys(p.color_images).find((key) => key.toLowerCase() === String(color).toLowerCase())
+                  : undefined;
+                const hasDedicatedImages = !!(colorImageKey && Array.isArray(p.color_images[colorImageKey]) && p.color_images[colorImageKey].length);
+                const previewUri = hasDedicatedImages ? p.color_images[colorImageKey][0] : "";
+                return (
+                  <Pressable key={color} accessibilityRole="button"
+                    accessibilityLabel={"Select colour " + color} accessibilityState={{ selected: active }}
+                    testID={"product-colour-" + String(color).toLowerCase().replace(/\s+/g, "-")}
+                    onPress={() => setSelectedColor(String(color))}
+                    style={[s.productColorChoice, active && s.productColorChoiceActive]}>
+                    {previewUri ? (
+                      <Image source={{ uri: previewUri }} style={s.productColorThumb} contentFit="cover" />
+                    ) : (
+                      <View style={[s.productColorSwatch, { backgroundColor: swatch }, String(color).toLowerCase() === "white" && s.productColorSwatchWhite]}>
+                        {active ? <MaterialCommunityIcons name="check" size={14} color={String(color).toLowerCase() === "white" ? "#111827" : "#FFFFFF"} /> : null}
+                      </View>
+                    )}
+                    <Text style={[s.productColorLabel, active && s.productColorLabelActive]}>{color}</Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+          </View>
+        ) : null}
         <View style={s.card}>
           <Text style={s.name} testID="product-name">{p.name}</Text>
           <Text style={[s.unit, outOfStock && s.outOfStockText]}>
-            {selectedUnit ? `${selectedUnit} · ` : ""}{outOfStock ? "OUT OF STOCK" : `${availableStock} in stock`}
+            {categoryConfig.showVariants && selectedUnit ? `${selectedUnit} · ` : ""}{outOfStock ? "OUT OF STOCK" : `${availableStock} in stock`}
           </Text>
           <View style={s.priceRow}>
             <Text style={s.price}>₹{selectedPrice}</Text>
@@ -410,42 +472,14 @@ export default function Product() {
             {discount > 0 && <View style={s.discPill}><Text style={s.discText}>{discount}% OFF</Text></View>}
           </View>
 
-          {Array.isArray(p.colors) && p.colors.length ? (
-            <View style={s.productColorSelector} testID="product-colour-selector">
-              <View style={s.productColorHeader}>
-                <Text style={s.productColorTitle}>Choose colour</Text>
-                {selectedColor ? <Text style={s.productColorSelected}>{selectedColor}</Text> : null}
-              </View>
-              <View style={s.productColorOptions}>
-                {p.colors.map((color: string) => {
-                  const active = String(selectedColor || "").toLowerCase() === String(color).toLowerCase();
-                  const swatch = PRODUCT_COLOR_SWATCHES[String(color).toLowerCase()] || "#94A3B8";
-                  return (
-                    <Pressable
-                      key={color}
-                      accessibilityRole="button"
-                      accessibilityLabel={"Select colour " + color}
-                      accessibilityState={{ selected: active }}
-                      testID={"product-colour-" + String(color).toLowerCase().replace(/\s+/g, "-")}
-                      onPress={() => setSelectedColor(String(color))}
-                      style={[s.productColorChoice, active && s.productColorChoiceActive]}
-                    >
-                      <View style={[s.productColorSwatch, { backgroundColor: swatch }, String(color).toLowerCase() === "white" && s.productColorSwatchWhite]}>
-                        {active ? <MaterialCommunityIcons name="check" size={14} color={String(color).toLowerCase() === "white" ? "#111827" : "#FFFFFF"} /> : null}
-                      </View>
-                      <Text style={[s.productColorLabel, active && s.productColorLabelActive]}>{color}</Text>
-                    </Pressable>
-                  );
-                })}
-              </View>
-            </View>
-          ) : null}
 
+
+          {categoryConfig.showVariants ? (
           <View style={s.variantSelector} testID="product-size-pack-selector">
             <View style={s.variantSelectorHeader}>
               <View style={{ flex: 1 }}>
-                <Text style={s.variantSelectorTitle}>Choose size / pack</Text>
-                <Text style={s.variantSelectorSubtitle}>Select a size; its price updates above.</Text>
+                <Text style={s.variantSelectorTitle}>Choose {categoryConfig.variantLabel.toLowerCase()}</Text>
+                <Text style={s.variantSelectorSubtitle}>Select an option; its price and stock update above.</Text>
               </View>
               <MaterialCommunityIcons name="package-variant" size={23} color={COLORS.accent} />
             </View>
@@ -459,7 +493,7 @@ export default function Product() {
                   <Pressable
                     key={variantId || `legacy-${variant.unit || "standard"}-${index}`}
                     accessibilityRole="button"
-                    accessibilityLabel={"Select size " + (variant.unit || "standard")}
+                    accessibilityLabel={"Select option " + (variant.unit || "standard")}
                     accessibilityState={{ selected: active }}
                     onPress={() => setSelectedVariantId(variantId)}
                     style={[s.variantChoice, active && s.variantChoiceActive, unavailable && s.variantChoiceUnavailable]}
@@ -474,10 +508,15 @@ export default function Product() {
               })}
             </View>
           </View>
+          ) : null}
 
-          <View style={s.divider} />
-          <Text style={s.sectionTitle}>About this product</Text>
-          <Text style={s.desc}>{p.description}</Text>
+          {categoryConfig.showDescription ? (
+            <>
+              <View style={s.divider} />
+              <Text style={s.sectionTitle}>{categoryConfig.descriptionLabel}</Text>
+              <Text style={s.desc}>{p.description}</Text>
+            </>
+          ) : null}
           <View style={s.deliveryCard}>
             <MaterialCommunityIcons name="moped-electric" size={24} color={COLORS.brand} />
             <View style={{ flex: 1 }}>
@@ -661,7 +700,8 @@ const s = StyleSheet.create({
   productColorTitle: { color: COLORS.text, fontSize: 15, fontWeight: "900" },
   productColorSelected: { color: "#1D4ED8", fontSize: 12, fontWeight: "800" },
   productColorOptions: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
-  productColorChoice: { minWidth: 58, alignItems: "center", gap: 4, paddingHorizontal: 5, paddingVertical: 5, borderRadius: 11, borderWidth: 1, borderColor: "transparent" },
+  productColorChoice: { minWidth: 66, alignItems: "center", gap: 4, paddingHorizontal: 5, paddingVertical: 5, borderRadius: 11, borderWidth: 1, borderColor: "transparent" },
+  productColorThumb: { width: 46, height: 46, borderRadius: 9, backgroundColor: "#FFFFFF", borderWidth: 1, borderColor: "#CBD5E1" },
   productColorChoiceActive: { borderColor: "#2563EB", backgroundColor: "#DBEAFE" },
   productColorSwatch: { width: 30, height: 30, borderRadius: 15, borderWidth: 1, borderColor: "rgba(15,23,42,0.14)", alignItems: "center", justifyContent: "center" },
   productColorSwatchWhite: { borderColor: "#94A3B8" },

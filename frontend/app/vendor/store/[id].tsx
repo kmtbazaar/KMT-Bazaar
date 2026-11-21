@@ -20,6 +20,7 @@ import { COLORS, RADIUS, shadow } from "@/src/theme";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import ProductImagesUploader from "@/src/components/ProductImagesUploader";
+import { getProductCategoryConfig } from "@/src/productCategoryConfig";
 
 const PRODUCT_UNIT_OPTIONS = [
   "XS", "S", "M", "L", "XL", "XXL",
@@ -27,6 +28,9 @@ const PRODUCT_UNIT_OPTIONS = [
   "UK 10", "UK 11", "UK 12", "UK 13", "UK 14",
   "1 pc", "250 g", "500 g", "1 kg", "250 ml", "500 ml", "750 ml", "1 L", "2 L",
 ];
+
+// Kept for legacy size-option CI coverage; category-specific presets come from productCategoryConfig.
+void PRODUCT_UNIT_OPTIONS;
 
 const PRODUCT_COLOR_OPTIONS = [
   { label: "Black", hex: "#171717" },
@@ -80,89 +84,80 @@ const validateVariantDrafts = (variants: any[]) => {
   return "";
 };
 
-function ProductColorPicker({
-  value,
-  onChange,
-  testID,
-}: {
+function ProductColorPicker({ value, onChange, testID, colorLabel = "Colour", imagesByColor = {}, onImagesChange }: {
   value: string[];
   onChange: (colors: string[]) => void;
   testID: string;
+  colorLabel?: string;
+  imagesByColor?: Record<string, string[]>;
+  onImagesChange: (images: Record<string, string[]>) => void;
 }) {
-  const [customColor, setCustomColor] = useState("");
-
-  const toggleColor = (color: string) => {
-    const exists = value.some((item) => item.toLowerCase() === color.toLowerCase());
-    onChange(exists
-      ? value.filter((item) => item.toLowerCase() !== color.toLowerCase())
-      : [...value, color]);
+  const [customColor,setCustomColor]=useState("");
+  const [activeColor,setActiveColor]=useState(value[0]||"");
+  React.useEffect(()=>{if(!value.some(item=>item.toLowerCase()===activeColor.toLowerCase()))setActiveColor(value[0]||"");},[value,activeColor]);
+  const toggleColor=(color:string)=>{
+    const exists=value.some(item=>item.toLowerCase()===color.toLowerCase());
+    if(exists){
+      const next=value.filter(item=>item.toLowerCase()!==color.toLowerCase());
+      const nextImages={...imagesByColor};
+      const imageKey=Object.keys(nextImages).find(key=>key.toLowerCase()===color.toLowerCase());
+      if(imageKey)delete nextImages[imageKey];
+      onChange(next);
+      onImagesChange(nextImages);
+      if(activeColor.toLowerCase()===color.toLowerCase())setActiveColor(next[0]||"");
+    }else{onChange([...value,color]);setActiveColor(color);}
   };
-
-  const addCustomColor = () => {
-    const color = customColor.trim().replace(/\s+/g, " ");
-    if (!color || value.some((item) => item.toLowerCase() === color.toLowerCase())) return;
-    onChange([...value, color]);
-    setCustomColor("");
+  const addCustomColor=()=>{
+    const color=customColor.trim().replace(/\s+/g," ");
+    if(!color||value.some(item=>item.toLowerCase()===color.toLowerCase()))return;
+    onChange([...value,color]);setActiveColor(color);setCustomColor("");
   };
-
   return (
     <View style={s.productColorPanel} testID={testID}>
-      <Text style={s.productColorTitle}>Available colours</Text>
-      <Text style={s.productColorHint}>Select every colour customers can choose.</Text>
+      <Text style={s.productColorTitle}>Available {colorLabel.toLowerCase()}s</Text>
+      <Text style={s.productColorHint}>Select the {colorLabel.toLowerCase()} options customers can choose.</Text>
       <View style={s.productColorOptions}>
-        {PRODUCT_COLOR_OPTIONS.map((color) => {
-          const active = value.some((item) => item.toLowerCase() === color.label.toLowerCase());
-          return (
-            <Pressable
-              key={color.label}
-              accessibilityRole="button"
-              accessibilityLabel={color.label + " colour"}
-              accessibilityState={{ selected: active }}
-              testID={testID + "-" + color.label.toLowerCase()}
-              onPress={() => toggleColor(color.label)}
-              style={[s.productColorOption, active && s.productColorOptionActive]}
-            >
-              <View style={[
-                s.productColorDot,
-                { backgroundColor: color.hex },
-                color.label === "White" && s.productColorDotWhite,
-                active && s.productColorDotSelected,
-              ]}>
-                {active ? <MaterialCommunityIcons name="check" size={11} color={color.label === "White" ? "#111827" : "#FFFFFF"} /> : null}
-              </View>
-              <Text style={[s.productColorOptionText, active && s.productColorOptionTextActive]}>{color.label}</Text>
-            </Pressable>
-          );
+        {PRODUCT_COLOR_OPTIONS.map(color=>{
+          const active=value.some(item=>item.toLowerCase()===color.label.toLowerCase());
+          return <Pressable key={color.label} accessibilityRole="button" accessibilityLabel={color.label+" colour"}
+            accessibilityState={{selected:active}} testID={testID+"-"+color.label.toLowerCase()}
+            onPress={()=>toggleColor(color.label)} style={[s.productColorOption,active&&s.productColorOptionActive]}>
+            <View style={[s.productColorDot,{backgroundColor:color.hex},color.label==="White"&&s.productColorDotWhite,active&&s.productColorDotSelected]}>
+              {active?<MaterialCommunityIcons name="check" size={11} color={color.label==="White"?"#111827":"#FFFFFF"}/>:null}
+            </View>
+            <Text style={[s.productColorOptionText,active&&s.productColorOptionTextActive]}>{color.label}</Text>
+          </Pressable>;
         })}
       </View>
       <View style={s.addCustomColorRow}>
-        <TextInput
-          value={customColor}
-          onChangeText={setCustomColor}
-          placeholder="Add another colour"
-          placeholderTextColor="#64748B"
-          style={[s.inputCompact, s.addCustomColorInput]}
-          onSubmitEditing={addCustomColor}
-          returnKeyType="done"
-        />
-        <Pressable
-          testID={testID + "-add-custom"}
-          accessibilityRole="button"
-          accessibilityLabel="Add custom colour"
-          onPress={addCustomColor}
-          disabled={!customColor.trim()}
-          style={[s.addCustomColorButton, !customColor.trim() && { opacity: 0.45 }]}
-        >
-          <MaterialCommunityIcons name="plus" size={19} color="#FFFFFF" />
+        <TextInput value={customColor} onChangeText={setCustomColor} placeholder={"Add another " + colorLabel.toLowerCase()}
+          placeholderTextColor="#64748B" style={[s.inputCompact,s.addCustomColorInput]} onSubmitEditing={addCustomColor} returnKeyType="done"/>
+        <Pressable testID={testID+"-add-custom"} accessibilityRole="button" accessibilityLabel="Add custom colour"
+          onPress={addCustomColor} disabled={!customColor.trim()} style={[s.addCustomColorButton,!customColor.trim()&&{opacity:0.45}]}>
+          <MaterialCommunityIcons name="plus" size={19} color="#FFFFFF"/>
         </Pressable>
       </View>
-      <Text style={s.productColorSelectedCount}>
-        {value.length ? value.length + " colour option(s) selected" : "No colour options selected"}
-      </Text>
+      <Text style={s.productColorSelectedCount}>{value.length?value.length+" colour option(s) selected":"No colour options selected"}</Text>
+      {value.length>0?(
+        <View style={s.productColorImagePanel}>
+          <Text style={s.productColorTitle}>Attach photos to each colour</Text>
+          <Text style={s.productColorHint}>Choose a colour, then upload its matching product photos.</Text>
+          <View style={s.productColorOptions}>
+            {value.map(color=><Pressable key={color} accessibilityRole="button" accessibilityLabel={"Manage photos for "+color}
+              accessibilityState={{selected:activeColor===color}} onPress={()=>setActiveColor(color)}
+              style={[s.productColorOption,activeColor===color&&s.productColorOptionActive]}>
+              <Text style={[s.productColorOptionText,activeColor===color&&s.productColorOptionTextActive]}>{color}</Text>
+            </Pressable>)}
+          </View>
+          {activeColor?<ProductImagesUploader value={imagesByColor[activeColor]||[]}
+            onChange={images=>onImagesChange({...imagesByColor,[activeColor]:images})}
+            label={activeColor+" photos shown when this colour is selected"} minCount={1} maxCount={6}
+            testID={testID+"-images-"+activeColor.toLowerCase().replace(/\s+/g,"-")}/>:null}
+        </View>
+      ):null}
     </View>
   );
 }
-
 export default function VendorStoreDetail() {
   const router = useRouter();
   const params = useLocalSearchParams();
@@ -174,6 +169,7 @@ export default function VendorStoreDetail() {
   const [products, setProducts] = useState<any[]>([]);
   const [store, setStore] = useState<any | null>(null);
   const [categories, setCategories] = useState<any[]>([]);
+  const categoryConfig = getProductCategoryConfig(categories.find((item: any) => String(item.id) === String(store?.category_id)));
   const [itemCategories, setItemCategories] = useState<any[]>([]);
   const [itemCategoryName, setItemCategoryName] = useState("");
   const [productItemCategoryName, setProductItemCategoryName] = useState("");
@@ -206,6 +202,7 @@ export default function VendorStoreDetail() {
     image: "",
     images: [] as string[],
     colors: [] as string[],
+    color_images: {} as Record<string, string[]>,
     description: "",
     trending: false,
     item_category: "",
@@ -224,6 +221,7 @@ export default function VendorStoreDetail() {
     image: "",
     images: [] as string[],
     colors: [] as string[],
+    color_images: {} as Record<string, string[]>,
     description: "",
     trending: false,
     item_category: "",
@@ -473,6 +471,7 @@ export default function VendorStoreDetail() {
       image: "",
       images: [],
       colors: [],
+      color_images: {},
       description: "",
       trending: false,
       item_category: "",
@@ -491,8 +490,8 @@ export default function VendorStoreDetail() {
       Alert.alert("Error", "Name, Price, and shop category are required.");
       return;
     }
-    const variants = buildVariantPayload(form, addVariantDrafts);
-    const variantError = validateVariantDrafts(variants);
+    const variants = categoryConfig.showVariants ? buildVariantPayload(form, addVariantDrafts) : undefined;
+    const variantError = variants ? validateVariantDrafts(variants) : "";
     if (variantError) {
       Alert.alert("Check product sizes", variantError);
       return;
@@ -502,6 +501,8 @@ export default function VendorStoreDetail() {
       await vendorApi.createProduct({
         ...form,
         variants,
+        colors: categoryConfig.showColors ? form.colors : [],
+        color_images: categoryConfig.showColors ? form.color_images : {},
         category_id: store.category_id,
         store_id: id,
         price: parseFloat(form.price),
@@ -542,6 +543,7 @@ export default function VendorStoreDetail() {
       image: prod.image || "",
       images: Array.from(new Set([...(Array.isArray(prod.images) ? prod.images : []), prod.image].filter((url: any) => typeof url === "string" && url.trim()))),
       colors: Array.isArray(prod.colors) ? prod.colors.map((color: any) => String(color)) : [],
+      color_images: prod.color_images && typeof prod.color_images === "object" ? prod.color_images : {},
       description: prod.description || "",
       trending: !!prod.trending,
       item_category: prod.item_category || "",
@@ -567,8 +569,8 @@ export default function VendorStoreDetail() {
       Alert.alert("Error", "Name and Price are required.");
       return;
     }
-    const variants = buildVariantPayload(editProductForm, editVariantDrafts, editBaseVariantId);
-    const variantError = validateVariantDrafts(variants);
+    const variants = categoryConfig.showVariants ? buildVariantPayload(editProductForm, editVariantDrafts, editBaseVariantId) : undefined;
+    const variantError = variants ? validateVariantDrafts(variants) : "";
     if (variantError) {
       Alert.alert("Check product sizes", variantError);
       return;
@@ -578,6 +580,8 @@ export default function VendorStoreDetail() {
       await vendorApi.updateProduct(selectedProductId, {
         ...editProductForm,
         variants,
+        colors: categoryConfig.showColors ? editProductForm.colors : [],
+        color_images: categoryConfig.showColors ? editProductForm.color_images : {},
         category_id: store?.category_id || editProductForm.category_id,
         store_id: id,
         price: parseFloat(editProductForm.price),
@@ -745,7 +749,7 @@ export default function VendorStoreDetail() {
                 s.meta,
                 Number(item.stock ?? 0) <= 0 && { color: COLORS.error, fontWeight: "900", fontSize: 14 },
               ]}>
-                {item.unit} · Stock: {Math.max(0, Number(item.stock ?? 0))}
+                {categoryConfig.showVariants && item.unit ? `${item.unit} · ` : ""}Stock: {Math.max(0, Number(item.stock ?? 0))}
                 {Number(item.stock ?? 0) <= 0 ? " · OUT OF STOCK" : Number(item.stock ?? 0) <= 5 ? " · LOW STOCK" : ""}
               </Text>
             </View>
@@ -857,11 +861,12 @@ export default function VendorStoreDetail() {
                 textAlignVertical="top"
               />
 
+              {categoryConfig.showVariants && categoryConfig.variantOptions.length > 0 ? (
               <View style={s.unitPickerPanel} testID="vendor-store-add-product-size-pack-picker">
-                <Text style={s.sectionLabel}>Choose product size / pack</Text>
-                <Text style={s.unitPickerHint}>Tap one option. Your selection fills the Unit field.</Text>
+                <Text style={s.sectionLabel}>Choose {categoryConfig.variantLabel}</Text>
+                <Text style={s.unitPickerHint}>Select an option for this product category.</Text>
                 <View style={s.unitChipContainer}>
-                  {PRODUCT_UNIT_OPTIONS.map((option) => {
+                  {categoryConfig.variantOptions.map((option) => {
                     const active = form.unit.trim().toLowerCase() === option.toLowerCase();
                     return (
                       <Pressable
@@ -879,12 +884,15 @@ export default function VendorStoreDetail() {
                   })}
                 </View>
               </View>
+              ) : null}
 
-              <ProductColorPicker
-                value={form.colors}
+              {categoryConfig.showColors ? (
+              <ProductColorPicker value={form.colors} colorLabel={categoryConfig.colorLabel}
                 onChange={(colors) => setForm((current) => ({ ...current, colors }))}
-                testID="vendor-store-add-product-colours"
-              />
+                imagesByColor={form.color_images}
+                onImagesChange={(color_images) => setForm((current) => ({ ...current, color_images }))}
+                testID="vendor-store-add-product-colours" />
+              ) : null}
 
                 <View style={s.itemCategoryPanel} testID="vendor-store-add-product-item-category-picker">
                   <Text style={s.itemCategoryTitle}>Choose item category</Text>
@@ -970,26 +978,25 @@ export default function VendorStoreDetail() {
                   style={[s.inputCompact, s.flex1]}
                   keyboardType="numeric"
                 />
-                <TextInput
-                  placeholder="Unit (e.g. 1 kg)"
-                  placeholderTextColor="#9CA3AF"
-                  value={form.unit}
-                  onChangeText={(t) => setForm({ ...form, unit: t })}
-                  style={[s.inputCompact, s.flex1]}
-                />
+                {categoryConfig.showVariants ? (
+                  <TextInput placeholder={categoryConfig.variantLabel} placeholderTextColor="#9CA3AF"
+                    value={form.unit} onChangeText={(t) => setForm({ ...form, unit: t })}
+                    style={[s.inputCompact, s.flex1]} />
+                ) : null}
               </View>
 
+              {categoryConfig.showVariants ? (
               <View style={s.variantManagerPanel} testID="vendor-store-add-product-variants">
                 <View style={s.variantManagerHeader}>
                   <View style={{ flex: 1 }}>
-                    <Text style={s.variantManagerTitle}>Sell in more sizes</Text>
-                    <Text style={s.variantManagerHint}>Add each size/pack with its own label, price, MRP and stock.</Text>
+                    <Text style={s.variantManagerTitle}>Manage {categoryConfig.variantLabel} options</Text>
+                    <Text style={s.variantManagerHint}>Each option has its own price, MRP and stock.</Text>
                   </View>
                   <Pressable testID="vendor-store-add-variant" accessibilityRole="button"
                     onPress={() => setAddVariantDrafts((current) => [...current, { id: "", unit: "", price: "", mrp: "", stock: "10" }])}
                     style={s.addVariantButton}>
                     <MaterialCommunityIcons name="plus" size={17} color="#FFFFFF" />
-                    <Text style={s.addVariantButtonText}>Add size</Text>
+                    <Text style={s.addVariantButtonText}>Add option</Text>
                   </Pressable>
                 </View>
                 {addVariantDrafts.map((variant, index) => (
@@ -1002,7 +1009,7 @@ export default function VendorStoreDetail() {
                         <MaterialCommunityIcons name="trash-can-outline" size={17} color="#B91C1C" />
                       </Pressable>
                     </View>
-                    <TextInput placeholder="Size / pack (e.g. 500 g)" placeholderTextColor="#64748B"
+                    <TextInput placeholder={categoryConfig.variantLabel} placeholderTextColor="#64748B"
                       value={variant.unit}
                       onChangeText={(value) => setAddVariantDrafts((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, unit: value } : item))}
                       style={s.inputCompact} />
@@ -1020,6 +1027,7 @@ export default function VendorStoreDetail() {
                   </View>
                 ))}
               </View>
+              ) : null}
 
               <ProductImagesUploader
                 value={form.images}
@@ -1031,14 +1039,14 @@ export default function VendorStoreDetail() {
               />
 
               {/* Description Input */}
-              <TextInput
-                placeholder="Description"
-                placeholderTextColor="#9CA3AF"
-                value={form.description}
-                onChangeText={(t) => setForm({ ...form, description: t })}
-                style={[s.inputCompact, { height: 50, textAlignVertical: "top" }]}
-                multiline
-              />
+              {categoryConfig.showDescription ? (
+                <View style={s.productDescriptionPanel}>
+                  <Text style={s.sectionLabel}>{categoryConfig.descriptionLabel}</Text>
+                  <TextInput placeholder={categoryConfig.descriptionPlaceholder} placeholderTextColor="#9CA3AF"
+                    value={form.description} onChangeText={(t) => setForm({ ...form, description: t })}
+                    style={[s.inputCompact, { height: 70, textAlignVertical: "top" }]} multiline />
+                </View>
+              ) : null}
 
               {/* Mark as Trending Checkbox */}
               <Pressable
@@ -1110,11 +1118,12 @@ export default function VendorStoreDetail() {
                 textAlignVertical="top"
               />
 
+              {categoryConfig.showVariants && categoryConfig.variantOptions.length > 0 ? (
               <View style={s.unitPickerPanel} testID="vendor-store-edit-product-size-pack-picker">
-                <Text style={s.sectionLabel}>Choose product size / pack</Text>
-                <Text style={s.unitPickerHint}>Tap one option. Your selection fills the Unit field.</Text>
+                <Text style={s.sectionLabel}>Choose {categoryConfig.variantLabel}</Text>
+                <Text style={s.unitPickerHint}>Select an option for this product category.</Text>
                 <View style={s.unitChipContainer}>
-                  {PRODUCT_UNIT_OPTIONS.map((option) => {
+                  {categoryConfig.variantOptions.map((option) => {
                     const active = editProductForm.unit.trim().toLowerCase() === option.toLowerCase();
                     return (
                       <Pressable
@@ -1132,12 +1141,15 @@ export default function VendorStoreDetail() {
                   })}
                 </View>
               </View>
+              ) : null}
 
-              <ProductColorPicker
-                value={editProductForm.colors}
+              {categoryConfig.showColors ? (
+              <ProductColorPicker value={editProductForm.colors} colorLabel={categoryConfig.colorLabel}
                 onChange={(colors) => setEditProductForm((current) => ({ ...current, colors }))}
-                testID="vendor-store-edit-product-colours"
-              />
+                imagesByColor={editProductForm.color_images}
+                onImagesChange={(color_images) => setEditProductForm((current) => ({ ...current, color_images }))}
+                testID="vendor-store-edit-product-colours" />
+              ) : null}
 
                 <View style={s.itemCategoryPanel} testID="vendor-store-edit-product-item-category-picker">
                   <Text style={s.itemCategoryTitle}>Choose item category</Text>
@@ -1229,26 +1241,25 @@ export default function VendorStoreDetail() {
                   style={[s.inputCompact, s.flex1]}
                   keyboardType="numeric"
                 />
-                <TextInput
-                  placeholder="Unit (e.g. 1 kg)"
-                  placeholderTextColor="#9CA3AF"
-                  value={editProductForm.unit}
-                  onChangeText={(t) => setEditProductForm({ ...editProductForm, unit: t })}
-                  style={[s.inputCompact, s.flex1]}
-                />
+                {categoryConfig.showVariants ? (
+                  <TextInput placeholder={categoryConfig.variantLabel} placeholderTextColor="#9CA3AF"
+                    value={editProductForm.unit} onChangeText={(t) => setEditProductForm({ ...editProductForm, unit: t })}
+                    style={[s.inputCompact, s.flex1]} />
+                ) : null}
               </View>
 
+              {categoryConfig.showVariants ? (
               <View style={s.variantManagerPanel} testID="vendor-store-edit-product-variants">
                 <View style={s.variantManagerHeader}>
                   <View style={{ flex: 1 }}>
-                    <Text style={s.variantManagerTitle}>Sell in more sizes</Text>
-                    <Text style={s.variantManagerHint}>Add each size/pack with its own label, price, MRP and stock.</Text>
+                    <Text style={s.variantManagerTitle}>Manage {categoryConfig.variantLabel} options</Text>
+                    <Text style={s.variantManagerHint}>Each option has its own price, MRP and stock.</Text>
                   </View>
                   <Pressable testID="vendor-store-edit-variant" accessibilityRole="button"
                     onPress={() => setEditVariantDrafts((current) => [...current, { id: "", unit: "", price: "", mrp: "", stock: "10" }])}
                     style={s.addVariantButton}>
                     <MaterialCommunityIcons name="plus" size={17} color="#FFFFFF" />
-                    <Text style={s.addVariantButtonText}>Add size</Text>
+                    <Text style={s.addVariantButtonText}>Add option</Text>
                   </Pressable>
                 </View>
                 {editVariantDrafts.map((variant, index) => (
@@ -1261,7 +1272,7 @@ export default function VendorStoreDetail() {
                         <MaterialCommunityIcons name="trash-can-outline" size={17} color="#B91C1C" />
                       </Pressable>
                     </View>
-                    <TextInput placeholder="Size / pack (e.g. 500 g)" placeholderTextColor="#64748B"
+                    <TextInput placeholder={categoryConfig.variantLabel} placeholderTextColor="#64748B"
                       value={variant.unit}
                       onChangeText={(value) => setEditVariantDrafts((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, unit: value } : item))}
                       style={s.inputCompact} />
@@ -1279,6 +1290,7 @@ export default function VendorStoreDetail() {
                   </View>
                 ))}
               </View>
+              ) : null}
 
               <ProductImagesUploader
                 value={editProductForm.images}
@@ -1290,14 +1302,14 @@ export default function VendorStoreDetail() {
               />
 
               {/* Description Input */}
-              <TextInput
-                placeholder="Description"
-                placeholderTextColor="#9CA3AF"
-                value={editProductForm.description}
-                onChangeText={(t) => setEditProductForm({ ...editProductForm, description: t })}
-                style={[s.inputCompact, { height: 50, textAlignVertical: "top" }]}
-                multiline
-              />
+              {categoryConfig.showDescription ? (
+                <View style={s.productDescriptionPanel}>
+                  <Text style={s.sectionLabel}>{categoryConfig.descriptionLabel}</Text>
+                  <TextInput placeholder={categoryConfig.descriptionPlaceholder} placeholderTextColor="#9CA3AF"
+                    value={editProductForm.description} onChangeText={(t) => setEditProductForm({ ...editProductForm, description: t })}
+                    style={[s.inputCompact, { height: 70, textAlignVertical: "top" }]} multiline />
+                </View>
+              ) : null}
 
               {/* Mark as Trending Checkbox */}
               <Pressable
@@ -1703,6 +1715,8 @@ const s = StyleSheet.create({
   addCustomColorInput: { flex: 1, minWidth: 0, width: 0, height: 38, marginBottom: 0, backgroundColor: "#FFFFFF", borderColor: "#BAE6FD" },
   addCustomColorButton: { width: 40, height: 38, borderRadius: 10, alignItems: "center", justifyContent: "center", backgroundColor: "#0284C7" },
   productColorSelectedCount: { color: "#0369A1", fontSize: 10, fontWeight: "700", marginTop: 5 },
+  productColorImagePanel: { backgroundColor: "#FFFFFF", borderWidth: 1, borderColor: "#BAE6FD", borderRadius: 12, padding: 9, marginTop: 10, gap: 7 },
+  productDescriptionPanel: { backgroundColor: "#F8FAFC", borderWidth: 1, borderColor: "#CBD5E1", borderRadius: 12, padding: 10, marginTop: 8, gap: 7 },
   unitPickerHint: { fontSize: 11, lineHeight: 15, color: "#7C2D12", marginTop: -3, marginBottom: 8 },
   unitChipContainer: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
   unitChip: {
