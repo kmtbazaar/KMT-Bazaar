@@ -197,7 +197,7 @@ jobs:
           const searchStyleLine = home.includes("style={s.searchWrap}") && !home.includes("translateY: -24");
           const searchPosition = home.indexOf('testID="home-search-trigger"');
           const bannerPosition = home.indexOf("<View style={s.bannerCarouselShell}>");
-          assert.ok(heroHeightLine && searchStyleLine && searchPosition > 0 && bannerPosition > searchPosition && home.includes("paddingTop: SPACING.lg"), "Home search must render directly below the full hero and above the banner");
+          assert.ok(heroHeightLine && searchStyleLine && searchPosition > 0 && bannerPosition > searchPosition && home.includes("paddingTop: Math.max(0, SPACING.lg - 8)"), "Home search must render directly below the full hero and above the banner");
           assert.ok(home.includes("searchBarAnchor: { position: \"absolute\"") && home.includes("top: heroAnimatedHeight") && home.includes("translateY: -52") && home.includes("searchBarOuter: { paddingHorizontal: SPACING.md") && home.includes("marginTop: 0, height: 44"), "Search bottom must align with hero bottom and banner top, using the same 12px side edges as banners");
           assert.ok(home.includes('backgroundColor: "transparent", zIndex: 25, elevation: 25'), "Home search area must not paint a white panel over the animated sky");
           assert.ok(home.includes("onPress={openHomeSearch}") && !home.includes('onPress={() => router.push("/search" as any)}'), "Home search must open in place without pushing a separate screen");
