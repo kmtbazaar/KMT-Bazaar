@@ -29,8 +29,7 @@ const PRODUCT_UNIT_OPTIONS = [
   "1 pc", "250 g", "500 g", "1 kg", "250 ml", "500 ml", "750 ml", "1 L", "2 L",
 ];
 
-// Kept for legacy size-option CI coverage; category-specific presets come from productCategoryConfig.
-void PRODUCT_UNIT_OPTIONS;
+// Shared size and pack options remain available in both Store Vendor Add and Edit Product.
 
 const PRODUCT_COLOR_OPTIONS = [
   { label: "Black", hex: "#171717" },
@@ -490,8 +489,8 @@ export default function VendorStoreDetail() {
       Alert.alert("Error", "Name, Price, and shop category are required.");
       return;
     }
-    const variants = categoryConfig.showVariants ? buildVariantPayload(form, addVariantDrafts) : undefined;
-    const variantError = variants ? validateVariantDrafts(variants) : "";
+    const variants = buildVariantPayload(form, addVariantDrafts);
+    const variantError = validateVariantDrafts(variants);
     if (variantError) {
       Alert.alert("Check product sizes", variantError);
       return;
@@ -569,8 +568,8 @@ export default function VendorStoreDetail() {
       Alert.alert("Error", "Name and Price are required.");
       return;
     }
-    const variants = categoryConfig.showVariants ? buildVariantPayload(editProductForm, editVariantDrafts, editBaseVariantId) : undefined;
-    const variantError = variants ? validateVariantDrafts(variants) : "";
+    const variants = buildVariantPayload(editProductForm, editVariantDrafts, editBaseVariantId);
+    const variantError = validateVariantDrafts(variants);
     if (variantError) {
       Alert.alert("Check product sizes", variantError);
       return;
@@ -749,7 +748,7 @@ export default function VendorStoreDetail() {
                 s.meta,
                 Number(item.stock ?? 0) <= 0 && { color: COLORS.error, fontWeight: "900", fontSize: 14 },
               ]}>
-                {categoryConfig.showVariants && item.unit ? `${item.unit} · ` : ""}Stock: {Math.max(0, Number(item.stock ?? 0))}
+                {item.unit ? `${item.unit} · ` : ""}Stock: {Math.max(0, Number(item.stock ?? 0))}
                 {Number(item.stock ?? 0) <= 0 ? " · OUT OF STOCK" : Number(item.stock ?? 0) <= 5 ? " · LOW STOCK" : ""}
               </Text>
             </View>
@@ -861,12 +860,11 @@ export default function VendorStoreDetail() {
                 textAlignVertical="top"
               />
 
-              {categoryConfig.showVariants && categoryConfig.variantOptions.length > 0 ? (
               <View style={s.unitPickerPanel} testID="vendor-store-add-product-size-pack-picker">
-                <Text style={s.sectionLabel}>Choose {categoryConfig.variantLabel}</Text>
-                <Text style={s.unitPickerHint}>Select an option for this product category.</Text>
+                <Text style={s.sectionLabel}>Choose product size / pack</Text>
+                <Text style={s.unitPickerHint}>Tap one option. Your selection fills the Unit field.</Text>
                 <View style={s.unitChipContainer}>
-                  {categoryConfig.variantOptions.map((option) => {
+                  {PRODUCT_UNIT_OPTIONS.map((option) => {
                     const active = form.unit.trim().toLowerCase() === option.toLowerCase();
                     return (
                       <Pressable
@@ -884,7 +882,6 @@ export default function VendorStoreDetail() {
                   })}
                 </View>
               </View>
-              ) : null}
 
               {categoryConfig.showColors ? (
               <ProductColorPicker value={form.colors} colorLabel={categoryConfig.colorLabel}
@@ -978,25 +975,22 @@ export default function VendorStoreDetail() {
                   style={[s.inputCompact, s.flex1]}
                   keyboardType="numeric"
                 />
-                {categoryConfig.showVariants ? (
-                  <TextInput placeholder={categoryConfig.variantLabel} placeholderTextColor="#9CA3AF"
-                    value={form.unit} onChangeText={(t) => setForm({ ...form, unit: t })}
-                    style={[s.inputCompact, s.flex1]} />
-                ) : null}
+                <TextInput placeholder="Unit (e.g. 1 kg)" placeholderTextColor="#9CA3AF"
+                  value={form.unit} onChangeText={(t) => setForm({ ...form, unit: t })}
+                  style={[s.inputCompact, s.flex1]} />
               </View>
 
-              {categoryConfig.showVariants ? (
               <View style={s.variantManagerPanel} testID="vendor-store-add-product-variants">
                 <View style={s.variantManagerHeader}>
                   <View style={{ flex: 1 }}>
-                    <Text style={s.variantManagerTitle}>Manage {categoryConfig.variantLabel} options</Text>
-                    <Text style={s.variantManagerHint}>Each option has its own price, MRP and stock.</Text>
+                    <Text style={s.variantManagerTitle}>Sell in more sizes</Text>
+                    <Text style={s.variantManagerHint}>Add each size/pack with its own label, price, MRP and stock.</Text>
                   </View>
                   <Pressable testID="vendor-store-add-variant" accessibilityRole="button"
                     onPress={() => setAddVariantDrafts((current) => [...current, { id: "", unit: "", price: "", mrp: "", stock: "10" }])}
                     style={s.addVariantButton}>
                     <MaterialCommunityIcons name="plus" size={17} color="#FFFFFF" />
-                    <Text style={s.addVariantButtonText}>Add option</Text>
+                    <Text style={s.addVariantButtonText}>Add size</Text>
                   </Pressable>
                 </View>
                 {addVariantDrafts.map((variant, index) => (
@@ -1009,7 +1003,7 @@ export default function VendorStoreDetail() {
                         <MaterialCommunityIcons name="trash-can-outline" size={17} color="#B91C1C" />
                       </Pressable>
                     </View>
-                    <TextInput placeholder={categoryConfig.variantLabel} placeholderTextColor="#64748B"
+                    <TextInput placeholder="Size / pack (e.g. 500 g)" placeholderTextColor="#64748B"
                       value={variant.unit}
                       onChangeText={(value) => setAddVariantDrafts((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, unit: value } : item))}
                       style={s.inputCompact} />
@@ -1027,7 +1021,6 @@ export default function VendorStoreDetail() {
                   </View>
                 ))}
               </View>
-              ) : null}
 
               <ProductImagesUploader
                 value={form.images}
@@ -1118,12 +1111,11 @@ export default function VendorStoreDetail() {
                 textAlignVertical="top"
               />
 
-              {categoryConfig.showVariants && categoryConfig.variantOptions.length > 0 ? (
               <View style={s.unitPickerPanel} testID="vendor-store-edit-product-size-pack-picker">
-                <Text style={s.sectionLabel}>Choose {categoryConfig.variantLabel}</Text>
-                <Text style={s.unitPickerHint}>Select an option for this product category.</Text>
+                <Text style={s.sectionLabel}>Choose product size / pack</Text>
+                <Text style={s.unitPickerHint}>Tap one option. Your selection fills the Unit field.</Text>
                 <View style={s.unitChipContainer}>
-                  {categoryConfig.variantOptions.map((option) => {
+                  {PRODUCT_UNIT_OPTIONS.map((option) => {
                     const active = editProductForm.unit.trim().toLowerCase() === option.toLowerCase();
                     return (
                       <Pressable
@@ -1141,7 +1133,6 @@ export default function VendorStoreDetail() {
                   })}
                 </View>
               </View>
-              ) : null}
 
               {categoryConfig.showColors ? (
               <ProductColorPicker value={editProductForm.colors} colorLabel={categoryConfig.colorLabel}
@@ -1241,25 +1232,22 @@ export default function VendorStoreDetail() {
                   style={[s.inputCompact, s.flex1]}
                   keyboardType="numeric"
                 />
-                {categoryConfig.showVariants ? (
-                  <TextInput placeholder={categoryConfig.variantLabel} placeholderTextColor="#9CA3AF"
-                    value={editProductForm.unit} onChangeText={(t) => setEditProductForm({ ...editProductForm, unit: t })}
-                    style={[s.inputCompact, s.flex1]} />
-                ) : null}
+                <TextInput placeholder="Unit (e.g. 1 kg)" placeholderTextColor="#9CA3AF"
+                  value={editProductForm.unit} onChangeText={(t) => setEditProductForm({ ...editProductForm, unit: t })}
+                  style={[s.inputCompact, s.flex1]} />
               </View>
 
-              {categoryConfig.showVariants ? (
               <View style={s.variantManagerPanel} testID="vendor-store-edit-product-variants">
                 <View style={s.variantManagerHeader}>
                   <View style={{ flex: 1 }}>
-                    <Text style={s.variantManagerTitle}>Manage {categoryConfig.variantLabel} options</Text>
-                    <Text style={s.variantManagerHint}>Each option has its own price, MRP and stock.</Text>
+                    <Text style={s.variantManagerTitle}>Sell in more sizes</Text>
+                    <Text style={s.variantManagerHint}>Add each size/pack with its own label, price, MRP and stock.</Text>
                   </View>
                   <Pressable testID="vendor-store-edit-variant" accessibilityRole="button"
                     onPress={() => setEditVariantDrafts((current) => [...current, { id: "", unit: "", price: "", mrp: "", stock: "10" }])}
                     style={s.addVariantButton}>
                     <MaterialCommunityIcons name="plus" size={17} color="#FFFFFF" />
-                    <Text style={s.addVariantButtonText}>Add option</Text>
+                    <Text style={s.addVariantButtonText}>Add size</Text>
                   </Pressable>
                 </View>
                 {editVariantDrafts.map((variant, index) => (
@@ -1272,7 +1260,7 @@ export default function VendorStoreDetail() {
                         <MaterialCommunityIcons name="trash-can-outline" size={17} color="#B91C1C" />
                       </Pressable>
                     </View>
-                    <TextInput placeholder={categoryConfig.variantLabel} placeholderTextColor="#64748B"
+                    <TextInput placeholder="Size / pack (e.g. 500 g)" placeholderTextColor="#64748B"
                       value={variant.unit}
                       onChangeText={(value) => setEditVariantDrafts((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, unit: value } : item))}
                       style={s.inputCompact} />
@@ -1290,7 +1278,6 @@ export default function VendorStoreDetail() {
                   </View>
                 ))}
               </View>
-              ) : null}
 
               <ProductImagesUploader
                 value={editProductForm.images}
