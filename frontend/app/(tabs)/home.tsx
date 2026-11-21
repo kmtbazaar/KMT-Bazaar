@@ -26,7 +26,7 @@ import CheckoutBar from "@/src/components/CheckoutBar";
 import { BrandingFooter } from "@/src/components/AnimatedBrandLogo";
 
 const { width } = Dimensions.get("window");
-const BANNER_W = Math.max(0, Math.round((width - 24) * 1.1));
+const BANNER_W = Math.max(0, Math.round(width - 24));
 const BANNER_OVERFLOW = Math.max(0, (BANNER_W - width) / 2);
 const HERO_BACKDROP_HEIGHT = 182; // Extend animated sky to the banner line without moving page content
 const HERO_COLLAPSE_SCROLL_THRESHOLD = 120; // Collapse when banner CTA reaches the top; keep categories clear
