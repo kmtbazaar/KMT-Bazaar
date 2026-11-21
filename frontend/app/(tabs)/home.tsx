@@ -88,7 +88,7 @@ function KarmatarRainDrop({left,top,delay,duration}:{left:string;top:number;dela
   opacity:.3+Math.sin(fall.value*Math.PI)*.24,
   transform:[{translateY:fall.value*205},{rotate:"13deg"}],
  }));
- return <Animated.View pointerEvents="none" style={[s.karmatarRainDrop,{left,top},rainStyle]/>;
+ return <Animated.View pointerEvents="none" style={[s.karmatarRainDrop,{left,top},rainStyle]} />;
 }
 
 function KarmatarHeroScene(){
