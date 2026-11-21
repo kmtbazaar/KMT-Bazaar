@@ -183,7 +183,7 @@ jobs:
           const admin = fs.readFileSync("app/admin/categories.tsx", "utf8");
           const backend = fs.readFileSync("../backend/server.py", "utf8");
 
-          for (const label of ["RAM / Storage / Model", "Clothing size", "Shoe size", "Pack size / Weight", "Portion / Serving", "Pack / Strength"]) {
+          for (const label of ["RAM / Storage", "Clothing size", "Shoe size (UK)", "Pack size / Weight / Volume", "Portion / Serving", "Pack size / Strength"]) {
             assert.ok(config.includes(label), `Missing category-specific option label: ${label}`);
           }
           assert.ok(vendor.includes("getProductCategoryConfig"), "Vendor Add/Edit must load the selected Shop Category configuration.");
