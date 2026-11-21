@@ -3314,6 +3314,7 @@ class ProductVariantIn(BaseModel):
     price: float
     mrp: Optional[float] = None
     stock: int = 0
+    description: Optional[str] = None
 
 
 class ProductIn(BaseModel):
@@ -3329,6 +3330,7 @@ class ProductIn(BaseModel):
     variants: Optional[List[ProductVariantIn]] = None
     colors: Optional[List[str]] = None
     color_images: Optional[Dict[str, List[str]]] = None
+    attributes: Optional[Dict[str, Any]] = None
     image: str = ""
     images: Optional[List[str]] = None
     description: str = ""
@@ -3435,8 +3437,57 @@ def _normalize_product_variants(raw_variants):
             "price": round(price, 2),
             "mrp": round(mrp, 2),
             "stock": stock,
+            "description": str(row.get("description") or "").strip(),
         })
     return normalized
+
+
+def _preserve_product_variant_descriptions(variants, existing_variants):
+    existing_by_id = {
+        str(item.get("id") or ""): item
+        for item in (existing_variants or [])
+        if isinstance(item, dict) and item.get("id")
+    }
+    existing_by_unit = {
+        str(item.get("unit") or "").strip().casefold(): item
+        for item in (existing_variants or [])
+        if isinstance(item, dict) and item.get("unit")
+    }
+    for variant in variants or []:
+        previous = existing_by_id.get(str(variant.get("id") or "")) or existing_by_unit.get(
+            str(variant.get("unit") or "").strip().casefold()
+        )
+        if not str(variant.get("description") or "").strip() and previous and previous.get("description"):
+            variant["description"] = previous.get("description")
+    return variants
+
+
+def _validate_product_category_color_requirements(category, raw_colors, raw_color_images):
+    category = category or {}
+    fields = category.get("product_fields") if isinstance(category.get("product_fields"), dict) else {}
+    category_name = str(category.get("name") or "").strip().lower()
+    mobile_category = bool(re.search(r"(mobile|mobiles|smartphone|smart phone|cell phone|mobile phone|android|iphone)", category_name))
+    requires_color = bool(fields.get("requires_color", mobile_category))
+    requires_color_images = bool(fields.get("requires_color_images", mobile_category))
+    colors = [str(item).strip() for item in (raw_colors or []) if str(item).strip()]
+    if requires_color and not colors:
+        raise HTTPException(status_code=400, detail="Select at least one colour for this product category")
+    if requires_color_images and colors:
+        image_map = raw_color_images if isinstance(raw_color_images, dict) else {}
+        missing = [
+            color for color in colors
+            if not any(
+                str(url or "").strip()
+                for key, urls in image_map.items()
+                if str(key).strip().casefold() == color.casefold()
+                for url in (urls if isinstance(urls, list) else [])
+            )
+        ]
+        if missing:
+            raise HTTPException(
+                status_code=400,
+                detail="Upload at least one product photo for each selected colour: " + ", ".join(missing)
+            )
 
 
 def _apply_product_variants(product_doc, variants):
@@ -3457,7 +3508,7 @@ class CategoryIn(BaseModel):
     icon: str = "tag"
     color: str = "#2563EB"
     image: str = ""
-    product_fields: Optional[Dict[str, bool]] = None
+    product_fields: Optional[Dict[str, Any]] = None
 
 
 class ItemCategoryIn(BaseModel):
@@ -4168,7 +4219,7 @@ async def admin_create_product(data: ProductIn, _=Depends(require_roles("admin")
         raise HTTPException(400, "Selected store was not found")
 
     category_id = str(data.category_id or "").strip()
-    category = await db.categories.find_one({"id": category_id}, {"_id": 0, "id": 1})
+    category = await db.categories.find_one({"id": category_id}, {"_id": 0, "id": 1, "name": 1, "product_fields": 1})
     if not category:
         raise HTTPException(400, "Selected shop category was not found")
 
@@ -4184,6 +4235,7 @@ async def admin_create_product(data: ProductIn, _=Depends(require_roles("admin")
         product_data.pop("color_images", None)
     else:
         product_data["color_images"] = normalized_color_images
+    _validate_product_category_color_requirements(category, normalized_colors, normalized_color_images)
     if data.variants is not None:
         _apply_product_variants(product_data, _normalize_product_variants(data.variants))
     else:
@@ -4202,6 +4254,8 @@ async def admin_create_product(data: ProductIn, _=Depends(require_roles("admin")
 @api.put("/admin/products/{pid}")
 async def admin_update_product(pid: str, data: ProductIn, _=Depends(require_roles("admin"))):
     upd = data.dict()
+    if data.attributes is None:
+        upd.pop("attributes", None)
     if data.colors is None:
         upd.pop("colors", None)
     else:
@@ -4226,7 +4280,11 @@ async def admin_update_product(pid: str, data: ProductIn, _=Depends(require_role
             for field in ("price", "mrp", "unit", "stock"):
                 upd.pop(field, None)
     else:
-        _apply_product_variants(upd, _normalize_product_variants(data.variants))
+        normalized_variants = _preserve_product_variant_descriptions(
+            _normalize_product_variants(data.variants),
+            existing.get("variants")
+        )
+        _apply_product_variants(upd, normalized_variants)
 
     store_id = str(upd.get("store_id") or existing.get("store_id") or "").strip()
     if not store_id:
@@ -4240,9 +4298,14 @@ async def admin_update_product(pid: str, data: ProductIn, _=Depends(require_role
         raise HTTPException(400, "Selected store was not found")
 
     category_id = str(data.category_id or "").strip()
-    category = await db.categories.find_one({"id": category_id}, {"_id": 0, "id": 1})
+    category = await db.categories.find_one({"id": category_id}, {"_id": 0, "id": 1, "name": 1, "product_fields": 1})
     if not category:
         raise HTTPException(400, "Selected shop category was not found")
+    _validate_product_category_color_requirements(
+        category,
+        upd.get("colors", existing.get("colors", [])),
+        upd.get("color_images", existing.get("color_images", {}))
+    )
 
     upd["store_id"] = store_id
     upd["category_id"] = category_id
@@ -5846,6 +5909,12 @@ async def vendor_create_product(data: ProductIn, current=Depends(require_roles("
     store_category_id = store.get("category_id")
     if not store_category_id:
         raise HTTPException(400, "Shop category is not configured")
+    category = await db.categories.find_one(
+        {"id": store_category_id},
+        {"_id": 0, "id": 1, "name": 1, "product_fields": 1}
+    )
+    if not category:
+        raise HTTPException(400, "Shop category was not found")
 
     product_images = list(dict.fromkeys(
         image.strip()
@@ -5867,6 +5936,7 @@ async def vendor_create_product(data: ProductIn, current=Depends(require_roles("
         doc.pop("color_images", None)
     else:
         doc["color_images"] = normalized_color_images
+    _validate_product_category_color_requirements(category, normalized_colors, normalized_color_images)
     if data.variants is not None:
         _apply_product_variants(doc, _normalize_product_variants(data.variants))
     else:
@@ -5906,6 +5976,8 @@ async def vendor_update_product(pid: str, data: ProductIn, current=Depends(requi
         raise HTTPException(400, "Shop category is not configured")
 
     upd = data.dict()
+    if data.attributes is None:
+        upd.pop("attributes", None)
     if data.colors is None:
         upd.pop("colors", None)
     else:
@@ -5914,13 +5986,28 @@ async def vendor_update_product(pid: str, data: ProductIn, current=Depends(requi
         upd.pop("color_images", None)
     else:
         upd["color_images"] = _normalize_product_color_images(data.color_images, upd.get("colors", p.get("colors", [])))
+    category = await db.categories.find_one(
+        {"id": store_category_id},
+        {"_id": 0, "id": 1, "name": 1, "product_fields": 1}
+    )
+    if not category:
+        raise HTTPException(400, "Shop category was not found")
+    _validate_product_category_color_requirements(
+        category,
+        upd.get("colors", p.get("colors", [])),
+        upd.get("color_images", p.get("color_images", {}))
+    )
     if data.variants is None:
         upd.pop("variants", None)
         if p.get("variants"):
             for field in ("price", "mrp", "unit", "stock"):
                 upd.pop(field, None)
     else:
-        _apply_product_variants(upd, _normalize_product_variants(data.variants))
+        normalized_variants = _preserve_product_variant_descriptions(
+            _normalize_product_variants(data.variants),
+            p.get("variants")
+        )
+        _apply_product_variants(upd, normalized_variants)
     if data.images is not None:
         product_images = list(dict.fromkeys(
             image.strip()
