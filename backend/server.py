@@ -3328,6 +3328,7 @@ class ProductIn(BaseModel):
     stock: int = 0
     variants: Optional[List[ProductVariantIn]] = None
     colors: Optional[List[str]] = None
+    color_images: Optional[Dict[str, List[str]]] = None
     image: str = ""
     images: Optional[List[str]] = None
     description: str = ""
@@ -3355,6 +3356,42 @@ def _normalize_product_colors(raw_colors):
         normalized.append(color)
     if len(normalized) > 20:
         raise HTTPException(status_code=400, detail="A product can have at most 20 colour options")
+    return normalized
+
+
+def _normalize_product_color_images(raw_images, raw_colors):
+    if raw_images is None:
+        return None
+    if not isinstance(raw_images, dict):
+        raise HTTPException(status_code=400, detail="Colour photos must be an object keyed by colour")
+    selected = {
+        str(color).strip().casefold(): str(color).strip()
+        for color in (raw_colors or [])
+        if str(color).strip()
+    }
+    normalized = {}
+    for raw_color, raw_urls in raw_images.items():
+        color_key = str(raw_color or "").strip().casefold()
+        if color_key not in selected:
+            raise HTTPException(status_code=400, detail="Colour photos must match a selected product colour")
+        if not isinstance(raw_urls, list):
+            raise HTTPException(status_code=400, detail=f"Photos for {selected[color_key]} must be a list")
+        urls = []
+        seen = set()
+        for raw_url in raw_urls:
+            url = str(raw_url or "").strip()
+            if not url:
+                continue
+            if len(url) > 2048:
+                raise HTTPException(status_code=400, detail="Product photo URL is too long")
+            if not (url.startswith("https://") or url.startswith("http://")):
+                raise HTTPException(status_code=400, detail="Product photo must be a valid uploaded image URL")
+            if url not in seen:
+                seen.add(url)
+                urls.append(url)
+        if len(urls) > 6:
+            raise HTTPException(status_code=400, detail=f"At most 6 photos are allowed for {selected[color_key]}")
+        normalized[selected[color_key]] = urls
     return normalized
 
 
@@ -3420,6 +3457,7 @@ class CategoryIn(BaseModel):
     icon: str = "tag"
     color: str = "#2563EB"
     image: str = ""
+    product_fields: Optional[Dict[str, bool]] = None
 
 
 class ItemCategoryIn(BaseModel):
@@ -4141,6 +4179,11 @@ async def admin_create_product(data: ProductIn, _=Depends(require_roles("admin")
         product_data.pop("colors", None)
     else:
         product_data["colors"] = normalized_colors
+    normalized_color_images = _normalize_product_color_images(data.color_images, normalized_colors)
+    if normalized_color_images is None:
+        product_data.pop("color_images", None)
+    else:
+        product_data["color_images"] = normalized_color_images
     if data.variants is not None:
         _apply_product_variants(product_data, _normalize_product_variants(data.variants))
     else:
@@ -4163,15 +4206,20 @@ async def admin_update_product(pid: str, data: ProductIn, _=Depends(require_role
         upd.pop("colors", None)
     else:
         upd["colors"] = _normalize_product_colors(data.colors)
+    existing_color_images = data.color_images
     if data.images is None:
         upd.pop("images", None)
 
     existing = await db.products.find_one(
         {"id": pid},
-        {"_id": 0, "id": 1, "store_id": 1, "variants": 1, "price": 1, "mrp": 1, "unit": 1, "stock": 1}
+        {"_id": 0, "id": 1, "store_id": 1, "variants": 1, "price": 1, "mrp": 1, "unit": 1, "stock": 1, "colors": 1}
     )
     if not existing:
         raise HTTPException(404, "Not found")
+    if existing_color_images is None:
+        upd.pop("color_images", None)
+    else:
+        upd["color_images"] = _normalize_product_color_images(existing_color_images, upd.get("colors", existing.get("colors", [])))
     if data.variants is None:
         upd.pop("variants", None)
         if existing.get("variants"):
@@ -5814,6 +5862,11 @@ async def vendor_create_product(data: ProductIn, current=Depends(require_roles("
         doc.pop("colors", None)
     else:
         doc["colors"] = normalized_colors
+    normalized_color_images = _normalize_product_color_images(data.color_images, normalized_colors)
+    if normalized_color_images is None:
+        doc.pop("color_images", None)
+    else:
+        doc["color_images"] = normalized_color_images
     if data.variants is not None:
         _apply_product_variants(doc, _normalize_product_variants(data.variants))
     else:
@@ -5857,6 +5910,10 @@ async def vendor_update_product(pid: str, data: ProductIn, current=Depends(requi
         upd.pop("colors", None)
     else:
         upd["colors"] = _normalize_product_colors(data.colors)
+    if data.color_images is None:
+        upd.pop("color_images", None)
+    else:
+        upd["color_images"] = _normalize_product_color_images(data.color_images, upd.get("colors", p.get("colors", [])))
     if data.variants is None:
         upd.pop("variants", None)
         if p.get("variants"):

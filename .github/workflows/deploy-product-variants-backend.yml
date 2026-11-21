@@ -48,6 +48,10 @@ jobs:
           assert "tax = round(subtotal * 0.05, 2)" not in source, "Customer checkout must not calculate the extra 5% tax."
           assert "total = round(subtotal + delivery_fee, 2)" in source, "Customer total must be subtotal plus delivery only."
           assert "def _build_order_invoice_pdf" in source
+          assert "color_images: Optional[Dict[str, List[str]]]" in source
+          assert "product_fields: Optional[Dict[str, bool]]" in source
+          assert "def _normalize_product_color_images" in source
+          print("CATEGORY_SPECIFIC_PRODUCT_FIELDS_VALIDATION_PASS")
           assert '@api.get("/orders/{order_id}/invoice-token")' in source
           assert '@api.get("/orders/{order_id}/invoice.pdf")' in source
           assert '@api.get("/support/requests")' in source
@@ -503,6 +507,60 @@ jobs:
                   "vendor ownership assignment",
               ),
           ])
+
+                    # Merge the category-aware product schema and product routes from the reviewed
+          # repository while retaining unrelated VPS-only backend changes.
+          def replace_model_block(live_source, candidate, class_name):
+              pattern = re.compile(
+                  rf"(?ms)^class {re.escape(class_name)}\(BaseModel\):\n.*?(?=^(?:class |def |async def |@api\.)|\Z)"
+              )
+              live_matches = list(pattern.finditer(live_source))
+              candidate_matches = list(pattern.finditer(candidate))
+              if len(live_matches) != 1 or len(candidate_matches) != 1:
+                  raise SystemExit(f"STOP: Could not uniquely locate {class_name}; no VPS changes made.")
+              live_match = live_matches[0]
+              candidate_block = candidate_matches[0].group(0).rstrip()
+              return live_source[:live_match.start()] + candidate_block.rstrip() + "\n\n" + live_source[live_match.end():]
+
+          source = replace_model_block(source, candidate_source, "ProductIn")
+          source = replace_model_block(source, candidate_source, "CategoryIn")
+
+          def named_function_block(text, function_name):
+              marker = f"def {function_name}("
+              matches = [m.start() for m in re.finditer(r"(?m)^" + re.escape(marker), text)]
+              if len(matches) != 1:
+                  raise SystemExit(f"STOP: Could not uniquely locate {function_name}; no VPS changes made.")
+              start = matches[0]
+              next_block = re.search(r"(?m)^(?:def |async def |class |@api\.)", text[start + len(marker):])
+              end = start + len(marker) + next_block.start() if next_block else len(text)
+              return start, end, text[start:end].rstrip()
+
+          helper_name = "_normalize_product_color_images"
+          _, _, candidate_helper = named_function_block(candidate_source, helper_name)
+          try:
+              live_helper_start, live_helper_end, _ = named_function_block(source, helper_name)
+              source = source[:live_helper_start] + candidate_helper.rstrip() + "\n\n" + source[live_helper_end:]
+          except SystemExit:
+              helper_anchor = "def _normalize_product_variants("
+              if source.count(helper_anchor) != 1:
+                  raise SystemExit("STOP: Could not locate product variant normalizer insertion point; no VPS changes made.")
+              source = source.replace(helper_anchor, candidate_helper + "\n\n" + helper_anchor, 1)
+
+          def replace_product_route(live_source, candidate, function_name):
+              marker = f"async def {function_name}("
+              live_matches = [m.start() for m in re.finditer(r"(?m)^" + re.escape(marker), live_source)]
+              candidate_matches = [m.start() for m in re.finditer(r"(?m)^" + re.escape(marker), candidate)]
+              if len(live_matches) != 1 or len(candidate_matches) != 1:
+                  raise SystemExit(f"STOP: Could not uniquely locate {function_name}; no VPS changes made.")
+              live_start, candidate_start = live_matches[0], candidate_matches[0]
+              live_end = live_source.find("\n@api.", live_start + len(marker))
+              candidate_end = candidate.find("\n@api.", candidate_start + len(marker))
+              if live_end < 0 or candidate_end < 0:
+                  raise SystemExit(f"STOP: Could not isolate {function_name}; no VPS changes made.")
+              return live_source[:live_start] + candidate[candidate_start:candidate_end].rstrip() + live_source[live_end:]
+
+          for route_name in ("admin_create_product", "admin_update_product", "vendor_create_product", "vendor_update_product"):
+              source = replace_product_route(source, candidate_source, route_name)
 
           # Import the Pillow primitives used to build a lightweight PDF invoice.
           if "from PIL import Image, ImageOps, ImageDraw, ImageFont" not in source:
