@@ -20,6 +20,7 @@ on:
       - "frontend/app/admin/vendor/**"
       - "frontend/app/admin/categories.tsx"
       - "frontend/src/productCategoryConfig.ts"
+      - ".github/workflows/deploy-product-size-pack-live.yml"
       - "frontend/app/admin/products.tsx"
       - "frontend/src/components/AdminVendorProducts.tsx"
       # Build and deploy admin vendor product management with the same production bundle.
