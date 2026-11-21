@@ -49,7 +49,11 @@ jobs:
           assert "total = round(subtotal + delivery_fee, 2)" in source, "Customer total must be subtotal plus delivery only."
           assert "def _build_order_invoice_pdf" in source
           assert "color_images: Optional[Dict[str, List[str]]]" in source
-          assert "product_fields: Optional[Dict[str, bool]]" in source
+          assert "product_fields: Optional[Dict[str, Any]]" in source
+          assert "attributes: Optional[Dict[str, Any]]" in source
+          assert "description: Optional[str] = None" in source
+          assert "def _preserve_product_variant_descriptions" in source
+          assert "def _validate_product_category_color_requirements" in source
           assert "def _normalize_product_color_images" in source
           print("CATEGORY_SPECIFIC_PRODUCT_FIELDS_VALIDATION_PASS")
           assert '@api.get("/orders/{order_id}/invoice-token")' in source
@@ -522,6 +526,7 @@ jobs:
               candidate_block = candidate_matches[0].group(0).rstrip()
               return live_source[:live_match.start()] + candidate_block.rstrip() + "\n\n" + live_source[live_match.end():]
 
+          source = replace_model_block(source, candidate_source, "ProductVariantIn")
           source = replace_model_block(source, candidate_source, "ProductIn")
           source = replace_model_block(source, candidate_source, "CategoryIn")
 
@@ -535,16 +540,21 @@ jobs:
               end = start + len(marker) + next_block.start() if next_block else len(text)
               return start, end, text[start:end].rstrip()
 
-          helper_name = "_normalize_product_color_images"
-          _, _, candidate_helper = named_function_block(candidate_source, helper_name)
-          try:
-              live_helper_start, live_helper_end, _ = named_function_block(source, helper_name)
-              source = source[:live_helper_start] + candidate_helper.rstrip() + "\n\n" + source[live_helper_end:]
-          except SystemExit:
-              helper_anchor = "def _normalize_product_variants("
-              if source.count(helper_anchor) != 1:
-                  raise SystemExit("STOP: Could not locate product variant normalizer insertion point; no VPS changes made.")
-              source = source.replace(helper_anchor, candidate_helper + "\n\n" + helper_anchor, 1)
+          def replace_or_insert_function(live_source, candidate, function_name, insert_before=None):
+              _, _, candidate_function = named_function_block(candidate, function_name)
+              try:
+                  live_start, live_end, _ = named_function_block(live_source, function_name)
+                  return live_source[:live_start] + candidate_function.rstrip() + "\n\n" + live_source[live_end:]
+              except SystemExit:
+                  anchor = insert_before or "def _normalize_product_variants("
+                  if live_source.count(anchor) != 1:
+                      raise SystemExit(f"STOP: Could not locate safe insertion point for {function_name}; no VPS changes made.")
+                  return live_source.replace(anchor, candidate_function.rstrip() + "\n\n" + anchor, 1)
+
+          source = replace_or_insert_function(source, candidate_source, "_normalize_product_color_images")
+          source = replace_or_insert_function(source, candidate_source, "_normalize_product_variants")
+          source = replace_or_insert_function(source, candidate_source, "_preserve_product_variant_descriptions", "def _apply_product_variants(")
+          source = replace_or_insert_function(source, candidate_source, "_validate_product_category_color_requirements", "def _apply_product_variants(")
 
           def replace_product_route(live_source, candidate, function_name):
               marker = f"async def {function_name}("
