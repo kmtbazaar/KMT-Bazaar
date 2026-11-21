@@ -18,6 +18,8 @@ on:
       - "frontend/app/auth/login.tsx"
       - "frontend/app/admin/index.tsx"
       - "frontend/app/admin/vendor/**"
+      - "frontend/app/admin/categories.tsx"
+      - "frontend/src/productCategoryConfig.ts"
       - "frontend/app/admin/products.tsx"
       - "frontend/src/components/AdminVendorProducts.tsx"
       # Build and deploy admin vendor product management with the same production bundle.
