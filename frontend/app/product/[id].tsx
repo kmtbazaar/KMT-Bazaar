@@ -197,6 +197,22 @@ export default function Product() {
 
   const imageViewerUri = productImages[viewerImageIndex] || p?.image || "";
 
+  const syncCarouselPage = (offset: number) => {
+    if (carouselWidth <= 0) return;
+    const nextPage = Math.max(0, Math.round(offset / carouselWidth));
+    // Ignore intermediate animation frames; sync only when a slide has settled.
+    if (Math.abs(offset - nextPage * carouselWidth) > 2) return;
+    if (nextPage >= productImages.length) {
+      // The duplicate first photo is identical to page zero, so this reset is invisible.
+      carouselPageRef.current = 0;
+      productCarouselRef.current?.scrollTo({ x: 0, animated: false });
+      setSelectedImageIndex(0);
+      return;
+    }
+    carouselPageRef.current = nextPage;
+    setSelectedImageIndex(nextPage);
+  };
+
   useEffect(() => {
     if (productImages.length < 2 || carouselWidth <= 0) return;
     const timer = setInterval(() => {
@@ -343,20 +359,8 @@ export default function Product() {
             disableIntervalMomentum
             showsHorizontalScrollIndicator={false}
             scrollEventThrottle={16}
-            onMomentumScrollEnd={(event) => {
-              if (carouselWidth > 0) {
-                const nextPage = Math.max(0, Math.round(event.nativeEvent.contentOffset.x / carouselWidth));
-                if (nextPage >= productImages.length) {
-                  // The duplicate first photo is identical to page zero, so this reset is invisible.
-                  carouselPageRef.current = 0;
-                  productCarouselRef.current?.scrollTo({ x: 0, animated: false });
-                  setSelectedImageIndex(0);
-                  return;
-                }
-                carouselPageRef.current = nextPage;
-                setSelectedImageIndex(nextPage);
-              }
-            }}
+            onScroll={(event) => syncCarouselPage(event.nativeEvent.contentOffset.x)}
+            onMomentumScrollEnd={(event) => syncCarouselPage(event.nativeEvent.contentOffset.x)}
           >
             {carouselImages.map((uri: string, index: number) => (
               <View
