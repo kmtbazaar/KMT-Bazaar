@@ -1216,7 +1216,7 @@ function SectionTitle({ title, subtitle }: { title: string; subtitle?: string })
 const s = StyleSheet.create({
   heroHeaderShell: { position: "relative", width: "100%", overflow: "visible" },
   nightSky:{position:"absolute",top:0,left:0,right:0,height:HERO_BACKDROP_HEIGHT,overflow:"hidden",zIndex:0,pointerEvents:"none"},
-  karmatarSceneLift:{position:"absolute",top:0,left:0,right:0,bottom:0,transform:[{translateY:8}]},
+  karmatarSceneLift:{position:"absolute",top:0,left:0,right:0,bottom:0,transform:[{translateY:-52}]},
   karmatarDaySky:{...StyleSheet.absoluteFillObject,overflow:"hidden"},
   karmatarNightSky:{...StyleSheet.absoluteFillObject,overflow:"hidden"},
   karmatarSun:{position:"absolute",left:"9%",top:54,width:29,height:29,borderRadius:15,backgroundColor:"#FFF0BD",shadowColor:"#FFE6A2",shadowOpacity:.9,shadowRadius:12,elevation:5},karmatarMoon:{position:"absolute",right:"9%",top:55,width:27,height:27,borderRadius:14,backgroundColor:"#F4F1D9",shadowColor:"#EAF2FF",shadowOpacity:.8,shadowRadius:10,elevation:4},
