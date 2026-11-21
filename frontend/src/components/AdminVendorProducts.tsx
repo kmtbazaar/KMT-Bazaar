@@ -611,6 +611,7 @@ export default function AdminVendorProducts({ vendorId, selectedStoreId: externa
                 style={styles.input}
               />
               {categoryConfig.showVariants && categoryConfig.variantOptions.length > 0 ? (
+                {categoryConfig.showVariants && categoryConfig.variantOptions.length > 0 ? (
                 <View style={styles.unitPickerPanel} testID="admin-vendor-product-size-pack-picker">
                   <Text style={styles.sectionLabel}>Choose {categoryConfig.variantLabel}</Text>
                   <Text style={styles.unitPickerHint}>Only options configured for this shop category are shown.</Text>
