@@ -17,26 +17,23 @@ import { adminApi } from "@/src/roleApi";
 import { api, uploadImageAsset } from "@/src/api";
 import { COLORS, RADIUS, SPACING } from "@/src/theme";
 import ProductImagesUploader from "@/src/components/ProductImagesUploader";
+import { getProductCategoryConfig } from "@/src/productCategoryConfig";
 
 const FALLBACK_PRODUCT_IMAGE =
   "https://images.unsplash.com/photo-1542838132-92c53300491e?w=400&q=80";
 
-const PRODUCT_UNIT_OPTIONS = [
-  "XS", "S", "M", "L", "XL", "XXL",
-  "UK 3", "UK 4", "UK 5", "UK 6", "UK 7", "UK 8", "UK 9",
-  "UK 10", "UK 11", "UK 12", "UK 13", "UK 14",
-  "1 pc", "250 g", "500 g", "1 kg", "250 ml", "500 ml", "750 ml", "1 L", "2 L",
-];
 
-type ProductVariantDraft = { id: string; unit: string; price: string; mrp: string; stock: string };
+type ProductVariantDraft = { id: string; unit: string; price: string; mrp: string; stock: string; description: string };
+const PRODUCT_COLOR_OPTIONS = ["Black", "White", "Red", "Blue", "Navy", "Green", "Yellow", "Pink", "Purple", "Orange", "Brown", "Grey", "Maroon", "Beige"];
 
-const buildVariantPayload = (base: any, extras: ProductVariantDraft[], baseVariantId = "") => [
+const buildVariantPayload = (base: any, extras: ProductVariantDraft[], baseVariantId = "", baseDescription = "") => [
   {
     ...(baseVariantId ? { id: baseVariantId } : {}),
     unit: String(base.unit || "").trim(),
     price: Number.parseFloat(String(base.price)),
     mrp: base.mrp ? Number.parseFloat(String(base.mrp)) : Number.parseFloat(String(base.price)),
     stock: Number.parseInt(String(base.stock), 10),
+    description: String(baseDescription || "").trim(),
   },
   ...extras.map((variant) => ({
     ...(variant.id ? { id: variant.id } : {}),
@@ -44,10 +41,11 @@ const buildVariantPayload = (base: any, extras: ProductVariantDraft[], baseVaria
     price: Number.parseFloat(String(variant.price)),
     mrp: variant.mrp ? Number.parseFloat(String(variant.mrp)) : Number.parseFloat(String(variant.price)),
     stock: Number.parseInt(String(variant.stock), 10),
+    description: String(variant.description || "").trim(),
   })),
 ];
 
-const validateVariantDrafts = (variants: any[]) => {
+const validateVariantDrafts = (variants: any[], requireDescriptions = false) => {
   if (variants.some((variant) =>
     !variant.unit ||
     !Number.isFinite(variant.price) || variant.price < 0 ||
@@ -55,6 +53,9 @@ const validateVariantDrafts = (variants: any[]) => {
     !Number.isFinite(variant.stock) || variant.stock < 0
   )) {
     return "Every size/pack option needs a label, valid price/MRP, and non-negative stock.";
+  }
+  if (requireDescriptions && variants.some((variant) => !String(variant.description || "").trim())) {
+    return "Add a description for every option when a product has multiple variants.";
   }
   const labels = variants.map((variant) => variant.unit.toLowerCase());
   if (new Set(labels).size !== labels.length) {
@@ -71,6 +72,9 @@ const emptyProductForm = () => ({
   stock: "10",
   image: "",
   images: [] as string[],
+  colors: [] as string[],
+  color_images: {} as Record<string, string[]>,
+  attributes: {} as Record<string, string>,
   description: "",
   trending: false,
   item_category: "",
@@ -94,6 +98,8 @@ export default function AdminVendorProducts({ vendorId, selectedStoreId: externa
   const [form, setForm] = useState(emptyProductForm);
   const [variantDrafts, setVariantDrafts] = useState<ProductVariantDraft[]>([]);
   const [baseVariantId, setBaseVariantId] = useState("");
+  const [baseVariantDescription, setBaseVariantDescription] = useState("");
+  const [activeProductColor, setActiveProductColor] = useState("");
   const [productItemCategoryName, setProductItemCategoryName] = useState("");
   const [itemCategoryName, setItemCategoryName] = useState("");
   const [editingItemCategoryId, setEditingItemCategoryId] = useState("");
@@ -172,16 +178,16 @@ export default function AdminVendorProducts({ vendorId, selectedStoreId: externa
     loadStoreData();
   }, [loadStoreData]);
 
-  const shopCategoryName =
-    shopCategories.find((item: any) => item.id === selectedStore?.category_id)?.name ||
-    selectedStore?.category_name ||
-    selectedStore?.category_id ||
-    "Not set";
+  const shopCategory = shopCategories.find((item: any) => String(item.id) === String(selectedStore?.category_id)) || { name: selectedStore?.category_name || selectedStore?.category_id || "" };
+  const categoryConfig = getProductCategoryConfig(shopCategory);
+  const shopCategoryName = shopCategory.name || selectedStore?.category_name || selectedStore?.category_id || "Not set";
 
   const resetProductForm = () => {
     setEditingProductId("");
     setBaseVariantId("");
     setVariantDrafts([]);
+    setBaseVariantDescription("");
+    setActiveProductColor("");
     setProductItemCategoryName("");
     setForm(emptyProductForm());
   };
@@ -197,12 +203,14 @@ export default function AdminVendorProducts({ vendorId, selectedStoreId: externa
     const primaryVariant = savedVariants[0];
     setEditingProductId(String(product.id || product._id || ""));
     setBaseVariantId(String(primaryVariant?.id || ""));
+    setBaseVariantDescription(String(primaryVariant?.description || ""));
     setVariantDrafts(savedVariants.slice(1).map((variant: any) => ({
       id: String(variant.id || ""),
       unit: String(variant.unit || ""),
       price: String(variant.price ?? ""),
       mrp: String(variant.mrp ?? variant.price ?? ""),
       stock: String(variant.stock ?? 0),
+      description: String(variant.description || ""),
     })));
     setForm({
       name: String(product.name || ""),
@@ -212,6 +220,9 @@ export default function AdminVendorProducts({ vendorId, selectedStoreId: externa
       stock: String(primaryVariant?.stock ?? product.stock ?? 0),
       image: String(product.image || product.images?.[0] || ""),
       images: Array.isArray(product.images) && product.images.length ? product.images : (product.image ? [product.image] : []),
+      colors: Array.isArray(product.colors) ? product.colors.map((color: any) => String(color)) : [],
+      color_images: product.color_images && typeof product.color_images === "object" ? { ...product.color_images } : {},
+      attributes: product.attributes && typeof product.attributes === "object" ? { ...product.attributes } : {},
       description: String(product.description || ""),
       trending: Boolean(product.trending),
       item_category: String(product.item_category || ""),
@@ -237,6 +248,9 @@ export default function AdminVendorProducts({ vendorId, selectedStoreId: externa
     description: String(item.description || ""),
     is_available: available,
     trending: Boolean(item.trending),
+    colors: Array.isArray(item.colors) ? item.colors : [],
+    color_images: item.color_images && typeof item.color_images === "object" ? item.color_images : {},
+    attributes: item.attributes && typeof item.attributes === "object" ? item.attributes : {},
     ...(Array.isArray(variants) ? { variants } : Array.isArray(item.variants) ? { variants: item.variants } : {}),
   });
 
@@ -257,8 +271,22 @@ export default function AdminVendorProducts({ vendorId, selectedStoreId: externa
       setNotice("Please add at least 3 product photos before saving.");
       return;
     }
-    const variants = buildVariantPayload(form, variantDrafts, baseVariantId);
-    const variantError = validateVariantDrafts(variants);
+    const missingColorPhotos = categoryConfig.requiresColorImages
+      ? form.colors.filter((color: string) => {
+          const key = Object.keys(form.color_images || {}).find((item) => item.toLowerCase() === color.toLowerCase());
+          return !key || !Array.isArray(form.color_images[key]) || !form.color_images[key].some((url) => String(url || "").trim());
+        })
+      : [];
+    if (categoryConfig.requiresColor && !form.colors.length) {
+      setNotice("Select at least one colour for this category.");
+      return;
+    }
+    if (missingColorPhotos.length) {
+      setNotice("Upload a matching photo for each selected colour: " + missingColorPhotos.join(", "));
+      return;
+    }
+    const variants = categoryConfig.showVariants ? buildVariantPayload(form, variantDrafts, baseVariantId, baseVariantDescription) : undefined;
+    const variantError = variants ? validateVariantDrafts(variants, variants.length > 1) : "";
     if (variantError) {
       setNotice(variantError);
       return;
