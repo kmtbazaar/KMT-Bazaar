@@ -77,10 +77,12 @@ export default function Product() {
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [carouselWidth, setCarouselWidth] = useState(0);
   const productCarouselRef = useRef<ScrollView | null>(null);
+  const carouselPageRef = useRef(0);
   const [suggestions, setSuggestions] = useState<any[]>([]);
   const [suggestionsLoading, setSuggestionsLoading] = useState(true);
 
   useEffect(() => { 
+    carouselPageRef.current = 0;
     setSelectedImageIndex(0);
     productCarouselRef.current?.scrollTo({ x: 0, animated: false });
     (async () => {
@@ -175,6 +177,8 @@ export default function Product() {
 
   // FIX 1: Quantity ko hardcoded 1 rakhne ke bajaye Context wale Cart state se read karenge
   const productImages = useMemo(() => Array.from(new Set([...(Array.isArray(p?.images) ? p.images : []), p?.image].filter((url: any) => typeof url === "string" && url.trim()))), [p?.images, p?.image]);
+  // Render one matching copy after the original set so the loop can wrap without reversing direction.
+  const carouselImages = useMemo(() => productImages.length > 1 ? [...productImages, ...productImages] : productImages, [productImages]);
 
   const openImageViewer = (index: number) => {
     setViewerImageIndex(index);
@@ -196,9 +200,9 @@ export default function Product() {
   useEffect(() => {
     if (productImages.length < 2 || carouselWidth <= 0) return;
     const timer = setInterval(() => {
-      const nextIndex = (selectedImageIndex + 1) % productImages.length;
-      productCarouselRef.current?.scrollTo({ x: nextIndex * carouselWidth, animated: true });
-      setSelectedImageIndex(nextIndex);
+      const nextPage = carouselPageRef.current + 1;
+      productCarouselRef.current?.scrollTo({ x: nextPage * carouselWidth, animated: true });
+      carouselPageRef.current = nextPage;
     }, 4200);
     return () => clearInterval(timer);
   }, [carouselWidth, productImages, selectedImageIndex]);
@@ -341,22 +345,30 @@ export default function Product() {
             scrollEventThrottle={16}
             onMomentumScrollEnd={(event) => {
               if (carouselWidth > 0) {
-                const nextIndex = Math.round(event.nativeEvent.contentOffset.x / carouselWidth);
-                setSelectedImageIndex(Math.max(0, Math.min(productImages.length - 1, nextIndex)));
+                const nextPage = Math.max(0, Math.round(event.nativeEvent.contentOffset.x / carouselWidth));
+                if (nextPage >= productImages.length) {
+                  // The duplicate first photo is identical to page zero, so this reset is invisible.
+                  carouselPageRef.current = 0;
+                  productCarouselRef.current?.scrollTo({ x: 0, animated: false });
+                  setSelectedImageIndex(0);
+                  return;
+                }
+                carouselPageRef.current = nextPage;
+                setSelectedImageIndex(nextPage);
               }
             }}
           >
-            {productImages.map((uri: string, index: number) => (
+            {carouselImages.map((uri: string, index: number) => (
               <View
                 key={uri + "-" + index}
                 style={[s.carouselSlide, carouselWidth > 0 ? { width: carouselWidth } : null, { height: productImageHeight }]}
               >
                 <Pressable
                   accessibilityRole="button"
-                  accessibilityLabel={"Open product photo " + (index + 1) + " to zoom"}
+                  accessibilityLabel={"Open product photo " + ((index % productImages.length) + 1) + " to zoom"}
                   testID={"product-image-open-" + (index + 1)}
                   style={s.carouselSlideContent}
-                  onPress={() => openImageViewer(index)}
+                  onPress={() => openImageViewer(index % productImages.length)}
                 >
                   <Image source={{ uri }} style={s.img} contentFit="contain" />
                 </Pressable>
@@ -372,6 +384,7 @@ export default function Product() {
                 accessibilityRole="button"
                 accessibilityLabel={`Show product photo ${index + 1}`}
                 onPress={() => {
+                  carouselPageRef.current = index;
                   setSelectedImageIndex(index);
                   productCarouselRef.current?.scrollTo({ x: index * carouselWidth, animated: true });
                 }}
