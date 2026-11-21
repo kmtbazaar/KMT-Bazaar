@@ -164,7 +164,6 @@ export default function AdminCategories() {
                 <Pressable testID="cf-save" onPress={save} style={[ms.btn, ms.btnPrimary]}><Text style={ms.btnText}>{editingId ? "Save Changes" : "Create"}</Text></Pressable>
               </View>
             </ScrollView>
-            </View>
           </KeyboardAvoidingView>
         </View>
       </Modal>
