@@ -58,6 +58,8 @@ jobs:
           print("BACKEND_30_DAY_AUTH_DURATION_VALIDATION_PASS")
           assert "force_product_delivery_state" in source
           assert "return PRODUCT_DELIVERY_PINCODE" in source
+          assert "# KMT_KARMATAR_WEATHER_ROUTE_BEGIN" in source and "# KMT_KARMATAR_WEATHER_ROUTE_END" in source
+          assert '@api.get("/weather/karmatar")' in source and "WEATHERAPI_KEY" in source
           assert "delivery_pincode != PRODUCT_DELIVERY_PINCODE" in source
           assert '"state": PRODUCT_DELIVERY_STATE, "pincode": PRODUCT_DELIVERY_PINCODE' in source
           print("BACKEND_FIXED_STATE_PIN_VALIDATION_PASS")
@@ -271,6 +273,28 @@ jobs:
               "# KMT_ORDER_INVOICE_AND_SUPPORT_ROUTES_END",
               "invoice/support routes",
           )
+
+          weather_route = extract_marked_block(
+              candidate_source,
+              "# KMT_KARMATAR_WEATHER_ROUTE_BEGIN",
+              "# KMT_KARMATAR_WEATHER_ROUTE_END",
+              "Karmatar weather route",
+          )
+          weather_start_marker = "# KMT_KARMATAR_WEATHER_ROUTE_BEGIN"
+          weather_end_marker = "# KMT_KARMATAR_WEATHER_ROUTE_END"
+          start_count = source.count(weather_start_marker)
+          end_count = source.count(weather_end_marker)
+          if start_count == 0 and end_count == 0:
+              weather_anchor = "# A single cached welcome recording keeps the public greeting consistent across browsers."
+              if source.count(weather_anchor) != 1:
+                  raise SystemExit("STOP: Could not safely locate backend weather route insertion point; no VPS changes made.")
+              source = source.replace(weather_anchor, weather_route + "\n\n" + weather_anchor, 1)
+          elif start_count == 1 and end_count == 1:
+              weather_start = source.index(weather_start_marker)
+              weather_end = source.index(weather_end_marker, weather_start) + len(weather_end_marker)
+              source = source[:weather_start] + weather_route + source[weather_end:]
+          else:
+              raise SystemExit("STOP: Existing Karmatar weather route markers are inconsistent; no VPS changes made.")
 
           if "GOOGLE_CLIENT_ID =" not in source:
               raise SystemExit("STOP: Existing server.py has no GOOGLE_CLIENT_ID setting; no file changes made.")
@@ -599,6 +623,13 @@ jobs:
             exit 1
           fi
 
+          if ! grep -Fq '@api.get("/weather/karmatar")' "$TARGET" \
+            || ! grep -Fq 'KARMATAR_WEATHER_API_KEY = (os.getenv("WEATHERAPI_KEY") or "").strip()' "$TARGET"; then
+            echo "BACKEND_KARMATAR_WEATHER_ROUTE_MISSING"
+            rollback
+            exit 1
+          fi
+
           if ! grep -Fq 'AUTH_SESSION_DAYS = 30' "$TARGET" \
             || ! grep -Fq 'JWT_EXPIRE_MIN = 60 * 24 * AUTH_SESSION_DAYS' "$TARGET" \
             || ! grep -Fq 'WEB_SESSION_TIMEOUT_MIN = 60 * 24 * AUTH_SESSION_DAYS' "$TARGET" \
@@ -662,6 +693,17 @@ jobs:
           fi
           if ! printf '%s' "$GOOGLE_CONFIG" | python3 -c 'import json,sys; d=json.load(sys.stdin); ok=bool(d.get("configured") and d.get("client_id")); print("GOOGLE_CONFIGURED="+("YES" if ok else "NO")); sys.exit(0 if ok else 1)'; then
             echo "GOOGLE_OAUTH_CLIENT_ID_NOT_CONFIGURED"
+            rollback
+            exit 1
+          fi
+
+          if ! KARMATAR_WEATHER="$(curl -fsS --max-time 10 http://127.0.0.1:8001/api/weather/karmatar)"; then
+            echo "KARMATAR_WEATHER_ENDPOINT_FAIL"
+            rollback
+            exit 1
+          fi
+          if ! printf '%s' "$KARMATAR_WEATHER" | python3 -c 'import json,sys; d=json.load(sys.stdin); ok=isinstance(d.get("configured"), bool); print("KARMATAR_WEATHER_ENDPOINT_PASS configured="+("YES" if d.get("configured") else "NO")); sys.exit(0 if ok else 1)'; then
+            echo "KARMATAR_WEATHER_RESPONSE_INVALID"
             rollback
             exit 1
           fi

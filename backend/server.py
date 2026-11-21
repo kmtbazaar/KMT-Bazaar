@@ -87,6 +87,83 @@ app = FastAPI(title="KMT Bazaar API")
 api = APIRouter(prefix="/api")
 
 
+# KMT_KARMATAR_WEATHER_ROUTE_BEGIN
+# The WeatherAPI key remains server-side; never return it to the customer app.
+KARMATAR_WEATHER_API_KEY = (os.getenv("WEATHERAPI_KEY") or "").strip()
+KARMATAR_WEATHER_CACHE: Dict[str, Any] = {"fetched_at": None, "payload": None}
+KARMATAR_WEATHER_CACHE_LOCK = asyncio.Lock()
+KARMATAR_WEATHER_RAIN_CODES = frozenset({
+    1087, 1150, 1153, 1168, 1171, 1180, 1183, 1186, 1189, 1192,
+    1195, 1198, 1201, 1240, 1243, 1246, 1273, 1276, 1279, 1282,
+})
+
+
+@api.get("/weather/karmatar")
+async def get_karmatar_weather(response: Response):
+    response.headers["Cache-Control"] = "no-store"
+    if not KARMATAR_WEATHER_API_KEY:
+        return {"configured": False, "source": None}
+
+    now = datetime.now(timezone.utc)
+    cached_at = KARMATAR_WEATHER_CACHE.get("fetched_at")
+    cached_payload = KARMATAR_WEATHER_CACHE.get("payload")
+    if (
+        isinstance(cached_at, datetime)
+        and isinstance(cached_payload, dict)
+        and now - cached_at < timedelta(minutes=10)
+    ):
+        return cached_payload
+
+    async with KARMATAR_WEATHER_CACHE_LOCK:
+        now = datetime.now(timezone.utc)
+        cached_at = KARMATAR_WEATHER_CACHE.get("fetched_at")
+        cached_payload = KARMATAR_WEATHER_CACHE.get("payload")
+        if (
+            isinstance(cached_at, datetime)
+            and isinstance(cached_payload, dict)
+            and now - cached_at < timedelta(minutes=10)
+        ):
+            return cached_payload
+
+        try:
+            async with httpx.AsyncClient(timeout=8.0) as client:
+                weather_response = await client.get(
+                    "https://api.weatherapi.com/v1/current.json",
+                    params={
+                        "key": KARMATAR_WEATHER_API_KEY,
+                        "q": "24.0878,86.7039",
+                        "aqi": "no",
+                    },
+                )
+                weather_response.raise_for_status()
+                weather_data = weather_response.json()
+
+            current = weather_data.get("current") or {}
+            condition = current.get("condition") or {}
+            if "is_day" not in current:
+                raise ValueError("WeatherAPI response did not include current day/night state")
+
+            condition_code = int(condition.get("code") or 0)
+            precipitation_mm = float(current.get("precip_mm") or 0)
+            payload = {
+                "configured": True,
+                "source": "WeatherAPI.com",
+                "is_day": int(current.get("is_day") or 0) == 1,
+                "is_raining": condition_code in KARMATAR_WEATHER_RAIN_CODES or precipitation_mm > 0,
+                "temperature_c": float(current.get("temp_c") or 0),
+                "condition": str(condition.get("text") or "Current conditions"),
+                "last_updated": current.get("last_updated"),
+            }
+            KARMATAR_WEATHER_CACHE["fetched_at"] = now
+            KARMATAR_WEATHER_CACHE["payload"] = payload
+            return payload
+        except (httpx.HTTPError, ValueError, TypeError, KeyError):
+            logging.warning("Karmatar live weather request failed; using app's local-clock fallback")
+            if isinstance(cached_payload, dict):
+                return cached_payload
+            raise HTTPException(status_code=503, detail="Karmatar live weather is temporarily unavailable")
+# KMT_KARMATAR_WEATHER_ROUTE_END
+
 # A single cached welcome recording keeps the public greeting consistent across browsers.
 WELCOME_AUDIO_CACHE_PATH = Path(
     os.getenv(
