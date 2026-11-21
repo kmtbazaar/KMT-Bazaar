@@ -698,6 +698,9 @@ export const api = {
           : "/item-categories"
     ),
 
+  karmatarWeather: () =>
+    apiFetch<{ configured: boolean; source?: string | null; is_day?: boolean; is_raining?: boolean; temperature_c?: number; condition?: string; last_updated?: string | null }>("/weather/karmatar"),
+
   banners: () =>
     apiFetch<any[]>("/banners"),
 

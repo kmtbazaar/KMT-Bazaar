@@ -11,6 +11,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import Animated, { 
   FadeIn, 
   FadeOut, 
+  cancelAnimation,
   useSharedValue, 
   useAnimatedStyle, 
   withDelay,
@@ -26,7 +27,8 @@ import CheckoutBar from "@/src/components/CheckoutBar";
 import { BrandingFooter } from "@/src/components/AnimatedBrandLogo";
 
 const { width } = Dimensions.get("window");
-const BANNER_W = Math.max(0, width - 24);
+const BANNER_W = Math.max(0, Math.round((width - 24) * 1.1));
+const BANNER_OVERFLOW = Math.max(0, (BANNER_W - width) / 2);
 const HERO_BACKDROP_HEIGHT = 182; // Extend animated sky to the banner line without moving page content
 const HERO_COLLAPSE_SCROLL_THRESHOLD = 120; // Collapse when banner CTA reaches the top; keep categories clear
 
@@ -59,24 +61,103 @@ const MAX_RECENT_SEARCHES = 5;
 // Karmatar scene uses lightweight local vector-style layers.
 // Day/night fade transitions run on Reanimated UI-thread values.
 const KARMATAR_STARS=Array.from({length:14},(_,i)=>({left:(5+(i*19)%90)+"%",top:9+(i*13)%48}));
+const KARMATAR_RAIN_DROPS=Array.from({length:18},(_,i)=>({
+ left:((i*37)%97)+"%",
+ top:-22-((i*29)%150),
+ delay:(i%8)*115,
+ duration:760+(i%4)*120,
+}));
+
+function getKarmatarLocalDaylight(){
+ try{
+  const hourPart=new Intl.DateTimeFormat("en-IN",{timeZone:"Asia/Kolkata",hour:"2-digit",hourCycle:"h23"}).formatToParts(new Date()).find(part=>part.type==="hour")?.value;
+  const hour=Number(hourPart);
+  if(Number.isFinite(hour)) return hour>=6&&hour<18;
+ }catch{}
+ const localHour=new Date().getHours();
+ return localHour>=6&&localHour<18;
+}
+
+function KarmatarRainDrop({left,top,delay,duration}:{left:string;top:number;delay:number;duration:number}){
+ const fall=useSharedValue(0);
+ useEffect(()=>{
+  fall.value=withDelay(delay,withRepeat(withTiming(1,{duration}),-1,false));
+  return ()=>cancelAnimation(fall);
+ },[delay,duration]);
+ const rainStyle=useAnimatedStyle(()=>({
+  opacity:.3+Math.sin(fall.value*Math.PI)*.24,
+  transform:[{translateY:fall.value*205},{rotate:"13deg"}],
+ }));
+ return <Animated.View pointerEvents="none" style={[s.karmatarRainDrop,{left,top},rainStyle]/>;
+}
+
 function KarmatarHeroScene(){
- const cycle=useSharedValue(0),drift=useSharedValue(0);
- useEffect(()=>{cycle.value=withRepeat(withSequence(withTiming(1,{duration:52000}),withTiming(0,{duration:52000})),-1,false);drift.value=withRepeat(withTiming(1,{duration:30000}),-1,true);},[]);
- const day=useAnimatedStyle(()=>({opacity:1-cycle.value})),night=useAnimatedStyle(()=>({opacity:cycle.value}));
- const sun=useAnimatedStyle(()=>({opacity:1-cycle.value,transform:[{translateX:cycle.value*46}]})),moon=useAnimatedStyle(()=>({opacity:cycle.value}));
+ const [isKarmatarDay,setIsKarmatarDay]=useState(getKarmatarLocalDaylight);
+ const [isRaining,setIsRaining]=useState(false);
+ const [weatherConfigured,setWeatherConfigured]=useState(false);
+ const cycle=useSharedValue(isKarmatarDay?0:1),drift=useSharedValue(0);
+
+ useEffect(()=>{
+  let mounted=true;
+  const syncKarmatarClock=()=>setIsKarmatarDay(getKarmatarLocalDaylight());
+  const refreshKarmatarWeather=async()=>{
+   try{
+    const current=await api.karmatarWeather();
+    if(!mounted)return;
+    setWeatherConfigured(current?.configured===true);
+    if(current?.configured===true){
+     setIsKarmatarDay(typeof current.is_day==="boolean"?current.is_day:getKarmatarLocalDaylight());
+     setIsRaining(current.is_raining===true);
+    }else{
+     setIsRaining(false);
+     syncKarmatarClock();
+    }
+   }catch{
+    if(!mounted)return;
+    setWeatherConfigured(false);
+    setIsRaining(false);
+    syncKarmatarClock();
+   }
+  };
+  syncKarmatarClock();
+  void refreshKarmatarWeather();
+  const clockTimer=setInterval(syncKarmatarClock,60*1000);
+  const weatherTimer=setInterval(()=>void refreshKarmatarWeather(),10*60*1000);
+  return ()=>{
+   mounted=false;
+   clearInterval(clockTimer);
+   clearInterval(weatherTimer);
+  };
+ },[]);
+
+ useEffect(()=>{
+  cycle.value=withTiming(isKarmatarDay?0:1,{duration:1800});
+ },[isKarmatarDay]);
+
+ useEffect(()=>{
+  drift.value=withRepeat(withTiming(1,{duration:30000}),-1,true);
+ },[]);
+
+ const day=useAnimatedStyle(()=>({opacity:1-cycle.value}));
+ const night=useAnimatedStyle(()=>({opacity:cycle.value}));
+ const sun=useAnimatedStyle(()=>({opacity:1-cycle.value,transform:[{translateX:cycle.value*46}]}));
+ const moon=useAnimatedStyle(()=>({opacity:cycle.value}));
  const brandGlow=useAnimatedStyle(()=>({opacity:.76+Math.sin(drift.value*Math.PI*2)*.24,transform:[{scale:1+Math.sin(drift.value*Math.PI*2)*.025}]}));
- const neon=useAnimatedStyle(()=>({opacity:.72+cycle.value*.28}));
- const gate=useAnimatedStyle(()=>({transform:[{rotate:(-7+drift.value*4)+"deg"}]})),signal=useAnimatedStyle(()=>({opacity:.35+Math.abs(Math.sin(drift.value*Math.PI*4))*.65}));
+ const neon=useAnimatedStyle(()=>({opacity:.9+Math.sin(drift.value*Math.PI*2)*.1}));
+ const signal=useAnimatedStyle(()=>({opacity:.35+Math.abs(Math.sin(drift.value*Math.PI*4))*.65}));
+
  return <View pointerEvents="none" style={s.nightSky} testID="home-karmatar-hero">
  <Animated.View style={[s.karmatarDaySky,day]}><LinearGradient colors={["#54B5E2","#B4DCE7","#F0C49B"]} style={StyleSheet.absoluteFillObject}/><Animated.View style={[s.karmatarSun,sun]}/><View style={s.karmatarCloudTrack}><View style={[s.karmatarCloud,{left:"12%",top:68}]}/><View style={[s.karmatarCloud,{left:"72%",top:42}]}/></View></Animated.View>
  <Animated.View style={[s.karmatarNightSky,night]}><LinearGradient colors={["#08172C","#203C59","#755E5A"]} style={StyleSheet.absoluteFillObject}/>{KARMATAR_STARS.map((v,i)=><View key={i} style={[s.karmatarStar,{left:v.left,top:v.top}]}/>)}<Animated.View style={[s.karmatarMoon,moon]}/></Animated.View>
+ {isRaining&&<View pointerEvents="none" style={s.karmatarRainOverlay}>{KARMATAR_RAIN_DROPS.map((drop,i)=><KarmatarRainDrop key={i} {...drop}/>)}</View>}
+ {weatherConfigured&&<Text style={s.karmatarWeatherCredit}>Weather by WeatherAPI.com</Text>}
  <View pointerEvents="none" style={s.karmatarSceneLift}>
  <View style={s.karmatarGroundBack}/>
  <View style={s.karmatarSchool} testID="home-karmatar-rgrg-school"><View style={s.karmatarSchoolRoof}/><View style={s.karmatarSchoolSign}><Text style={s.karmatarSchoolSignText}>RGRG +2 HIGH SCHOOL · KARMATAR</Text></View><View style={s.karmatarSchoolWindows}>{[0,1,2].map(i=><View key={i} style={s.karmatarSchoolWindow}/>)}</View><View style={s.karmatarSchoolDoor}/></View>
  <View style={s.karmatarStation} testID="home-karmatar-vidyasagar-station"><View style={s.karmatarStationRoof}/><View style={s.karmatarStationArch}><View style={s.karmatarStationOpening}/><View style={s.karmatarStationSign}><Text style={s.karmatarStationSignText}>VIDYASAGAR</Text><Text style={s.karmatarStationSignSub}>RAILWAY STATION</Text></View></View></View>
  <Animated.Text testID="home-karmatar-kmt-neon" style={[s.karmatarBrandNeon,brandGlow]}>KMT BAZAAR</Animated.Text>
  <View style={s.karmatarRoom} testID="home-karmatar-home-delivery-room"><View style={s.karmatarRoomRoof}/><View style={s.karmatarGrassWall}><Animated.View style={[s.karmatarNeon,neon]}><Text style={s.karmatarNeonText}>HOME DELIVERY</Text></Animated.View></View><View style={s.karmatarRoomDoor}/><View style={s.karmatarRoomWindow}/></View>
- <View style={s.karmatarGate} testID="home-karmatar-railway-crossing"><Animated.View style={[s.karmatarSignal,signal]}><View style={s.karmatarSignalLight}/></Animated.View><Animated.View style={[s.karmatarGateArm,gate]}>{[0,1,2,3,4,5].map(i=><View key={i} style={[s.karmatarGateStripe,{left:i*12,backgroundColor:i%2?"#D63A36":"#FFF"}]}/>)}</Animated.View></View>
+ <View style={s.karmatarGate} testID="home-karmatar-railway-crossing"><Animated.View style={[s.karmatarSignal,signal]}><View style={s.karmatarSignalLight}/></Animated.View></View>
  </View>
  </View>;
 }
@@ -816,8 +897,8 @@ export default function Home() {
             ref={bannerListRef}
             horizontal
             style={Platform.OS === "web"
-              ? ({ width: "100%", flexGrow: 0, overflowX: "auto", overflowY: "hidden" } as any)
-              : { width: "100%", flexGrow: 0 }}
+              ? ({ width: BANNER_W, marginLeft: -BANNER_OVERFLOW, flexGrow: 0, overflowX: "auto", overflowY: "hidden" } as any)
+              : { width: BANNER_W, marginLeft: -BANNER_OVERFLOW, flexGrow: 0 }}
             data={banners}
             showsHorizontalScrollIndicator={false}
             snapToInterval={BANNER_W + 12}
@@ -825,7 +906,7 @@ export default function Home() {
             decelerationRate="fast"
             disableIntervalMomentum
             scrollEventThrottle={16}
-            contentContainerStyle={{ paddingHorizontal: SPACING.md, paddingTop: Math.max(0, SPACING.lg - 8), paddingBottom: SPACING.xs, gap: 12 }}
+            contentContainerStyle={{ paddingHorizontal: 0, paddingTop: Math.max(0, SPACING.lg - 8), paddingBottom: SPACING.xs, gap: 12 }}
             keyExtractor={(it) => String(it.id)}
             renderItem={({ item }) => (
               <View style={s.bannerItemWrap}>
@@ -1219,13 +1300,16 @@ const s = StyleSheet.create({
   karmatarSceneLift:{position:"absolute",top:0,left:0,right:0,bottom:0,transform:[{translateY:-52}]},
   karmatarDaySky:{...StyleSheet.absoluteFillObject,overflow:"hidden"},
   karmatarNightSky:{...StyleSheet.absoluteFillObject,overflow:"hidden"},
+  karmatarRainOverlay:{...StyleSheet.absoluteFillObject,overflow:"hidden",zIndex:3},
+  karmatarRainDrop:{position:"absolute",width:1.5,height:18,borderRadius:2,backgroundColor:"rgba(220,242,255,0.82)",shadowColor:"#D9F0FF",shadowOpacity:.55,shadowRadius:3},
+  karmatarWeatherCredit:{position:"absolute",left:5,bottom:2,fontSize:5,color:"rgba(255,255,255,0.78)",fontWeight:"600",zIndex:4},
   karmatarSun:{position:"absolute",left:"9%",top:54,width:29,height:29,borderRadius:15,backgroundColor:"#FFF0BD",shadowColor:"#FFE6A2",shadowOpacity:.9,shadowRadius:12,elevation:5},karmatarMoon:{position:"absolute",right:"9%",top:55,width:27,height:27,borderRadius:14,backgroundColor:"#F4F1D9",shadowColor:"#EAF2FF",shadowOpacity:.8,shadowRadius:10,elevation:4},
   karmatarCloudTrack:{position:"absolute",left:0,right:0,top:0,height:120},karmatarCloud:{position:"absolute",width:65,height:17,borderRadius:18,backgroundColor:"rgba(255,255,255,.7)"},karmatarStar:{position:"absolute",width:2,height:2,borderRadius:2,backgroundColor:"#FFF7DA",opacity:.75},karmatarGroundBack:{position:"absolute",left:0,right:0,bottom:0,height:30,backgroundColor:"#547B55",borderTopLeftRadius:60,borderTopRightRadius:60},
   karmatarSchool:{position:"absolute",left:"2%",top:126,width:"29%",height:47,backgroundColor:"#E9E9D8",borderWidth:1,borderColor:"#A6B99C",zIndex:5},karmatarSchoolRoof:{position:"absolute",top:0,left:-2,right:-2,height:7,backgroundColor:"#477755",borderTopWidth:2,borderColor:"#D7E2D0"},karmatarSchoolSign:{position:"absolute",top:10,left:2,right:2,height:10,backgroundColor:"#D6E6D2",alignItems:"center",justifyContent:"center"},karmatarSchoolSignText:{fontSize:5,color:"#20553A",fontWeight:"900"},karmatarSchoolWindows:{position:"absolute",top:25,left:5,right:5,flexDirection:"row",justifyContent:"space-between"},karmatarSchoolWindow:{width:12,height:10,backgroundColor:"#648A98",borderWidth:1,borderColor:"#F0F0DC"},karmatarSchoolDoor:{position:"absolute",bottom:0,left:"44%",width:13,height:18,backgroundColor:"#6B624F"},
   karmatarStation:{position:"absolute",left:"34%",top:105,width:"34%",height:60,zIndex:6,alignItems:"center"},karmatarStationRoof:{position:"absolute",top:0,left:0,right:0,height:8,backgroundColor:"#455B6C",borderTopWidth:2,borderColor:"#D5DAD1"},karmatarStationArch:{position:"absolute",top:9,width:"66%",height:51,borderTopLeftRadius:35,borderTopRightRadius:35,borderWidth:4,borderBottomWidth:0,borderColor:"#E5E4D7",backgroundColor:"#8D9F9C",alignItems:"center",overflow:"hidden"},karmatarStationOpening:{position:"absolute",left:7,right:7,top:12,bottom:0,borderTopLeftRadius:23,borderTopRightRadius:23,backgroundColor:"#465D69"},karmatarStationSign:{position:"absolute",top:2,left:0,right:0,alignItems:"center",zIndex:2},karmatarStationSignText:{fontSize:6,color:"#8E302A",fontWeight:"900"},karmatarStationSignSub:{fontSize:4.5,color:"#8E302A",fontWeight:"900"},
-  karmatarBrandNeon:{position:"absolute",right:"1.5%",top:84,width:"27%",textAlign:"center",fontSize:14,fontWeight:"900",letterSpacing:1.25,color:"#FFFBEA",textShadowColor:"#FFB928",textShadowOffset:{width:0,height:1},textShadowRadius:9,zIndex:16,elevation:8},
+  karmatarBrandNeon:{position:"absolute",left:"53%",top:84,width:"39%",textAlign:"center",fontSize:14,fontWeight:"900",letterSpacing:1.25,color:"#FFFBEA",textShadowColor:"#FFB928",textShadowOffset:{width:0,height:1},textShadowRadius:9,zIndex:22,elevation:10},
   karmatarRoom:{position:"absolute",right:"1.5%",top:110,width:"27%",height:62,backgroundColor:"#B6BBA4",borderWidth:1,borderColor:"#D6D8C7",zIndex:12},karmatarRoomRoof:{position:"absolute",top:0,left:-3,right:-3,height:8,backgroundColor:"#394C40",borderTopWidth:2,borderColor:"#C2CEB7"},karmatarGrassWall:{position:"absolute",top:11,left:4,right:4,height:32,backgroundColor:"#185638",borderWidth:1,borderColor:"#6A9A60",alignItems:"center",justifyContent:"center"},karmatarNeon:{paddingHorizontal:4,paddingVertical:4,backgroundColor:"rgba(0,30,13,.55)",borderWidth:1,borderColor:"#9CFF9B",borderRadius:3,shadowColor:"#47FF70",shadowOpacity:1,shadowRadius:8,elevation:5},karmatarNeonText:{fontSize:8,fontWeight:"900",letterSpacing:.3,color:"#D9FFD0",textShadowColor:"#39FF65",textShadowRadius:7},karmatarRoomDoor:{position:"absolute",left:7,bottom:0,width:14,height:17,backgroundColor:"#574638"},karmatarRoomWindow:{position:"absolute",right:8,bottom:7,width:13,height:12,backgroundColor:"#A6D3DC",borderWidth:1,borderColor:"#EDF1E4"},
-  karmatarGate:{position:"absolute",left:"53%",top:136,width:"39%",height:35,zIndex:20},karmatarSignal:{position:"absolute",left:0,top:0,width:10,height:16,backgroundColor:"#26343A",borderWidth:1,borderColor:"#E3E4D7",alignItems:"center",justifyContent:"center"},karmatarSignalLight:{width:5,height:5,borderRadius:3,backgroundColor:"#FA3535",shadowColor:"#FF2525",shadowOpacity:1,shadowRadius:5},karmatarGateArm:{position:"absolute",left:8,top:5,width:76,height:5,backgroundColor:"#FFF",borderWidth:1,borderColor:"#AAA",transform:[{rotate:"-5deg"}],overflow:"hidden"},karmatarGateStripe:{position:"absolute",top:0,bottom:0,width:7},
+  karmatarGate:{position:"absolute",left:"53%",top:136,width:"39%",height:35,zIndex:20},karmatarSignal:{position:"absolute",left:0,top:0,width:10,height:16,backgroundColor:"#26343A",borderWidth:1,borderColor:"#E3E4D7",alignItems:"center",justifyContent:"center"},karmatarSignalLight:{width:5,height:5,borderRadius:3,backgroundColor:"#FA3535",shadowColor:"#FF2525",shadowOpacity:1,shadowRadius:5},
   root: { flex: 1, backgroundColor: THEME.whiteBg },
   headerBg: { position: "absolute", top: 0, left: 0, right: 0, height: HERO_BACKDROP_HEIGHT, borderBottomLeftRadius: 30, borderBottomRightRadius: 30, backgroundColor: "transparent", shadowColor: "#FFFFFF", shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.14, shadowRadius: 18, elevation: 7 },
   skyClearSpace: { height: Platform.OS === "web" ? 90 : 56, alignItems: "center", justifyContent: "center", zIndex: 30, elevation: 30 },
@@ -1270,7 +1354,7 @@ const s = StyleSheet.create({
   banner: { width: BANNER_W, height: 145, borderRadius: 20, overflow: "hidden", backgroundColor: THEME.white, position: "relative", borderWidth: 1, borderColor: "rgba(255,107,0,0.22)", shadowColor: THEME.orange, shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.12, shadowRadius: 14, elevation: 6 },
   bannerImg: { width: "100%", height: "100%" },
   bannerFlashBorder: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, borderRadius: RADIUS.lg, borderWidth: 2.5, borderColor: THEME.orangeBright, pointerEvents: "none" },
-  bannerCarouselShell: { position: "relative", width: "100%", alignSelf: "stretch", minWidth: 0, overflow: "hidden" },
+  bannerCarouselShell: { position: "relative", width: "100%", alignSelf: "stretch", minWidth: 0, overflow: "visible" },
   bannerItemWrap: { width: BANNER_W, flexShrink: 0, position: "relative" },
   bannerRopeConnector: { position: "absolute", right: -1, top: "50%", width: 10, height: 52, transform: [{ translateY: -26 }], alignItems: "center", justifyContent: "center", zIndex: 5 },
   bannerRopeLine: { width: 3, height: 44, borderRadius: 3, backgroundColor: "#8B6B45", opacity: 0.95 },
