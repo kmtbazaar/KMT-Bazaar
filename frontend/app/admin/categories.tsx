@@ -1,6 +1,6 @@
 import { LocalizedText as Text, LocalizedTextInput as TextInput } from "@/src/LocalizedText";
 import React, { useCallback, useState } from "react";
-import { View, StyleSheet, FlatList, Pressable, Modal, KeyboardAvoidingView, Platform, Switch } from "react-native";
+import { View, StyleSheet, FlatList, Pressable, Modal, KeyboardAvoidingView, Platform, Switch, ScrollView } from "react-native";
 import { Image } from "expo-image";
 import { useFocusEffect, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -9,21 +9,21 @@ import { adminApi } from "@/src/roleApi";
 import { api } from "@/src/api";
 import { COLORS, RADIUS, SPACING } from "@/src/theme";
 import ImageUploader from "@/src/components/ImageUploader";
-import { getDefaultProductFieldFlags } from "@/src/productCategoryConfig";
+import { getDefaultProductFieldSchema } from "@/src/productCategoryConfig";
 
 export default function AdminCategories() {
   const router = useRouter();
   const [cats, setCats] = useState<any[]>([]);
   const [modal, setModal] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [f, setF] = useState<any>({ name: "", icon: "tag", color: "#2563EB", image: "", product_fields: getDefaultProductFieldFlags("") });
+  const [f, setF] = useState<any>({ name: "", icon: "tag", color: "#2563EB", image: "", product_fields: getDefaultProductFieldSchema("") });
 
   const load = useCallback(async () => { try { setCats(await api.categories()); } catch {} }, []);
   useFocusEffect(useCallback(() => { load(); }, [load]));
 
   const onDelete = async (id: string) => { await adminApi.deleteCategory(id); load(); };
   const save = async () => {
-    const payload = { ...f, product_fields: f.product_fields || getDefaultProductFieldFlags(f.name) };
+    const payload = { ...f, product_fields: f.product_fields || getDefaultProductFieldSchema(f.name) };
     if (editingId) {
       await adminApi.updateCategory(editingId, payload);
     } else {
@@ -31,13 +31,13 @@ export default function AdminCategories() {
     }
     setModal(false);
     setEditingId(null);
-    setF({ name: "", icon: "tag", color: "#2563EB", image: "", product_fields: getDefaultProductFieldFlags("") });
+    setF({ name: "", icon: "tag", color: "#2563EB", image: "", product_fields: getDefaultProductFieldSchema("") });
     load();
   };
 
   const editCategory = (item: any) => {
     setEditingId(item.id);
-    setF({ name: item.name || "", icon: item.icon || "tag", color: item.color || "#2563EB", image: item.image || "", product_fields: { ...getDefaultProductFieldFlags(item.name || ""), ...(item.product_fields || {}) } });
+    setF({ name: item.name || "", icon: item.icon || "tag", color: item.color || "#2563EB", image: item.image || "", product_fields: { ...getDefaultProductFieldSchema(item.name || ""), ...(item.product_fields || {}) } });
     setModal(true);
   };
 
@@ -47,7 +47,7 @@ export default function AdminCategories() {
         <Pressable onPress={() => router.back()} hitSlop={10}><MaterialCommunityIcons name="arrow-left" size={22} color={COLORS.text} /></Pressable>
         <Text style={s.title}>Categories ({cats.length})</Text>
         <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-          <Pressable testID="add-cat-btn" onPress={() => { setEditingId(null); setF({ name: "", icon: "tag", color: "#2563EB", image: "", product_fields: getDefaultProductFieldFlags("") }); setModal(true); }} hitSlop={10}>
+          <Pressable testID="add-cat-btn" onPress={() => { setEditingId(null); setF({ name: "", icon: "tag", color: "#2563EB", image: "", product_fields: getDefaultProductFieldSchema("") }); setModal(true); }} hitSlop={10}>
             <MaterialCommunityIcons name="plus-circle" size={26} color={COLORS.brand} />
           </Pressable>
         </View>
@@ -80,44 +80,90 @@ export default function AdminCategories() {
           <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={ms.sheet}>
             <View style={ms.handle} />
             <Text style={ms.title}>{editingId ? "Edit Category" : "Add Category"}</Text>
-            <Input ph="Name" v={f.name} oc={(v: string) => setF((prev: any) => ({ ...prev, name: v, product_fields: getDefaultProductFieldFlags(v) }))} testID="cf-name" />
-            <Input ph="Icon (MaterialCommunityIcons name)" v={f.icon} oc={(v: string) => setF({ ...f, icon: v })} testID="cf-icon" />
-            <Input ph="Color (#RRGGBB)" v={f.color} oc={(v: string) => setF({ ...f, color: v })} testID="cf-color" />
-            <View style={ms.fieldConfigPanel} testID="category-product-field-settings">
-              <Text style={ms.fieldConfigTitle}>Vendor product form fields</Text>
-              <Text style={ms.fieldConfigHint}>Only enabled fields appear in this category's Add Product and Edit Product screens.</Text>
-              <View style={ms.fieldToggleRow}>
-                <View style={ms.fieldToggleCopy}>
-                  <Text style={ms.fieldToggleLabel}>Product options / size / pack</Text>
-                  <Text style={ms.fieldToggleHint}>Examples: RAM, clothing size, weight, portion</Text>
+            <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+              <Input ph="Name" v={f.name} oc={(v: string) => setF((prev: any) => ({
+                ...prev,
+                name: v,
+                product_fields: editingId ? prev.product_fields : getDefaultProductFieldSchema(v),
+              }))} testID="cf-name" />
+              <Input ph="Icon (MaterialCommunityIcons name)" v={f.icon} oc={(v: string) => setF((prev: any) => ({ ...prev, icon: v }))} testID="cf-icon" />
+              <Input ph="Color (#RRGGBB)" v={f.color} oc={(v: string) => setF((prev: any) => ({ ...prev, color: v }))} testID="cf-color" />
+
+              <View style={ms.fieldConfigPanel} testID="category-product-field-settings">
+                <Text style={ms.fieldConfigTitle}>Category-specific product system</Text>
+                <Text style={ms.fieldConfigHint}>These settings control what the vendor enters and what customers can select. Each category has its own fields and options.</Text>
+                <View style={ms.fieldToggleRow}>
+                  <View style={ms.fieldToggleCopy}>
+                    <Text style={ms.fieldToggleLabel}>Product variants</Text>
+                    <Text style={ms.fieldToggleHint}>Sizes, RAM/storage, pack size, serving or model options</Text>
+                  </View>
+                  <Switch value={!!f.product_fields?.show_variants}
+                    onValueChange={(value) => setF((prev: any) => ({ ...prev, product_fields: { ...(prev.product_fields || {}), show_variants: value } }))}
+                    accessibilityLabel="Show product variants" />
                 </View>
-                <Switch value={!!f.product_fields?.show_variants}
-                  onValueChange={(value) => setF((prev: any) => ({ ...prev, product_fields: { ...(prev.product_fields || {}), show_variants: value } }))}
-                  accessibilityLabel="Show product options" />
-              </View>
-              <View style={ms.fieldToggleRow}>
-                <View style={ms.fieldToggleCopy}>
-                  <Text style={ms.fieldToggleLabel}>Colour / shade</Text>
-                  <Text style={ms.fieldToggleHint}>Show colour choices and separate photos for each colour</Text>
+                <View style={ms.fieldToggleRow}>
+                  <View style={ms.fieldToggleCopy}>
+                    <Text style={ms.fieldToggleLabel}>Colour / shade selection</Text>
+                    <Text style={ms.fieldToggleHint}>Show colour choices under the main customer photo</Text>
+                  </View>
+                  <Switch value={!!f.product_fields?.show_colors}
+                    onValueChange={(value) => setF((prev: any) => ({ ...prev, product_fields: { ...(prev.product_fields || {}), show_colors: value, requires_color: value ? !!prev.product_fields?.requires_color : false, requires_color_images: value ? !!prev.product_fields?.requires_color_images : false } }))}
+                    accessibilityLabel="Show colour options" />
                 </View>
-                <Switch value={!!f.product_fields?.show_colors}
-                  onValueChange={(value) => setF((prev: any) => ({ ...prev, product_fields: { ...(prev.product_fields || {}), show_colors: value } }))}
-                  accessibilityLabel="Show colour options" />
-              </View>
-              <View style={ms.fieldToggleRow}>
-                <View style={ms.fieldToggleCopy}>
-                  <Text style={ms.fieldToggleLabel}>Product description</Text>
-                  <Text style={ms.fieldToggleHint}>Show relevant product information/specifications</Text>
+                <View style={ms.fieldToggleRow}>
+                  <View style={ms.fieldToggleCopy}>
+                    <Text style={ms.fieldToggleLabel}>Colour is compulsory</Text>
+                    <Text style={ms.fieldToggleHint}>For products such as mobile phones, require the seller to select a colour</Text>
+                  </View>
+                  <Switch value={!!f.product_fields?.requires_color}
+                    onValueChange={(value) => setF((prev: any) => ({ ...prev, product_fields: { ...(prev.product_fields || {}), show_colors: value || !!prev.product_fields?.show_colors, requires_color: value } }))}
+                    accessibilityLabel="Require a product colour" />
                 </View>
-                <Switch value={!!f.product_fields?.show_description}
-                  onValueChange={(value) => setF((prev: any) => ({ ...prev, product_fields: { ...(prev.product_fields || {}), show_description: value } }))}
-                  accessibilityLabel="Show product description" />
+                <View style={ms.fieldToggleRow}>
+                  <View style={ms.fieldToggleCopy}>
+                    <Text style={ms.fieldToggleLabel}>Require photos for every colour</Text>
+                    <Text style={ms.fieldToggleHint}>Each selected colour must have its own matching gallery</Text>
+                  </View>
+                  <Switch value={!!f.product_fields?.requires_color_images}
+                    onValueChange={(value) => setF((prev: any) => ({ ...prev, product_fields: { ...(prev.product_fields || {}), show_colors: value || !!prev.product_fields?.show_colors, requires_color: value ? true : !!prev.product_fields?.requires_color, requires_color_images: value } }))}
+                    accessibilityLabel="Require photos for every colour" />
+                </View>
+                <View style={ms.fieldToggleRow}>
+                  <View style={ms.fieldToggleCopy}>
+                    <Text style={ms.fieldToggleLabel}>Product description</Text>
+                    <Text style={ms.fieldToggleHint}>Show common information for this product</Text>
+                  </View>
+                  <Switch value={!!f.product_fields?.show_description}
+                    onValueChange={(value) => setF((prev: any) => ({ ...prev, product_fields: { ...(prev.product_fields || {}), show_description: value } }))}
+                    accessibilityLabel="Show product description" />
+                </View>
+
+                <Text style={ms.fieldInputLabel}>Variant field label</Text>
+                <TextInput testID="cf-variant-label" value={String(f.product_fields?.variant_label || "")}
+                  onChangeText={(value) => setF((prev: any) => ({ ...prev, product_fields: { ...(prev.product_fields || {}), variant_label: value } }))}
+                  placeholder="Example: RAM / Storage, Clothing size, Pack size"
+                  placeholderTextColor={COLORS.textMuted} style={ms.input} />
+
+                <Text style={ms.fieldInputLabel}>Allowed variant options (one per line)</Text>
+                <TextInput testID="cf-variant-options" value={Array.isArray(f.product_fields?.variant_options) ? f.product_fields.variant_options.join("\n") : ""}
+                  onChangeText={(value) => setF((prev: any) => ({ ...prev, product_fields: { ...(prev.product_fields || {}), variant_options: value.split("\n").map((line: string) => line.trim()).filter(Boolean).slice(0, 60) } }))}
+                  placeholder={"4 GB / 64 GB\n8 GB / 128 GB\n8 GB / 256 GB"}
+                  placeholderTextColor={COLORS.textMuted} style={[ms.input, ms.multilineInput]} multiline numberOfLines={5} />
+
+                <Text style={ms.fieldInputLabel}>Product specifications (one field per line)</Text>
+                <TextInput testID="cf-product-attributes" value={Array.isArray(f.product_fields?.product_attributes) ? f.product_fields.product_attributes.map((item: any) => typeof item === "string" ? item : item?.label || "").join("\n") : ""}
+                  onChangeText={(value) => setF((prev: any) => ({ ...prev, product_fields: { ...(prev.product_fields || {}), product_attributes: value.split("\n").map((line: string) => line.trim()).filter(Boolean).slice(0, 24) } }))}
+                  placeholder={"Brand\nModel\nProcessor\nDisplay\nBattery\nWarranty"}
+                  placeholderTextColor={COLORS.textMuted} style={[ms.input, ms.multilineInput]} multiline numberOfLines={6} />
+                <Text style={ms.fieldConfigHint}>For example: Mobile gets model/processor/battery; Grocery gets brand/ingredients/shelf life; Fashion gets fabric/fit/pattern. These values are stored with the product.</Text>
               </View>
-            </View>
-            <ImageUploader value={f.image} onChange={(uri) => setF({ ...f, image: uri })} label="Category Image" aspect={[1, 1]} testID="cf-image" />
-            <View style={{ flexDirection: "row", gap: 8, marginTop: 8 }}>
-              <Pressable onPress={() => setModal(false)} style={[ms.btn, ms.btnGhost]}><Text style={ms.btnGhostText}>Cancel</Text></Pressable>
-              <Pressable testID="cf-save" onPress={save} style={[ms.btn, ms.btnPrimary]}><Text style={ms.btnText}>{editingId ? "Save Changes" : "Create"}</Text></Pressable>
+
+              <ImageUploader value={f.image} onChange={(uri) => setF((prev: any) => ({ ...prev, image: uri }))} label="Category Image" aspect={[1, 1]} testID="cf-image" />
+              <View style={{ flexDirection: "row", gap: 8, marginTop: 8, marginBottom: 12 }}>
+                <Pressable onPress={() => setModal(false)} style={[ms.btn, ms.btnGhost]}><Text style={ms.btnGhostText}>Cancel</Text></Pressable>
+                <Pressable testID="cf-save" onPress={save} style={[ms.btn, ms.btnPrimary]}><Text style={ms.btnText}>{editingId ? "Save Changes" : "Create"}</Text></Pressable>
+              </View>
+            </ScrollView>
             </View>
           </KeyboardAvoidingView>
         </View>
@@ -132,13 +178,15 @@ function Input({ ph, v, oc, testID }: any) {
 
 const ms = StyleSheet.create({
   backdrop: { flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "flex-end" },
-  sheet: { backgroundColor: "#fff", padding: SPACING.lg, borderTopLeftRadius: 24, borderTopRightRadius: 24 },
+  sheet: { backgroundColor: "#fff", padding: SPACING.lg, borderTopLeftRadius: 24, borderTopRightRadius: 24, maxHeight: "90%" },
   handle: { width: 40, height: 4, backgroundColor: COLORS.border, alignSelf: "center", borderRadius: 2, marginBottom: 12 },
   title: { fontSize: 18, fontWeight: "800", color: COLORS.text, marginBottom: 12 },
   input: { backgroundColor: COLORS.surfaceSecondary, borderRadius: RADIUS.md, padding: 12, marginBottom: 8, borderWidth: 1, borderColor: COLORS.border },
   fieldConfigPanel: { backgroundColor: "#F8FAFC", borderWidth: 1, borderColor: "#CBD5E1", borderRadius: 14, padding: 12, marginVertical: 10, gap: 10 },
   fieldConfigTitle: { fontSize: 14, fontWeight: "800", color: COLORS.text },
   fieldConfigHint: { fontSize: 11, color: COLORS.textSecondary, lineHeight: 16 },
+  fieldInputLabel: { fontSize: 12, fontWeight: "800", color: COLORS.text, marginTop: 4 },
+  multilineInput: { minHeight: 90, textAlignVertical: "top" },
   fieldToggleRow: { flexDirection: "row", alignItems: "center", gap: 8, paddingVertical: 6, borderTopWidth: 1, borderTopColor: "#E2E8F0" },
   fieldToggleCopy: { flex: 1, gap: 2 },
   fieldToggleLabel: { fontSize: 13, fontWeight: "700", color: COLORS.text },
