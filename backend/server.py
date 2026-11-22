@@ -3451,6 +3451,7 @@ def _normalize_product_variants(raw_variants):
     return normalized
 
 
+# KMT production deploy must synchronize the per-size colour validator with the product API routes.
 def _validate_product_variant_colors(variants, product_colors):
     # Each size/pack option owns its colour palette. The top-level product colours
     # belong to the base option and must not restrict additional size palettes.
