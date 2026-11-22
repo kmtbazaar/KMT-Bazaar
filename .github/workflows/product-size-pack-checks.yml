@@ -8,6 +8,7 @@ on:
       - "frontend/app/vendor/products.tsx"
       - "frontend/app/vendor/store/**"
       - "frontend/app/product/**"
+      - "backend/server.py"
       - "frontend/app/vendor/orders.tsx"
       - "frontend/app/orders/[id].tsx"
       - "frontend/app/admin/order/[id].tsx"
@@ -90,6 +91,9 @@ jobs:
           assert.ok(!customer.includes("product-selected-variant-description") && !customer.includes("product-category-attributes") && !customer.includes("Product specifications"), "Customer detail must not render RAM descriptions or category specifications.");
           assert.ok(vendor.includes("Description for this option") && !vendor.includes("Description for the first option"), "Only added size options may have a description field.");
           assert.ok(vendor.includes("vendor-store-add-variant-colours-") && vendor.includes("vendor-store-edit-variant-colours-") && vendor.includes("variant.colors"), "Each added size option must support its own colour selection.");
+          assert.ok(vendor.includes("color_images?: Record<string, string[]>") && vendor.includes("imagesByColor={variant.color_images || {}}") && vendor.includes("Upload photos for each selected colour") && vendor.includes("validateVariantColorImages"), "Every new size colour must have its own uploaded and validated image gallery.");
+          assert.ok(backend.includes("class ProductVariantIn(BaseModel):") && backend.includes("variant_color_images = _normalize_product_color_images") && backend.includes('normalized_variant["color_images"]'), "Backend must accept and persist colour photos for each size.");
+          assert.ok(customer.includes("selectedVariant?.color_images") && customer.includes("selectedVariantColorImages") && customer.includes("variantImages.length ? variantImages : productImagesForColor"), "Customer gallery and colour previews must use selected-size colour photos first.");
           assert.ok(customer.includes("selectedVariantColors") && customer.includes("selectedVariantColors.map"), "Customer colour choices must follow the selected size/pack option.");
           assert.ok(backend.includes("colors: Optional[List[str]] = None") && backend.includes("_validate_product_variant_colors"), "Backend must persist and validate per-variant colours.");
           assert.ok(vendor.includes('testID="vendor-store-add-product-colours"') && vendor.includes('testID="vendor-store-edit-product-colours"'), "Vendor Add/Edit forms must save product colour options.");

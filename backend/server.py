@@ -3316,6 +3316,7 @@ class ProductVariantIn(BaseModel):
     stock: int = 0
     description: Optional[str] = None
     colors: Optional[List[str]] = None
+    color_images: Optional[Dict[str, List[str]]] = None
 
 
 class ProductIn(BaseModel):
@@ -3443,6 +3444,9 @@ def _normalize_product_variants(raw_variants):
         variant_colors = _normalize_product_colors(row.get("colors"))
         if variant_colors is not None:
             normalized_variant["colors"] = variant_colors
+        variant_color_images = _normalize_product_color_images(row.get("color_images"), variant_colors or [])
+        if variant_color_images is not None:
+            normalized_variant["color_images"] = variant_color_images
         normalized.append(normalized_variant)
     return normalized
 
@@ -3490,6 +3494,16 @@ def _preserve_product_variant_descriptions(variants, existing_variants):
             variant["description"] = previous.get("description")
         if "colors" not in variant and previous and isinstance(previous.get("colors"), list):
             variant["colors"] = previous.get("colors")
+        if "color_images" not in variant and previous and isinstance(previous.get("color_images"), dict):
+            retained_colors = {
+                str(color).strip().casefold()
+                for color in (variant.get("colors") or [])
+                if str(color).strip()
+            }
+            variant["color_images"] = {
+                key: urls for key, urls in previous["color_images"].items()
+                if str(key).strip().casefold() in retained_colors
+            }
     return variants
 
 

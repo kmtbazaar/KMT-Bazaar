@@ -209,15 +209,24 @@ export default function Product() {
 
   // FIX 1: Quantity ko hardcoded 1 rakhne ke bajaye Context wale Cart state se read karenge
   const productImages = useMemo(() => {
-    const colorImageKey = categoryConfig.showColors && selectedColor && p?.color_images && typeof p.color_images === "object"
+    const variantColorImageKey = categoryConfig.showColors && selectedColor && selectedVariant?.color_images && typeof selectedVariant.color_images === "object"
+      ? Object.keys(selectedVariant.color_images).find((key) => key.toLowerCase() === String(selectedColor).toLowerCase())
+      : undefined;
+    const selectedVariantColorImages = variantColorImageKey && Array.isArray(selectedVariant.color_images[variantColorImageKey])
+      ? selectedVariant.color_images[variantColorImageKey]
+      : [];
+    const productColorImageKey = categoryConfig.showColors && selectedColor && p?.color_images && typeof p.color_images === "object"
       ? Object.keys(p.color_images).find((key) => key.toLowerCase() === String(selectedColor).toLowerCase())
       : undefined;
-    const selectedColorImages = colorImageKey && Array.isArray(p.color_images[colorImageKey]) ? p.color_images[colorImageKey] : [];
+    const selectedProductColorImages = productColorImageKey && Array.isArray(p.color_images[productColorImageKey])
+      ? p.color_images[productColorImageKey]
+      : [];
+    const selectedColorImages = selectedVariantColorImages.length ? selectedVariantColorImages : selectedProductColorImages;
     const sourceImages = selectedColorImages.length
       ? selectedColorImages
       : [...(Array.isArray(p?.images) ? p.images : []), p?.image];
     return Array.from(new Set(sourceImages.filter((url: any) => typeof url === "string" && url.trim())));
-  }, [p?.images, p?.image, p?.color_images, selectedColor, categoryConfig.showColors]);
+  }, [p?.images, p?.image, p?.color_images, selectedVariant?.color_images, selectedColor, categoryConfig.showColors]);
   // Render one matching copy after the original set so the loop can wrap without reversing direction.
   const carouselImages = useMemo(() => productImages.length > 1 ? [...productImages, ...productImages] : productImages, [productImages]);
 
@@ -226,7 +235,7 @@ export default function Product() {
     setSelectedImageIndex(0);
     setViewerImageIndex(0);
     productCarouselRef.current?.scrollTo({ x: 0, animated: false });
-  }, [selectedColor]);
+  }, [selectedColor, selectedVariantId]);
 
   const openImageViewer = (index: number) => {
     setViewerImageIndex(index);
@@ -457,11 +466,19 @@ export default function Product() {
               {selectedVariantColors.map((color: string) => {
                 const active = String(selectedColor || "").toLowerCase() === String(color).toLowerCase();
                 const swatch = PRODUCT_COLOR_SWATCHES[String(color).toLowerCase()] || "#94A3B8";
-                const colorImageKey = p?.color_images && typeof p.color_images === "object"
+                const variantColorImageKey = selectedVariant?.color_images && typeof selectedVariant.color_images === "object"
+                  ? Object.keys(selectedVariant.color_images).find((key) => key.toLowerCase() === String(color).toLowerCase())
+                  : undefined;
+                const productColorImageKey = p?.color_images && typeof p.color_images === "object"
                   ? Object.keys(p.color_images).find((key) => key.toLowerCase() === String(color).toLowerCase())
                   : undefined;
-                const hasDedicatedImages = !!(colorImageKey && Array.isArray(p.color_images[colorImageKey]) && p.color_images[colorImageKey].length);
-                const previewUri = hasDedicatedImages ? p.color_images[colorImageKey][0] : "";
+                const variantImages = variantColorImageKey && Array.isArray(selectedVariant.color_images[variantColorImageKey])
+                  ? selectedVariant.color_images[variantColorImageKey]
+                  : [];
+                const productImagesForColor = productColorImageKey && Array.isArray(p.color_images[productColorImageKey])
+                  ? p.color_images[productColorImageKey]
+                  : [];
+                const previewUri = (variantImages.length ? variantImages : productImagesForColor)[0] || "";
                 return (
                   <Pressable key={color} accessibilityRole="button"
                     accessibilityLabel={"Select colour " + color} accessibilityState={{ selected: active }}
