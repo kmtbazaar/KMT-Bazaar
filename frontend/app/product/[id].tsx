@@ -517,19 +517,6 @@ export default function Product() {
             </View>
           ) : null}
 
-          {categoryConfig.productAttributes.filter((attribute) => String(p?.attributes?.[attribute.key] || "").trim()).length ? (
-            <View style={{ marginTop: 14 }} testID="product-category-attributes">
-              <View style={s.divider} />
-              <Text style={s.sectionTitle}>Product specifications</Text>
-              {categoryConfig.productAttributes.filter((attribute) => String(p?.attributes?.[attribute.key] || "").trim()).map((attribute) => (
-                <View key={attribute.key} style={{ flexDirection: "row", justifyContent: "space-between", gap: 12, paddingVertical: 7, borderBottomWidth: 1, borderBottomColor: "#E2E8F0" }}>
-                  <Text style={{ flex: 1, fontSize: 12, color: COLORS.textSecondary }}>{attribute.label}</Text>
-                  <Text style={{ flex: 1.2, fontSize: 12, fontWeight: "700", color: COLORS.text, textAlign: "right" }}>{p.attributes[attribute.key]}</Text>
-                </View>
-              ))}
-            </View>
-          ) : null}
-
           {categoryConfig.showDescription ? (
             <>
               <View style={s.divider} />

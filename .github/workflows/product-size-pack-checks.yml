@@ -76,7 +76,7 @@ jobs:
           assert.ok(customer.includes("selectedVariant?.price") && customer.includes("selectedVariant?.stock"), "Selected variant price and stock must drive customer detail.");
           assert.ok(customer.includes("await add(p.id, 1, selectedVariant?.id, selectedColor)"), "Customer Add to Cart must send the selected size and colour.");
           assert.ok(customer.includes("selectedPrice"), "Customer price and bottom cart CTA must reflect the selected variant.");
-          assert.ok(customer.includes("product-selected-variant-description") && customer.includes("product-category-attributes"), "Customer detail must show the selected option description and category specifications.");
+          assert.ok(customer.includes("product-selected-variant-description") && !customer.includes("product-category-attributes") && !customer.includes("Product specifications"), "Customer detail must retain the selected option description without the category specifications block.");
           assert.ok(vendor.includes('testID="vendor-store-add-product-colours"') && vendor.includes('testID="vendor-store-edit-product-colours"'), "Vendor Add/Edit forms must save product colour options.");
           assert.ok(customer.includes('testID="product-colour-selector"') && customer.includes("setSelectedColor"), "Customer must be able to choose a product colour.");
           assert.ok(!customer.includes("variantChoicePriceRow"), "Customer size buttons must show the size label only, not a price.");
