@@ -195,7 +195,7 @@ jobs:
           assert.ok(vendor.includes("{categoryConfig.showDescription ? ("), "Description must be conditional on category settings.");
           assert.ok(vendor.includes("imagesByColor={form.color_images}") && vendor.includes("imagesByColor={editProductForm.color_images}"), "Vendor must upload separate colour-specific photo galleries in Add and Edit.");
           assert.ok(vendor.includes("color_images: categoryConfig.showColors ? form.color_images : {}"), "Irrelevant category colour data must not be submitted by Add Product.");
-          assert.ok(customer.includes("categoryConfig.showColors && Array.isArray(p.colors)"), "Customer colour selector must respect the Shop Category.");
+          assert.ok(customer.includes("categoryConfig.showColors && selectedVariantColors.length"), "Customer colour selector must respect the Shop Category and selected RAM/Storage option.");
           assert.ok(customer.includes("p?.color_images") && customer.includes("productColorThumb"), "Customer must show matching colour photos below the main product gallery.");
           assert.ok(customer.includes("{categoryConfig.showVariants ? (") && customer.includes("{categoryConfig.showDescription ? ("), "Customer detail options and description must respect category settings.");
           const adminVendor = fs.readFileSync("src/components/AdminVendorProducts.tsx", "utf8");
