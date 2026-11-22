@@ -40,6 +40,7 @@ jobs:
           const fs = require("node:fs");
 
           const vendor = fs.readFileSync("app/vendor/store/[id].tsx", "utf8");
+          const imageUploader = fs.readFileSync("src/components/ProductImagesUploader.tsx", "utf8");
           const customer = fs.readFileSync("app/product/[id].tsx", "utf8");
           const productCard = fs.readFileSync("src/components/ProductCard.tsx", "utf8");
           const vendorOrders = fs.readFileSync("app/vendor/orders.tsx", "utf8");
@@ -50,6 +51,8 @@ jobs:
           const backend = fs.readFileSync("../backend/server.py", "utf8");
 
           assert.ok(vendor.includes("categoryConfig.variantOptions.map") && !vendor.includes("PRODUCT_UNIT_OPTIONS"), "Vendor must use category-specific variant options, not a universal size list.");
+          assert.ok(imageUploader.includes("allowsMultipleSelection: true") && imageUploader.includes("selectionLimit: remainingSlots") && imageUploader.includes("selectedAssets.length < requiredBatchCount"), "Product gallery must support one batch selection, enforce the minimum count, and cap the remaining slots.");
+          assert.ok(imageUploader.includes("allowMultipleSelection = false") && vendor.includes("allowMultipleSelection"), "Batch photo selection must be opt-in for Vendor Store and remain disabled for Admin by default.");
           assert.ok(adminVendor.includes("categoryConfig.variantOptions.map") && !adminVendor.includes("PRODUCT_UNIT_OPTIONS"), "Admin Vendor editor must use category-specific variant options.");
           assert.ok(config.includes('variant_label: "RAM / Storage"') && config.includes('variant_options: ["4 GB / 64 GB"') && config.includes('variant_label: "Clothing size"') && config.includes('variant_label: "Shoe size (UK)"'), "Mobile, fashion and footwear must have dedicated option systems.");
           assert.ok(vendor.includes("vendor-store-add-product-size-pack-picker"), "Store vendor Add Product screen must render the size/pack picker.");

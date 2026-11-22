@@ -170,6 +170,7 @@ function ProductColorPicker({ value, onChange, testID, colorLabel = "Colour", im
           {activeColor?<ProductImagesUploader value={imagesByColor[activeColor]||[]}
             onChange={images=>onImagesChange({...imagesByColor,[activeColor]:images})}
             label={activeColor+" photos shown when this colour is selected"} minCount={1} maxCount={6}
+            allowMultipleSelection
             testID={testID+"-images-"+activeColor.toLowerCase().replace(/\s+/g,"-")}/>:null}
         </View>
       ):null}
@@ -1120,6 +1121,7 @@ export default function VendorStoreDetail() {
                 label="Product Photos (minimum 3)"
                 minCount={3}
                 maxCount={6}
+                allowMultipleSelection
                 testID="vendor-store-add-product-images"
               />
 
@@ -1389,6 +1391,7 @@ export default function VendorStoreDetail() {
                 label="Product Photos (minimum 3)"
                 minCount={3}
                 maxCount={6}
+                allowMultipleSelection
                 testID="vendor-store-edit-product-images"
               />
 

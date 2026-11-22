@@ -13,6 +13,7 @@ type Props = {
   label?: string;
   minCount?: number;
   maxCount?: number;
+  allowMultipleSelection?: boolean;
   testID?: string;
 };
 
@@ -116,6 +117,7 @@ export default function ProductImagesUploader({
   label = "Product photos",
   minCount = 3,
   maxCount = 6,
+  allowMultipleSelection = false,
   testID,
 }: Props) {
   const images = Array.isArray(value) ? value.filter((image) => typeof image === "string" && image.trim()) : [];
@@ -123,6 +125,7 @@ export default function ProductImagesUploader({
   const [error, setError] = useState("");
 
   const pickPhoto = async (source: "gallery" | "camera") => {
+    let uploadedUrls: string[] = [];
     if (busy || images.length >= maxCount) return;
     setError("");
     try {
@@ -140,9 +143,18 @@ export default function ProductImagesUploader({
         }
       }
 
+      const remainingSlots = Math.max(0, maxCount - images.length);
+      const requiredBatchCount = Math.max(0, minCount - images.length);
       const options: ImagePicker.ImagePickerOptions = {
         mediaTypes: ["images"],
-        allowsEditing: true,
+        allowsEditing: source === "camera" || !allowMultipleSelection,
+        ...(source === "gallery" && allowMultipleSelection
+          ? {
+              allowsMultipleSelection: true,
+              selectionLimit: remainingSlots,
+              orderedSelection: true,
+            }
+          : {}),
         aspect: [1, 1],
         quality: 0.55,
       };
@@ -152,18 +164,41 @@ export default function ProductImagesUploader({
         ? await ImagePicker.launchImageLibraryAsync(options)
         : await ImagePicker.launchCameraAsync(options);
 
-      if (result.canceled || !result.assets?.[0]) return;
-      const asset = await compressProductPhotoForWeb(result.assets[0]);
-      const url = await uploadImageAsset({
-        uri: asset.uri,
-        fileName: asset.fileName,
-        mimeType: asset.mimeType,
-        file: asset.file,
-      }, "product");
+      if (result.canceled || !result.assets?.length) return;
+      const selectedAssets = source === "gallery" && allowMultipleSelection
+        ? result.assets
+        : result.assets.slice(0, 1);
 
-      onChange([...images, url]);
+      // The native selection limit is not supported on web, so enforce it here too.
+      if (selectedAssets.length > remainingSlots) {
+        setError(`You can select up to ${remainingSlots} more photo(s).`);
+        return;
+      }
+      // Require enough photos in this batch to satisfy the product's minimum total.
+      if (
+        source === "gallery" &&
+        allowMultipleSelection &&
+        selectedAssets.length < requiredBatchCount
+      ) {
+        setError(`Please select at least ${requiredBatchCount} photo(s) together.`);
+        return;
+      }
+
+      for (const selectedAsset of selectedAssets) {
+        const asset = await compressProductPhotoForWeb(selectedAsset);
+        const url = await uploadImageAsset({
+          uri: asset.uri,
+          fileName: asset.fileName,
+          mimeType: asset.mimeType,
+          file: asset.file,
+        }, "product");
+        uploadedUrls.push(url);
+      }
+
+      onChange([...images, ...uploadedUrls]);
     } catch (e: any) {
-      setError(e?.message || "Could not upload this product photo.");
+      if (uploadedUrls.length) onChange([...images, ...uploadedUrls]);
+      setError(e?.message || "Could not upload these product photos.");
     } finally {
       setBusy(false);
     }
@@ -238,7 +273,7 @@ export default function ProductImagesUploader({
           testID={testID ? `${testID}-gallery` : undefined}
         >
           <MaterialCommunityIcons name="image-multiple-outline" size={18} color={COLORS.brand} />
-          <Text style={s.actionText}>Add from Gallery</Text>
+          <Text style={s.actionText}>{allowMultipleSelection ? "Select Photos from Gallery" : "Add from Gallery"}</Text>
         </Pressable>
         <Pressable
           onPress={() => { void pickPhoto("camera"); }}
