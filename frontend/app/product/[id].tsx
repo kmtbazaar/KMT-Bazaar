@@ -390,7 +390,7 @@ export default function Product() {
         </View>
       </SafeAreaView>
       
-      <ScrollView style={{ flex: 1, minHeight: 0 }} contentContainerStyle={{ paddingBottom: 190 }} showsVerticalScrollIndicator={false}>
+      <ScrollView style={{ flex: 1, minHeight: 0 }} contentContainerStyle={{ paddingBottom: 84 }} showsVerticalScrollIndicator={false}>
         <View
           style={[s.imageCarousel, { height: productImageHeight }]}
           onLayout={(event) => {
@@ -751,7 +751,7 @@ const s = StyleSheet.create({
   bottomBar: { position: "absolute", left: 0, right: 0, bottom: 0, zIndex: 15, elevation: 14, padding: SPACING.md, paddingBottom: 24, backgroundColor: "#fff", borderTopWidth: 1, borderColor: COLORS.border },
   actionRow: { flexDirection: "row", alignItems: "center", gap: 10, width: "100%" },
   qtyBox: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", minWidth: 132, borderWidth: 1.5, borderColor: COLORS.border, paddingHorizontal: 12, paddingVertical: 10, borderRadius: RADIUS.pill, gap: 12 },
-  suggestionsSection: { marginTop: SPACING.sm, marginBottom: SPACING.lg },
+  suggestionsSection: { marginTop: SPACING.sm, marginBottom: 0 },
   suggestionsHeader: { flexDirection: "row", alignItems: "center", paddingHorizontal: SPACING.lg, marginBottom: SPACING.sm },
   suggestionsTitle: { fontSize: 18, fontWeight: "800", color: COLORS.text },
   suggestionsSubtitle: { fontSize: 12, color: COLORS.textMuted, marginTop: 3 },
