@@ -157,8 +157,8 @@ jobs:
           assert.ok(vendor.includes('backgroundColor: "#FFF7ED"') && vendor.includes('borderColor: "#FDBA74"'), "Size/pack panel must retain its orange palette");
           assert.ok(vendor.includes("item_category_id: item.id"), "Item category selection must retain its ID");
 
-          assert.ok(vendor.includes("onPress={() => setForm((current) => ({ ...current, unit: option }))}"), "Vendor Add Product category option must update unit state.");
-          assert.ok(vendor.includes("onPress={() => setForm((current) => ({ ...current, unit: option }))}"), "Add Product chip selection must update form state");
+          assert.ok(vendor.includes('setForm((current) => ({ ...current, unit: option }));'), "Vendor Add Product category option must update unit state.");
+          assert.ok(vendor.includes('clearAddValidationError("baseSize")'), "Add Product chip selection must clear the missing RAM / Storage validation.");
           assert.ok(adminVendor.includes("categoryConfig.variantOptions.map") && !adminVendor.includes("PRODUCT_UNIT_OPTIONS"), "Admin Store Vendor options must be category-specific.");
           assert.ok(adminVendor.includes('testID="admin-vendor-product-size-pack-picker"'), "Admin Store Vendor Add/Edit form must render the size/pack picker.");
           assert.ok(adminVendor.includes('testID="admin-vendor-product-variants"'), "Admin Store Vendor must support multiple size/pack variants.");
@@ -190,7 +190,7 @@ jobs:
             assert.ok(config.includes(label), `Missing category-specific option label: ${label}`);
           }
           assert.ok(vendor.includes("getProductCategoryConfig"), "Vendor Add/Edit must load the selected Shop Category configuration.");
-          assert.ok(vendor.split("categoryConfig.variantOptions.map((option) =>").length - 1 === 2 && vendor.includes("vendor-store-add-product-size-pack-picker") && vendor.includes("vendor-store-edit-product-size-pack-picker") && !vendor.includes("PRODUCT_UNIT_OPTIONS"), "Store Vendor Add/Edit must derive only category-specific options.");
+          assert.ok(vendor.split("categoryConfig.variantOptions.map((option) =>").length - 1 === 4 && vendor.includes("vendor-store-add-product-size-pack-picker") && vendor.includes("vendor-store-edit-product-size-pack-picker") && !vendor.includes("PRODUCT_UNIT_OPTIONS"), "Store Vendor Add/Edit must derive only category-specific options.");
           assert.ok(vendor.includes("{categoryConfig.showColors ? ("), "Colour/Shade fields must be conditional on category settings.");
           assert.ok(vendor.includes("{categoryConfig.showDescription ? ("), "Description must be conditional on category settings.");
           assert.ok(vendor.includes("imagesByColor={form.color_images}") && vendor.includes("imagesByColor={editProductForm.color_images}"), "Vendor must upload separate colour-specific photo galleries in Add and Edit.");

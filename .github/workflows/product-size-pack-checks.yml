@@ -59,7 +59,7 @@ jobs:
           assert.ok(adminVendor.includes("categoryConfig.variantOptions.map") && !adminVendor.includes("PRODUCT_UNIT_OPTIONS"), "Admin Vendor editor must use category-specific variant options.");
           assert.ok(config.includes('variant_label: "RAM / Storage"') && config.includes('variant_options: ["4 GB / 64 GB"') && config.includes('variant_label: "Clothing size"') && config.includes('variant_label: "Shoe size (UK)"'), "Mobile, fashion and footwear must have dedicated option systems.");
           assert.ok(vendor.includes("vendor-store-add-product-size-pack-picker"), "Store vendor Add Product screen must render the size/pack picker.");
-          assert.ok(vendor.includes("onPress={() => setForm((current) => ({ ...current, unit: option }))}"), "Selecting a chip in Add Product must update the unit.");
+          assert.ok(vendor.includes('setForm((current) => ({ ...current, unit: option }));') && vendor.includes('clearAddValidationError("baseSize")'), "Selecting a RAM / Storage option must update the product unit and clear its validation error.");
           assert.ok(vendor.includes("vendor-store-edit-product-size-pack-picker"), "Store vendor Edit Product screen must render the size/pack picker.");
           assert.ok(vendor.includes("onPress={() => setEditProductForm((current) => ({ ...current, unit: option }))}"), "Selecting a chip in Edit Product must update the unit.");
           assert.ok(vendor.includes("vendor-store-add-product-item-category-picker"), "Add Product must render the distinct item-category box.");
