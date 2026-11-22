@@ -53,6 +53,8 @@ jobs:
           assert "attributes: Optional[Dict[str, Any]]" in source
           assert "description: Optional[str] = None" in source
           assert "def _preserve_product_variant_descriptions" in source
+          assert "def _validate_product_variant_colors" in source
+          assert "Each size/pack option owns its colour palette." in source
           assert "def _validate_product_category_color_requirements" in source
           assert "def _normalize_product_color_images" in source
           print("CATEGORY_SPECIFIC_PRODUCT_FIELDS_VALIDATION_PASS")
@@ -554,6 +556,7 @@ jobs:
           source = replace_or_insert_function(source, candidate_source, "_normalize_product_color_images")
           source = replace_or_insert_function(source, candidate_source, "_normalize_product_variants")
           source = replace_or_insert_function(source, candidate_source, "_preserve_product_variant_descriptions", "def _apply_product_variants(")
+          source = replace_or_insert_function(source, candidate_source, "_validate_product_variant_colors", "def _preserve_product_variant_descriptions(")
           source = replace_or_insert_function(source, candidate_source, "_validate_product_category_color_requirements", "def _apply_product_variants(")
 
           def replace_product_route(live_source, candidate, function_name):
@@ -680,6 +683,13 @@ jobs:
             fi
           done
           echo "BACKEND_SERVICE_VENDOR_PACKAGE_CRUD_VALIDATION_PASS"
+
+          if ! grep -Fq 'Each size/pack option owns its colour palette.' "$TARGET"; then
+            echo "BACKEND_SIZE_SPECIFIC_COLOUR_VALIDATION_PATCH_MISSING"
+            rollback
+            exit 1
+          fi
+          echo "BACKEND_SIZE_SPECIFIC_COLOUR_VALIDATION_PATCH_PASS"
 
           if ! grep -Fq 'delivery_pincode != PRODUCT_DELIVERY_PINCODE' "$TARGET" \
             || ! grep -Fq 'PRODUCT_DELIVERY_STATE = "Jharkhand"' "$TARGET" \
