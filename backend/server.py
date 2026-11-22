@@ -3452,27 +3452,15 @@ def _normalize_product_variants(raw_variants):
 
 
 def _validate_product_variant_colors(variants, product_colors):
-    allowed_colors = {
-        str(color).strip().casefold(): str(color).strip()
-        for color in (product_colors or [])
-        if str(color).strip()
-    }
+    # Each size/pack option owns its colour palette. The top-level product colours
+    # belong to the base option and must not restrict additional size palettes.
     for variant in variants or []:
         if "colors" not in variant:
             continue
         selected_colors = _normalize_product_colors(variant.get("colors")) or []
         if not selected_colors:
             raise HTTPException(400, detail=f"Select at least one colour for {variant.get('unit') or 'each size/pack option'}")
-        invalid_colors = [
-            color for color in selected_colors
-            if color.casefold() not in allowed_colors
-        ]
-        if invalid_colors:
-            raise HTTPException(
-                400,
-                detail=f"Colours for {variant.get('unit') or 'a size/pack option'} must be selected in the product colour list: " + ", ".join(invalid_colors)
-            )
-        variant["colors"] = [allowed_colors[color.casefold()] for color in selected_colors]
+        variant["colors"] = selected_colors
 
 
 def _preserve_product_variant_descriptions(variants, existing_variants):

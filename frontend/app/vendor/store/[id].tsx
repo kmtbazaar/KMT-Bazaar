@@ -55,7 +55,9 @@ const buildVariantPayload = (base: any, extras: ProductVariantDraft[], baseVaria
     },
     ...extras.map((variant) => {
       const optionColors = Array.isArray(variant.colors) ? variant.colors : availableColors;
-      const selectedOptionColors = optionColors.filter((color) => availableColors.some((available) => available.toLowerCase() === String(color).toLowerCase()));
+      const selectedOptionColors = Array.from(new Map(
+        optionColors.map((color) => String(color || "").trim()).filter(Boolean).map((color) => [color.toLowerCase(), color])
+      ).values());
       const optionColorImages = Object.fromEntries(
         Object.entries(variant.color_images || {})
           .filter(([color, images]) => selectedOptionColors.some((selected) => selected.toLowerCase() === color.toLowerCase()) && Array.isArray(images))
@@ -98,20 +100,6 @@ const validateVariantDrafts = (variants: any[], requireDescriptions = false, req
     return "Each size/pack option must have a unique label.";
   }
   return "";
-};
-
-const validateVariantColorImages = (variants: any[]) => {
-  for (let index = 1; index < variants.length; index += 1) {
-    const variant = variants[index];
-    if (variant.id) continue;
-    const colors = Array.isArray(variant.colors) ? variant.colors : [];
-    const missing = colors.filter((color: string) => {
-      const key = Object.keys(variant.color_images || {}).find((item) => item.toLowerCase() === color.toLowerCase());
-      return !key || !Array.isArray(variant.color_images[key]) || !variant.color_images[key].some((url: string) => String(url || "").trim());
-    });
-    if (missing.length) return { index, missing };
-  }
-  return null;
 };
 
 const validateRequiredColors = (config: any, colors: string[], imagesByColor: Record<string, string[]>) => {
@@ -722,14 +710,6 @@ export default function VendorStoreDetail() {
         guideAddFormToField(target, `Choose at least one colour for size option ${emptyColorIndex + 1}.`);
         return;
       }
-      const missingVariantColorImages = categoryConfig.showColors ? validateVariantColorImages(variants) : null;
-      if (missingVariantColorImages) {
-        guideAddFormToField(
-          `variant-${missingVariantColorImages.index - 1}`,
-          "Upload at least one photo for each selected colour in this size option: " + missingVariantColorImages.missing.join(", ")
-        );
-        return;
-      }
       const duplicateIndex = variants.findIndex((variant, index) =>
         variants.findIndex((item) => item.unit.toLowerCase() === variant.unit.toLowerCase()) !== index
       );
@@ -829,14 +809,6 @@ export default function VendorStoreDetail() {
     const variantError = variants ? validateVariantDrafts(variants, variants.length > 1, categoryConfig.showColors) : "";
     if (variantError) {
       Alert.alert("Check product sizes", variantError);
-      return;
-    }
-    const missingVariantColorImages = categoryConfig.showColors && variants ? validateVariantColorImages(variants) : null;
-    if (missingVariantColorImages) {
-      Alert.alert(
-        "Add size colour photos",
-        "Upload at least one photo for each selected colour in this new size option: " + missingVariantColorImages.missing.join(", ")
-      );
       return;
     }
     setLoading(true);
@@ -1271,7 +1243,7 @@ export default function VendorStoreDetail() {
                                   <Text style={s.variantManagerHint}>Add each size/pack with its own label, price, MRP and stock.</Text>
                                 </View>
                                 <Pressable testID="vendor-store-add-variant" accessibilityRole="button"
-                                  onPress={() => setAddVariantDrafts((current) => [...current, { id: "", unit: "", price: "", mrp: "", stock: "10", description: "", colors: undefined, color_images: {} }])}
+                                  onPress={() => setAddVariantDrafts((current) => [...current, { id: "", unit: "", price: "", mrp: "", stock: "10", description: "", colors: [...form.colors], color_images: {} }])}
                                   style={s.addVariantButton}>
                                   <MaterialCommunityIcons name="plus" size={17} color="#FFFFFF" />
                                   <Text style={s.addVariantButtonText}>Add size</Text>
@@ -1321,10 +1293,6 @@ export default function VendorStoreDetail() {
                                     <VariantColorChoices value={variant.colors ?? form.colors} availableColors={form.colors} variantLabel={categoryConfig.variantLabel}
                                       onChange={(colors) => {
                                         setAddVariantDrafts((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, colors } : item));
-                                        setForm((current) => ({
-                                          ...current,
-                                          colors: Array.from(new Map([...current.colors, ...colors].map((color) => [color.toLowerCase(), color])).values()),
-                                        }));
                                         clearAddValidationError(`variant-${index}`);
                                       }}
                                       imagesByColor={variant.color_images || {}}
@@ -1598,7 +1566,7 @@ export default function VendorStoreDetail() {
                                   <Text style={s.variantManagerHint}>Add each size/pack with its own label, price, MRP and stock.</Text>
                                 </View>
                                 <Pressable testID="vendor-store-edit-variant" accessibilityRole="button"
-                                  onPress={() => setEditVariantDrafts((current) => [...current, { id: "", unit: "", price: "", mrp: "", stock: "10", description: "", colors: undefined, color_images: {} }])}
+                                  onPress={() => setEditVariantDrafts((current) => [...current, { id: "", unit: "", price: "", mrp: "", stock: "10", description: "", colors: [...editProductForm.colors], color_images: {} }])}
                                   style={s.addVariantButton}>
                                   <MaterialCommunityIcons name="plus" size={17} color="#FFFFFF" />
                                   <Text style={s.addVariantButtonText}>Add size</Text>
@@ -1638,10 +1606,6 @@ export default function VendorStoreDetail() {
                                     <VariantColorChoices value={variant.colors ?? editProductForm.colors} availableColors={editProductForm.colors} variantLabel={categoryConfig.variantLabel}
                                       onChange={(colors) => {
                                         setEditVariantDrafts((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, colors } : item));
-                                        setEditProductForm((current) => ({
-                                          ...current,
-                                          colors: Array.from(new Map([...current.colors, ...colors].map((color) => [color.toLowerCase(), color])).values()),
-                                        }));
                                       }}
                                       imagesByColor={variant.color_images || {}}
                                       onImagesChange={(color_images) => {
