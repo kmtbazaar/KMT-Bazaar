@@ -1121,32 +1121,6 @@ export default function VendorStoreDetail() {
                       No item categories are configured for this shop category yet. Add them in Store Item Categories first.
                     </Text>
                   )}
-                  <View style={s.createItemCategoryRow}>
-                    <TextInput
-                      testID="vendor-store-add-new-item-category-name"
-                      placeholder="New item category (e.g. Jeans)"
-                      placeholderTextColor="#047857"
-                      value={productItemCategoryName}
-                      onChangeText={setProductItemCategoryName}
-                      style={[s.inputCompact, s.createItemCategoryInput]}
-                      onSubmitEditing={() => createItemCategoryForProduct("add")}
-                      returnKeyType="done"
-                    />
-                    <Pressable
-                      testID="vendor-store-add-new-item-category"
-                      accessibilityRole="button"
-                      accessibilityLabel="Create and select new item category"
-                      style={[s.createItemCategoryButton, savingProductItemCategory && { opacity: 0.65 }]}
-                      onPress={() => createItemCategoryForProduct("add")}
-                      disabled={savingProductItemCategory}
-                    >
-                      {savingProductItemCategory ? (
-                        <ActivityIndicator color="#FFFFFF" size="small" />
-                      ) : (
-                        <MaterialCommunityIcons name="plus" size={20} color="#FFFFFF" />
-                      )}
-                    </Pressable>
-                  </View>
                 </View>
 
               {/* Price & MRP Row */}
