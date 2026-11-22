@@ -531,13 +531,6 @@ export default function Product() {
           </View>
           ) : null}
 
-          {categoryConfig.showDescription ? (
-            <>
-              <View style={s.divider} />
-              <Text style={s.sectionTitle}>{categoryConfig.descriptionLabel}</Text>
-              <Text style={s.desc}>{p.description}</Text>
-            </>
-          ) : null}
           <View style={s.deliveryCard}>
             <MaterialCommunityIcons name="moped-electric" size={24} color={COLORS.brand} />
             <View style={{ flex: 1 }}>
@@ -763,16 +756,16 @@ const s = StyleSheet.create({
   suggestionsTitle: { fontSize: 18, fontWeight: "800", color: COLORS.text },
   suggestionsSubtitle: { fontSize: 12, color: COLORS.textMuted, marginTop: 3 },
   suggestionsStatus: { paddingHorizontal: SPACING.lg, paddingVertical: SPACING.md, color: COLORS.textMuted, fontSize: 12 },
-  suggestionsGrid: { paddingHorizontal: SPACING.md, gap: 5 },
-  suggestionGridRow: { flexDirection: "row", gap: 5, alignItems: "stretch" },
+  suggestionsGrid: { paddingHorizontal: SPACING.md, rowGap: 12 },
+  suggestionGridRow: { flexDirection: "row", columnGap: 10, alignItems: "stretch" },
   suggestionGridCell: { flex: 1, minWidth: 0 },
-  suggestionCard: { width: "100%", height: 150, backgroundColor: COLORS.surface, borderRadius: RADIUS.sm, overflow: "hidden", borderWidth: 1, borderColor: COLORS.border },
-  suggestionImageWrap: { width: "100%", height: 68, backgroundColor: COLORS.surfaceSecondary, overflow: "hidden" },
+  suggestionCard: { width: "100%", height: 196, backgroundColor: COLORS.surface, borderRadius: RADIUS.sm, overflow: "hidden", borderWidth: 1, borderColor: COLORS.border },
+  suggestionImageWrap: { width: "100%", height: 106, backgroundColor: COLORS.surfaceSecondary, overflow: "hidden" },
   suggestionImage: { width: "100%", height: "100%" },
   suggestionImageFallback: { flex: 1, alignItems: "center", justifyContent: "center" },
-  suggestionCardBody: { paddingHorizontal: 4, paddingTop: 3, paddingBottom: 2, flex: 1 },
-  suggestionCardName: { color: COLORS.text, fontSize: 11, lineHeight: 13, height: 28, fontWeight: "600" },
-  suggestionCardMeta: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 2, marginTop: 3 },
+  suggestionCardBody: { paddingHorizontal: 6, paddingTop: 7, paddingBottom: 6, flex: 1 },
+  suggestionCardName: { color: COLORS.text, fontSize: 12, lineHeight: 16, height: 32, fontWeight: "600" },
+  suggestionCardMeta: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 3, marginTop: 7 },
   suggestionCardPrice: { color: COLORS.text, fontSize: 11, fontWeight: "800", flexShrink: 1 },
   suggestionAddButton: { minWidth: 35, paddingHorizontal: 4, height: 22, borderRadius: RADIUS.sm, borderWidth: 1, borderColor: COLORS.accent, backgroundColor: COLORS.accentLight, alignItems: "center", justifyContent: "center" },
   suggestionAddButtonDisabled: { borderColor: COLORS.border, backgroundColor: COLORS.surfaceSecondary },
