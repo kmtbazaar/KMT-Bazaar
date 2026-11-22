@@ -1,4 +1,4 @@
-import { apiFetch } from "./api";
+import { apiFetch, apiFetchWithTimeout } from "./api";
 
 export const adminApi = {
   stores: (status?: string) =>
@@ -300,10 +300,10 @@ export const vendorApi = {
     }),
 
   createProduct: (data: any) =>
-    apiFetch("/vendor/products", {
+    apiFetchWithTimeout("/vendor/products", {
       method: "POST",
       body: JSON.stringify(data),
-    }),
+    }, 45000),
 
   updateProduct: (id: string, data: any) =>
     apiFetch("/vendor/products/" + id, {

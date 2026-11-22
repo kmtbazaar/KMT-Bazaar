@@ -451,6 +451,37 @@ export async function apiFetch<T = any>(
   return json as T;
 }
 
+/**
+ * Run an individual API request with a bounded wait time. This is used for
+ * product creation so an unresponsive API cannot leave the vendor form
+ * permanently showing its saving spinner.
+ */
+export async function apiFetchWithTimeout<T = any>(
+  path: string,
+  options: RequestInit = {},
+  timeoutMs = 45000
+): Promise<T> {
+  const controller = new AbortController();
+  let timedOut = false;
+  const timeout = setTimeout(() => {
+    timedOut = true;
+    controller.abort();
+  }, timeoutMs);
+
+  try {
+    return await apiFetch<T>(path, { ...options, signal: controller.signal });
+  } catch (error: any) {
+    if (timedOut) {
+      throw new Error(
+        "The server did not respond within 45 seconds. The save status is unknown; refresh the product list before trying again."
+      );
+    }
+    throw error;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 export async function uploadImageAsset(
   asset: {
     uri: string;

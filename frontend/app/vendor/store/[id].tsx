@@ -740,7 +740,12 @@ export default function VendorStoreDetail() {
       resetAddForm();
       load();
     } catch (e: any) {
-      Alert.alert("Error", e?.message || "Could not add product.");
+      const message = e?.message || "Could not add product.";
+      if (Platform.OS === "web" && typeof window !== "undefined") {
+        window.alert("Could not add product: " + message);
+      } else {
+        Alert.alert("Could not add product", message);
+      }
     } finally {
       setLoading(false);
     }
