@@ -39,28 +39,36 @@ const PRODUCT_COLOR_OPTIONS = [
   { label: "Beige", hex: "#D6C1A1" },
 ];
 
-type ProductVariantDraft = { id: string; unit: string; price: string; mrp: string; stock: string; description: string };
+type ProductVariantDraft = { id: string; unit: string; price: string; mrp: string; stock: string; description: string; colors?: string[] };
 
-const buildVariantPayload = (base: any, extras: ProductVariantDraft[], baseVariantId = "", baseDescription = "") => [
-  {
-    ...(baseVariantId ? { id: baseVariantId } : {}),
-    unit: String(base.unit || "").trim(),
-    price: Number.parseFloat(String(base.price)),
-    mrp: base.mrp ? Number.parseFloat(String(base.mrp)) : Number.parseFloat(String(base.price)),
-    stock: Number.parseInt(String(base.stock), 10),
-    description: String(baseDescription || "").trim(),
-  },
-  ...extras.map((variant) => ({
-    ...(variant.id ? { id: variant.id } : {}),
-    unit: String(variant.unit || "").trim(),
-    price: Number.parseFloat(String(variant.price)),
-    mrp: variant.mrp ? Number.parseFloat(String(variant.mrp)) : Number.parseFloat(String(variant.price)),
-    stock: Number.parseInt(String(variant.stock), 10),
-    description: String(variant.description || "").trim(),
-  })),
-];
+const buildVariantPayload = (base: any, extras: ProductVariantDraft[], baseVariantId = "", baseColors: string[] = []) => {
+  const availableColors = Array.from(new Set((baseColors || []).map((color) => String(color || "").trim()).filter(Boolean)));
+  return [
+    {
+      ...(baseVariantId ? { id: baseVariantId } : {}),
+      unit: String(base.unit || "").trim(),
+      price: Number.parseFloat(String(base.price)),
+      mrp: base.mrp ? Number.parseFloat(String(base.mrp)) : Number.parseFloat(String(base.price)),
+      stock: Number.parseInt(String(base.stock), 10),
+      description: "",
+      colors: availableColors,
+    },
+    ...extras.map((variant) => {
+      const optionColors = Array.isArray(variant.colors) ? variant.colors : availableColors;
+      return {
+        ...(variant.id ? { id: variant.id } : {}),
+        unit: String(variant.unit || "").trim(),
+        price: Number.parseFloat(String(variant.price)),
+        mrp: variant.mrp ? Number.parseFloat(String(variant.mrp)) : Number.parseFloat(String(variant.price)),
+        stock: Number.parseInt(String(variant.stock), 10),
+        description: String(variant.description || "").trim(),
+        colors: optionColors.filter((color) => availableColors.some((available) => available.toLowerCase() === String(color).toLowerCase())),
+      };
+    }),
+  ];
+};
 
-const validateVariantDrafts = (variants: any[], requireDescriptions = false) => {
+const validateVariantDrafts = (variants: any[], requireDescriptions = false, requireColors = false) => {
   if (variants.some((variant) =>
     !variant.unit ||
     !Number.isFinite(variant.price) || variant.price < 0 ||
@@ -69,8 +77,11 @@ const validateVariantDrafts = (variants: any[], requireDescriptions = false) => 
   )) {
     return "Every size/pack option needs a label, valid price/MRP, and non-negative stock.";
   }
-  if (requireDescriptions && variants.some((variant) => !String(variant.description || "").trim())) {
-    return "Add a description for every option when a product has multiple variants.";
+  if (requireDescriptions && variants.slice(1).some((variant) => !String(variant.description || "").trim())) {
+    return "Add a description for every added size/pack option.";
+  }
+  if (requireColors && variants.some((variant) => !Array.isArray(variant.colors) || variant.colors.length === 0)) {
+    return "Select at least one colour for every size/pack option.";
   }
   const labels = variants.map((variant) => variant.unit.toLowerCase());
   if (new Set(labels).size !== labels.length) {
@@ -165,6 +176,45 @@ function ProductColorPicker({ value, onChange, testID, colorLabel = "Colour", im
     </View>
   );
 }
+function VariantColorChoices({ value, availableColors, onChange, testID }: {
+  value?: string[];
+  availableColors: string[];
+  onChange: (colors: string[]) => void;
+  testID: string;
+}) {
+  const selectedColors = Array.isArray(value) ? value : availableColors;
+  return (
+    <View style={{ marginTop: 8, marginBottom: 8 }} testID={testID}>
+      <Text style={s.variantManagerHint}>Colours for this option</Text>
+      {availableColors.length ? (
+        <View style={s.productColorOptions}>
+          {availableColors.map((color) => {
+            const active = selectedColors.some((item) => item.toLowerCase() === color.toLowerCase());
+            const swatch = PRODUCT_COLOR_OPTIONS.find((item) => item.label.toLowerCase() === color.toLowerCase())?.hex || "#94A3B8";
+            return (
+              <Pressable key={color} accessibilityRole="button"
+                accessibilityLabel={color + " colour for this option"}
+                accessibilityState={{ selected: active }}
+                testID={testID + "-" + color.toLowerCase().replace(/\s+/g, "-")}
+                onPress={() => onChange(active
+                  ? selectedColors.filter((item) => item.toLowerCase() !== color.toLowerCase())
+                  : [...selectedColors, color])}
+                style={[s.productColorOption, active && s.productColorOptionActive]}>
+                <View style={[s.productColorDot, { backgroundColor: swatch }, color.toLowerCase() === "white" && s.productColorDotWhite, active && s.productColorDotSelected]}>
+                  {active ? <MaterialCommunityIcons name="check" size={11} color={color.toLowerCase() === "white" ? "#111827" : "#FFFFFF"} /> : null}
+                </View>
+                <Text style={[s.productColorOptionText, active && s.productColorOptionTextActive]}>{color}</Text>
+              </Pressable>
+            );
+          })}
+        </View>
+      ) : (
+        <Text style={s.variantManagerHint}>Select product colours in the Colour section above first.</Text>
+      )}
+    </View>
+  );
+}
+
 export default function VendorStoreDetail() {
   const router = useRouter();
   const params = useLocalSearchParams();
@@ -199,8 +249,6 @@ export default function VendorStoreDetail() {
   const [addVariantDrafts, setAddVariantDrafts] = useState<ProductVariantDraft[]>([]);
   const [editVariantDrafts, setEditVariantDrafts] = useState<ProductVariantDraft[]>([]);
   const [editBaseVariantId, setEditBaseVariantId] = useState("");
-  const [addBaseVariantDescription, setAddBaseVariantDescription] = useState("");
-  const [editBaseVariantDescription, setEditBaseVariantDescription] = useState("");
   const [form, setForm] = useState({
     name: "",
     category_id: "",
@@ -490,7 +538,6 @@ export default function VendorStoreDetail() {
       item_category_id: "",
     });
     setAddVariantDrafts([]);
-    setAddBaseVariantDescription("");
   };
 
   const handleAddProduct = async () => {
@@ -509,9 +556,9 @@ export default function VendorStoreDetail() {
       return;
     }
     const variants = categoryConfig.showVariants
-      ? buildVariantPayload(form, addVariantDrafts, "", addBaseVariantDescription)
+      ? buildVariantPayload(form, addVariantDrafts, "", form.colors)
       : undefined;
-    const variantError = variants ? validateVariantDrafts(variants, variants.length > 1) : "";
+    const variantError = variants ? validateVariantDrafts(variants, variants.length > 1, categoryConfig.showColors) : "";
     if (variantError) {
       Alert.alert("Check product sizes", variantError);
       return;
@@ -547,7 +594,6 @@ export default function VendorStoreDetail() {
     const savedVariants = Array.isArray(prod.variants) ? prod.variants : [];
     const primaryVariant = savedVariants[0];
     setEditBaseVariantId(primaryVariant?.id || "");
-    setEditBaseVariantDescription(String(primaryVariant?.description || ""));
     setEditVariantDrafts(savedVariants.slice(1).map((variant: any) => ({
       id: String(variant.id || ""),
       unit: String(variant.unit || ""),
@@ -555,6 +601,7 @@ export default function VendorStoreDetail() {
       mrp: String(variant.mrp ?? variant.price ?? ""),
       stock: String(variant.stock ?? 0),
       description: String(variant.description || ""),
+      colors: Array.isArray(variant.colors) ? variant.colors.map((color: any) => String(color)) : undefined,
     })));
     setEditProductForm({
       name: prod.name,
@@ -599,9 +646,9 @@ export default function VendorStoreDetail() {
       return;
     }
     const variants = categoryConfig.showVariants
-      ? buildVariantPayload(editProductForm, editVariantDrafts, editBaseVariantId, editBaseVariantDescription)
+      ? buildVariantPayload(editProductForm, editVariantDrafts, editBaseVariantId, editProductForm.colors)
       : undefined;
-    const variantError = variants ? validateVariantDrafts(variants, variants.length > 1) : "";
+    const variantError = variants ? validateVariantDrafts(variants, variants.length > 1, categoryConfig.showColors) : "";
     if (variantError) {
       Alert.alert("Check product sizes", variantError);
       return;
@@ -1033,20 +1080,12 @@ export default function VendorStoreDetail() {
                                   <Text style={s.variantManagerHint}>Add each size/pack with its own label, price, MRP and stock.</Text>
                                 </View>
                                 <Pressable testID="vendor-store-add-variant" accessibilityRole="button"
-                                  onPress={() => setAddVariantDrafts((current) => [...current, { id: "", unit: "", price: "", mrp: "", stock: "10", description: "" }])}
+                                  onPress={() => setAddVariantDrafts((current) => [...current, { id: "", unit: "", price: "", mrp: "", stock: "10", description: "", colors: undefined }])}
                                   style={s.addVariantButton}>
                                   <MaterialCommunityIcons name="plus" size={17} color="#FFFFFF" />
                                   <Text style={s.addVariantButtonText}>Add size</Text>
                                 </Pressable>
                               </View>
-                              {addVariantDrafts.length > 0 ? (
-                                <View style={s.variantDraftCard}>
-                                  <Text style={s.variantDraftLabel}>Description for the first option</Text>
-                                  <TextInput placeholder="Describe the differences for this option" placeholderTextColor="#64748B"
-                                    value={addBaseVariantDescription} onChangeText={setAddBaseVariantDescription}
-                                    style={[s.inputCompact, { minHeight: 64, textAlignVertical: "top" }]} multiline />
-                                </View>
-                              ) : null}
                               {addVariantDrafts.map((variant, index) => (
                                 <View key={`${variant.id || "new"}-${index}`} style={s.variantDraftCard}>
                                   <View style={s.variantDraftTopRow}>
@@ -1061,6 +1100,11 @@ export default function VendorStoreDetail() {
                                     value={variant.unit}
                                     onChangeText={(value) => setAddVariantDrafts((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, unit: value } : item))}
                                     style={s.inputCompact} />
+                                  {categoryConfig.showColors ? (
+                                    <VariantColorChoices value={variant.colors} availableColors={form.colors}
+                                      onChange={(colors) => setAddVariantDrafts((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, colors } : item))}
+                                      testID={`vendor-store-add-variant-colours-${index + 2}`} />
+                                  ) : null}
                                   <Text style={s.variantManagerHint}>Description for this option</Text>
                                   <TextInput placeholder="Describe the differences for this option" placeholderTextColor="#64748B"
                                     value={variant.description}
@@ -1317,20 +1361,12 @@ export default function VendorStoreDetail() {
                                   <Text style={s.variantManagerHint}>Add each size/pack with its own label, price, MRP and stock.</Text>
                                 </View>
                                 <Pressable testID="vendor-store-edit-variant" accessibilityRole="button"
-                                  onPress={() => setEditVariantDrafts((current) => [...current, { id: "", unit: "", price: "", mrp: "", stock: "10", description: "" }])}
+                                  onPress={() => setEditVariantDrafts((current) => [...current, { id: "", unit: "", price: "", mrp: "", stock: "10", description: "", colors: undefined }])}
                                   style={s.addVariantButton}>
                                   <MaterialCommunityIcons name="plus" size={17} color="#FFFFFF" />
                                   <Text style={s.addVariantButtonText}>Add size</Text>
                                 </Pressable>
                               </View>
-                              {editVariantDrafts.length > 0 ? (
-                                <View style={s.variantDraftCard}>
-                                  <Text style={s.variantDraftLabel}>Description for the first option</Text>
-                                  <TextInput placeholder="Describe the differences for this option" placeholderTextColor="#64748B"
-                                    value={editBaseVariantDescription} onChangeText={setEditBaseVariantDescription}
-                                    style={[s.inputCompact, { minHeight: 64, textAlignVertical: "top" }]} multiline />
-                                </View>
-                              ) : null}
                               {editVariantDrafts.map((variant, index) => (
                                 <View key={`${variant.id || "new"}-${index}`} style={s.variantDraftCard}>
                                   <View style={s.variantDraftTopRow}>
@@ -1345,6 +1381,11 @@ export default function VendorStoreDetail() {
                                     value={variant.unit}
                                     onChangeText={(value) => setEditVariantDrafts((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, unit: value } : item))}
                                     style={s.inputCompact} />
+                                  {categoryConfig.showColors ? (
+                                    <VariantColorChoices value={variant.colors} availableColors={editProductForm.colors}
+                                      onChange={(colors) => setEditVariantDrafts((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, colors } : item))}
+                                      testID={`vendor-store-edit-variant-colours-${index + 2}`} />
+                                  ) : null}
                                   <Text style={s.variantManagerHint}>Description for this option</Text>
                                   <TextInput placeholder="Describe the differences for this option" placeholderTextColor="#64748B"
                                     value={variant.description}

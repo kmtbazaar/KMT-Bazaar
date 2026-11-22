@@ -3315,6 +3315,7 @@ class ProductVariantIn(BaseModel):
     mrp: Optional[float] = None
     stock: int = 0
     description: Optional[str] = None
+    colors: Optional[List[str]] = None
 
 
 class ProductIn(BaseModel):
@@ -3431,15 +3432,43 @@ def _normalize_product_variants(raw_variants):
         if variant_id in seen_ids:
             raise HTTPException(status_code=400, detail="Each size/pack option must have a unique ID")
         seen_ids.add(variant_id)
-        normalized.append({
+        normalized_variant = {
             "id": variant_id,
             "unit": unit,
             "price": round(price, 2),
             "mrp": round(mrp, 2),
             "stock": stock,
             "description": str(row.get("description") or "").strip(),
-        })
+        }
+        variant_colors = _normalize_product_colors(row.get("colors"))
+        if variant_colors is not None:
+            normalized_variant["colors"] = variant_colors
+        normalized.append(normalized_variant)
     return normalized
+
+
+def _validate_product_variant_colors(variants, product_colors):
+    allowed_colors = {
+        str(color).strip().casefold(): str(color).strip()
+        for color in (product_colors or [])
+        if str(color).strip()
+    }
+    for variant in variants or []:
+        if "colors" not in variant:
+            continue
+        selected_colors = _normalize_product_colors(variant.get("colors")) or []
+        if not selected_colors:
+            raise HTTPException(400, detail=f"Select at least one colour for {variant.get('unit') or 'each size/pack option'}")
+        invalid_colors = [
+            color for color in selected_colors
+            if color.casefold() not in allowed_colors
+        ]
+        if invalid_colors:
+            raise HTTPException(
+                400,
+                detail=f"Colours for {variant.get('unit') or 'a size/pack option'} must be selected in the product colour list: " + ", ".join(invalid_colors)
+            )
+        variant["colors"] = [allowed_colors[color.casefold()] for color in selected_colors]
 
 
 def _preserve_product_variant_descriptions(variants, existing_variants):
@@ -3459,6 +3488,8 @@ def _preserve_product_variant_descriptions(variants, existing_variants):
         )
         if not str(variant.get("description") or "").strip() and previous and previous.get("description"):
             variant["description"] = previous.get("description")
+        if "colors" not in variant and previous and isinstance(previous.get("colors"), list):
+            variant["colors"] = previous.get("colors")
     return variants
 
 
@@ -4237,7 +4268,9 @@ async def admin_create_product(data: ProductIn, _=Depends(require_roles("admin")
         product_data["color_images"] = normalized_color_images
     _validate_product_category_color_requirements(category, normalized_colors, normalized_color_images)
     if data.variants is not None:
-        _apply_product_variants(product_data, _normalize_product_variants(data.variants))
+        normalized_variants = _normalize_product_variants(data.variants)
+        _validate_product_variant_colors(normalized_variants, normalized_colors)
+        _apply_product_variants(product_data, normalized_variants)
     else:
         product_data.pop("variants", None)
     product_data["store_id"] = store_id
@@ -4284,6 +4317,7 @@ async def admin_update_product(pid: str, data: ProductIn, _=Depends(require_role
             _normalize_product_variants(data.variants),
             existing.get("variants")
         )
+        _validate_product_variant_colors(normalized_variants, upd.get("colors", existing.get("colors", [])))
         _apply_product_variants(upd, normalized_variants)
 
     store_id = str(upd.get("store_id") or existing.get("store_id") or "").strip()
@@ -5938,7 +5972,9 @@ async def vendor_create_product(data: ProductIn, current=Depends(require_roles("
         doc["color_images"] = normalized_color_images
     _validate_product_category_color_requirements(category, normalized_colors, normalized_color_images)
     if data.variants is not None:
-        _apply_product_variants(doc, _normalize_product_variants(data.variants))
+        normalized_variants = _normalize_product_variants(data.variants)
+        _validate_product_variant_colors(normalized_variants, normalized_colors)
+        _apply_product_variants(doc, normalized_variants)
     else:
         doc.pop("variants", None)
     doc["images"] = product_images
@@ -6007,6 +6043,7 @@ async def vendor_update_product(pid: str, data: ProductIn, current=Depends(requi
             _normalize_product_variants(data.variants),
             p.get("variants")
         )
+        _validate_product_variant_colors(normalized_variants, upd.get("colors", p.get("colors", [])))
         _apply_product_variants(upd, normalized_variants)
     if data.images is not None:
         product_images = list(dict.fromkeys(

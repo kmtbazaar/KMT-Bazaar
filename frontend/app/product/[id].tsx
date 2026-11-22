@@ -68,6 +68,10 @@ export default function Product() {
   const selectedVariant = Array.isArray(p?.variants)
     ? p.variants.find((variant: any) => String(variant.id) === String(selectedVariantId)) || p.variants[0] || null
     : null;
+  const selectedVariantColors = Array.isArray(selectedVariant?.colors) && selectedVariant.colors.length
+    ? selectedVariant.colors.map((color: any) => String(color))
+    : Array.isArray(p?.colors) ? p.colors.map((color: any) => String(color)) : [];
+  const selectedVariantColorKey = selectedVariantColors.join("|");
   const selectedUnit = String(selectedVariant?.unit || (categoryConfig.showVariants ? p?.unit : "") || "Standard");
   const selectedPrice = Number(selectedVariant?.price ?? p?.price ?? 0);
   const selectedMrp = Number(selectedVariant?.mrp ?? p?.mrp ?? selectedPrice);
@@ -99,8 +103,14 @@ export default function Product() {
         const matchedCategory = categoryList.find((item: any) => String(item.id) === String(data?.category_id)) || { name: data?.category_name || "" };
         const resolvedCategoryConfig = getProductCategoryConfig(matchedCategory);
         setProductCategory(matchedCategory);
-        setSelectedVariantId(Array.isArray(data?.variants) && data.variants.length ? String(data.variants[0].id) : null);
-        setSelectedColor(resolvedCategoryConfig.showColors && Array.isArray(data?.colors) && data.colors.length ? String(data.colors[0]) : null);
+        const initialVariant = Array.isArray(data?.variants) && data.variants.length ? data.variants[0] : null;
+        setSelectedVariantId(initialVariant ? String(initialVariant.id) : null);
+        const initialVariantColors = Array.isArray(initialVariant?.colors) && initialVariant.colors.length
+          ? initialVariant.colors
+          : data?.colors;
+        setSelectedColor(resolvedCategoryConfig.showColors && Array.isArray(initialVariantColors) && initialVariantColors.length
+          ? String(initialVariantColors[0])
+          : null);
         setP(data);
       } catch (e) {
         console.error(e);
@@ -109,6 +119,17 @@ export default function Product() {
       }
     })(); 
   }, [id]);
+
+  useEffect(() => {
+    if (!categoryConfig.showColors || !selectedVariantColors.length) {
+      if (selectedColor !== null) setSelectedColor(null);
+      return;
+    }
+    const colorIsAvailable = selectedVariantColors.some(
+      (color: string) => String(color).toLowerCase() === String(selectedColor || "").toLowerCase()
+    );
+    if (!colorIsAvailable) setSelectedColor(String(selectedVariantColors[0]));
+  }, [selectedVariantId, selectedVariantColorKey, selectedColor, categoryConfig.showColors]);
 
   useEffect(() => {
     if (!p?.id) return;
@@ -426,14 +447,14 @@ export default function Product() {
             <Text style={s.carouselCount}>{selectedImageIndex + 1} / {productImages.length}</Text>
           </View>
         ) : null}
-        {categoryConfig.showColors && Array.isArray(p.colors) && p.colors.length ? (
+        {categoryConfig.showColors && selectedVariantColors.length ? (
           <View style={s.productColorSelector} testID="product-colour-selector">
             <View style={s.productColorHeader}>
               <Text style={s.productColorTitle}>Choose {categoryConfig.colorLabel.toLowerCase()}</Text>
               {selectedColor ? <Text style={s.productColorSelected}>{selectedColor}</Text> : null}
             </View>
             <View style={s.productColorOptions}>
-              {p.colors.map((color: string) => {
+              {selectedVariantColors.map((color: string) => {
                 const active = String(selectedColor || "").toLowerCase() === String(color).toLowerCase();
                 const swatch = PRODUCT_COLOR_SWATCHES[String(color).toLowerCase()] || "#94A3B8";
                 const colorImageKey = p?.color_images && typeof p.color_images === "object"
@@ -508,13 +529,6 @@ export default function Product() {
               })}
             </View>
           </View>
-          ) : null}
-
-          {selectedVariant?.description ? (
-            <View style={{ marginTop: 12, padding: 12, borderRadius: 12, backgroundColor: "#F8FAFC", borderWidth: 1, borderColor: "#E2E8F0" }} testID="product-selected-variant-description">
-              <Text style={{ fontSize: 13, fontWeight: "800", color: COLORS.text, marginBottom: 5 }}>Selected {categoryConfig.variantLabel.toLowerCase()} details</Text>
-              <Text style={{ fontSize: 13, lineHeight: 19, color: COLORS.textSecondary }}>{selectedVariant.description}</Text>
-            </View>
           ) : null}
 
           {categoryConfig.showDescription ? (
