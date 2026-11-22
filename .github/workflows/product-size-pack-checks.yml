@@ -51,6 +51,9 @@ jobs:
           const backend = fs.readFileSync("../backend/server.py", "utf8");
 
           assert.ok(vendor.includes("categoryConfig.variantOptions.map") && !vendor.includes("PRODUCT_UNIT_OPTIONS"), "Vendor must use category-specific variant options, not a universal size list.");
+          assert.ok(vendor.includes("vendor-store-add-variant-size-") && vendor.includes("Choose {categoryConfig.variantLabel}"), "Each Add Size row must show selectable category-specific options such as RAM / Storage for mobile products.");
+          assert.ok(vendor.includes("PRODUCT_COLOR_OPTIONS.map((color) => color.label)") && vendor.includes("variant.colors ?? form.colors"), "Each added size row must show a selectable colour palette and retain its chosen colours.");
+          assert.ok(vendor.includes("guideAddFormToField") && vendor.includes("addProductScrollRef.current?.scrollTo") && vendor.includes("addValidationError"), "Missing required fields must guide the vendor to the relevant Add Product section.");
           assert.ok(imageUploader.includes("allowsMultipleSelection: true") && imageUploader.includes("selectionLimit: remainingSlots") && imageUploader.includes("selectedAssets.length < requiredBatchCount"), "Product gallery must support one batch selection, enforce the minimum count, and cap the remaining slots.");
           assert.ok(imageUploader.includes("allowMultipleSelection = false") && vendor.includes("allowMultipleSelection"), "Batch photo selection must be opt-in for Vendor Store and remain disabled for Admin by default.");
           assert.ok(adminVendor.includes("categoryConfig.variantOptions.map") && !adminVendor.includes("PRODUCT_UNIT_OPTIONS"), "Admin Vendor editor must use category-specific variant options.");
