@@ -970,18 +970,6 @@ export default function VendorStoreDetail() {
                 testID="vendor-store-add-product-colours" />
               ) : null}
 
-              {categoryConfig.productAttributes.length ? (
-                <View style={s.productDescriptionPanel} testID="vendor-store-add-product-attributes">
-                  <Text style={s.sectionLabel}>Category-specific specifications</Text>
-                  {categoryConfig.productAttributes.map((attribute) => (
-                    <TextInput key={attribute.key} placeholder={attribute.label + (attribute.required ? " *" : "")}
-                      placeholderTextColor="#9CA3AF"
-                      value={form.attributes?.[attribute.key] || ""}
-                      onChangeText={(value) => setForm((current) => ({ ...current, attributes: { ...(current.attributes || {}), [attribute.key]: value } }))}
-                      style={s.inputCompact} />
-                  ))}
-                </View>
-              ) : null}
 
                 <View style={s.itemCategoryPanel} testID="vendor-store-add-product-item-category-picker">
                   <Text style={s.itemCategoryTitle}>Choose item category</Text>
@@ -1245,18 +1233,6 @@ export default function VendorStoreDetail() {
                 testID="vendor-store-edit-product-colours" />
               ) : null}
 
-              {categoryConfig.productAttributes.length ? (
-                <View style={s.productDescriptionPanel} testID="vendor-store-edit-product-attributes">
-                  <Text style={s.sectionLabel}>Category-specific specifications</Text>
-                  {categoryConfig.productAttributes.map((attribute) => (
-                    <TextInput key={attribute.key} placeholder={attribute.label + (attribute.required ? " *" : "")}
-                      placeholderTextColor="#9CA3AF"
-                      value={editProductForm.attributes?.[attribute.key] || ""}
-                      onChangeText={(value) => setEditProductForm((current) => ({ ...current, attributes: { ...(current.attributes || {}), [attribute.key]: value } }))}
-                      style={s.inputCompact} />
-                  ))}
-                </View>
-              ) : null}
 
                 <View style={s.itemCategoryPanel} testID="vendor-store-edit-product-item-category-picker">
                   <Text style={s.itemCategoryTitle}>Choose item category</Text>
