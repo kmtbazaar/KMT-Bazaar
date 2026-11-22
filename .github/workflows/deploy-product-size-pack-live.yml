@@ -143,8 +143,8 @@ jobs:
           assert.ok(cartScreen.includes("it.color") && cartScreen.includes("onQty(it.product_id, it.quantity + 1, it.variant, it.color)") && cartContext.includes("pending?.color") && api.includes("...(color ? { color } : {})"), "Selected colour must persist through guest login, cart edits and cart display.");
           assert.ok(vendor.includes("vendor-store-add-product-item-category-picker"), "Add Product must render a separate item category panel");
           assert.ok(vendor.includes("vendor-store-edit-product-item-category-picker"), "Edit Product must render a separate item category panel");
-          assert.ok(vendor.includes("vendor-store-add-new-item-category-name"), "Add Product must include a new item-category name field");
-          assert.ok(vendor.includes("vendor-store-add-new-item-category"), "Add Product must include a create-category button");
+          assert.ok(!vendor.includes("vendor-store-add-new-item-category-name") && !vendor.includes("vendor-store-add-new-item-category"), "Add Product must only select existing dashboard-managed item categories, with no inline create row.");
+          assert.ok(vendor.includes("saveStoreItemCategory") && vendor.includes("await load();") && vendor.includes("vendor-store-add-product-item-category-picker"), "Dashboard-managed categories must refresh and appear in the Add Product picker.");
           assert.ok(vendor.includes("vendor-store-edit-new-item-category-name"), "Edit Product must include a new item-category name field");
           assert.ok(vendor.includes("vendor-store-edit-new-item-category"), "Edit Product must include a create-category button");
           assert.ok(vendor.includes("createItemCategoryForProduct"), "Inline item-category creation handler missing");
