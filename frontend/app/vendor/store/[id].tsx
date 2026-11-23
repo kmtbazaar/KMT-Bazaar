@@ -28,6 +28,11 @@ const PRODUCT_COLOR_OPTIONS = [
   { label: "Red", hex: "#DC2626" },
   { label: "Blue", hex: "#2563EB" },
   { label: "Navy", hex: "#1E3A8A" },
+  { label: "Light Blue", hex: "#93C5FD" },
+  { label: "Dark Blue", hex: "#1D4ED8" },
+  { label: "Charcoal", hex: "#36454F" },
+  { label: "Olive", hex: "#556B2F" },
+  { label: "Cream", hex: "#FFFDD0" },
   { label: "Green", hex: "#16A34A" },
   { label: "Yellow", hex: "#FACC15" },
   { label: "Pink", hex: "#EC4899" },
@@ -289,7 +294,7 @@ export default function VendorStoreDetail() {
   const [products, setProducts] = useState<any[]>([]);
   const [store, setStore] = useState<any | null>(null);
   const [categories, setCategories] = useState<any[]>([]);
-  const categoryConfig = getProductCategoryConfig(categories.find((item: any) => String(item.id) === String(store?.category_id)));
+
   const [itemCategories, setItemCategories] = useState<any[]>([]);
   const [itemCategoryName, setItemCategoryName] = useState("");
   const [productItemCategoryName, setProductItemCategoryName] = useState("");
@@ -332,6 +337,20 @@ export default function VendorStoreDetail() {
     item_category: "",
     item_category_id: "",
   });
+
+  const categoryConfig = getProductCategoryConfig(
+    categories.find((item: any) => String(item.id) === String(store?.category_id)),
+    `${form.name} ${form.item_category}`
+  );
+
+  React.useEffect(() => {
+    if (!categoryConfig.showVariants || !categoryConfig.variantOptions.length) return;
+    setForm((current) => {
+      const selected = String(current.unit || "").trim().toLowerCase();
+      const isAvailable = categoryConfig.variantOptions.some((option) => option.toLowerCase() === selected);
+      return isAvailable ? current : { ...current, unit: categoryConfig.variantOptions[0] };
+    });
+  }, [categoryConfig.variantLabel, categoryConfig.variantOptions.join("|")]);
 
   const [showEditProductModal, setShowEditProductModal] = useState(false);
   const [selectedProductId, setSelectedProductId] = useState<string>("");
