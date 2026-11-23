@@ -338,9 +338,12 @@ export default function VendorStoreDetail() {
     item_category_id: "",
   });
 
-  const categoryConfig = getProductCategoryConfig(
-    categories.find((item: any) => String(item.id) === String(store?.category_id)),
-    `${form.name} ${form.item_category}`
+  const categoryConfig = useMemo(
+    () => getProductCategoryConfig(
+      categories.find((item: any) => String(item.id) === String(store?.category_id)),
+      `${form.name} ${form.item_category}`
+    ),
+    [categories, store?.category_id, form.name, form.item_category]
   );
 
   React.useEffect(() => {
@@ -350,7 +353,7 @@ export default function VendorStoreDetail() {
       const isAvailable = categoryConfig.variantOptions.some((option) => option.toLowerCase() === selected);
       return isAvailable ? current : { ...current, unit: categoryConfig.variantOptions[0] };
     });
-  }, [categoryConfig.variantLabel, categoryConfig.variantOptions.join("|")]);
+  }, [categoryConfig]);
 
   const [showEditProductModal, setShowEditProductModal] = useState(false);
   const [selectedProductId, setSelectedProductId] = useState<string>("");
