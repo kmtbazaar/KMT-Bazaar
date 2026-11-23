@@ -506,6 +506,10 @@ export async function uploadImageAsset(
       });
     }
 
+    if (purpose === "product" && Number(webFile?.size || 0) > 768 * 1024) {
+      throw new Error("Product photo compression did not finish. Please select the photo again; the original file has not been uploaded.");
+    }
+
     formData.append("file", webFile);
   } else {
     formData.append("file", {
