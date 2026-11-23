@@ -11,6 +11,7 @@ import {
   Dimensions,
 } from "react-native";
 import { router } from "expo-router";
+import ParticleLogo from "../src/components/ParticleLogo";
 
 // --- GIF IMPORTS ---
 import AssistantGif from "../assets/images/assistant.gif";
@@ -101,10 +102,7 @@ export default function Index() {
   return (
     <View style={styles.splashContainer}>
       <StatusBar barStyle="light-content" />
-      <Image
-        source={require("../assets/images/splash-icon.png")}
-        style={{ width: 220, height: 220, resizeMode: "contain" }}
-      />
+      <ParticleLogo />
     </View>
   );
 }
