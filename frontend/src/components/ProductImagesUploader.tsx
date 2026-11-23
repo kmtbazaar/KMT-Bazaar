@@ -17,7 +17,8 @@ type Props = {
   testID?: string;
 };
 
-const MAX_WEB_PRODUCT_UPLOAD_BYTES = 3 * 1024 * 1024;
+// Stay below common 1 MB reverse-proxy request limits, including multipart overhead.
+const MAX_WEB_PRODUCT_UPLOAD_BYTES = 768 * 1024;
 
 async function compressProductPhotoForWeb(asset: ImagePicker.ImagePickerAsset) {
   if (
@@ -54,7 +55,7 @@ async function compressProductPhotoForWeb(asset: ImagePicker.ImagePickerAsset) {
       new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, type, quality));
 
     let compressedBlob: Blob | null = null;
-    for (const maxSide of [1800, 1500, 1200, 1000, 800]) {
+    for (const maxSide of [1600, 1400, 1200, 1000, 900, 800, 700, 600]) {
       const scale = Math.min(1, maxSide / Math.max(sourceWidth, sourceHeight));
       const canvas = document.createElement("canvas");
       canvas.width = Math.max(1, Math.round(sourceWidth * scale));
@@ -66,7 +67,7 @@ async function compressProductPhotoForWeb(asset: ImagePicker.ImagePickerAsset) {
       context.imageSmoothingQuality = "high";
       context.drawImage(image, 0, 0, canvas.width, canvas.height);
 
-      for (const quality of [0.82, 0.72, 0.62, 0.52, 0.42]) {
+      for (const quality of [0.78, 0.68, 0.58, 0.48, 0.38, 0.30]) {
         let candidate = await toBlob(canvas, "image/webp", quality);
         if (!candidate || candidate.type !== "image/webp") {
           const jpegCanvas = document.createElement("canvas");
@@ -90,7 +91,7 @@ async function compressProductPhotoForWeb(asset: ImagePicker.ImagePickerAsset) {
     }
 
     if (!compressedBlob) {
-      throw new Error("This photo could not be compressed below 3 MB. Please select a smaller image.");
+      throw new Error("This photo could not be optimized for upload. Please choose another photo or a smaller original.");
     }
 
     const extension = compressedBlob.type === "image/webp" ? "webp" : "jpg";
