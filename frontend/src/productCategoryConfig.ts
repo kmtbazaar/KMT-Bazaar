@@ -56,8 +56,9 @@ export function normalizeProductAttributeFields(raw: any): ProductAttributeField
   }).slice(0, 24);
 }
 
-export function getDefaultProductFieldSchema(categoryName: string): ProductCategorySchema {
+export function getDefaultProductFieldSchema(categoryName: string, productContext = ""): ProductCategorySchema {
   const name = String(categoryName || "").trim().toLowerCase();
+  const isJeansProduct = /\\b(jeans|denim|trousers?|pants?)\\b/.test(`${name} ${String(productContext || "").toLowerCase()}`);
   if (/(mobile|mobiles|smartphone|smart phone|cell phone|mobile phone|android|iphone)/.test(name)) {
     return {
       show_variants: true, show_colors: true, show_description: true,
@@ -86,8 +87,10 @@ export function getDefaultProductFieldSchema(categoryName: string): ProductCateg
     return {
       show_variants: true, show_colors: true, show_description: true,
       requires_color: false, requires_color_images: false,
-      variant_label: "Clothing size",
-      variant_options: ["XS", "S", "M", "L", "XL", "XXL", "XXXL"],
+      variant_label: isJeansProduct ? "Waist size (inches)" : "Clothing size",
+      variant_options: isJeansProduct
+        ? ["28", "30", "32", "34", "36", "38", "40", "42", "44", "46"]
+        : ["XS", "S", "M", "L", "XL", "XXL", "XXXL"],
       color_label: "Colour",
       description_label: "Fabric & fit details",
       description_placeholder: "Describe fabric, fit, pattern, care and styling details.",
@@ -200,27 +203,31 @@ export function getDefaultProductFieldFlags(categoryName: string) {
   };
 }
 
-export function getProductCategoryConfig(category: any): ProductCategoryConfig {
+export function getProductCategoryConfig(category: any, productContext = ""): ProductCategoryConfig {
   const name = String(category?.name || "").trim().toLowerCase();
-  const defaults = getDefaultProductFieldSchema(name);
+  const isClothingCategory = /(clothing|fashion|apparel|garment|wear|shirt|jeans|textile|kurta|dress)/.test(name);
+  const isJeansProduct = isClothingCategory && /\\b(jeans|denim|trousers?|pants?)\\b/.test(`${name} ${String(productContext || "").toLowerCase()}`);
+  const defaults = getDefaultProductFieldSchema(name, productContext);
   const saved = category?.product_fields && typeof category.product_fields === "object" ? category.product_fields : {};
   const requiresColor = typeof saved.requires_color === "boolean" ? saved.requires_color : defaults.requires_color;
-  const showColors = requiresColor || (typeof saved.show_colors === "boolean" ? saved.show_colors : defaults.show_colors);
-  const variantOptions = Array.isArray(saved.variant_options)
-    ? saved.variant_options.map((value: any) => String(value || "").trim()).filter(Boolean).slice(0, 60)
-    : defaults.variant_options;
+  const showColors = isClothingCategory || requiresColor || (typeof saved.show_colors === "boolean" ? saved.show_colors : defaults.show_colors);
+  const variantOptions = isJeansProduct
+    ? defaults.variant_options
+    : Array.isArray(saved.variant_options)
+      ? saved.variant_options.map((value: any) => String(value || "").trim()).filter(Boolean).slice(0, 60)
+      : defaults.variant_options;
   const productAttributes = saved.product_attributes !== undefined
     ? normalizeProductAttributeFields(saved.product_attributes)
     : defaults.product_attributes;
   const schema: ProductCategorySchema = {
     ...defaults,
     ...saved,
-    show_variants: typeof saved.show_variants === "boolean" ? saved.show_variants : defaults.show_variants,
+    show_variants: isClothingCategory ? true : (typeof saved.show_variants === "boolean" ? saved.show_variants : defaults.show_variants),
     show_colors: showColors,
     show_description: typeof saved.show_description === "boolean" ? saved.show_description : defaults.show_description,
     requires_color: requiresColor,
     requires_color_images: typeof saved.requires_color_images === "boolean" ? saved.requires_color_images : defaults.requires_color_images,
-    variant_label: String(saved.variant_label || defaults.variant_label),
+    variant_label: isJeansProduct ? defaults.variant_label : String(saved.variant_label || defaults.variant_label),
     variant_options: variantOptions,
     color_label: String(saved.color_label || defaults.color_label),
     description_label: String(saved.description_label || defaults.description_label),
