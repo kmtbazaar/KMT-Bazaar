@@ -58,7 +58,7 @@ export function normalizeProductAttributeFields(raw: any): ProductAttributeField
 
 export function getDefaultProductFieldSchema(categoryName: string, productContext = ""): ProductCategorySchema {
   const name = String(categoryName || "").trim().toLowerCase();
-  const isJeansProduct = /\\b(jeans|denim|trousers?|pants?)\\b/.test(`${name} ${String(productContext || "").toLowerCase()}`);
+  const isJeansProduct = /\b(jeans|denim|trousers?|pants?)\b/.test(`${name} ${String(productContext || "").toLowerCase()}`);
   if (/(mobile|mobiles|smartphone|smart phone|cell phone|mobile phone|android|iphone)/.test(name)) {
     return {
       show_variants: true, show_colors: true, show_description: true,
