@@ -206,7 +206,7 @@ export function getDefaultProductFieldFlags(categoryName: string) {
 export function getProductCategoryConfig(category: any, productContext = ""): ProductCategoryConfig {
   const name = String(category?.name || "").trim().toLowerCase();
   const isClothingCategory = /(clothing|fashion|apparel|garment|wear|shirt|jeans|textile|kurta|dress)/.test(name);
-  const isJeansProduct = isClothingCategory && /\\b(jeans|denim|trousers?|pants?)\\b/.test(`${name} ${String(productContext || "").toLowerCase()}`);
+  const isJeansProduct = isClothingCategory && /(jeans|denim|trousers?|pants?)/.test(`${name} ${String(productContext || "").toLowerCase()}`);
   const defaults = getDefaultProductFieldSchema(name, productContext);
   const saved = category?.product_fields && typeof category.product_fields === "object" ? category.product_fields : {};
   const requiresColor = typeof saved.requires_color === "boolean" ? saved.requires_color : defaults.requires_color;
