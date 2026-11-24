@@ -85,6 +85,32 @@ const buildVariantPayload = (base: any, extras: ProductVariantDraft[], baseVaria
   ];
 };
 
+const findDuplicateVariantSizeColorIndex = (variants: any[]) => {
+  for (let index = 0; index < variants.length; index += 1) {
+    const current = variants[index];
+    const currentUnit = String(current.unit || "").trim().toLowerCase();
+    const currentColors = new Set(
+      (Array.isArray(current.colors) ? current.colors : [])
+        .map((color: any) => String(color || "").trim().toLowerCase())
+        .filter(Boolean)
+    );
+    for (let previousIndex = 0; previousIndex < index; previousIndex += 1) {
+      const previous = variants[previousIndex];
+      if (String(previous.unit || "").trim().toLowerCase() !== currentUnit) continue;
+      const previousColors = new Set(
+        (Array.isArray(previous.colors) ? previous.colors : [])
+          .map((color: any) => String(color || "").trim().toLowerCase())
+          .filter(Boolean)
+      );
+      // Repeated sizes are valid only when each row represents a different, non-overlapping colour group.
+      if (!currentColors.size || !previousColors.size || [...currentColors].some((color) => previousColors.has(color))) {
+        return index;
+      }
+    }
+  }
+  return -1;
+};
+
 const validateVariantDrafts = (variants: any[], requireDescriptions = false, requireColors = false) => {
   if (variants.some((variant) =>
     !variant.unit ||
@@ -100,9 +126,8 @@ const validateVariantDrafts = (variants: any[], requireDescriptions = false, req
   if (requireColors && variants.some((variant) => !Array.isArray(variant.colors) || variant.colors.length === 0)) {
     return "Select at least one colour for every size/pack option.";
   }
-  const labels = variants.map((variant) => variant.unit.toLowerCase());
-  if (new Set(labels).size !== labels.length) {
-    return "Each size/pack option must have a unique label.";
+  if (findDuplicateVariantSizeColorIndex(variants) >= 0) {
+    return "For the same RAM / Storage or size, choose different colours for each option.";
   }
   return "";
 };
@@ -732,12 +757,10 @@ export default function VendorStoreDetail() {
         guideAddFormToField(target, `Choose at least one colour for size option ${emptyColorIndex + 1}.`);
         return;
       }
-      const duplicateIndex = variants.findIndex((variant, index) =>
-        variants.findIndex((item) => item.unit.toLowerCase() === variant.unit.toLowerCase()) !== index
-      );
+      const duplicateIndex = findDuplicateVariantSizeColorIndex(variants);
       if (duplicateIndex >= 0) {
         const target = duplicateIndex === 0 ? "baseSize" : `variant-${duplicateIndex - 1}`;
-        guideAddFormToField(target, "Each RAM / Storage or size option must be different.");
+        guideAddFormToField(target, "For the same RAM / Storage or size, choose different colours for each option.");
         return;
       }
     }
