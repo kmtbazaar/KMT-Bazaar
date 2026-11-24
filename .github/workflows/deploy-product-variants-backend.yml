@@ -56,6 +56,7 @@ jobs:
           assert "def _validate_product_variant_colors" in source
           assert "Each size/pack option owns its colour palette." in source
           assert "def _validate_product_category_color_requirements" in source
+          assert "def _normalize_product_colors(raw_colors):" in source
           assert "def _normalize_product_color_images" in source
           print("CATEGORY_SPECIFIC_PRODUCT_FIELDS_VALIDATION_PASS")
           assert '@api.get("/orders/{order_id}/invoice-token")' in source
@@ -553,6 +554,8 @@ jobs:
                       raise SystemExit(f"STOP: Could not locate safe insertion point for {function_name}; no VPS changes made.")
                   return live_source.replace(anchor, candidate_function.rstrip() + "\n\n" + anchor, 1)
 
+          # Keep the top-level product-colour normalizer in sync as well; vendor/admin routes call it.
+          source = replace_or_insert_function(source, candidate_source, "_normalize_product_colors")
           source = replace_or_insert_function(source, candidate_source, "_normalize_product_color_images")
           source = replace_or_insert_function(source, candidate_source, "_normalize_product_variants")
           source = replace_or_insert_function(source, candidate_source, "_preserve_product_variant_descriptions", "def _apply_product_variants(")
@@ -683,6 +686,14 @@ jobs:
             fi
           done
           echo "BACKEND_SERVICE_VENDOR_PACKAGE_CRUD_VALIDATION_PASS"
+
+          if ! grep -Fq 'def _normalize_product_colors(raw_colors):' "$TARGET" \
+            || ! grep -Fq 'normalized_colors = _normalize_product_colors(data.colors)' "$TARGET"; then
+            echo "BACKEND_PRODUCT_COLOUR_NORMALIZER_MISSING"
+            rollback
+            exit 1
+          fi
+          echo "BACKEND_PRODUCT_COLOUR_NORMALIZER_VALIDATION_PASS"
 
           if ! grep -Fq 'Each size/pack option owns its colour palette.' "$TARGET"; then
             echo "BACKEND_SIZE_SPECIFIC_COLOUR_VALIDATION_PATCH_MISSING"
