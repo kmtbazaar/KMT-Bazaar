@@ -527,18 +527,29 @@ export default function Product() {
                 const active = String(variantId || "") === String(selectedVariant?.id || "");
                 const variantStock = Math.max(0, Number(variant.stock ?? 0));
                 const unavailable = p?.is_available === false || variantStock <= 0;
+                const repeatedUnit = variantOptions.some((candidate: any, candidateIndex: number) =>
+                  candidateIndex !== index &&
+                  String(candidate.unit || "").trim().toLowerCase() === String(variant.unit || "").trim().toLowerCase()
+                );
+                const variantColors = Array.isArray(variant.colors)
+                  ? variant.colors.map((color: any) => String(color || "").trim()).filter(Boolean)
+                  : [];
+                const colorGroupLabel = repeatedUnit ? variantColors.slice(0, 2).join(" / ") + (variantColors.length > 2 ? ` +${variantColors.length - 2}` : "") : "";
                 return (
                   <Pressable
                     key={variantId || `legacy-${variant.unit || "standard"}-${index}`}
                     accessibilityRole="button"
-                    accessibilityLabel={"Select option " + (variant.unit || "standard")}
+                    accessibilityLabel={"Select option " + (variant.unit || "standard") + (colorGroupLabel ? " in colours " + variantColors.join(", ") : "")}
                     accessibilityState={{ selected: active }}
                     onPress={() => setSelectedVariantId(variantId)}
                     style={[s.variantChoice, active && s.variantChoiceActive, unavailable && s.variantChoiceUnavailable]}
                     testID={`product-size-pack-option-${index + 1}`}
                   >
                     <View style={s.variantChoiceTop}>
-                      <Text style={[s.variantChoiceUnit, active && s.variantChoiceUnitActive]}>{variant.unit || "Standard"}</Text>
+                      <View style={{ flex: 1 }}>
+                        <Text style={[s.variantChoiceUnit, active && s.variantChoiceUnitActive]}>{variant.unit || "Standard"}</Text>
+                        {colorGroupLabel ? <Text style={s.variantChoiceColors}>{colorGroupLabel}</Text> : null}
+                      </View>
                       {active ? <MaterialCommunityIcons name="check-circle" size={16} color={COLORS.accent} /> : null}
                     </View>
                   </Pressable>
@@ -756,6 +767,7 @@ const s = StyleSheet.create({
   imageViewerImage: { width: "100%", height: "100%" },
   imageViewerHint: { color: "rgba(255,255,255,0.7)", fontSize: 12, fontWeight: "600", textAlign: "center", paddingTop: 10 },
   variantChoiceUnit: { color: COLORS.text, fontSize: 11, fontWeight: "800", flexShrink: 1 },
+  variantChoiceColors: { color: COLORS.textSecondary, fontSize: 9, fontWeight: "700", marginTop: 2 },
   variantChoiceUnitActive: { color: COLORS.accentDark },
   divider: { height: 1, backgroundColor: COLORS.border, marginVertical: SPACING.lg },
   sectionTitle: { fontWeight: "800", color: COLORS.text, marginBottom: 6 },
