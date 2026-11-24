@@ -102,8 +102,10 @@ const findDuplicateVariantSizeColorIndex = (variants: any[]) => {
           .map((color: any) => String(color || "").trim().toLowerCase())
           .filter(Boolean)
       );
-      // Repeated sizes are valid only when each row represents a different, non-overlapping colour group.
-      if (!currentColors.size || !previousColors.size || [...currentColors].some((color) => previousColors.has(color))) {
+      // Repeated sizes are valid when the selected colour group is different.
+      const sameColorGroup = currentColors.size === previousColors.size &&
+        [...currentColors].every((color) => previousColors.has(color));
+      if (!currentColors.size || !previousColors.size || sameColorGroup) {
         return index;
       }
     }
