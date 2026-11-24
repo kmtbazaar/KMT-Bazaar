@@ -3423,11 +3423,11 @@ def _normalize_product_variants(raw_variants):
         previous_color_groups = seen_unit_colors.get(unit_key, [])
         if previous_color_groups and (
             not color_keys
-            or any(not previous_colors or color_keys.intersection(previous_colors) for previous_colors in previous_color_groups)
+            or any(not previous_colors or color_keys == previous_colors for previous_colors in previous_color_groups)
         ):
             raise HTTPException(
                 status_code=400,
-                detail=f"RAM / Storage or size {unit} can repeat only with different colours",
+                detail=f"RAM / Storage or size {unit} can repeat only with a different colour group",
             )
         seen_unit_colors.setdefault(unit_key, []).append(color_keys)
 
