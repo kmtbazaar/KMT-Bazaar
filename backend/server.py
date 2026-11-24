@@ -3406,7 +3406,7 @@ def _normalize_product_variants(raw_variants):
         raise HTTPException(status_code=400, detail="Add at least one size/pack option")
 
     normalized = []
-    seen_units = set()
+    seen_unit_colors = {}
     seen_ids = set()
     for raw in raw_variants:
         row = raw.model_dump() if hasattr(raw, "model_dump") else raw.dict() if hasattr(raw, "dict") else dict(raw)
@@ -3414,9 +3414,22 @@ def _normalize_product_variants(raw_variants):
         if not unit:
             raise HTTPException(status_code=400, detail="Every size/pack option needs a label")
         unit_key = unit.casefold()
-        if unit_key in seen_units:
-            raise HTTPException(status_code=400, detail=f"Duplicate size/pack option: {unit}")
-        seen_units.add(unit_key)
+        variant_colors = _normalize_product_colors(row.get("colors"))
+        color_keys = {
+            str(color).strip().casefold()
+            for color in (variant_colors or [])
+            if str(color).strip()
+        }
+        previous_color_groups = seen_unit_colors.get(unit_key, [])
+        if previous_color_groups and (
+            not color_keys
+            or any(not previous_colors or color_keys.intersection(previous_colors) for previous_colors in previous_color_groups)
+        ):
+            raise HTTPException(
+                status_code=400,
+                detail=f"RAM / Storage or size {unit} can repeat only with different colours",
+            )
+        seen_unit_colors.setdefault(unit_key, []).append(color_keys)
 
         try:
             price = float(row.get("price"))
@@ -3441,7 +3454,6 @@ def _normalize_product_variants(raw_variants):
             "stock": stock,
             "description": str(row.get("description") or "").strip(),
         }
-        variant_colors = _normalize_product_colors(row.get("colors"))
         if variant_colors is not None:
             normalized_variant["colors"] = variant_colors
         variant_color_images = _normalize_product_color_images(row.get("color_images"), variant_colors or [])
