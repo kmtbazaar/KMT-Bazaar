@@ -18,6 +18,7 @@ import { vendorApi } from "@/src/roleApi";
 import { api } from "@/src/api";
 import ProductImagesUploader from "@/src/components/ProductImagesUploader";
 import { COLORS, RADIUS, SPACING, shadow } from "@/src/theme";
+import { getProductCategoryConfig } from "@/src/productCategoryConfig";
 
 const PRODUCT_UNIT_OPTIONS = [
   "XS", "S", "M", "L", "XL", "XXL",
@@ -45,6 +46,20 @@ export default function VendorProducts() {
     description: "",
     trending: false,
   });
+
+  const selectedCategory = categories.find((category: any) => String(category.id) === String(form.category_id));
+  const categoryConfig = getProductCategoryConfig(selectedCategory, form.name);
+  const unitOptions = categoryConfig.variantOptions.length ? categoryConfig.variantOptions : PRODUCT_UNIT_OPTIONS;
+  const unitLabel = categoryConfig.variantOptions.length ? categoryConfig.variantLabel : "Product size / pack";
+
+  React.useEffect(() => {
+    if (!selectedCategory || !categoryConfig.variantOptions.length) return;
+    const selectedUnit = String(form.unit || "").trim().toLowerCase();
+    const isKnownFallback = PRODUCT_UNIT_OPTIONS.some((option) => option.toLowerCase() === selectedUnit);
+    if (!selectedUnit || isKnownFallback && !categoryConfig.variantOptions.some((option) => option.toLowerCase() === selectedUnit)) {
+      setForm((current) => ({ ...current, unit: categoryConfig.variantOptions[0] }));
+    }
+  }, [form.category_id, form.name, categories]);
 
   const load = useCallback(async () => {
     try {
@@ -183,29 +198,53 @@ export default function VendorProducts() {
 
             <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 20 }}>
               
-              {/* Name Input */}
+              {/* Name and shop category determine the product's size/pack choices. */}
               <TextInput
                 placeholder="Name"
                 placeholderTextColor="#9CA3AF"
                 value={form.name}
-                onChangeText={(t) => setForm({ ...form, name: t })}
+                onChangeText={(t) => setForm((current) => ({ ...current, name: t }))}
                 style={[s.input, s.inputHighlighted]}
               />
 
-              {/* Keep size and pack choices near the top so they are immediately discoverable. */}
+              <Text style={s.sectionLabel}>Category</Text>
+              <View style={s.catContainer} testID="vendor-product-category-picker">
+                {categories.map((c) => {
+                  const active = form.category_id === c.id;
+                  return (
+                    <Pressable
+                      key={c.id}
+                      testID={`vendor-product-category-${String(c.name || "").toLowerCase().replace(/[^a-z0-9]+/g, "-")}`}
+                      style={[s.catChip, active && s.catChipActive]}
+                      onPress={() => {
+                        const nextConfig = getProductCategoryConfig(c, form.name);
+                        setForm((current) => ({
+                          ...current,
+                          category_id: c.id,
+                          unit: nextConfig.variantOptions[0] || current.unit,
+                        }));
+                      }}
+                    >
+                      <Text style={[s.catChipText, active && s.catChipTextActive]}>{c.name}</Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+
+              {/* Category-aware size and pack choices; Jeans use waist sizes in inches. */}
               <View style={s.unitPickerPanel} testID="vendor-product-size-pack-picker">
-                <Text style={s.sectionLabel}>Choose product size / pack</Text>
-                <Text style={s.unitPickerHint}>Tap one option. It will fill the Unit field below.</Text>
+                <Text style={s.sectionLabel}>Choose {unitLabel}</Text>
+                <Text style={s.unitPickerHint}>Tap an option to fill the Unit field below.</Text>
                 <View style={s.unitChipContainer}>
-                  {PRODUCT_UNIT_OPTIONS.map((option) => {
-                    const active = form.unit.trim().toLowerCase() === option.toLowerCase();
+                  {unitOptions.map((option) => {
+                    const active = String(form.unit || "").trim().toLowerCase() === option.toLowerCase();
                     return (
                       <Pressable
                         key={option}
                         accessibilityRole="button"
-                        accessibilityLabel={`Select product unit ${option}`}
+                        accessibilityLabel={`Select ${unitLabel} ${option}`}
                         accessibilityState={{ selected: active }}
-                        testID={`product-unit-${option.toLowerCase().replaceAll(" ", "-")}`}
+                        testID={`vendor-product-unit-${option.toLowerCase().replace(/\s+/g, "-")}`}
                         style={[s.catChip, s.unitChip, active && s.catChipActive]}
                         onPress={() => setForm((current) => ({ ...current, unit: option }))}
                       >
@@ -268,23 +307,6 @@ export default function VendorProducts() {
                 style={[s.input, { height: 75, textAlignVertical: "top" }]}
                 multiline
               />
-
-              {/* Category Chips Section */}
-              <Text style={s.sectionLabel}>Category</Text>
-              <View style={s.catContainer}>
-                {categories.map((c) => {
-                  const active = form.category_id === c.id;
-                  return (
-                    <Pressable
-                      key={c.id}
-                      style={[s.catChip, active && s.catChipActive]}
-                      onPress={() => setForm({ ...form, category_id: c.id })}
-                    >
-                      <Text style={[s.catChipText, active && s.catChipTextActive]}>{c.name}</Text>
-                    </Pressable>
-                  );
-                })}
-              </View>
 
               {/* Mark as Trending Checkbox */}
               <Pressable
