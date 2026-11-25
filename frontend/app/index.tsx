@@ -11,7 +11,8 @@ import {
   Dimensions,
   Platform,
 } from "react-native";
-import { router } from "expo-router";
+import { Link, router } from "expo-router";
+import { Head } from "expo-router/head";
 import { useLanguage } from "../src/LanguageContext";
 import ParticleLogoSplash from "../src/components/ParticleLogoSplash";
 import RobotAvatar from "../src/components/RobotAvatar";
@@ -122,6 +123,7 @@ export default function Index() {
   if (showAssistant && !hasSelectedLanguage) {
     return (
       <View style={styles.blackBackground}>
+        <HomeSearchMetadata />
         <StatusBar barStyle="light-content" />
         <SafeAreaView style={styles.safeArea}>
           <View style={[styles.mainContent, { justifyContent: "center", gap: 22 }]}>
@@ -212,6 +214,7 @@ export default function Index() {
                 </View>
               </TouchableOpacity>
             </View>
+            <SearchEntryLinks />
 
           </Animated.View>
         </SafeAreaView>
@@ -222,8 +225,58 @@ export default function Index() {
   // --- VIEW 1: PARTICLE-FORMING BRAND SPLASH ---
   return (
     <View style={styles.splashContainer}>
+      <HomeSearchMetadata />
       <StatusBar barStyle="light-content" />
       <ParticleLogoSplash />
+      <SearchEntryLinks overlay />
+    </View>
+  );
+}
+
+function HomeSearchMetadata() {
+  const websiteSchema = JSON.stringify({
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    "@id": "https://kmtbazaar.com/#website",
+    "url": "https://kmtbazaar.com/",
+    "name": "KMT Bazaar",
+    "alternateName": "KMTBazaar",
+  });
+  return (
+    <Head>
+      <title>KMT Bazaar | Shop Online &amp; Book Local Services</title>
+      <meta name="description" content="Shop products from local stores, explore home and travel services, and book wedding photography and events with KMT Bazaar." />
+      <meta name="robots" content="index,follow,max-image-preview:large" />
+      <link rel="canonical" href="https://kmtbazaar.com/" />
+      <meta property="og:type" content="website" />
+      <meta property="og:site_name" content="KMT Bazaar" />
+      <meta property="og:url" content="https://kmtbazaar.com/" />
+      <meta property="og:title" content="KMT Bazaar | Shop Online &amp; Book Local Services" />
+      <meta property="og:description" content="Shop products from local stores, explore home and travel services, and book wedding photography and events with KMT Bazaar." />
+      <meta name="twitter:card" content="summary" />
+      <meta name="twitter:title" content="KMT Bazaar | Shop Online &amp; Book Local Services" />
+      <meta name="twitter:description" content="Shop products, explore local services and book wedding experiences with KMT Bazaar." />
+      <script type="application/ld+json">{websiteSchema}</script>
+    </Head>
+  );
+}
+
+function SearchEntryLinks({ overlay = false }: { overlay?: boolean }) {
+  return (
+    <View style={overlay ? styles.searchEntryOverlay : styles.searchEntryWrap} testID="kmt-search-entry-links">
+      <Text style={styles.searchEntryCopy}>Shop products and book local services with KMT Bazaar.</Text>
+      <View style={styles.searchEntryRow}>
+        <Link href="/(tabs)/categories" asChild>
+          <TouchableOpacity style={[styles.searchEntryButton, styles.searchEntryShop]} accessibilityRole="link">
+            <Text style={styles.searchEntryButtonText}>Shop Now</Text>
+          </TouchableOpacity>
+        </Link>
+        <Link href="/book-now" asChild>
+          <TouchableOpacity style={[styles.searchEntryButton, styles.searchEntryBook]} accessibilityRole="link">
+            <Text style={styles.searchEntryButtonText}>Book Now</Text>
+          </TouchableOpacity>
+        </Link>
+      </View>
     </View>
   );
 }
@@ -243,6 +296,14 @@ const styles = StyleSheet.create({
     alignItems: "center",
     backgroundColor: "#000000",
   },
+  searchEntryOverlay: { position: "absolute", left: 18, right: 18, bottom: 28, zIndex: 10, alignItems: "center", gap: 10 },
+  searchEntryWrap: { width: "100%", alignItems: "center", gap: 10, paddingTop: 4 },
+  searchEntryCopy: { color: "#B8D6F3", fontSize: 11, fontWeight: "700", textAlign: "center" },
+  searchEntryRow: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 12, width: "100%" },
+  searchEntryButton: { minWidth: 132, paddingVertical: 12, paddingHorizontal: 18, borderRadius: 14, alignItems: "center", borderWidth: 1 },
+  searchEntryShop: { backgroundColor: "#E97817", borderColor: "#F6B35E" },
+  searchEntryBook: { backgroundColor: "#17428C", borderColor: "#5593DF" },
+  searchEntryButtonText: { color: "#FFFFFF", fontSize: 13, fontWeight: "900", letterSpacing: 0.3 },
   mainContent: {
     flex: 1,
     justifyContent: "space-between",
