@@ -726,47 +726,65 @@ jobs:
           if seed_tax_count:
               source = source.replace(old_seed_tax, new_seed_total, 1)
 
+          def model_annotation_routes(tree, model_name):
+              found = []
+              for node in tree.body:
+                  if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                      continue
+                  annotations = [
+                      argument.annotation
+                      for argument in (node.args.posonlyargs + node.args.args + node.args.kwonlyargs)
+                      if argument.annotation is not None
+                  ]
+                  if any(
+                      isinstance(child, ast.Name) and child.id == model_name
+                      for annotation in annotations
+                      for child in ast.walk(annotation)
+                  ):
+                      route_line = min([node.lineno] + [item.lineno for item in node.decorator_list])
+                      found.append((route_line, node.name))
+              return sorted(found)
+
           candidate_tree = ast.parse(candidate_source)
-          candidate_store_models = [node for node in candidate_tree.body if isinstance(node, ast.ClassDef) and node.name == "StoreIn"]
-          if len(candidate_store_models) != 1:
-              raise SystemExit("STOP: Candidate StoreIn model is missing or duplicated; no VPS changes made.")
+          for model_name in ("OnlineIn", "StoreIn"):
+              candidate_models = [node for node in candidate_tree.body if isinstance(node, ast.ClassDef) and node.name == model_name]
+              if len(candidate_models) != 1:
+                  raise SystemExit(f"STOP: Candidate {model_name} model is missing or duplicated; no VPS changes made.")
 
-          merged_tree = ast.parse(source)
-          merged_store_models = [node for node in merged_tree.body if isinstance(node, ast.ClassDef) and node.name == "StoreIn"]
-          merged_store_routes = [node for node in merged_tree.body if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and node.name == "vendor_create_store"]
-          if len(merged_store_routes) != 1 or len(merged_store_models) > 1:
-              raise SystemExit(f"STOP: StoreIn repair target count invalid: models={len(merged_store_models)} routes={len(merged_store_routes)}; no VPS changes made.")
+              merged_tree = ast.parse(source)
+              merged_models = [node for node in merged_tree.body if isinstance(node, ast.ClassDef) and node.name == model_name]
+              dependent_routes = model_annotation_routes(merged_tree, model_name)
+              if len(dependent_routes) == 0 or len(merged_models) > 1:
+                  raise SystemExit(f"STOP: {model_name} repair target invalid: models={len(merged_models)} routes={len(dependent_routes)}; no VPS changes made.")
 
-          route_node = merged_store_routes[0]
-          route_line = min([route_node.lineno] + [item.lineno for item in route_node.decorator_list])
-          if merged_store_models and merged_store_models[0].lineno < route_line:
-              print("MERGED_STOREIN_AUDIT models=1 routes=1 order=VALID")
-          else:
+              earliest_route_line = dependent_routes[0][0]
+              if merged_models and merged_models[0].lineno < earliest_route_line:
+                  print(f"MERGED_MODEL_AUDIT {model_name}=PRESENT_BEFORE_ROUTE")
+                  continue
+
               candidate_lines = candidate_source.splitlines(keepends=True)
-              candidate_node = candidate_store_models[0]
+              candidate_node = candidate_models[0]
               model_block = "".join(candidate_lines[candidate_node.lineno - 1:candidate_node.end_lineno]).rstrip() + "\n\n"
-              if merged_store_models:
+              if merged_models:
                   live_lines = source.splitlines(keepends=True)
-                  del live_lines[merged_store_models[0].lineno - 1:merged_store_models[0].end_lineno]
+                  del live_lines[merged_models[0].lineno - 1:merged_models[0].end_lineno]
                   source = "".join(live_lines)
                   merged_tree = ast.parse(source)
-                  route_nodes = [node for node in merged_tree.body if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and node.name == "vendor_create_store"]
-                  if len(route_nodes) != 1:
-                      raise SystemExit("STOP: vendor_create_store route changed during StoreIn repair; no VPS changes made.")
-                  route_node = route_nodes[0]
-                  route_line = min([route_node.lineno] + [item.lineno for item in route_node.decorator_list])
-              insert_at = sum(len(line) for line in source.splitlines(keepends=True)[:route_line - 1])
+                  dependent_routes = model_annotation_routes(merged_tree, model_name)
+                  if not dependent_routes:
+                      raise SystemExit(f"STOP: No dependent route remained for {model_name}; no VPS changes made.")
+                  earliest_route_line = dependent_routes[0][0]
+
+              insert_at = sum(len(line) for line in source.splitlines(keepends=True)[:earliest_route_line - 1])
               source = source[:insert_at] + model_block + source[insert_at:]
-              print("STOREIN_MODEL_RESTORED_BEFORE_VENDOR_CREATE_STORE")
+              print(f"MODEL_RESTORED_BEFORE_DEPENDENT_ROUTE {model_name} -> {dependent_routes[0][1]}")
 
           final_tree = ast.parse(source)
-          final_store_models = [node for node in final_tree.body if isinstance(node, ast.ClassDef) and node.name == "StoreIn"]
-          final_store_routes = [node for node in final_tree.body if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and node.name == "vendor_create_store"]
-          if len(final_store_models) != 1 or len(final_store_routes) != 1:
-              raise SystemExit("STOP: StoreIn model and vendor_create_store route must each exist exactly once; no VPS changes made.")
-          final_route_line = min([final_store_routes[0].lineno] + [item.lineno for item in final_store_routes[0].decorator_list])
-          if final_store_models[0].lineno >= final_route_line:
-              raise SystemExit("STOP: StoreIn must be defined before vendor_create_store; no VPS changes made.")
+          for model_name in ("OnlineIn", "StoreIn"):
+              final_models = [node for node in final_tree.body if isinstance(node, ast.ClassDef) and node.name == model_name]
+              dependent_routes = model_annotation_routes(final_tree, model_name)
+              if len(final_models) != 1 or not dependent_routes or final_models[0].lineno >= dependent_routes[0][0]:
+                  raise SystemExit(f"STOP: {model_name} must exist exactly once before all dependent routes; no VPS changes made.")
 
           if 'class PhotographyShowcaseIn(BaseModel):' not in source \
               or '@api.get("/vendor/photography/showcase")' not in source \
