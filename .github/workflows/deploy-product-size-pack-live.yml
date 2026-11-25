@@ -33,6 +33,11 @@ on:
       - "frontend/app/vendor/decorator-dashboard.tsx"
       - "frontend/app/vendor/photography-dashboard.tsx"
       - "frontend/app/service-vendor/index.tsx"
+      - "frontend/app/service-vendor/photography-showcase.tsx"
+      - "frontend/app/vendor/photography-showcase.tsx"
+      - "frontend/app/vendor/services.tsx"
+      - "frontend/app/service/[type].tsx"
+      - "frontend/components/PhotographyCustomerPage.tsx"
       - "frontend/app/auth/register.tsx"
       - "frontend/app/role/[role].tsx"
       - "frontend/app/(tabs)/cart.tsx"
@@ -108,6 +113,33 @@ jobs:
       - name: Install locked frontend dependencies
         working-directory: frontend
         run: npm install --ignore-scripts --no-audit --no-fund
+
+      - name: Validate KMT Weddings page and Love Hurt Studio booking connection
+        working-directory: frontend
+        run: |
+          node <<'NODE'
+          const assert = require("node:assert/strict");
+          const fs = require("node:fs");
+          const page = fs.readFileSync("components/PhotographyCustomerPage.tsx", "utf8");
+          const serviceRoute = fs.readFileSync("app/service/[type].tsx", "utf8");
+          const vendorEditor = fs.readFileSync("app/vendor/photography-showcase.tsx", "utf8");
+          const vendorDashboard = fs.readFileSync("app/vendor/event-service-dashboard.tsx", "utf8");
+          const api = fs.readFileSync("src/api.ts", "utf8");
+          const roleApi = fs.readFileSync("src/roleApi.ts", "utf8");
+          const backend = fs.readFileSync("../backend/server.py", "utf8");
+          assert.ok(serviceRoute.includes('if (type === "photography") return <PhotographyCustomerPage />'), "Photography service customers must open the dedicated wedding experience.");
+          assert.ok(page.includes('api.photographyShowcase()') && page.includes('api.serviceCatalog("photography")'), "Customer page must load the public showcase and live photography packages.");
+          assert.ok(page.includes('String(x.vendor_id)===String(showcase.vendor_id)'), "Only packages owned by the showcased photography vendor may appear.");
+          assert.ok(page.includes('api.serviceCartAdd({service_type:"photography",service_id:pkg.id') && page.includes('source:"kmt-weddings-photography"'), "Customer booking must enter the existing photography service booking cart using the real package ID.");
+          assert.ok(page.includes('youtube-nocookie.com/embed/') && page.includes('photography-wedding-ambient-lights') && page.includes('photography-wedding-quick-nav'), "Wedding reels must open in the video viewer and the page must include its animated wedding treatment and quick navigation.");
+          assert.ok(page.includes('docs.google.com/gview?embedded=1') && page.includes('album_page_count') && page.includes('photography-open-karizma-album'), "Customers must be able to preview the vendor-managed Karizma PDF and its page count.");
+          assert.ok(vendorEditor.includes('vendorApi.photographyShowcase()') && vendorEditor.includes('vendorApi.updatePhotographyShowcase') && vendorEditor.includes('youtube_url') && vendorEditor.includes('album_pdf_url'), "Love Hurt Studio must manage YouTube reels and the Karizma PDF from its authenticated vendor editor.");
+          assert.ok(vendorDashboard.includes('/service-vendor/photography-showcase') && vendorDashboard.includes('Wedding Reels & Karizma Album'), "Photography vendor dashboard must link directly to its portfolio manager.");
+          assert.ok(roleApi.includes('"/vendor/photography/showcase"') && api.includes('"/services/photography/showcase"'), "Vendor and customer showcase APIs must remain connected.");
+          assert.ok(backend.includes('payload["vendor_id"] = current["id"]') && backend.includes('"vendor_id": current["id"]'), "Showcase and photography packages must be saved against the authenticated service vendor.");
+          assert.ok(backend.includes('item["vendor_id"] = service.get("vendor_id") if service else None'), "Service booking cart must inherit the real package vendor ID so the request reaches the correct photography vendor.");
+          console.log("KMT_WEDDINGS_VENDOR_BOOKING_VALIDATION_PASS");
+          NODE
 
       - name: Validate size and pack options and customer display
         working-directory: frontend
