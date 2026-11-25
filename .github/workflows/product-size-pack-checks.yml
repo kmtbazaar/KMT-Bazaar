@@ -69,6 +69,7 @@ jobs:
           assert.ok(vendor.includes("vendor-store-edit-product-size-pack-picker"), "Store vendor Edit Product screen must render the size/pack picker.");
           assert.ok(vendor.includes("onPress={() => setEditProductForm((current) => ({ ...current, unit: option }))}"), "Selecting a chip in Edit Product must update the unit.");
           assert.ok(vendor.includes("vendor-store-add-product-item-category-picker"), "Add Product must render the distinct item-category box.");
+          assert.ok(vendor.indexOf('testID="vendor-store-add-product-item-category-picker"') < vendor.indexOf('testID="vendor-store-add-product-size-pack-picker"'), "Add Product item category picker must appear above the clothing size/pack picker.");
           assert.ok(vendor.includes("vendor-store-edit-product-item-category-picker"), "Edit Product must render the distinct item-category box.");
           assert.ok(!vendor.includes("vendor-store-add-new-item-category-name") && !vendor.includes("vendor-store-add-new-item-category"), "Add Product must only select existing dashboard-managed item categories, with no inline create row.");
           assert.ok(vendor.includes("saveStoreItemCategory") && vendor.includes("await load();") && vendor.includes("vendor-store-add-product-item-category-picker"), "Dashboard-managed item categories must refresh and appear in the Add Product picker.");
