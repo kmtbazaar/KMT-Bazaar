@@ -3633,6 +3633,19 @@ class VendorServiceIn(BaseModel):
     reviews: int = 0
     service_type: ServiceType = ServiceType.DAILY_SERVICE
 
+class PhotographyShowcaseIn(BaseModel):
+    brand_title: str = "KMT Bazaar Weddings"
+    headline: str = "Your story, beautifully framed"
+    intro: str = "Cinematic wedding films, joyful rituals and timeless albums."
+    hero_image: str = ""
+    reels: List[Dict[str, str]] = Field(default_factory=list)
+    album_title: str = "Karizma Wedding Album"
+    album_pdf_url: str = ""
+    album_page_count: int = 40
+    album_cover_image: str = ""
+    active: bool = True
+
+
 class OrderStatusIn(BaseModel):
     status: str
 
@@ -5518,6 +5531,114 @@ async def vendor_delete_service(
     if result.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Service not found")
     return {"ok": True}
+
+
+def _require_photography_vendor(current: dict):
+    _require_vendor_type(current, "service")
+    if current.get("service_type") != ServiceType.PHOTOGRAPHY.value:
+        raise HTTPException(status_code=403, detail="Photography Vendor access required")
+
+
+@api.get("/vendor/photography/showcase")
+async def vendor_get_photography_showcase(current=Depends(require_roles("vendor"))):
+    _require_photography_vendor(current)
+    profile = await db.photography_showcases.find_one({"vendor_id": current["id"]}, {"_id": 0}) or {}
+    result = {
+        "brand_title": "KMT Bazaar Weddings",
+        "headline": "Your story, beautifully framed",
+        "intro": "Cinematic wedding films, joyful rituals and timeless albums.",
+        "hero_image": "",
+        "reels": [],
+        "album_title": "Karizma Wedding Album",
+        "album_pdf_url": "",
+        "album_page_count": 40,
+        "album_cover_image": "",
+        "active": True,
+    }
+    result.update(profile)
+    result["vendor_id"] = current["id"]
+    result["vendor_name"] = current.get("name") or "Love Hurt Studio"
+    return result
+
+
+@api.put("/vendor/photography/showcase")
+async def vendor_update_photography_showcase(data: PhotographyShowcaseIn, current=Depends(require_roles("vendor"))):
+    _require_photography_vendor(current)
+    payload = data.dict()
+    raw_reels = payload.get("reels") or []
+    if len(raw_reels) > 20:
+        raise HTTPException(status_code=400, detail="You can add up to 20 YouTube reels")
+
+    clean_reels = []
+    for reel in raw_reels:
+        title = str(reel.get("title") or "").strip()[:120]
+        category = str(reel.get("category") or "Wedding").strip()[:60]
+        youtube_url = str(reel.get("youtube_url") or "").strip()
+        if not youtube_url:
+            continue
+        if len(youtube_url) > 1000 or not re.match(
+            r"^https?://(?:www\\.)?(?:youtube\\.com|youtu\\.be)(?:/|$)",
+            youtube_url,
+            re.IGNORECASE,
+        ):
+            raise HTTPException(status_code=400, detail="Enter a valid YouTube or youtu.be link for every reel")
+        clean_reels.append({"title": title or category or "Wedding Moment", "category": category or "Wedding", "youtube_url": youtube_url})
+
+    album_url = str(payload.get("album_pdf_url") or "").strip()
+    if album_url and (len(album_url) > 2000 or not re.match(r"^https://", album_url, re.IGNORECASE)):
+        raise HTTPException(status_code=400, detail="Enter a secure public PDF link beginning with https://")
+
+    payload["brand_title"] = str(payload.get("brand_title") or "KMT Bazaar Weddings").strip()[:100]
+    payload["headline"] = str(payload.get("headline") or "Your story, beautifully framed").strip()[:160]
+    payload["intro"] = str(payload.get("intro") or "").strip()[:600]
+    payload["hero_image"] = str(payload.get("hero_image") or "").strip()[:2000]
+    payload["reels"] = clean_reels
+    payload["album_title"] = str(payload.get("album_title") or "Karizma Wedding Album").strip()[:120]
+    payload["album_pdf_url"] = album_url
+    payload["album_cover_image"] = str(payload.get("album_cover_image") or "").strip()[:2000]
+    payload["album_page_count"] = max(1, min(200, int(payload.get("album_page_count") or 40)))
+    payload["active"] = payload.get("active") is not False
+    payload["vendor_id"] = current["id"]
+    payload["vendor_name"] = current.get("name") or "Love Hurt Studio"
+    existing = await db.photography_showcases.find_one({"vendor_id": current["id"]}, {"_id": 0, "created_at": 1})
+    payload["created_at"] = (existing or {}).get("created_at") or now_iso()
+    payload["updated_at"] = now_iso()
+    await db.photography_showcases.update_one({"vendor_id": current["id"]}, {"$set": payload}, upsert=True)
+    return payload
+
+
+@api.get("/services/photography/showcase")
+async def public_photography_showcase():
+    vendor = await db.users.find_one(
+        {
+            "role": Role.VENDOR.value,
+            "vendor_type": VendorType.SERVICE.value,
+            "service_type": ServiceType.PHOTOGRAPHY.value,
+            "active": {"$ne": False},
+        },
+        {"_id": 0, "id": 1, "name": 1}
+    )
+    result = {
+        "brand_title": "KMT Bazaar Weddings",
+        "headline": "Your story, beautifully framed",
+        "intro": "Cinematic wedding films, joyful rituals and timeless albums.",
+        "hero_image": "",
+        "reels": [],
+        "album_title": "Karizma Wedding Album",
+        "album_pdf_url": "",
+        "album_page_count": 40,
+        "album_cover_image": "",
+        "active": bool(vendor),
+        "vendor_id": vendor.get("id", "") if vendor else "",
+        "vendor_name": vendor.get("name", "Love Hurt Studio") if vendor else "Love Hurt Studio",
+    }
+    if not vendor:
+        return result
+    profile = await db.photography_showcases.find_one({"vendor_id": vendor["id"]}, {"_id": 0}) or {}
+    result.update(profile)
+    result["vendor_id"] = vendor["id"]
+    result["vendor_name"] = vendor.get("name") or "Love Hurt Studio"
+    return result
 
 
 # ------------------ VENDOR ------------------
