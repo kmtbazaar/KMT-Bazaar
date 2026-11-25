@@ -320,7 +320,7 @@ jobs:
               source, candidate_source,
               "# KMT_PHOTOGRAPHY_SHOWCASE_ROUTES_BEGIN",
               "# KMT_PHOTOGRAPHY_SHOWCASE_ROUTES_END",
-              "# ------------------ VENDOR ------------------\nasync def _vendor_store_ids",
+              "# ------------------ VENDOR ------------------",
               "Photography showcase routes",
           )
 
