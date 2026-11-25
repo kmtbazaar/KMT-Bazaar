@@ -320,7 +320,7 @@ jobs:
               source, candidate_source,
               "# KMT_PHOTOGRAPHY_SHOWCASE_ROUTES_BEGIN",
               "# KMT_PHOTOGRAPHY_SHOWCASE_ROUTES_END",
-              "# ------------------ VENDOR ------------------",
+              "async def vendor_list_services(",
               "Photography showcase routes",
           )
 
