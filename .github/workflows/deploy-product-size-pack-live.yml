@@ -116,6 +116,7 @@ jobs:
           const assert = require("node:assert/strict");
           const fs = require("node:fs");
           const vendor = fs.readFileSync("app/vendor/store/[id].tsx", "utf8");
+          const vendorProducts = fs.readFileSync("app/vendor/products.tsx", "utf8");
           const customer = fs.readFileSync("app/product/[id].tsx", "utf8");
           const uploader = fs.readFileSync("src/components/ProductImagesUploader.tsx", "utf8");
           const adminVendor = fs.readFileSync("src/components/AdminVendorProducts.tsx", "utf8");
@@ -127,6 +128,9 @@ jobs:
           const backend = fs.readFileSync("../backend/server.py", "utf8");
           const categoryConfig = fs.readFileSync("src/productCategoryConfig.ts", "utf8");
           assert.ok(vendor.includes("categoryConfig.variantOptions.map") && !vendor.includes("PRODUCT_UNIT_OPTIONS"), "Store vendor options must be category-specific, not a global size list.");
+          const legacyVendorCategoryIndex = vendorProducts.indexOf("vendor-product-category-picker");
+          const legacyVendorSizeIndex = vendorProducts.indexOf("vendor-product-size-pack-picker");
+          assert.ok(vendorProducts.includes("getProductCategoryConfig(selectedCategory, form.name)") && vendorProducts.includes("unitOptions.map") && legacyVendorCategoryIndex >= 0 && legacyVendorSizeIndex > legacyVendorCategoryIndex && vendorProducts.includes("Choose {unitLabel}"), "Production bundle must show selected-category sizes on the Vendor Products Add Product screen, including Jeans waist sizes.");
           assert.ok(uploader.includes("compressProductPhotoForWeb") && uploader.includes("canvas.toBlob") && uploader.includes("MAX_WEB_PRODUCT_UPLOAD_BYTES"), "Store vendor product photos must be compressed before browser upload");
           assert.ok(productCard.includes("height: 155,") && productCard.includes('contentFit="contain"'), "Customer product cards must display larger full photos without cropping.");
           assert.ok(tabsLayout.includes('const isMobileTabBar = Platform.OS !== "web" || width <= 1024;') && tabsLayout.includes("const insets = useSafeAreaInsets();") && tabsLayout.includes('bottom: isMobileTabBar && Platform.OS === "web" ? -28 : -18') && tabsLayout.includes("height: isMobileTabBar ? 92 + insets.bottom : 82") && tabsLayout.includes("paddingBottom: isMobileTabBar ? insets.bottom + 8 : 0") && tabsLayout.includes("tabBarItemStyle: {") && tabsLayout.includes("flex: 1") && tabsLayout.includes("minWidth: 0") && tabsLayout.includes('justifyContent: isMobileTabBar ? "flex-end" : "center"') && tabsLayout.includes("paddingBottom: 0"), "Mobile customer taskbar items must use equal-width slots, zero bottom offset, and the device safe-area inset.");
