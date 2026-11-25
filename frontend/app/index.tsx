@@ -257,7 +257,7 @@ function HomeSearchMetadata() {
       <meta name="twitter:card" content="summary" />
       <meta name="twitter:title" content="KMT Bazaar | Shop Online &amp; Book Local Services" />
       <meta name="twitter:description" content="Shop products, explore local services and book wedding experiences with KMT Bazaar." />
-      <script type="application/ld+json">{websiteSchema}</script>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: websiteSchema }} />
     </Head>
   );
 }
