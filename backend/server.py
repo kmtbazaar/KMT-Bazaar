@@ -5536,6 +5536,7 @@ async def vendor_delete_service(
 
 
 # KMT_PHOTOGRAPHY_SHOWCASE_ROUTES_BEGIN
+# Production merge: deploy-product-variants-backend.yml syncs this block by its markers.
 def _require_photography_vendor(current: dict):
     _require_vendor_type(current, "service")
     if current.get("service_type") != ServiceType.PHOTOGRAPHY.value:
