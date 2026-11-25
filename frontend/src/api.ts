@@ -16,6 +16,9 @@ const BASE =
 
 export const API = `${BASE}/api`;
 
+const MAX_PRODUCT_IMAGE_SOURCE_BYTES = 10 * 1024 * 1024;
+const MAX_PRODUCT_IMAGE_UPLOAD_BYTES = 250 * 1024;
+
 const TOKEN_KEY = "kmt_token";
 const USER_KEY = "kmt_user";
 
@@ -488,9 +491,14 @@ export async function uploadImageAsset(
     fileName?: string | null;
     mimeType?: string | null;
     file?: any;
+    fileSize?: number | null;
   },
   purpose?: "product" | "general"
 ): Promise<string> {
+  if (purpose === "product" && Number(asset.fileSize || 0) > MAX_PRODUCT_IMAGE_SOURCE_BYTES) {
+    throw new Error("Each product photo must be 10 MB or smaller.");
+  }
+
   const token = await getToken();
   if (Platform.OS === "web") await ensureUniqueWebTabId();
   const formData = new FormData();
@@ -506,8 +514,8 @@ export async function uploadImageAsset(
       });
     }
 
-    if (purpose === "product" && Number(webFile?.size || 0) > 768 * 1024) {
-      throw new Error("Product photo compression did not finish. Please select the photo again; the original file has not been uploaded.");
+    if (purpose === "product" && Number(webFile?.size || 0) > MAX_PRODUCT_IMAGE_UPLOAD_BYTES) {
+      throw new Error("Product photo compression did not finish below 250 KB. Please select the photo again; the original file has not been uploaded.");
     }
 
     formData.append("file", webFile);
