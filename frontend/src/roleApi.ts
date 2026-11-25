@@ -233,6 +233,8 @@ export const vendorApi = {
     }),
 
   serviceStats: () => apiFetch<any>("/vendor/service-stats"),
+  photographyShowcase: () => apiFetch<any>("/vendor/photography/showcase"),
+  updatePhotographyShowcase: (data: any) => apiFetch<any>("/vendor/photography/showcase", { method: "PUT", body: JSON.stringify(data) }),
   serviceBookings: () => apiFetch<any[]>("/vendor/service-bookings"),
   carRentalBanner: () => apiFetch<any>("/vendor/car-rental/banner"),
   updateCarRentalBanner: (data: any) =>
