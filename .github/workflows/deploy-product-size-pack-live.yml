@@ -117,7 +117,7 @@ jobs:
         working-directory: frontend
         run: npm install --ignore-scripts --no-audit --no-fund
 
-      - name: Validate KMT Bazaar homepage stability and Shop Now Book Now navigation
+      - name: Validate KMT Bazaar Google Search entry points and SEO metadata
         working-directory: frontend
         run: |
           node <<'NODE'
@@ -128,16 +128,17 @@ jobs:
           const guard = fs.readFileSync("app/_layout.tsx", "utf8");
           const sitemap = fs.readFileSync("public/sitemap.xml", "utf8");
           const robots = fs.readFileSync("public/robots.txt", "utf8");
-          assert.ok(!home.includes('expo-router/head') && !home.includes('HomeSearchMetadata') && !home.includes('dangerouslySetInnerHTML'), "Homepage must not inject runtime Head/JSON-LD nodes into the animated root screen.");
-          assert.ok(home.includes('onPress={() => router.push("/(tabs)/categories" as any)}') && home.includes('>Shop Now</Text>'), "Homepage must provide a working Shop Now navigation action.");
-          assert.ok(home.includes('onPress={() => router.push("/book-now" as any)}') && home.includes('>Book Now</Text>'), "Homepage must provide a working Book Now navigation action.");
-          assert.ok(book.includes('/service/photography') && book.includes('/service/premium_decorator') && book.includes('/holiday') && book.includes('/car-rental') && book.includes('/daily-services'), "Book Now must list the real public KMT Bazaar service destinations.");
+          assert.ok(home.includes('import { Head } from "expo-router/head"') && home.includes('<title>KMT Bazaar | Shop Online &amp; Book Local Services</title>'), "Google must receive the KMT Bazaar homepage title, not the Assistant label.");
+          assert.ok(home.includes('name="description"') && home.includes('rel="canonical" href="https://kmtbazaar.com/"'), "Homepage must publish a concise search description and the .com canonical URL.");
+          assert.ok(home.includes('"@type": "WebSite"') && home.includes('"name": "KMT Bazaar"') && home.includes('"url": "https://kmtbazaar.com/"'), "Homepage must provide the official KMT Bazaar WebSite structured data.");
+          assert.ok(home.includes('href="/(tabs)/categories"') && home.includes('>Shop Now</Text>') && home.includes('href="/book-now"') && home.includes('>Book Now</Text>'), "Homepage must expose crawlable Shop Now and Book Now links.");
+          assert.ok(book.includes('<title>Book Now | KMT Bazaar Services</title>') && book.includes('/service/photography') && book.includes('/service/premium_decorator') && book.includes('/holiday') && book.includes('/car-rental') && book.includes('/daily-services'), "Book Now must list the real public KMT Bazaar service destinations.");
           assert.ok(guard.includes('first === "book-now"'), "Guests must be allowed to open the Book Now hub without signing in.");
           for (const url of ["/", "/categories", "/book-now", "/service/photography", "/service/premium_decorator", "/holiday", "/car-rental", "/daily-services"]) {
             assert.ok(sitemap.includes('https://kmtbazaar.com' + url), "Sitemap must include " + url);
           }
           assert.ok(robots.includes("Sitemap: https://kmtbazaar.com/sitemap.xml") && robots.includes("Allow: /"), "Search crawlers must be able to crawl the site and discover its sitemap.");
-          console.log("KMT_BAZAAR_HOMEPAGE_STABILITY_AND_ENTRY_LINKS_VALIDATION_PASS");
+          console.log("KMT_BAZAAR_GOOGLE_SEO_AND_ENTRY_LINKS_VALIDATION_PASS");
           NODE
 
       - name: Validate KMT Weddings page and Love Hurt Studio booking connection
