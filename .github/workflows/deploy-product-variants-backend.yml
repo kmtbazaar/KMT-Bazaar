@@ -167,12 +167,20 @@ jobs:
           test -s "$CANDIDATE_PATH"
           trap 'rm -f "$CANDIDATE_PATH"' EXIT
 
-          # The immediately preceding attempt was stopped during a deployment-script
-          # boundary review. Restore its pre-attempt backup before applying this safe patch.
-          PREVIOUS_TARGET_BACKUP="$(find /root -maxdepth 1 -type f -name 'kmtbazaar-backend-backup-389c95ec7136-*.py' -print | sort | tail -n 1)"
-          if [ -n "$PREVIOUS_TARGET_BACKUP" ]; then
-            cp -a "$PREVIOUS_TARGET_BACKUP" "$TARGET"
-            echo "RESTORED_PREVIOUS_PRODUCTION_SOURCE=$PREVIOUS_TARGET_BACKUP"
+          # Recover only if the current target is the known broken pre-Schema source.
+          # The f87998da backup is the last backend source that passed the production health check.
+          if ! grep -Fq 'class StoreIn(BaseModel):' "$TARGET"; then
+            KNOWN_GOOD_BACKUP="$(find /root -maxdepth 1 -type f -name 'kmtbazaar-backend-backup-f87998da7fa9-*.py' -print | sort | tail -n 1)"
+            if [ -z "$KNOWN_GOOD_BACKUP" ] || ! grep -Fq 'class StoreIn(BaseModel):' "$KNOWN_GOOD_BACKUP"; then
+              echo "STOP: No verified pre-existing backend backup with StoreIn model was found."
+              exit 1
+            fi
+            cp -a "$KNOWN_GOOD_BACKUP" "$TARGET"
+            echo "RESTORED_KNOWN_GOOD_PRODUCTION_SOURCE=$KNOWN_GOOD_BACKUP"
+          fi
+          if ! grep -Fq 'class StoreIn(BaseModel):' "$TARGET"; then
+            echo "STOP: Backend target is missing StoreIn model after recovery."
+            exit 1
           fi
 
           BACKUP="/root/kmtbazaar-backend-backup-${DEPLOY_SHA:0:12}-$(date +%Y%m%d-%H%M%S).py"
@@ -276,6 +284,38 @@ jobs:
               if not block:
                   raise SystemExit(f"STOP: Candidate {label} block is empty; no VPS changes made.")
               return block
+
+          def sync_marked_block(live_source, candidate, start_marker, end_marker, anchor, label):
+              candidate_body = extract_marked_block(candidate, start_marker, end_marker, label)
+              replacement = start_marker + "\n" + candidate_body.strip("\r\n") + "\n" + end_marker
+              start_count = live_source.count(start_marker)
+              end_count = live_source.count(end_marker)
+              if start_count == 0 and end_count == 0:
+                  if live_source.count(anchor) != 1:
+                      raise SystemExit(f"STOP: Could not safely locate {label} insertion point; no VPS changes made.")
+                  return live_source.replace(anchor, replacement + "\n\n" + anchor, 1)
+              if start_count == 1 and end_count == 1:
+                  block_start = live_source.index(start_marker)
+                  block_end = live_source.index(end_marker, block_start) + len(end_marker)
+                  if block_end <= block_start:
+                      raise SystemExit(f"STOP: {label} markers are out of order; no VPS changes made.")
+                  return live_source[:block_start] + replacement + live_source[block_end:]
+              raise SystemExit(f"STOP: Existing {label} markers are inconsistent; no VPS changes made.")
+
+          source = sync_marked_block(
+              source, candidate_source,
+              "# KMT_PHOTOGRAPHY_SHOWCASE_MODEL_BEGIN",
+              "# KMT_PHOTOGRAPHY_SHOWCASE_MODEL_END",
+              "\n\nclass OrderStatusIn(BaseModel):",
+              "Photography showcase model",
+          )
+          source = sync_marked_block(
+              source, candidate_source,
+              "# KMT_PHOTOGRAPHY_SHOWCASE_ROUTES_BEGIN",
+              "# KMT_PHOTOGRAPHY_SHOWCASE_ROUTES_END",
+              "# ------------------ VENDOR ------------------\nasync def _vendor_store_ids",
+              "Photography showcase routes",
+          )
 
           support_model = extract_marked_block(
               candidate_source,
@@ -691,6 +731,16 @@ jobs:
             fi
           done
           echo "BACKEND_SERVICE_VENDOR_PACKAGE_CRUD_VALIDATION_PASS"
+
+          if ! grep -Fq 'class PhotographyShowcaseIn(BaseModel):' "$TARGET" \
+            || ! grep -Fq '@api.get("/vendor/photography/showcase")' "$TARGET" \
+            || ! grep -Fq '@api.put("/vendor/photography/showcase")' "$TARGET" \
+            || ! grep -Fq '@api.get("/services/photography/showcase")' "$TARGET"; then
+            echo "BACKEND_PHOTOGRAPHY_SHOWCASE_PATCH_MISSING"
+            rollback
+            exit 1
+          fi
+          echo "BACKEND_PHOTOGRAPHY_SHOWCASE_VALIDATION_PASS"
 
           if ! grep -Fq 'def _normalize_product_colors(raw_colors):' "$TARGET" \
             || ! grep -Fq 'normalized_colors = _normalize_product_colors(data.colors)' "$TARGET"; then
