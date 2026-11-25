@@ -41,6 +41,11 @@ jobs:
           source = Path("backend/server.py").read_text(encoding="utf-8")
           assert 'PRODUCT_DELIVERY_STATE = "Jharkhand"' in source
           assert 'PRODUCT_DELIVERY_PINCODE = "815352"' in source
+          assert "MAX_UPLOAD_BYTES = 10 * 1024 * 1024" in source, "Image uploads must accept originals up to 10 MB."
+          assert "PRODUCT_IMAGE_MAX_BYTES = 240 * 1024" in source, "Product images must be compressed to at most 240 KB."
+          assert 'detail="Image is too large. Maximum size is 10 MB."' in source, "Both image upload endpoints must explain the 10 MB limit."
+          assert '@api.post("/uploads/image")' in source and 'encoded = _encode_product_webp(image)' in source
+          print("BACKEND_PRODUCT_IMAGE_10MB_INPUT_240KB_OUTPUT_VALIDATION_PASS")
           assert "AUTH_SESSION_DAYS = 30" in source
           assert "JWT_EXPIRE_MIN = 60 * 24 * AUTH_SESSION_DAYS" in source
           assert "WEB_SESSION_TIMEOUT_MIN = 60 * 24 * AUTH_SESSION_DAYS" in source
