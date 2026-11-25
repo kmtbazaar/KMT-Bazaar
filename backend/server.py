@@ -3633,6 +3633,7 @@ class VendorServiceIn(BaseModel):
     reviews: int = 0
     service_type: ServiceType = ServiceType.DAILY_SERVICE
 
+# KMT_PHOTOGRAPHY_SHOWCASE_MODEL_BEGIN
 class PhotographyShowcaseIn(BaseModel):
     brand_title: str = "KMT Bazaar Weddings"
     headline: str = "Your story, beautifully framed"
@@ -3644,6 +3645,7 @@ class PhotographyShowcaseIn(BaseModel):
     album_page_count: int = 40
     album_cover_image: str = ""
     active: bool = True
+# KMT_PHOTOGRAPHY_SHOWCASE_MODEL_END
 
 
 class OrderStatusIn(BaseModel):
@@ -5533,6 +5535,7 @@ async def vendor_delete_service(
     return {"ok": True}
 
 
+# KMT_PHOTOGRAPHY_SHOWCASE_ROUTES_BEGIN
 def _require_photography_vendor(current: dict):
     _require_vendor_type(current, "service")
     if current.get("service_type") != ServiceType.PHOTOGRAPHY.value:
@@ -5635,6 +5638,7 @@ async def public_photography_showcase():
     result["vendor_id"] = vendor["id"]
     result["vendor_name"] = vendor.get("name") or "Love Hurt Studio"
     return result
+# KMT_PHOTOGRAPHY_SHOWCASE_ROUTES_END
 
 
 # ------------------ VENDOR ------------------
