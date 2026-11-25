@@ -89,7 +89,7 @@ export function getDefaultProductFieldSchema(categoryName: string, productContex
       requires_color: false, requires_color_images: false,
       variant_label: isJeansProduct ? "Waist size (inches)" : "Clothing size",
       variant_options: isJeansProduct
-        ? ["28", "30", "32", "34", "36", "38", "40", "42", "44", "46"]
+        ? ["28", "30", "32", "34", "36", "38", "40", "42", "44", "46", "48", "50", "52"]
         : ["XS", "S", "M", "L", "XL", "XXL", "XXXL"],
       color_label: "Colour",
       description_label: "Fabric & fit details",
