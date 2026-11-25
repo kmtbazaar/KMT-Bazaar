@@ -1162,6 +1162,35 @@ export default function VendorStoreDetail() {
               />
               </View>
 
+                <View style={s.itemCategoryPanel} testID="vendor-store-add-product-item-category-picker">
+                  <Text style={s.itemCategoryTitle}>Choose item category</Text>
+                  <Text style={s.itemCategoryPickerHint}>Choose the category that best matches this product.</Text>
+                  {itemCategories.length ? (
+                    <View style={s.itemCategoryRow}>
+                      {itemCategories.map((item: any) => {
+                        const active = form.item_category_id === item.id;
+                        return (
+                          <Pressable
+                            key={item.id}
+                            accessibilityRole="button"
+                            accessibilityLabel={`Select item category ${item.name}`}
+                            accessibilityState={{ selected: active }}
+                            onPress={() => setForm((prev) => ({ ...prev, item_category: item.name, item_category_id: item.id }))}
+                            style={[s.itemCategoryChip, active && s.itemCategoryChipActive]}
+                          >
+                            <Text style={[s.itemCategoryChipText, active && s.itemCategoryChipTextActive]}>{item.name}</Text>
+                          </Pressable>
+                        );
+                      })}
+                    </View>
+                  ) : (
+                    <Text style={s.itemCategoryPickerEmpty}>
+                      No item categories are configured for this shop category yet. Add them in Store Item Categories first.
+                    </Text>
+                  )}
+                </View>
+
+
               {categoryConfig.showVariants && categoryConfig.variantOptions.length > 0 ? (
                 <View
                   style={[s.unitPickerPanel, addValidationError?.field === "baseSize" && s.fieldPanelError]}
@@ -1207,34 +1236,6 @@ export default function VendorStoreDetail() {
               </View>
               ) : null}
 
-
-                <View style={s.itemCategoryPanel} testID="vendor-store-add-product-item-category-picker">
-                  <Text style={s.itemCategoryTitle}>Choose item category</Text>
-                  <Text style={s.itemCategoryPickerHint}>Choose the category that best matches this product.</Text>
-                  {itemCategories.length ? (
-                    <View style={s.itemCategoryRow}>
-                      {itemCategories.map((item: any) => {
-                        const active = form.item_category_id === item.id;
-                        return (
-                          <Pressable
-                            key={item.id}
-                            accessibilityRole="button"
-                            accessibilityLabel={`Select item category ${item.name}`}
-                            accessibilityState={{ selected: active }}
-                            onPress={() => setForm((prev) => ({ ...prev, item_category: item.name, item_category_id: item.id }))}
-                            style={[s.itemCategoryChip, active && s.itemCategoryChipActive]}
-                          >
-                            <Text style={[s.itemCategoryChipText, active && s.itemCategoryChipTextActive]}>{item.name}</Text>
-                          </Pressable>
-                        );
-                      })}
-                    </View>
-                  ) : (
-                    <Text style={s.itemCategoryPickerEmpty}>
-                      No item categories are configured for this shop category yet. Add them in Store Item Categories first.
-                    </Text>
-                  )}
-                </View>
 
               {/* Price & MRP Row */}
               <View style={s.rowCompact} onLayout={(event) => rememberAddFieldPosition("pricing", event.nativeEvent.layout.y)}>
