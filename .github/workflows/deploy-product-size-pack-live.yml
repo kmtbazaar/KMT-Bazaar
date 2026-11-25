@@ -129,15 +129,15 @@ jobs:
           const sitemap = fs.readFileSync("public/sitemap.xml", "utf8");
           const robots = fs.readFileSync("public/robots.txt", "utf8");
           assert.ok(!home.includes('expo-router/head') && !home.includes('HomeSearchMetadata') && !home.includes('dangerouslySetInnerHTML'), "Homepage must not inject runtime Head/JSON-LD nodes into the animated root screen.");
-          assert.ok(home.includes('onPress={() => router.push("/(tabs)/categories" as any)}') && home.includes('>Shop Now</Text>'), "Homepage must provide a working Shop Now navigation action.");
-          assert.ok(home.includes('onPress={() => router.push("/book-now" as any)}') && home.includes('>Book Now</Text>'), "Homepage must provide a working Book Now navigation action.");
+          assert.ok(!home.includes("SearchEntryLinks") && !home.includes(">Shop Now</Text>") && !home.includes(">Book Now</Text>"), "Homepage must remain in its pre-Shop Now/Book Now state.");
+          assert.ok(home.includes("Let&apos;s get started"), "Homepage must retain the existing KMT Bazaar Assistant entry action.");
           assert.ok(book.includes('/service/photography') && book.includes('/service/premium_decorator') && book.includes('/holiday') && book.includes('/car-rental') && book.includes('/daily-services'), "Book Now must list the real public KMT Bazaar service destinations.");
           assert.ok(guard.includes('first === "book-now"'), "Guests must be allowed to open the Book Now hub without signing in.");
           for (const url of ["/", "/categories", "/book-now", "/service/photography", "/service/premium_decorator", "/holiday", "/car-rental", "/daily-services"]) {
             assert.ok(sitemap.includes('https://kmtbazaar.com' + url), "Sitemap must include " + url);
           }
           assert.ok(robots.includes("Sitemap: https://kmtbazaar.com/sitemap.xml") && robots.includes("Allow: /"), "Search crawlers must be able to crawl the site and discover its sitemap.");
-          console.log("KMT_BAZAAR_HOMEPAGE_STABILITY_AND_ENTRY_LINKS_VALIDATION_PASS");
+          console.log("KMT_BAZAAR_PRE_SHOP_BOOK_HOMEPAGE_VALIDATION_PASS");
           NODE
 
       - name: Validate KMT Weddings page and Love Hurt Studio booking connection
