@@ -6,6 +6,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { api } from "@/src/api";
+import PhotographyCustomerPage from "@/components/PhotographyCustomerPage";
 
 const META: Record<string, { title: string; icon: string; sub: string }> = {
   holiday: { title: "Holiday", icon: "airplane-takeoff", sub: "Holiday packages & trip bookings" },
@@ -87,6 +88,8 @@ export default function ServiceCatalog({ fixedType }: { fixedType?: string }) {
       notify("Booking", error?.message || "Could not start this booking. Please login first.");
     }
   };
+
+  if (type === "photography") return <PhotographyCustomerPage />;
 
   return (
     <SafeAreaView style={s.root}>

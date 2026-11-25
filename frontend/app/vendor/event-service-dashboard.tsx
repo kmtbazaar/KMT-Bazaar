@@ -60,6 +60,7 @@ export default function EventServiceVendorDashboard({ serviceType }: { serviceTy
         </View>
         <Text style={s.section}>{isDecorator ? "Event Decoration" : "Photography Studio"}</Text>
         <Action icon="briefcase-outline" title={isDecorator ? "Decoration Packages" : "Photography Packages"} sub={isDecorator ? "Add wedding, birthday and celebration packages" : "Add wedding, event and professional shoot packages"} onPress={() => router.push("/service-vendor/services" as any)} />
+        {!isDecorator && <Action icon="movie-open-play-outline" title="Wedding Reels & Karizma Album" sub="Manage Haldi, Mehndi and wedding YouTube reels plus your 40-page album PDF" onPress={() => router.push("/service-vendor/photography-showcase" as any)} />}
         <Action icon="calendar-check-outline" title="Bookings" sub="View customer details and update event / shoot status" onPress={() => router.push("/service-vendor/service-bookings" as any)} badge={pendingBookings} />
         <Action icon="chart-line" title="Earnings" sub="Revenue, commission and estimated payout" onPress={() => router.push("/service-vendor/earnings" as any)} />
         <BrandingFooter caption={`${title} Partner · Powered by KMT Bazaar`} />

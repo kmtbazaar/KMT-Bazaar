@@ -754,6 +754,7 @@ export const api = {
   holidayBanner: () => apiFetch<any>("/holiday/banner"),
   carRentalBanners: () => apiFetch<any[]>("/car-rental/banners"),
   serviceCatalog: (type: string) => apiFetch<any[]>(`/services/catalog/${encodeURIComponent(type)}`),
+  photographyShowcase: () => apiFetch<any>("/services/photography/showcase"),
   serviceDetail: (type: string, id: string) => apiFetch<any>(`/services/catalog/${encodeURIComponent(type)}/${encodeURIComponent(id)}`),
   serviceBookings: () => apiFetch<any[]>("/service-bookings"),
   serviceCart: () => apiFetch<any>("/service-cart"),
