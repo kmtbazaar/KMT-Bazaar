@@ -37,7 +37,7 @@ function getOrderAddress(address: any) {
 
 function formatMoney(value: any) {
   const amount = Number(value);
-  return `₹${Number.isFinite(amount) ? amount.toFixed(2).replace(/\\.00$/, "") : "0"}`;
+  return `₹${Number.isFinite(amount) ? amount.toFixed(2).replace(/\.00$/, "") : "0"}`;
 }
 
 export default function VendorOrders() {
