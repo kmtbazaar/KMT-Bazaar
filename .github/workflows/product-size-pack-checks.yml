@@ -48,6 +48,7 @@ jobs:
           const customer = fs.readFileSync("app/product/[id].tsx", "utf8");
           const productCard = fs.readFileSync("src/components/ProductCard.tsx", "utf8");
           const vendorOrders = fs.readFileSync("app/vendor/orders.tsx", "utf8");
+          const vendorDashboard = fs.readFileSync("app/vendor/index.tsx", "utf8");
           const customerOrder = fs.readFileSync("app/orders/[id].tsx", "utf8");
           const adminOrder = fs.readFileSync("app/admin/order/[id].tsx", "utf8");
           const config = fs.readFileSync("src/productCategoryConfig.ts", "utf8");
@@ -78,6 +79,7 @@ jobs:
           assert.ok(vendorOrders.includes('testID={`vendor-order-open-${item.id}`}') && vendorOrders.includes("onPress={() => setSelectedOrder(item)}"), "Tapping a vendor order card must open its full order details.");
           assert.ok(vendorOrders.includes('testID="vendor-order-detail-modal"') && vendorOrders.includes("Pickup / delivery address") && vendorOrders.includes("Payment and bill") && vendorOrders.includes("getOrderAddress(order.address)"), "Vendor order detail must show customer address and payment/bill details.");
           assert.ok(vendorOrders.includes("optionDetails") && vendorOrders.includes("it.color") && vendorOrders.includes("it.unit") && vendorOrders.includes("Quantity:"), "Vendor order detail must show each product's size, colour and quantity.");
+          assert.ok(vendorDashboard.includes("item.unit") && vendorDashboard.includes("item.color") && vendorDashboard.includes("item.variant") && vendorDashboard.includes("Qty \${item.quantity || item.qty || 1}"), "Dashboard pending-order details must show the exact product size, colour and quantity.");
           assert.ok(!vendor.includes("vendor-store-add-new-item-category-name") && !vendor.includes("vendor-store-add-new-item-category"), "Add Product must only select existing dashboard-managed item categories, with no inline create row.");
           assert.ok(vendor.includes("saveStoreItemCategory") && vendor.includes("await load();") && vendor.includes("vendor-store-add-product-item-category-picker"), "Dashboard-managed item categories must refresh and appear in the Add Product picker.");
           assert.ok(vendor.includes("vendor-store-edit-new-item-category-name"), "Edit Product may retain its existing inline item-category option.");
