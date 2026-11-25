@@ -5576,8 +5576,7 @@ async def vendor_update_photography_showcase(data: PhotographyShowcaseIn, curren
         youtube_url = str(reel.get("youtube_url") or "").strip()
         if not youtube_url:
             continue
-        if len(youtube_url) > 1000 or not re.match(
-        if not youtube_url.lower().startswith(("https://youtube.com/", "https://www.youtube.com/", "https://youtu.be/")):
+        if len(youtube_url) > 1000 or not youtube_url.lower().startswith(("https://youtube.com/", "https://www.youtube.com/", "https://youtu.be/")):
             raise HTTPException(status_code=400, detail="Enter a valid YouTube or youtu.be link for every reel")
         clean_reels.append({"title": title or category or "Wedding Moment", "category": category or "Wedding", "youtube_url": youtube_url})
 
