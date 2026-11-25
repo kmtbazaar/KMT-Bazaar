@@ -543,7 +543,15 @@ function StoreVendorDashboard() {
                     />
                     <View style={{ flex: 1 }}>
                       <Text style={s.detailItemName} numberOfLines={2}>{item.name || "Product"}</Text>
-                      <Text style={s.detailMuted}>Qty {item.quantity || item.qty || 1}</Text>
+                      <Text style={s.detailMuted}>
+                        {[
+                          item.unit,
+                          item.variant && typeof item.variant === "string" && item.variant !== item.unit ? item.variant : null,
+                          item.size ? `Size: ${item.size}` : null,
+                          item.color ? `Colour: ${item.color}` : null,
+                          `Qty ${item.quantity || item.qty || 1}`,
+                        ].filter(Boolean).join(" · ")}
+                      </Text>
                     </View>
                     <Text style={s.detailItemPrice}>₹{item.line_total ?? ((item.price || item.unit_price || 0) * (item.quantity || item.qty || 1))}</Text>
                   </View>
