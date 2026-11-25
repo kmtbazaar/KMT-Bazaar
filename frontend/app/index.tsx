@@ -212,26 +212,6 @@ export default function Index() {
                 </View>
               </TouchableOpacity>
             </View>
-            <View style={styles.searchEntryButtons}>
-              <TouchableOpacity
-                activeOpacity={0.86}
-                style={[styles.searchEntryButton, styles.searchEntryShop]}
-                onPress={() => router.push("/(tabs)/categories" as any)}
-                accessibilityRole="button"
-                accessibilityLabel="Shop Now"
-              >
-                <Text style={styles.searchEntryText}>Shop Now</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                activeOpacity={0.86}
-                style={[styles.searchEntryButton, styles.searchEntryBook]}
-                onPress={() => router.push("/book-now" as any)}
-                accessibilityRole="button"
-                accessibilityLabel="Book Now"
-              >
-                <Text style={styles.searchEntryText}>Book Now</Text>
-              </TouchableOpacity>
-            </View>
 
           </Animated.View>
         </SafeAreaView>
@@ -347,26 +327,6 @@ const styles = StyleSheet.create({
     width: "100%",
     height: "100%",
   },
-
-  searchEntryButtons: {
-    width: "100%",
-    flexDirection: "row",
-    justifyContent: "center",
-    gap: 12,
-    paddingHorizontal: 6,
-  },
-  searchEntryButton: {
-    flex: 1,
-    minHeight: 44,
-    paddingHorizontal: 12,
-    borderRadius: 13,
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 1,
-  },
-  searchEntryShop: { backgroundColor: "#E97817", borderColor: "#F6B35E" },
-  searchEntryBook: { backgroundColor: "#17428C", borderColor: "#5593DF" },
-  searchEntryText: { color: "#FFFFFF", fontSize: 13, fontWeight: "900" },
 
   // Buttons Styling
   actionContainer: {
