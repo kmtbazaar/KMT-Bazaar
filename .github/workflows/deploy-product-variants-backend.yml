@@ -729,8 +729,9 @@ jobs:
           merged_tree = ast.parse(source)
           store_models = [node for node in merged_tree.body if isinstance(node, ast.ClassDef) and node.name == "StoreIn"]
           store_routes = [node for node in merged_tree.body if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and node.name == "vendor_create_store"]
+          print(f"MERGED_STOREIN_AUDIT models={len(store_models)} routes={len(store_routes)}")
           if len(store_models) != 1 or len(store_routes) != 1:
-              raise SystemExit("STOP: StoreIn model or vendor_create_store route is missing or duplicated; no VPS changes made.")
+              raise SystemExit(f"STOP: StoreIn model or vendor_create_store route count invalid: models={len(store_models)} routes={len(store_routes)}; no VPS changes made.")
           store_route_line = min([store_routes[0].lineno] + [item.lineno for item in store_routes[0].decorator_list])
           if store_models[0].lineno >= store_route_line:
               raise SystemExit("STOP: StoreIn must be defined before vendor_create_store; no VPS changes made.")
