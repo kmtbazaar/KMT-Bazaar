@@ -290,6 +290,13 @@ jobs:
               replacement = start_marker + "\n" + candidate_body.strip("\r\n") + "\n" + end_marker
               start_count = live_source.count(start_marker)
               end_count = live_source.count(end_marker)
+              print(f"{label}_LIVE_MARKER_COUNTS start={start_count} end={end_count}")
+              if start_count == 1 and end_count == 0:
+                  live_source = live_source.replace(start_marker, "", 1)
+                  start_count = 0
+              elif start_count == 0 and end_count == 1:
+                  live_source = live_source.replace(end_marker, "", 1)
+                  end_count = 0
               if start_count == 0 and end_count == 0:
                   if live_source.count(anchor) != 1:
                       raise SystemExit(f"STOP: Could not safely locate {label} insertion point; no VPS changes made.")
