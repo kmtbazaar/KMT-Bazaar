@@ -158,6 +158,7 @@ export default function Index() {
   if (showAssistant) {
     return (
       <View style={styles.blackBackground}>
+        <HomeSearchMetadata />
         <StatusBar barStyle="light-content" />
         <SafeAreaView style={styles.safeArea}>
           <Animated.View style={[styles.mainContent, { opacity: fadeAnim }]}>
@@ -296,6 +297,14 @@ const styles = StyleSheet.create({
     alignItems: "center",
     backgroundColor: "#000000",
   },
+  searchEntryOverlay: { position: "absolute", left: 18, right: 18, bottom: 28, zIndex: 10, alignItems: "center", gap: 10 },
+  searchEntryWrap: { width: "100%", alignItems: "center", gap: 10, paddingTop: 4 },
+  searchEntryCopy: { color: "#B8D6F3", fontSize: 11, fontWeight: "700", textAlign: "center" },
+  searchEntryRow: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 12, width: "100%" },
+  searchEntryButton: { minWidth: 132, paddingVertical: 12, paddingHorizontal: 18, borderRadius: 14, alignItems: "center", borderWidth: 1 },
+  searchEntryShop: { backgroundColor: "#E97817", borderColor: "#F6B35E" },
+  searchEntryBook: { backgroundColor: "#17428C", borderColor: "#5593DF" },
+  searchEntryButtonText: { color: "#FFFFFF", fontSize: 13, fontWeight: "900", letterSpacing: 0.3 },
   searchEntryOverlay: { position: "absolute", left: 18, right: 18, bottom: 28, zIndex: 10, alignItems: "center", gap: 10 },
   searchEntryWrap: { width: "100%", alignItems: "center", gap: 10, paddingTop: 4 },
   searchEntryCopy: { color: "#B8D6F3", fontSize: 11, fontWeight: "700", textAlign: "center" },
