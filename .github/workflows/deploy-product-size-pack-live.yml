@@ -330,6 +330,7 @@ jobs:
           const support = fs.readFileSync("app/support/returns.tsx", "utf8");
           const profile = fs.readFileSync("app/(tabs)/profile.tsx", "utf8");
           const vendor = fs.readFileSync("app/vendor/index.tsx", "utf8");
+          const vendorOrders = fs.readFileSync("app/vendor/orders.tsx", "utf8");
           const api = fs.readFileSync("src/api.ts", "utf8");
           const backend = fs.readFileSync("../backend/server.py", "utf8");
           assert.ok(!cart.includes("Taxes (5%)") && !checkout.includes('l="Tax"'), "Customer cart and checkout must not show a tax line.");
@@ -337,6 +338,8 @@ jobs:
           assert.ok(order.includes('testID="order-download-invoice"') && order.includes("api.orderInvoiceToken") && order.includes("invoice.pdf"), "Order confirmation must offer a downloadable PDF bill.");
           assert.ok(order.includes('l="Tax (previous order)"') && order.includes("Number(order.tax || 0) > 0"), "Only a pre-existing historical order may display its saved legacy tax amount.");
           assert.ok(vendor.includes('label="Tax (previous order)"') && vendor.includes("Number(pendingOrder.tax || 0) > 0"), "Historical vendor orders may retain their stored tax line, without adding tax to new orders.");
+          assert.ok(vendorOrders.includes('testID={`vendor-order-open-${item.id}`}') && vendorOrders.includes("onPress={() => setSelectedOrder(item)}"), "Vendor order cards must open the full order detail view on tap.");
+          assert.ok(vendorOrders.includes('testID="vendor-order-detail-modal"') && vendorOrders.includes("Pickup / delivery address") && vendorOrders.includes("Payment and bill") && vendorOrders.includes("getOrderAddress(order.address)") && vendorOrders.includes("optionDetails"), "Vendor order detail view must include fulfilment-critical product, address and payment details.");
           assert.ok(order.includes('testID="order-return-refund-help"') && order.includes('pathname: "/support/returns"'), "Order confirmation must link to return/refund support.");
           assert.ok(order.includes('testID={`order-item-${it.product_id}`}') && order.includes("/product/${encodeURIComponent(String(it.product_id))}"), "Tapping an order item must open its product page.");
           assert.ok(profile.includes('testID="help-refund-return-entry"'), "Profile Help & Support must offer the refund/return application screen.");
