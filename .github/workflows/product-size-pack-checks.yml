@@ -42,6 +42,7 @@ jobs:
           const fs = require("node:fs");
 
           const vendor = fs.readFileSync("app/vendor/store/[id].tsx", "utf8");
+          const vendorProducts = fs.readFileSync("app/vendor/products.tsx", "utf8");
           const imageUploader = fs.readFileSync("src/components/ProductImagesUploader.tsx", "utf8");
           const customer = fs.readFileSync("app/product/[id].tsx", "utf8");
           const productCard = fs.readFileSync("src/components/ProductCard.tsx", "utf8");
@@ -53,6 +54,9 @@ jobs:
           const backend = fs.readFileSync("../backend/server.py", "utf8");
 
           assert.ok(vendor.includes("categoryConfig.variantOptions.map") && !vendor.includes("PRODUCT_UNIT_OPTIONS"), "Vendor must use category-specific variant options, not a universal size list.");
+          const vendorCategoryIndex = vendorProducts.indexOf("vendor-product-category-picker");
+          const vendorSizeIndex = vendorProducts.indexOf("vendor-product-size-pack-picker");
+          assert.ok(vendorProducts.includes("getProductCategoryConfig(selectedCategory, form.name)") && vendorProducts.includes("unitOptions.map") && vendorProducts.includes("categoryConfig.variantOptions.length ? categoryConfig.variantOptions : PRODUCT_UNIT_OPTIONS") && vendorCategoryIndex >= 0 && vendorSizeIndex > vendorCategoryIndex && vendorProducts.includes("Choose {unitLabel}"), "Legacy Vendor Products screen must place category selection before and derive size choices from the selected category and product name, including Jeans waist sizes.");
           assert.ok(vendor.includes("vendor-store-add-variant-size-") && vendor.includes("Choose {categoryConfig.variantLabel}"), "Each Add Size row must show selectable category-specific options such as RAM / Storage for mobile products.");
           assert.ok(vendor.includes("PRODUCT_COLOR_OPTIONS.map((color) => color.label)") && vendor.includes("variant.colors ?? form.colors"), "Each added size row must show a selectable colour palette and retain its chosen colours.");
           assert.ok(vendor.includes("guideAddFormToField") && vendor.includes("addProductScrollRef.current?.scrollTo") && vendor.includes("addValidationError"), "Missing required fields must guide the vendor to the relevant Add Product section.");
