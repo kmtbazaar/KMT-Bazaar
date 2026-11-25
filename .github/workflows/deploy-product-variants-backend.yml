@@ -97,182 +97,9 @@ jobs:
               route_block = source[route_start:route_end]
               assert "build_auth_response" in route_block, f"{route_name} must issue the shared 30-day session"
           for function_name in ("vendor_list_services", "vendor_create_service", "vendor_update_service", "vendor_delete_service"):
-              route_start = source.find("async def " + function_name + "(")
-              assert route_start >= 0, f"Missing package management route: {function_name}"
-              route_end = source.find("\n@api.", route_start + 1)
-              if route_end < 0:
-                  route_end = len(source)
-              route_block = source[route_start:route_end]
-              assert "ServiceType.PHOTOGRAPHY.value" in route_block, f"{function_name} must allow Photography"
-              assert "ServiceType.PREMIUM_DECORATOR.value" in route_block, f"{function_name} must allow Premium Decorator"
-              assert "Daily Services are managed by Admin only" in route_block, f"{function_name} must preserve the Daily Service restriction"
-          print("SERVICE_VENDOR_PACKAGE_CRUD_CATEGORY_VALIDATION_PASS")
-          print("ALL_ROLE_30_DAY_SESSION_AND_PERSISTENT_BROWSER_SELECTOR_VALIDATION_PASS")
-          PY
+              source = replace_function_body(source, candidate_source, function_name)
 
-      - name: Check required Hostinger SSH configuration
-        env:
-          HOSTINGER_HOST: ${{ secrets.HOSTINGER_HOST }}
-          HOSTINGER_USER: ${{ secrets.HOSTINGER_USER }}
-          HOSTINGER_SSH_KEY: ${{ secrets.HOSTINGER_SSH_KEY }}
-        run: |
-          set -euo pipefail
-          missing=()
-          [ -n "$HOSTINGER_HOST" ] || missing+=("HOSTINGER_HOST")
-          [ -n "$HOSTINGER_USER" ] || missing+=("HOSTINGER_USER")
-          [ -n "$HOSTINGER_SSH_KEY" ] || missing+=("HOSTINGER_SSH_KEY")
-          if [ "${#missing[@]}" -gt 0 ]; then
-            echo "::error::Missing repository Actions secrets: ${missing[*]}"
-            exit 1
-          fi
-
-      - name: Configure SSH
-        id: ssh
-        env:
-          HOSTINGER_HOST: ${{ secrets.HOSTINGER_HOST }}
-          HOSTINGER_SSH_KEY: ${{ secrets.HOSTINGER_SSH_KEY }}
-          HOSTINGER_PORT: ${{ secrets.HOSTINGER_PORT }}
-        run: |
-          set -euo pipefail
-          PORT="${HOSTINGER_PORT:-22}"
-          mkdir -p "$HOME/.ssh"
-          chmod 700 "$HOME/.ssh"
-          printf '%s\n' "$HOSTINGER_SSH_KEY" > "$HOME/.ssh/kmt_bazaar_backend_key"
-          chmod 600 "$HOME/.ssh/kmt_bazaar_backend_key"
-          ssh-keyscan -p "$PORT" -H "$HOSTINGER_HOST" >> "$HOME/.ssh/known_hosts" 2>/dev/null
-          printf 'port=%s\n' "$PORT" >> "$GITHUB_OUTPUT"
-
-      - name: Apply targeted backend changes without replacing local server changes
-        timeout-minutes: 5
-        env:
-          HOSTINGER_HOST: ${{ secrets.HOSTINGER_HOST }}
-          HOSTINGER_USER: ${{ secrets.HOSTINGER_USER }}
-          HOSTINGER_PORT: ${{ steps.ssh.outputs.port }}
-        run: |
-          set -euo pipefail
-          DEST="${HOSTINGER_USER}@${HOSTINGER_HOST}"
-          CANDIDATE_PATH="/tmp/kmt-bazaar-backend-candidate-${GITHUB_SHA}.py"
-          scp -o BatchMode=yes -o ConnectTimeout=15 \
-            -i "$HOME/.ssh/kmt_bazaar_backend_key" -P "$HOSTINGER_PORT" \
-            backend/server.py "$DEST:$CANDIDATE_PATH"
-          ssh -o BatchMode=yes -o ConnectTimeout=15 -o ServerAliveInterval=15 -o ServerAliveCountMax=3 \
-            -i "$HOME/.ssh/kmt_bazaar_backend_key" -p "$HOSTINGER_PORT" "$DEST" \
-            "DEPLOY_SHA='$GITHUB_SHA' CANDIDATE_PATH='$CANDIDATE_PATH' bash -s" <<'REMOTE'
-          set -Eeuo pipefail
-          exec 9>/run/kmt-bazaar-com-backend-deploy.lock
-          flock -n 9 || { echo "STOP: Another backend deployment is running."; exit 1; }
-
-          TARGET=/root/KMT-Bazaar-com/backend/server.py
-          test -s "$TARGET"
-          test -s "$CANDIDATE_PATH"
-          trap 'rm -f "$CANDIDATE_PATH"' EXIT
-
-          # Recover only if the current target is the known broken pre-Schema source.
-          # The f87998da backup is the last backend source that passed the production health check.
-          if ! grep -Fq 'class StoreIn(BaseModel):' "$TARGET"; then
-            KNOWN_GOOD_BACKUP="$(find /root -maxdepth 1 -type f -name 'kmtbazaar-backend-backup-f87998da7fa9-*.py' -print | sort | tail -n 1)"
-            if [ -z "$KNOWN_GOOD_BACKUP" ] || ! grep -Fq 'class StoreIn(BaseModel):' "$KNOWN_GOOD_BACKUP"; then
-              echo "STOP: No verified pre-existing backend backup with StoreIn model was found."
-              exit 1
-            fi
-            cp -a "$KNOWN_GOOD_BACKUP" "$TARGET"
-            echo "RESTORED_KNOWN_GOOD_PRODUCTION_SOURCE=$KNOWN_GOOD_BACKUP"
-          fi
-          if ! grep -Fq 'class StoreIn(BaseModel):' "$TARGET"; then
-            echo "STOP: Backend target is missing StoreIn model after recovery."
-            exit 1
-          fi
-
-          BACKUP="/root/kmtbazaar-backend-backup-${DEPLOY_SHA:0:12}-$(date +%Y%m%d-%H%M%S).py"
-          cp -a "$TARGET" "$BACKUP"
-
-          rollback() {
-            echo "BACKEND_ROLLBACK_START"
-            cp -a "$BACKUP" "$TARGET"
-            systemctl restart kmt-bazaar-com.service || true
-            echo "BACKEND_BACKUP=$BACKUP"
-          }
-
-          if ! python3 - "$TARGET" "$CANDIDATE_PATH" <<'PY'
-          import ast
-          import os
-          import re
-          import sys
-          from pathlib import Path
-
-          path = Path(sys.argv[1])
-          candidate_path = Path(sys.argv[2])
-          source = path.read_text(encoding="utf-8")
-          original = source
-          candidate_source = candidate_path.read_text(encoding="utf-8")
-
-          # Bring the live API service categories in sync with the validated repository enum.
-          service_type_pattern = re.compile(r"(?ms)^class ServiceType\(str, Enum\):\n(?:^[ \t]+[^\n]*\n)+")
-          candidate_service_types = service_type_pattern.findall(candidate_source)
-          live_service_types = service_type_pattern.findall(source)
-          if len(candidate_service_types) != 1 or len(live_service_types) != 1:
-              raise SystemExit("STOP: Could not uniquely locate ServiceType enum; no VPS changes made.")
-          required_service_values = (
-              '    HOLIDAY = "holiday"',
-              '    CAR_RENTAL = "car_rental"',
-              '    PREMIUM_DECORATOR = "premium_decorator"',
-              '    PHOTOGRAPHY = "photography"',
-              '    DAILY_SERVICE = "daily_service"',
-          )
-          candidate_service_block = candidate_service_types[0]
-          if not all(value in candidate_service_block for value in required_service_values):
-              raise SystemExit("STOP: Candidate ServiceType enum is incomplete; no VPS changes made.")
-          source = service_type_pattern.sub(candidate_service_block, source, count=1)
-
-          # Sync only service-vendor signup validation blocks; preserve all other VPS-only code.
-          def replace_route_block(live_source, candidate, function_name, start_marker, end_marker):
-              def get_block(text, marker, end):
-                  route_start = text.find(f"async def {function_name}(")
-                  if route_start < 0:
-                      raise SystemExit(f"STOP: Missing {function_name}; no VPS changes made.")
-                  start = text.find(marker, route_start)
-                  finish = text.find(end, start + len(marker)) if start >= 0 else -1
-                  if start < 0 or finish <= start:
-                      raise SystemExit(f"STOP: Could not isolate {function_name} validation; no VPS changes made.")
-                  return start, finish, text[start:finish]
-              _, _, candidate_block = get_block(candidate, start_marker, end_marker)
-              live_start, live_end, _ = get_block(live_source, start_marker, end_marker)
-              return live_source[:live_start] + candidate_block + live_source[live_end:]
-
-          source = replace_route_block(
-              source, candidate_source, "request_email_signup_otp",
-              "    if data.role == Role.VENDOR and data.vendor_type == VendorType.SERVICE:",
-              "    existing_email = await db.users.find_one({\"email\": email})",
-          )
-          source = replace_route_block(
-              source, candidate_source, "verify_email_signup_otp",
-              '    if registration.get("role") == Role.VENDOR.value and registration.get("vendor_type") == VendorType.SERVICE.value:',
-              "    if existing_google_user_id:",
-          )
-
-          # Synchronize only the four vendor package CRUD route bodies. The live server
-          # previously restricted these routes to Holiday/Car Rental, leaving Photography
-          # and Decorator vendors incorrectly marked as admin-managed.
-          def replace_function_body(live_source, candidate, function_name):
-              def bounds(text):
-                  marker = f"async def {function_name}("
-                  start = text.find(marker)
-                  if start < 0 or text.find(marker, start + len(marker)) >= 0:
-                      raise SystemExit(f"STOP: Could not uniquely locate {function_name}; no VPS changes made.")
-                  route_end = text.find("\n@api.", start + len(marker))
-                  end = route_end if route_end >= 0 else len(text)
-                  return start, end
-              live_start, live_end = bounds(live_source)
-              candidate_start, candidate_end = bounds(candidate)
-              candidate_block = candidate[candidate_start:candidate_end]
-              if "ServiceType.PHOTOGRAPHY.value" not in candidate_block or "ServiceType.PREMIUM_DECORATOR.value" not in candidate_block:
-                  raise SystemExit(f"STOP: Candidate {function_name} does not allow both event service categories.")
-              if "Daily Services are managed by Admin only" not in candidate_block:
-                  raise SystemExit(f"STOP: Candidate {function_name} is missing the Daily Service admin restriction.")
-              return live_source[:live_start] + candidate_block + live_source[live_end:]
-
-          for function_name in ("vendor_list_services", "vendor_create_service", "vendor_update_service", "vendor_delete_service"):
-              source = replace_function_body(source, candidate_sou          def ensure_store_model_precedes_vendor_route(live_source, candidate):
+          def ensure_store_model_precedes_vendor_route(live_source, candidate):
               live_tree = ast.parse(live_source)
               candidate_tree = ast.parse(candidate)
               live_models = [node for node in live_tree.body if isinstance(node, ast.ClassDef) and node.name == "StoreIn"]
@@ -308,8 +135,6 @@ jobs:
 
           source = ensure_store_model_precedes_vendor_route(source, candidate_source)
 
-rce, function_name)
-
           def extract_marked_block(candidate, start_marker, end_marker, label):
               if candidate.count(start_marker) != 1 or candidate.count(end_marker) != 1:
                   raise SystemExit(f"STOP: Candidate {label} markers are missing or duplicated; no VPS changes made.")
@@ -335,9 +160,19 @@ rce, function_name)
                   live_source = live_source.replace(end_marker, "", 1)
                   end_count = 0
               if start_count == 0 and end_count == 0:
-                  if live_source.count(anchor) != 1:
+                  insertion_anchor = next(
+                      (item for item in (
+                          anchor,
+                          "async def vendor_create_service(",
+                          "async def vendor_update_service(",
+                          "async def vendor_delete_service(",
+                      ) if live_source.find(item) >= 0),
+                      None,
+                  )
+                  if insertion_anchor is None:
                       raise SystemExit(f"STOP: Could not safely locate {label} insertion point; no VPS changes made.")
-                  return live_source.replace(anchor, replacement + "\n\n" + anchor, 1)
+                  insertion_index = live_source.find(insertion_anchor)
+                  return live_source[:insertion_index] + replacement + "\n\n" + live_source[insertion_index:]
               if start_count == 1 and end_count == 1:
                   block_start = live_source.index(start_marker)
                   block_end = live_source.index(end_marker, block_start) + len(end_marker)
