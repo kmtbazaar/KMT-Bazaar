@@ -34,6 +34,7 @@ function RoleRouteGuard({ children }: { children: React.ReactNode }) {
       first === "car-rental" ||
       first === "daily-services" ||
       first === "daily-service-booking" ||
+      first === "book-now" ||
       (first === "service" && ["premium_decorator", "photography"].includes(second));
 
     // Guests can browse customer-facing pages and view an empty cart.
