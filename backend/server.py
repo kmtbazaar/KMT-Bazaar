@@ -41,9 +41,9 @@ load_dotenv(ROOT_DIR / '.env')
 
 UPLOAD_DIR = Path(os.getenv("UPLOAD_DIR", "/var/www/kmt-bazaar/uploads"))
 PUBLIC_BASE_URL = os.getenv("PUBLIC_BASE_URL", "https://kmtbazaar.com").rstrip("/")
-MAX_UPLOAD_BYTES = 8 * 1024 * 1024
+MAX_UPLOAD_BYTES = 10 * 1024 * 1024
 MAX_IMAGE_SIZE = (1600, 1600)
-PRODUCT_IMAGE_MAX_BYTES = 200 * 1024
+PRODUCT_IMAGE_MAX_BYTES = 240 * 1024
 PRODUCT_IMAGE_SIZES = (1000, 800, 640, 512, 448, 384, 320)
 DEFAULT_HOLIDAY_BANNER_URL = "https://images.unsplash.com/photo-1516483638261-f4dbaf036963?w=1800&q=85"
 PRODUCT_DELIVERY_STATE = "Jharkhand"
@@ -1632,7 +1632,7 @@ async def update_avatar(data: AvatarUpdateIn, current=Depends(get_current_user))
     try:
         raw = base64.b64decode(encoded, validate=True)
         if len(raw) > MAX_UPLOAD_BYTES:
-            raise HTTPException(status_code=413, detail="Image is too large. Maximum size is 8 MB.")
+            raise HTTPException(status_code=413, detail="Image is too large. Maximum size is 10 MB.")
 
         image = Image.open(io.BytesIO(raw))
         image = ImageOps.exif_transpose(image)
@@ -3232,7 +3232,7 @@ def _encode_product_webp(image):
             return data
         max_side -= 32
 
-    raise HTTPException(400, "Could not compress product image below 200 KB")
+    raise HTTPException(400, "Could not compress product image below 240 KB")
 
 
 @api.post("/uploads/image")
@@ -3256,7 +3256,7 @@ async def upload_image(
         if len(raw) > MAX_UPLOAD_BYTES:
             raise HTTPException(
                 status_code=413,
-                detail="Image is too large. Maximum size is 8 MB."
+                detail="Image is too large. Maximum size is 10 MB."
             )
 
         image = Image.open(io.BytesIO(raw))
