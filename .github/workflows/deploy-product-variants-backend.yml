@@ -194,6 +194,7 @@ jobs:
           }
 
           if ! python3 - "$TARGET" "$CANDIDATE_PATH" <<'PY'
+          import ast
           import os
           import re
           import sys
@@ -271,7 +272,43 @@ jobs:
               return live_source[:live_start] + candidate_block + live_source[live_end:]
 
           for function_name in ("vendor_list_services", "vendor_create_service", "vendor_update_service", "vendor_delete_service"):
-              source = replace_function_body(source, candidate_source, function_name)
+              source = replace_function_body(source, candidate_sou          def ensure_store_model_precedes_vendor_route(live_source, candidate):
+              live_tree = ast.parse(live_source)
+              candidate_tree = ast.parse(candidate)
+              live_models = [node for node in live_tree.body if isinstance(node, ast.ClassDef) and node.name == "StoreIn"]
+              candidate_models = [node for node in candidate_tree.body if isinstance(node, ast.ClassDef) and node.name == "StoreIn"]
+              live_routes = [node for node in live_tree.body if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and node.name == "vendor_create_store"]
+              if len(live_routes) != 1 or len(candidate_models) != 1 or len(live_models) > 1:
+                  raise SystemExit("STOP: Could not uniquely locate StoreIn model and vendor_create_store route; no VPS changes made.")
+              route_line = min([live_routes[0].lineno] + [decorator.lineno for decorator in live_routes[0].decorator_list])
+              if live_models and live_models[0].lineno < route_line:
+                  print("STOREIN_MODEL_ORDER_VALID")
+                  return live_source
+              candidate_lines = candidate.splitlines(keepends=True)
+              model_node = candidate_models[0]
+              model_block = "".join(candidate_lines[model_node.lineno - 1:model_node.end_lineno]).rstrip() + "\n\n"
+              live_lines = live_source.splitlines(keepends=True)
+              if live_models:
+                  del live_lines[live_models[0].lineno - 1:live_models[0].end_lineno]
+              relocated_source = "".join(live_lines)
+              relocated_tree = ast.parse(relocated_source)
+              route_nodes = [node for node in relocated_tree.body if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and node.name == "vendor_create_store"]
+              if len(route_nodes) != 1:
+                  raise SystemExit("STOP: vendor_create_store moved during StoreIn repair; no VPS changes made.")
+              route_line = min([route_nodes[0].lineno] + [decorator.lineno for decorator in route_nodes[0].decorator_list])
+              insert_at = sum(len(line) for line in relocated_source.splitlines(keepends=True)[:route_line - 1])
+              repaired = relocated_source[:insert_at] + model_block + relocated_source[insert_at:]
+              check_tree = ast.parse(repaired)
+              check_models = [node for node in check_tree.body if isinstance(node, ast.ClassDef) and node.name == "StoreIn"]
+              check_routes = [node for node in check_tree.body if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and node.name == "vendor_create_store"]
+              if len(check_models) != 1 or len(check_routes) != 1 or check_models[0].lineno >= check_routes[0].lineno:
+                  raise SystemExit("STOP: StoreIn model could not be placed before vendor_create_store; no VPS changes made.")
+              print("STOREIN_MODEL_RELOCATED_BEFORE_VENDOR_ROUTE")
+              return repaired
+
+          source = ensure_store_model_precedes_vendor_route(source, candidate_source)
+
+rce, function_name)
 
           def extract_marked_block(candidate, start_marker, end_marker, label):
               if candidate.count(start_marker) != 1 or candidate.count(end_marker) != 1:
