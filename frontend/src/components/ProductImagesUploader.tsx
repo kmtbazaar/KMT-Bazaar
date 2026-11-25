@@ -198,6 +198,7 @@ export default function ProductImagesUploader({
           fileName: asset.fileName,
           mimeType: asset.mimeType,
           file: asset.file,
+          fileSize: asset.fileSize,
         }, "product");
         uploadedUrls.push(url);
       }
