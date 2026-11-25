@@ -96,6 +96,24 @@ jobs:
                   route_end = len(source)
               route_block = source[route_start:route_end]
               assert "build_auth_response" in route_block, f"{route_name} must issue the shared 30-day session"
+          def replace_function_body(live_source, candidate, function_name):
+              def bounds(text):
+                  marker = f"async def {function_name}("
+                  start = text.find(marker)
+                  if start < 0 or text.find(marker, start + len(marker)) >= 0:
+                      raise SystemExit(f"STOP: Could not uniquely locate {function_name}; no VPS changes made.")
+                  route_end = text.find("\n@api.", start + len(marker))
+                  end = route_end if route_end >= 0 else len(text)
+                  return start, end
+              live_start, live_end = bounds(live_source)
+              candidate_start, candidate_end = bounds(candidate)
+              candidate_block = candidate[candidate_start:candidate_end]
+              if "ServiceType.PHOTOGRAPHY.value" not in candidate_block or "ServiceType.PREMIUM_DECORATOR.value" not in candidate_block:
+                  raise SystemExit(f"STOP: Candidate {function_name} does not allow both event service categories.")
+              if "Daily Services are managed by Admin only" not in candidate_block:
+                  raise SystemExit(f"STOP: Candidate {function_name} is missing the Daily Service admin restriction.")
+              return live_source[:live_start] + candidate_block + live_source[live_end:]
+
           for function_name in ("vendor_list_services", "vendor_create_service", "vendor_update_service", "vendor_delete_service"):
               source = replace_function_body(source, candidate_source, function_name)
 
