@@ -325,7 +325,7 @@ export default function AdminDashboard() {
             style={s.headerTop}
           >
             <View style={s.logoBox}>
-              <AnimatedBrandLogo size={52} />
+              <AnimatedBrandLogo size={60} />
             </View>
 
             <View pointerEvents="box-none" style={s.headerText}>
@@ -352,7 +352,7 @@ export default function AdminDashboard() {
             >
               <MaterialCommunityIcons
                 name="cog-outline"
-                size={22}
+                size={24}
                 color={THEME.white}
               />
             </Pressable>
@@ -929,14 +929,18 @@ const s = StyleSheet.create({
   },
 
   headerTop: {
+    minHeight: 64,
     flexDirection: "row",
     alignItems: "center",
+    justifyContent: "space-between",
+    position: "relative",
   },
 
   logoBox: {
-    width: 48,
-    height: 48,
-    borderRadius: 16,
+    width: 64,
+    height: 64,
+    borderRadius: 18,
+    zIndex: 2,
     backgroundColor: THEME.white,
     alignItems: "center",
     justifyContent: "center",
@@ -951,8 +955,9 @@ const s = StyleSheet.create({
 
   headerText: {
     position: "absolute",
-    left: 0,
-    right: 0,
+    left: 70,
+    right: 70,
+    zIndex: 1,
     alignItems: "center",
   },
 
@@ -981,8 +986,10 @@ const s = StyleSheet.create({
   },
 
   logoutButton: {
-    width: 42,
-    height: 42,
+    width: 46,
+    height: 46,
+    marginLeft: "auto",
+    zIndex: 2,
     borderRadius: 14,
     alignItems: "center",
     justifyContent: "center",
