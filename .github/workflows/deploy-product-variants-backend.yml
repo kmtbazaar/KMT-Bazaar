@@ -61,6 +61,8 @@ jobs:
           assert "def _validate_product_variant_colors" in source
           assert "Each size/pack option owns its colour palette." in source
           assert "def _validate_product_category_color_requirements" in source
+          assert "async def _vendor_store_ids(vendor_id: str):" in source
+          assert 'store_data = await _vendor_store_ids(current["id"])' in source
           assert "def _normalize_product_colors(raw_colors):" in source
           assert "def _normalize_product_color_images" in source
           print("CATEGORY_SPECIFIC_PRODUCT_FIELDS_VALIDATION_PASS")
@@ -658,8 +660,31 @@ jobs:
           source = replace_or_insert_function(source, candidate_source, "_preserve_product_variant_descriptions", "def _apply_product_variants(")
           source = replace_or_insert_function(source, candidate_source, "_validate_product_variant_colors", "def _preserve_product_variant_descriptions(")
           source = replace_or_insert_function(source, candidate_source, "_validate_product_category_color_requirements", "def _apply_product_variants(")
-          # Ensure production receives this helper; /vendor/stats returns 500 without it.
-          source = replace_or_insert_function(source, candidate_source, "_vendor_store_ids", "async def _resolve_vendor_item_category(")
+          # The existing generic helper above handles synchronous defs. This vendor
+          # lookup is async, so isolate and insert/replace its exact top-level function.
+          def replace_or_insert_async_function(live_source, candidate, function_name, insert_before):
+              marker = f"async def {function_name}("
+              candidate_matches = [m.start() for m in re.finditer(r"(?m)^" + re.escape(marker), candidate)]
+              live_matches = [m.start() for m in re.finditer(r"(?m)^" + re.escape(marker), live_source)]
+              if len(candidate_matches) != 1 or len(live_matches) > 1:
+                  raise SystemExit(f"STOP: Could not uniquely locate async {function_name}; no VPS changes made.")
+              candidate_start = candidate_matches[0]
+              candidate_end_match = re.search(r"(?m)^(?:def |async def |class |@api\\.)", candidate[candidate_start + len(marker):])
+              candidate_end = candidate_start + len(marker) + candidate_end_match.start() if candidate_end_match else len(candidate)
+              function_block = candidate[candidate_start:candidate_end].rstrip()
+              if live_matches:
+                  live_start = live_matches[0]
+                  live_end_match = re.search(r"(?m)^(?:def |async def |class |@api\\.)", live_source[live_start + len(marker):])
+                  live_end = live_start + len(marker) + live_end_match.start() if live_end_match else len(live_source)
+                  return live_source[:live_start] + function_block + "\\n\\n" + live_source[live_end:]
+              if live_source.count(insert_before) != 1:
+                  raise SystemExit(f"STOP: Could not locate safe async insertion point for {function_name}; no VPS changes made.")
+              return live_source.replace(insert_before, function_block + "\\n\\n" + insert_before, 1)
+
+          source = replace_or_insert_async_function(
+              source, candidate_source, "_vendor_store_ids",
+              "async def _resolve_vendor_item_category("
+          )
 
           def replace_product_route(live_source, candidate, function_name):
               marker = f"async def {function_name}("
