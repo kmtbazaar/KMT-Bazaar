@@ -1039,11 +1039,26 @@ export default function AdminVendorProducts({ vendorId, selectedStoreId: externa
                         <Text style={[styles.unitChipText, active && styles.unitChipTextActive]}>{color}</Text>
                       </Pressable>;
                     })}
-                    {form.colors.filter((color: string) => !PRODUCT_COLOR_OPTIONS.some((item) => item.toLowerCase() === color.toLowerCase())).map((color: string) => (
-                      <Pressable key={color} onPress={() => setActiveProductColor(color)} style={[styles.unitChip, styles.unitChipActive]}>
-                        <Text style={[styles.unitChipText, styles.unitChipTextActive]}>{color}</Text>
-                      </Pressable>
-                    ))}
+                    {form.colors.filter((color: string) => !PRODUCT_COLOR_OPTIONS.some((item) => item.toLowerCase() === color.toLowerCase())).map((color: string) => {
+                      const active = activeProductColor.toLowerCase() === color.toLowerCase();
+                      return (
+                        <Pressable key={color} onPress={() => {
+                          const selected = form.colors.some((item: string) => item.toLowerCase() === color.toLowerCase());
+                          setForm((current) => {
+                            const colors = selected
+                              ? current.colors.filter((item: string) => item.toLowerCase() !== color.toLowerCase())
+                              : [...current.colors, color];
+                            const color_images = { ...(current.color_images || {}) };
+                            const imageKey = Object.keys(color_images).find((key) => key.toLowerCase() === color.toLowerCase());
+                            if (selected && imageKey) delete color_images[imageKey];
+                            return { ...current, colors, color_images };
+                          });
+                          setActiveProductColor((current) => current.toLowerCase() === color.toLowerCase() ? "" : color);
+                        }} style={[styles.unitChip, active && styles.unitChipActive]}>
+                          <Text style={[styles.unitChipText, active && styles.unitChipTextActive]}>{color}</Text>
+                        </Pressable>
+                      );
+                    })}
                   </View>
                   <View style={styles.customColorRow}>
                     <TextInput
