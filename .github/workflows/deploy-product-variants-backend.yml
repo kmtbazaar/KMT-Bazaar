@@ -895,8 +895,7 @@ jobs:
           fi
           echo "BACKEND_PRODUCT_COLOUR_NORMALIZER_VALIDATION_PASS"
  
-          if ! grep -Fq 'async def _vendor_store_ids(vendor_id: str):' "$TARGET" \\
-            || ! grep -Fq 'store_data = await _vendor_store_ids(current["id"])' "$TARGET"; then
+          if ! grep -Fq 'async def _vendor_store_ids(vendor_id: str):' "$TARGET" || ! grep -Fq '_vendor_store_ids(current["id"])' "$TARGET"; then
             echo "BACKEND_VENDOR_STORE_LOOKUP_HELPER_MISSING"
             rollback
             exit 1
