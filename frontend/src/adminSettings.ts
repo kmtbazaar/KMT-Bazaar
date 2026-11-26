@@ -18,17 +18,10 @@ export type AdminSettings = {
 export const ADMIN_SETTINGS_KEY = "kmt_admin_settings_v1";
 
 export const DEFAULT_ADMIN_ACTIONS: AdminQuickAction[] = [
-  { icon: "account-group-outline", label: "Customers", path: "/admin/users?role=customer", color: "#38BDF8" },
-  { icon: "store-outline", label: "Vendors", path: "/admin/users?role=vendor", color: "#F97316" },
-  { icon: "moped-outline", label: "Delivery Partners", path: "/admin/users?role=delivery", color: "#16A34A" },
   { icon: "package-variant", label: "Products", path: "/admin/products", color: "#8B5CF6" },
   { icon: "tag-multiple-outline", label: "Categories", path: "/admin/categories", color: "#EC4899" },
-  { icon: "briefcase-outline", label: "Vendor Service", path: "/admin/service-vendors", color: "#F97316" },
   { icon: "tools", label: "Daily Services", path: "/admin/daily-services", color: "#38BDF8" },
-  { icon: "calendar-check-outline", label: "Service Bookings", path: "/admin/service-bookings", color: "#16A34A" },
   { icon: "image-multiple-outline", label: "Banners", path: "/admin/banners", color: "#38BDF8" },
-  { icon: "clipboard-list-outline", label: "All Orders", path: "/admin/orders", color: "#F97316" },
-  { icon: "currency-inr", label: "Commission", path: "/admin/commission", color: "#8A5A3B" },
   { icon: "briefcase-account-outline", label: "Roojgar", path: "/admin/roojgar", color: "#5A3825" },
 ];
 
