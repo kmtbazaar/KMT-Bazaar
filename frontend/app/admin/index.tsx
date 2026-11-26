@@ -846,7 +846,7 @@ function KPI({
           >
             <MaterialCommunityIcons
               name={icon}
-              size={20}
+              size={compact ? 15 : 20}
               color={color}
             />
           </View>
@@ -862,7 +862,7 @@ function KPI({
           >
             <MaterialCommunityIcons
               name="arrow-top-right"
-              size={14}
+              size={compact ? 11 : 14}
               color={color}
             />
           </View>
@@ -892,18 +892,6 @@ function KPI({
           </Text>
         )}
 
-{!compact ? (
-          <View style={[s.kpiTapHint, compact && s.kpiTapHintCompact, dark && s.kpiTapHintNight]}>
-            <Text style={[s.kpiTapHintText, compact && s.kpiTapHintTextCompact, { color }]}>
-              View details
-            </Text>
-            <MaterialCommunityIcons
-              name="chevron-right"
-              size={13}
-              color={color}
-            />
-          </View>
-        ) : null}
       </Pressable>
     </Animated.View>
   );
@@ -921,8 +909,8 @@ const s = StyleSheet.create({
 
   header: {
     paddingHorizontal: SPACING.lg,
-    paddingTop: SPACING.md,
-    paddingBottom: 18,
+    paddingTop: 8,
+    paddingBottom: 10,
     borderBottomLeftRadius: 30,
     borderBottomRightRadius: 30,
     overflow: "hidden",
@@ -963,26 +951,31 @@ const s = StyleSheet.create({
   headerText: {
     flex: 1,
     marginLeft: 12,
+    alignItems: "center",
   },
 
   headerEyebrow: {
-    color: THEME.orange,
-    fontSize: 9,
-    fontWeight: "900",
-    letterSpacing: 2,
-  },
-
-  headerTitle: {
     color: THEME.white,
     fontSize: 21,
     fontWeight: "900",
+    letterSpacing: 1,
+    textAlign: "center",
+  },
+
+  headerTitle: {
+    color: THEME.orange,
+    fontSize: 9,
+    fontWeight: "900",
     marginTop: 1,
+    letterSpacing: 1.2,
+    textAlign: "center",
   },
 
   headerSub: {
     color: "rgba(255,255,255,0.68)",
-    fontSize: 11,
-    marginTop: 3,
+    fontSize: 10,
+    marginTop: 2,
+    textAlign: "center",
   },
 
   logoutButton: {
@@ -997,13 +990,13 @@ const s = StyleSheet.create({
   },
 
   liveStatus: {
-    alignSelf: "flex-start",
+    alignSelf: "center",
     flexDirection: "row",
     alignItems: "center",
     gap: 7,
-    marginTop: 16,
+    marginTop: 8,
     paddingHorizontal: 11,
-    paddingVertical: 6,
+    paddingVertical: 4,
     borderRadius: 20,
     backgroundColor: "rgba(255,255,255,0.08)",
     borderWidth: 1,
@@ -1024,27 +1017,28 @@ const s = StyleSheet.create({
   },
 
   scrollContent: {
-    padding: SPACING.lg,
-    paddingBottom: 70,
+    paddingHorizontal: SPACING.lg,
+    paddingTop: 8,
+    paddingBottom: 28,
   },
 
   sectionHeader: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    marginBottom: 12,
+    marginBottom: 5,
   },
 
   sectionTitle: {
     color: THEME.text,
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: "900",
   },
 
   sectionSub: {
     color: THEME.muted,
-    fontSize: 11,
-    marginTop: 3,
+    fontSize: 10,
+    marginTop: 2,
   },
 
   todayBadge: {
@@ -1072,8 +1066,8 @@ const s = StyleSheet.create({
   },
 
   kpiGridCompact: {
-    gap: 8,
-    marginBottom: 6,
+    gap: 5,
+    marginBottom: 2,
   },
 
   kpiRow: {
@@ -1083,7 +1077,7 @@ const s = StyleSheet.create({
   },
 
   kpiRowCompact: {
-    gap: 8,
+    gap: 5,
   },
 
   kpiCardWrap: {
@@ -1114,13 +1108,13 @@ const s = StyleSheet.create({
   },
 
   kpiCardCompact: {
-    height: 80,
-    minHeight: 80,
-    maxHeight: 80,
-    padding: 6,
-    borderRadius: 12,
-    shadowRadius: 5,
-    shadowOffset: { width: 0, height: 2 },
+    height: 60,
+    minHeight: 60,
+    maxHeight: 60,
+    padding: 5,
+    borderRadius: 10,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 1 },
   },
 
   kpiPressed: {
@@ -1179,9 +1173,9 @@ const s = StyleSheet.create({
   },
 
   kpiIconCompact: {
-    width: 21,
-    height: 21,
-    borderRadius: 7,
+    width: 18,
+    height: 18,
+    borderRadius: 6,
   },
 
   kpiValue: {
@@ -1192,8 +1186,8 @@ const s = StyleSheet.create({
   },
 
   kpiValueCompact: {
-    fontSize: 14,
-    marginTop: 2,
+    fontSize: 13,
+    marginTop: 1,
   },
 
   kpiLabel: {
@@ -1215,8 +1209,8 @@ const s = StyleSheet.create({
   },
 
   kpiSubCompact: {
-    fontSize: 8,
-    marginTop: 2,
+    fontSize: 7,
+    marginTop: 0,
   },
 
   kpiArrow: {
@@ -1228,9 +1222,9 @@ const s = StyleSheet.create({
   },
 
   kpiArrowCompact: {
-    width: 20,
-    height: 20,
-    borderRadius: 7,
+    width: 16,
+    height: 16,
+    borderRadius: 6,
   },
 
   kpiTapHint: {
@@ -1483,17 +1477,17 @@ const s = StyleSheet.create({
   },
 
   pendingGradient: {
-    minHeight: 66,
-    paddingHorizontal: 12,
-    paddingVertical: 9,
+    minHeight: 52,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
     flexDirection: "row",
     alignItems: "center",
     gap: 10,
   },
 
   pendingIcon: {
-    width: 38,
-    height: 38,
+    width: 32,
+    height: 32,
     borderRadius: 12,
     backgroundColor: "rgba(255,255,255,0.58)",
     alignItems: "center",
@@ -1508,20 +1502,20 @@ const s = StyleSheet.create({
 
   pendingTitle: {
     color: "#713F12",
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: "900",
   },
 
   pendingSub: {
     color: "#92400E",
-    fontSize: 10,
-    marginTop: 3,
+    fontSize: 9,
+    marginTop: 2,
   },
 
   arrowCircle: {
-    width: 31,
-    height: 31,
-    borderRadius: 16,
+    width: 26,
+    height: 26,
+    borderRadius: 13,
     backgroundColor: "#D97706",
     alignItems: "center",
     justifyContent: "center",
