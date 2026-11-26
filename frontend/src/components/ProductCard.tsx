@@ -21,6 +21,7 @@ import { useCart } from "@/src/CartContext";
 import { useRouter } from "expo-router";
 import ImagePlaceholder from "@/src/components/ImagePlaceholder";
 import { useWishlist } from "@/src/WishlistContext";
+import { formatRupees } from "@/src/utils/formatRupees";
 
 const SCREEN_W = Dimensions.get("window").width;
 
@@ -247,7 +248,7 @@ export default function ProductCard({
           <View style={[s.priceRow, wishlistGrid && s.wishlistPriceRow, recommendationGrid && s.recommendationPriceRow]}>
             <View style={[s.priceCol, wishlistGrid && s.wishlistPriceCol, recommendationGrid && s.recommendationPriceCol]}>
               <Text style={[s.price, wishlistGrid && s.wishlistPrice, recommendationGrid && s.recommendationPrice]}>
-                ₹{p.price}
+                {formatRupees(p.price)}
               </Text>
 
               <Text
@@ -258,7 +259,7 @@ export default function ProductCard({
                   !(discount > 0) && { opacity: 0 },
                 ]}
               >
-                ₹{p.mrp || p.price}
+                {formatRupees(p.mrp || p.price)}
               </Text>
             </View>
 
