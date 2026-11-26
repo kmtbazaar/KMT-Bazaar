@@ -972,7 +972,7 @@ jobs:
 
           # Read-only database audit: verify the live service is connected to populated vendor data.
           PID="$(systemctl show kmt-bazaar-com.service -p MainPID --value)"
-          CMD0="$(tr '\\0' '\\n' < "/proc/$PID/cmdline" | head -n 1)"
+          CMD0="$(ps -p "$PID" -o args= | awk '{print $1}')"
           if [[ "$CMD0" == */python || "$CMD0" == */python3 || "$CMD0" == */python[0-9]* ]]; then
             PYTHON_BIN="$CMD0"
           else
