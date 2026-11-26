@@ -40,7 +40,7 @@ requireRules("kpiIconCompact", ["width: 18", "height: 18"]);
 requireRules("kpiValueCompact", ["fontSize: 13", "marginTop: 1"]);
 requireRules("kpiLabelCompact", ["fontSize: 8"]);
 requireRules("kpiSubCompact", ["fontSize: 7"]);
-assert.ok(!source.includes("View details") && !source.includes("kpiTapHint"), "KPI cards must not reserve a View details row or bottom gap");
+assert.ok(!source.includes("View details") && !source.includes("{!compact ? ("), "KPI cards must not render a View details row or bottom gap");
 requireRules("grid", ['width: "100%"', 'flexDirection: "column"']);
 requireRules("gridRow", ['width: "100%"', 'flexDirection: "row"', "gap: 10"]);
 requireRules("gridWrapper", ["flex: 1", "minWidth: 0"]);
