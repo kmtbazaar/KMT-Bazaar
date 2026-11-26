@@ -16,6 +16,8 @@ const productDetail = read("app/product/[id].tsx");
 const formatRupees = read("src/utils/formatRupees.ts");
 const checkoutBar = read("src/components/CheckoutBar.tsx");
 const brandMark = read("src/components/BrandMark.tsx");
+const productUnitBadge = read("src/components/ProductUnitBadge.tsx");
+const productUnit = read("src/utils/productUnit.ts");
 
 // Home uses its dedicated category browser (with a left rail of item categories).
 assert.match(
@@ -65,10 +67,28 @@ assert.match(productCard, /unitBadge:\s*\{[\s\S]*?backgroundColor:\s*"#FEF08A"/,
   "Product unit labels must use a yellow highlight pill.");
 assert.match(productCard, /unit:\s*\{[\s\S]*?fontWeight:\s*"900"/,
   "Product unit labels must be bold.");
+assert.ok(
+  productUnitBadge.includes('backgroundColor: "#FEF08A"') &&
+  productUnitBadge.includes('fontWeight: "900"') &&
+  productCard.includes("ProductUnitBadge") &&
+  productCard.includes("getProductUnitLabel(p)") &&
+  categories.includes("getProductUnitLabel(p)") &&
+  categories.includes("ProductUnitBadge") &&
+  productDetail.includes("getProductUnitLabel(item)") &&
+  productDetail.includes("ProductUnitBadge"),
+  "Category cards, all product cards and You May Also Like must show the same highlighted unit/RAM badge."
+);
+assert.ok(
+  productUnit.includes("product.variants") &&
+  /ram|memory/i.test(productUnit) &&
+  /storage|rom/i.test(productUnit),
+  "Unit resolution must fall back to saved variants and RAM/storage attributes when product.unit is empty."
+);
 assert.match(productDetail, /descriptionLineCount\s*>=\s*10[\s\S]*?product-description-see-more[\s\S]*?setDescriptionExpanded/,
   "The visible ten-line description must expose a working See more control.");
 assert.match(productDetail, /numberOfLines=\{descriptionExpanded \? undefined : 10\}/,
   "Product descriptions must initially show ten lines.");
+assert.ok(productDetail.includes("productDescription.length > 180"), "See more must also appear on web when onTextLayout does not report clipped lines.");
 assert.match(productDetail, /testID="product-description"[\s\S]*?onTextLayout=\{\(event\) =>[\s\S]*?setDescriptionLineCount/,
   "The visible clipped description must report its line count so See more is not hidden by an off-screen measurement.");
 assert.match(productDetail, /variantSelector:\s*\{[^\n]*padding:\s*10/);
@@ -85,8 +105,8 @@ assert.ok(formatRupees.includes('Intl.NumberFormat("en-IN"') && productCard.incl
   "Product detail, Categories product cards and the floating customer taskbar must use Indian rupee grouping such as ₹75,000.");
 assert.ok(brandMark.includes('slug: "oppo"') && brandMark.includes("cdn.simpleicons.org") && categories.includes("<BrandMark product={p}") && homeCategory.includes("BrandMark brand={category.name}") && productDetail.includes("<BrandMark brand={attribute.value}"),
   "Recognized product/item brands such as OPPO must show their actual brand logo in customer categories and product details.");
-assert.ok(productDetail.includes("runOnJS(changeViewerImage)(1)") && productDetail.includes("runOnJS(changeViewerImage)(-1)") && productDetail.includes("translationX < -60") && productDetail.includes("translationX > 60"),
-  "The enlarged product photo viewer must allow left/right swipe through every product image.");
+assert.ok(productDetail.includes("runOnJS(changeViewerImage)(1)") && productDetail.includes("runOnJS(changeViewerImage)(-1)") && productDetail.includes("translationX < -45") && productDetail.includes("translationX > 45") && productDetail.includes("product-image-viewer-next") && productDetail.includes("product-image-viewer-previous"),
+  "The enlarged product photo viewer must allow left/right swipe and accessible previous/next controls through every product image.");
 assert.match(productCard, /stepper:\s*\{[\s\S]*?height:\s*34,/,
   "The quantity stepper should stay vertically aligned with the Add button.");
 
