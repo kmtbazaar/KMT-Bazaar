@@ -49,10 +49,10 @@ export function getProductUnitLabel(product: any): string {
   ];
 
   const ram = valueText(
-    product.ram ?? product.ram_size ?? product.memory ?? product.memory_size
+    product.ram, product.ram_size, product.memory, product.memory_size
   ) || sources.map((source) => readAttribute(source, /ram|memory/i)).find(Boolean) || "";
   const storage = valueText(
-    product.storage ?? product.storage_size ?? product.internal_storage ?? product.rom
+    product.storage, product.storage_size, product.internal_storage, product.rom
   ) || sources.map((source) => readAttribute(source, /storage|rom/i)).find(Boolean) || "";
 
   if (ram) {
@@ -62,7 +62,7 @@ export function getProductUnitLabel(product: any): string {
 
   const variants = Array.isArray(product.variants) ? product.variants : [];
   const preferredVariant = variants.find((variant: any) => variant?.is_default || variant?.is_active)
-    || variants.find((variant: any) => valueText(variant?.unit ?? variant?.unit_label ?? variant?.pack_size ?? variant?.size))
+    || variants.find((variant: any) => valueText(variant?.unit, variant?.unit_label, variant?.pack_size, variant?.size))
     || variants[0];
   const variantLabel = valueText(
     preferredVariant?.unit,
