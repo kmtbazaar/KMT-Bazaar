@@ -886,7 +886,7 @@ const s = StyleSheet.create({
   variantChoiceTextWrap: { flex: 1, minWidth: 0, alignItems: "flex-start", gap: 2 },
   variantChoiceUnitBadge: { maxWidth: "100%", backgroundColor: "#FEF08A", borderRadius: 6, paddingHorizontal: 5, paddingVertical: 2 },
   variantChoiceUnitBadgeActive: { backgroundColor: "#FDE047" },
-  variantChoice: { width: "23%", minWidth: 50, maxWidth: "24%", minHeight: 60, flexGrow: 1, flexShrink: 1, paddingHorizontal: 6, paddingVertical: 10, justifyContent: "center", borderRadius: 9, borderWidth: 1, borderColor: "#E2E8F0", backgroundColor: "#FFFFFF", gap: 3 },
+  variantChoice: { width: "22%", minWidth: 50, maxWidth: "24%", minHeight: 60, flexGrow: 1, flexShrink: 1, paddingHorizontal: 6, paddingVertical: 10, justifyContent: "center", borderRadius: 9, borderWidth: 1, borderColor: "#E2E8F0", backgroundColor: "#FFFFFF", gap: 3 },
   variantChoiceActive: { borderColor: "#EAB308", backgroundColor: "#FEF3C7", ...shadow.soft },
   variantChoiceUnavailable: { borderColor: "#FECACA", backgroundColor: "#FFF7F7", opacity: 0.72 },
   variantChoiceTop: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 2 },
