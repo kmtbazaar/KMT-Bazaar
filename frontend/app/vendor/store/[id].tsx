@@ -841,9 +841,25 @@ export default function VendorStoreDetail() {
   };
 
   const handleUpdateProduct = async () => {
-    const photoCount = Array.from(new Set((editProductForm.images || []).filter((url: string) => typeof url === "string" && url.trim()))).length;
-    if (photoCount < 3) {
-      Alert.alert("Add product photos", "Please upload at least 3 different product photos before saving this product.");
+    const existingProduct = products.find(
+      (product: any) => String(product.id || product._id || "") === String(selectedProductId)
+    );
+    const originalImages = Array.from(new Set([
+      ...(Array.isArray(existingProduct?.images) ? existingProduct.images : []),
+      existingProduct?.image,
+    ].filter((url: any) => typeof url === "string" && url.trim())));
+    const nextImages = Array.from(new Set(
+      (editProductForm.images || []).filter((url: string) => typeof url === "string" && url.trim())
+    ));
+    const imagesUnchanged = originalImages.length > 0 &&
+      JSON.stringify(nextImages) === JSON.stringify(originalImages);
+    if (nextImages.length < 1 || (!imagesUnchanged && nextImages.length < 3)) {
+      Alert.alert(
+        "Add product photos",
+        imagesUnchanged
+          ? "Keep at least one product photo before saving."
+          : "When changing product photos, upload at least 3 different photos."
+      );
       return;
     }
     if (!editProductForm.name || !editProductForm.price) {
@@ -878,8 +894,11 @@ export default function VendorStoreDetail() {
           ? parseFloat(editProductForm.mrp)
           : parseFloat(editProductForm.price),
         stock: parseInt(editProductForm.stock) || 0,
-        image: editProductForm.images[0] || editProductForm.image || "",
-        images: editProductForm.images,
+        image: imagesUnchanged
+          ? (existingProduct?.image || originalImages[0] || editProductForm.image || "")
+          : (nextImages[0] || editProductForm.image || existingProduct?.image || ""),
+        // Leave the saved gallery untouched when editing a legacy listing without changing its photos.
+        ...(imagesUnchanged ? {} : { images: nextImages }),
       });
       Alert.alert("Success", "Product updated!");
       setShowEditProductModal(false);
