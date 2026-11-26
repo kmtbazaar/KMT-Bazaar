@@ -723,12 +723,6 @@ export default function VendorStoreDetail() {
       return;
     }
 
-    const photoCount = Array.from(new Set((form.images || []).filter((url: string) => typeof url === "string" && url.trim()))).length;
-    if (photoCount < 3) {
-      guideAddFormToField("photos", "Select at least 3 product photos before creating this product.");
-      return;
-    }
-
     const variants = categoryConfig.showVariants
       ? buildVariantPayload(form, addVariantDrafts, "", form.colors)
       : undefined;
@@ -844,29 +838,16 @@ export default function VendorStoreDetail() {
     const existingProduct = products.find(
       (product: any) => String(product.id || product._id || "") === String(selectedProductId)
     );
-    const originalImages = Array.from(new Set([
-      ...(Array.isArray(existingProduct?.images) ? existingProduct.images : []),
-      existingProduct?.image,
-    ].filter((url: any) => typeof url === "string" && url.trim())));
-    const nextImages = Array.from(new Set(
-      (editProductForm.images || []).filter((url: string) => typeof url === "string" && url.trim())
-    ));
-    const imagesUnchanged = originalImages.length > 0 &&
-      JSON.stringify(nextImages) === JSON.stringify(originalImages);
-    if (nextImages.length < 1 || (!imagesUnchanged && nextImages.length < 3)) {
-      Alert.alert(
-        "Add product photos",
-        imagesUnchanged
-          ? "Keep at least one product photo before saving."
-          : "When changing product photos, upload at least 3 different photos."
-      );
-      return;
-    }
     if (!editProductForm.name || !editProductForm.price) {
       Alert.alert("Error", "Name and Price are required.");
       return;
     }
-    const colorError = validateRequiredColors(categoryConfig, editProductForm.colors, editProductForm.color_images);
+    const unchangedColorSetup = Boolean(existingProduct) &&
+      JSON.stringify(editProductForm.colors || []) === JSON.stringify(existingProduct.colors || []) &&
+      JSON.stringify(editProductForm.color_images || {}) === JSON.stringify(existingProduct.color_images || {});
+    const colorError = unchangedColorSetup
+      ? ""
+      : validateRequiredColors(categoryConfig, editProductForm.colors, editProductForm.color_images);
     if (colorError) {
       Alert.alert("Select product colour", colorError);
       return;
@@ -894,11 +875,6 @@ export default function VendorStoreDetail() {
           ? parseFloat(editProductForm.mrp)
           : parseFloat(editProductForm.price),
         stock: parseInt(editProductForm.stock) || 0,
-        image: imagesUnchanged
-          ? (existingProduct?.image || originalImages[0] || editProductForm.image || "")
-          : (nextImages[0] || editProductForm.image || existingProduct?.image || ""),
-        // Leave the saved gallery untouched when editing a legacy listing without changing its photos.
-        ...(imagesUnchanged ? {} : { images: nextImages }),
       });
       Alert.alert("Success", "Product updated!");
       setShowEditProductModal(false);
@@ -1255,6 +1231,16 @@ export default function VendorStoreDetail() {
               </View>
               ) : null}
 
+              {/* Product description is available for every store category. */}
+              <View style={s.productDescriptionPanel} testID="vendor-store-add-product-description">
+                <Text style={s.sectionLabel}>{categoryConfig.descriptionLabel || "Product description"}</Text>
+                <TextInput testID="vendor-store-add-product-description-input"
+                  placeholder={categoryConfig.descriptionPlaceholder || "Add clear details about this product"}
+                  placeholderTextColor="#9CA3AF"
+                  value={form.description} onChangeText={(t) => setForm({ ...form, description: t })}
+                  style={[s.inputCompact, { height: 70, textAlignVertical: "top" }]} multiline />
+              </View>
+
 
               {/* Price & MRP Row */}
               <View style={s.rowCompact} onLayout={(event) => rememberAddFieldPosition("pricing", event.nativeEvent.layout.y)}>
@@ -1406,34 +1392,6 @@ export default function VendorStoreDetail() {
                             </View>
               ) : null}
 
-              <View
-                onLayout={(event) => rememberAddFieldPosition("photos", event.nativeEvent.layout.y)}
-                style={addValidationError?.field === "photos" ? s.fieldErrorWrap : undefined}
-              >
-                <ProductImagesUploader
-                  value={form.images}
-                  onChange={(images) => {
-                    setForm((current) => ({ ...current, images, image: images[0] || "" }));
-                    clearAddValidationError("photos");
-                  }}
-                  label="Product Photos (minimum 3)"
-                  minCount={3}
-                  maxCount={6}
-                  allowMultipleSelection
-                  testID="vendor-store-add-product-images"
-                />
-              </View>
-
-              {/* Product description is available for every store category. */}
-              <View style={s.productDescriptionPanel} testID="vendor-store-add-product-description">
-                <Text style={s.sectionLabel}>{categoryConfig.descriptionLabel || "Product description"}</Text>
-                <TextInput testID="vendor-store-add-product-description-input"
-                  placeholder={categoryConfig.descriptionPlaceholder || "Add clear details about this product"}
-                  placeholderTextColor="#9CA3AF"
-                  value={form.description} onChangeText={(t) => setForm({ ...form, description: t })}
-                  style={[s.inputCompact, { height: 70, textAlignVertical: "top" }]} multiline />
-              </View>
-
               {/* Mark as Trending Checkbox */}
               <Pressable
                 style={s.checkboxRow}
@@ -1533,6 +1491,16 @@ export default function VendorStoreDetail() {
                 onImagesChange={(color_images) => setEditProductForm((current) => ({ ...current, color_images }))}
                 testID="vendor-store-edit-product-colours" />
               ) : null}
+
+              {/* Product description is available for every store category. */}
+              <View style={s.productDescriptionPanel} testID="vendor-store-edit-product-description">
+                <Text style={s.sectionLabel}>{categoryConfig.descriptionLabel || "Product description"}</Text>
+                <TextInput testID="vendor-store-edit-product-description-input"
+                  placeholder={categoryConfig.descriptionPlaceholder || "Add clear details about this product"}
+                  placeholderTextColor="#9CA3AF"
+                  value={editProductForm.description} onChangeText={(t) => setEditProductForm({ ...editProductForm, description: t })}
+                  style={[s.inputCompact, { height: 70, textAlignVertical: "top" }]} multiline />
+              </View>
 
 
                 <View style={s.itemCategoryPanel} testID="vendor-store-edit-product-item-category-picker">
@@ -1705,26 +1673,6 @@ export default function VendorStoreDetail() {
                               ))}
                             </View>
               ) : null}
-
-              <ProductImagesUploader
-                value={editProductForm.images}
-                onChange={(images) => setEditProductForm((current) => ({ ...current, images, image: images[0] || "" }))}
-                label="Product Photos (minimum 3)"
-                minCount={3}
-                maxCount={6}
-                allowMultipleSelection
-                testID="vendor-store-edit-product-images"
-              />
-
-              {/* Product description is available for every store category. */}
-              <View style={s.productDescriptionPanel} testID="vendor-store-edit-product-description">
-                <Text style={s.sectionLabel}>{categoryConfig.descriptionLabel || "Product description"}</Text>
-                <TextInput testID="vendor-store-edit-product-description-input"
-                  placeholder={categoryConfig.descriptionPlaceholder || "Add clear details about this product"}
-                  placeholderTextColor="#9CA3AF"
-                  value={editProductForm.description} onChangeText={(t) => setEditProductForm({ ...editProductForm, description: t })}
-                  style={[s.inputCompact, { height: 70, textAlignVertical: "top" }]} multiline />
-              </View>
 
               {/* Mark as Trending Checkbox */}
               <Pressable

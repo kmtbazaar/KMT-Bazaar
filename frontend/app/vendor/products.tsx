@@ -16,7 +16,6 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { vendorApi } from "@/src/roleApi";
 import { api } from "@/src/api";
-import ProductImagesUploader from "@/src/components/ProductImagesUploader";
 import { COLORS, RADIUS, SPACING, shadow } from "@/src/theme";
 import { getProductCategoryConfig } from "@/src/productCategoryConfig";
 
@@ -107,10 +106,6 @@ export default function VendorProducts() {
 
   // Add Product Logic
   const handleAddProduct = async () => {
-    if (!Array.isArray(form.images) || form.images.filter((url: string) => !!url).length < 3) {
-      Alert.alert("Add product photos", "Please add at least 3 product photos before saving.");
-      return;
-    }
     if (!form.name || !form.price || !form.category_id) {
       Alert.alert("Error", "Name, Price, and Category are required.");
       return;
@@ -335,8 +330,6 @@ export default function VendorProducts() {
               </View>
 
 
-
-              <ProductImagesUploader value={form.images} onChange={(images) => setForm((current) => ({ ...current, images, image: images[0] || "" }))} label="Product Photos (minimum 3)" testID="vendor-product-images" />
 
               {/* Description Input */}
               <TextInput

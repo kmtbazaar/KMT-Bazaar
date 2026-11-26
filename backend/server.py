@@ -4386,8 +4386,10 @@ async def admin_update_product(pid: str, data: ProductIn, _=Depends(require_role
     else:
         upd["colors"] = _normalize_product_colors(data.colors)
     existing_color_images = data.color_images
-    if data.images is None:
+    if data.images is None or (not data.images and not str(data.image or "").strip()):
         upd.pop("images", None)
+        if not str(data.image or "").strip():
+            upd.pop("image", None)
 
     existing = await db.products.find_one(
         {"id": pid},
@@ -6219,9 +6221,6 @@ async def vendor_create_product(data: ProductIn, current=Depends(require_roles("
         for image in (data.images or [])
         if isinstance(image, str) and image.strip()
     ))
-    if len(product_images) < 3:
-        raise HTTPException(400, "Please upload at least 3 different product photos")
-
     pid = "p-" + uuid.uuid4().hex[:8]
     doc = data.dict()
     normalized_colors = _normalize_product_colors(data.colors)
@@ -6242,7 +6241,7 @@ async def vendor_create_product(data: ProductIn, current=Depends(require_roles("
     else:
         doc.pop("variants", None)
     doc["images"] = product_images
-    doc["image"] = product_images[0]
+    doc["image"] = product_images[0] if product_images else str(data.image or "").strip()
     doc["store_id"] = sid
     doc["category_id"] = store_category_id
     doc.update(
@@ -6292,11 +6291,20 @@ async def vendor_update_product(pid: str, data: ProductIn, current=Depends(requi
     )
     if not category:
         raise HTTPException(400, "Shop category was not found")
-    _validate_product_category_color_requirements(
-        category,
-        upd.get("colors", p.get("colors", [])),
-        upd.get("color_images", p.get("color_images", {}))
+    existing_colors = p.get("colors") or []
+    existing_color_images = p.get("color_images") or {}
+    next_colors = upd.get("colors", existing_colors) or []
+    next_color_images = upd.get("color_images", existing_color_images) or {}
+    colour_configuration_changed = (
+        next_colors != existing_colors
+        or next_color_images != existing_color_images
     )
+    if colour_configuration_changed:
+        _validate_product_category_color_requirements(
+            category,
+            next_colors,
+            next_color_images
+        )
     if data.variants is None:
         upd.pop("variants", None)
         if p.get("variants"):
@@ -6309,18 +6317,23 @@ async def vendor_update_product(pid: str, data: ProductIn, current=Depends(requi
         )
         _validate_product_variant_colors(normalized_variants, upd.get("colors", p.get("colors", [])))
         _apply_product_variants(upd, normalized_variants)
-    if data.images is not None:
+    if data.images is not None and (data.images or str(data.image or "").strip()):
         product_images = list(dict.fromkeys(
             image.strip()
             for image in data.images
             if isinstance(image, str) and image.strip()
         ))
-        if len(product_images) < 3:
-            raise HTTPException(400, "Please upload at least 3 different product photos")
         upd["images"] = product_images
-        upd["image"] = product_images[0]
+        if product_images:
+            upd["image"] = product_images[0]
+        elif str(data.image or "").strip():
+            upd["image"] = str(data.image).strip()
+        else:
+            upd.pop("image", None)
     else:
+        # The product form no longer uploads a main gallery; preserve existing images on edits.
         upd.pop("images", None)
+        upd.pop("image", None)
     upd["store_id"] = p.get("store_id")
     upd["category_id"] = store_category_id
     upd.update(

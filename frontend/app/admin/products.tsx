@@ -204,13 +204,6 @@ function ProductModal({ visible, onClose, onSaved, edit, categories, stores }: a
       return;
     }
     const validImages = Array.isArray(f.images) ? f.images.filter((url: string) => !!String(url || "").trim()) : [];
-    const requiredPhotoCount = edit ? 1 : 3;
-    if (validImages.length < requiredPhotoCount) {
-      Alert.alert("Add product photos", edit
-        ? "Keep at least one product photo. Existing products with one photo can still be edited."
-        : "Please add at least 3 product photos before saving.");
-      return;
-    }
     const unchangedColourSetup = Boolean(edit) &&
       categoryId === String(edit.category_id || "") &&
       JSON.stringify(f.colors || []) === JSON.stringify(edit.colors || []) &&
@@ -469,6 +462,8 @@ function ProductModal({ visible, onClose, onSaved, edit, categories, stores }: a
               </View>
             ) : null}
 
+            <Field ph="Description" v={f.description} oc={(v: string) => setF((current: any) => ({ ...current, description: v }))} multiline testID="pf-desc" />
+
             {categoryConfig.productAttributes.length ? (
               <View style={ms.optionPanel} testID="pf-product-attributes">
                 <Text style={ms.label}>Product specifications</Text>
@@ -481,16 +476,7 @@ function ProductModal({ visible, onClose, onSaved, edit, categories, stores }: a
               </View>
             ) : null}
 
-            <ProductImagesUploader
-              value={f.images}
-              onChange={(images) => setF((current: any) => ({ ...current, images, image: images[0] || "" }))}
-              label={edit ? "Product Photos (keep at least 1; new products need 3)" : "Product Photos (minimum 3)"}
-              minCount={edit ? 1 : 3}
-              maxCount={6}
-              allowMultipleSelection
-              testID="pf-images"
-            />
-            <Field ph="Description" v={f.description} oc={(v: string) => setF((current: any) => ({ ...current, description: v }))} multiline testID="pf-desc" />
+
 
             <Text style={ms.label}>Item Category</Text>
             <Field ph="Item Category" v={f.item_category}

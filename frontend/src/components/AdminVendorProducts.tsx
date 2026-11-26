@@ -270,13 +270,6 @@ export default function AdminVendorProducts({ vendorId, selectedStoreId: externa
     const existingProduct = products.find(
       (product: any) => String(product.id || product._id) === String(editingProductId)
     );
-    const requiredProductPhotos = editingProductId ? 1 : 3;
-    if (!Array.isArray(form.images) || form.images.filter((url: string) => !!String(url || "").trim()).length < requiredProductPhotos) {
-      setNotice(editingProductId
-        ? "Keep at least one product photo. Existing one-photo products can still be edited."
-        : "Please add at least 3 product photos before saving.");
-      return;
-    }
     const unchangedColorSetup = Boolean(existingProduct) &&
       String(existingProduct.category_id || selectedStore?.category_id || "") === String(selectedStore?.category_id || "") &&
       JSON.stringify(form.colors || []) === JSON.stringify(existingProduct.colors || []) &&
@@ -791,7 +784,6 @@ export default function AdminVendorProducts({ vendorId, selectedStoreId: externa
                 ))}
               </View>
               ) : null}
-              <ProductImagesUploader value={form.images} onChange={(images) => setForm((current) => ({ ...current, images, image: images[0] || "" }))} label="Product Photos (minimum 3)" testID="admin-vendor-product-images" />
               {categoryConfig.showColors ? (
                 <View style={styles.variantManagerPanel} testID="admin-vendor-product-colours">
                   <Text style={styles.variantManagerTitle}>{categoryConfig.colorLabel} options</Text>
@@ -829,6 +821,17 @@ export default function AdminVendorProducts({ vendorId, selectedStoreId: externa
                   ) : null}
                 </View>
               ) : null}
+              <TextInput
+                testID="admin-vendor-product-description"
+                value={form.description}
+                onChangeText={(value) => setForm((current) => ({ ...current, description: value }))}
+                placeholder="Product description"
+                placeholderTextColor="#9CA3AF"
+                multiline
+                numberOfLines={3}
+                style={[styles.input, styles.descriptionInput]}
+              />
+
               {categoryConfig.productAttributes.length ? (
                 <View style={styles.shopCategoryBlock} testID="admin-vendor-product-attributes">
                   <Text style={styles.formLabel}>Category-specific specifications</Text>
@@ -841,15 +844,7 @@ export default function AdminVendorProducts({ vendorId, selectedStoreId: externa
                 </View>
               ) : null}
 
-              <TextInput
-                value={form.description}
-                onChangeText={(value) => setForm((current) => ({ ...current, description: value }))}
-                placeholder="Product description"
-                placeholderTextColor="#9CA3AF"
-                multiline
-                numberOfLines={3}
-                style={[styles.input, styles.descriptionInput]}
-              />
+
               <Pressable onPress={() => setForm((current) => ({ ...current, trending: !current.trending }))} style={styles.checkboxRow}>
                 <MaterialCommunityIcons name={form.trending ? "checkbox-marked" : "checkbox-blank-outline"} size={21} color="#EA580C" />
                 <Text style={styles.checkboxText}>Mark as trending</Text>
