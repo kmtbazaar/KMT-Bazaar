@@ -287,17 +287,18 @@ export default function AdminDashboard() {
     (_, rowIndex) => quickActions.slice(rowIndex * 3, rowIndex * 3 + 3)
   );
 
-  // Desktop web: keep all eight overview tiles in a compact 4 × 2 grid, including zoomed browser windows.
-  const kpiColumnCount = Platform.OS === "web" && screenWidth >= 768 ? 4 : 2;
+  // Keep all eight tiles compact on web; four columns on desktop and two on narrow screens.
+  const kpiColumnCount = Platform.OS === "web" && screenWidth >= 640 ? 4 : 2;
+  const compactKpiTiles = Platform.OS === "web";
   const kpiCards = [
-    <KPI key="revenue" label="Revenue" value={`₹${stats?.revenue ?? 0}`} icon="cash-multiple" color={THEME.success} route="/admin/orders" delay={150} dark={adminSettings?.themeMode === "night"} compact={kpiColumnCount === 4} />,
-    <KPI key="orders" label="Orders" value={stats?.orders ?? 0} icon="package-variant" color={THEME.orange} route="/admin/orders" delay={200} dark={adminSettings?.themeMode === "night"} compact={kpiColumnCount === 4} />,
-    <KPI key="platform-earnings" label="Platform Earnings" value={`₹${stats?.platform_earnings ?? 0}`} icon="currency-inr" color={THEME.sky} sub={`${stats?.commission_percent ?? 10}% commission`} route="/admin/commission" delay={250} dark={adminSettings?.themeMode === "night"} compact={kpiColumnCount === 4} />,
-    <KPI key="customers" label="Customers" value={stats?.users ?? 0} icon="account-multiple" color={THEME.brownLight} route="/admin/users?role=customer" delay={300} dark={adminSettings?.themeMode === "night"} compact={kpiColumnCount === 4} />,
-    <KPI key="service-vendor" label="Service Vendor" value={serviceVendorCount} icon="briefcase-outline" color={THEME.orange} route="/admin/service-vendors" delay={300} dark={adminSettings?.themeMode === "night"} compact={kpiColumnCount === 4} />,
-    <KPI key="service-bookings" label="Service Bookings" value={serviceBookingTotal} icon="calendar-check-outline" color={THEME.success} route="/admin/service-bookings" delay={350} dark={adminSettings?.themeMode === "night"} compact={kpiColumnCount === 4} />,
-    <KPI key="vendors" label="Vendors" value={stats?.vendors ?? 0} icon="store" color={THEME.orange} route="/admin/users?role=vendor" delay={400} dark={adminSettings?.themeMode === "night"} compact={kpiColumnCount === 4} />,
-    <KPI key="delivery" label="Delivery" value={stats?.delivery ?? 0} icon="moped" color={THEME.sky} route="/admin/users?role=delivery" delay={450} dark={adminSettings?.themeMode === "night"} compact={kpiColumnCount === 4} />,
+    <KPI key="revenue" label="Revenue" value={`₹${stats?.revenue ?? 0}`} icon="cash-multiple" color={THEME.success} route="/admin/orders" delay={150} dark={adminSettings?.themeMode === "night"} compact={compactKpiTiles} />,
+    <KPI key="orders" label="Orders" value={stats?.orders ?? 0} icon="package-variant" color={THEME.orange} route="/admin/orders" delay={200} dark={adminSettings?.themeMode === "night"} compact={compactKpiTiles} />,
+    <KPI key="platform-earnings" label="Platform Earnings" value={`₹${stats?.platform_earnings ?? 0}`} icon="currency-inr" color={THEME.sky} sub={`${stats?.commission_percent ?? 10}% commission`} route="/admin/commission" delay={250} dark={adminSettings?.themeMode === "night"} compact={compactKpiTiles} />,
+    <KPI key="customers" label="Customers" value={stats?.users ?? 0} icon="account-multiple" color={THEME.brownLight} route="/admin/users?role=customer" delay={300} dark={adminSettings?.themeMode === "night"} compact={compactKpiTiles} />,
+    <KPI key="service-vendor" label="Service Vendor" value={serviceVendorCount} icon="briefcase-outline" color={THEME.orange} route="/admin/service-vendors" delay={300} dark={adminSettings?.themeMode === "night"} compact={compactKpiTiles} />,
+    <KPI key="service-bookings" label="Service Bookings" value={serviceBookingTotal} icon="calendar-check-outline" color={THEME.success} route="/admin/service-bookings" delay={350} dark={adminSettings?.themeMode === "night"} compact={compactKpiTiles} />,
+    <KPI key="vendors" label="Vendors" value={stats?.vendors ?? 0} icon="store" color={THEME.orange} route="/admin/users?role=vendor" delay={400} dark={adminSettings?.themeMode === "night"} compact={compactKpiTiles} />,
+    <KPI key="delivery" label="Delivery" value={stats?.delivery ?? 0} icon="moped" color={THEME.sky} route="/admin/users?role=delivery" delay={450} dark={adminSettings?.themeMode === "night"} compact={compactKpiTiles} />,
   ];
   const kpiRows = Array.from(
     { length: Math.ceil(kpiCards.length / kpiColumnCount) },
@@ -329,7 +330,7 @@ export default function AdminDashboard() {
 
             <View pointerEvents="box-none" style={s.headerText}>
               <Text style={s.headerEyebrow}>
-                KMT BAZAAR
+                KMT Bazaar
               </Text>
 
               <Text style={s.headerTitle}>
@@ -477,11 +478,11 @@ export default function AdminDashboard() {
             KPI CARDS
         =================================================== */}
 
-        <View style={[s.kpiGrid, kpiColumnCount === 4 && s.kpiGridCompact]}>
+        <View style={[s.kpiGrid, compactKpiTiles && s.kpiGridCompact]}>
           {kpiRows.map((row, rowIndex) => (
             <View
               key={`admin-kpi-row-${rowIndex}`}
-              style={[s.kpiRow, kpiColumnCount === 4 && s.kpiRowCompact]}
+              style={[s.kpiRow, compactKpiTiles && s.kpiRowCompact]}
             >
               {row}
             </View>
