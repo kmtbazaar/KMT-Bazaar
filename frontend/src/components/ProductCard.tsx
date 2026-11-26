@@ -22,6 +22,8 @@ import { useRouter } from "expo-router";
 import ImagePlaceholder from "@/src/components/ImagePlaceholder";
 import { useWishlist } from "@/src/WishlistContext";
 import { formatRupees } from "@/src/utils/formatRupees";
+import ProductUnitBadge from "@/src/components/ProductUnitBadge";
+import { getProductUnitLabel } from "@/src/utils/productUnit";
 
 const SCREEN_W = Dimensions.get("window").width;
 
@@ -121,10 +123,7 @@ export default function ProductCard({
   };
 
   const productName = firstProductText(p?.name, p?.product_name, p?.productName, p?.title);
-  const productUnit = firstProductText(
-    p?.unit, p?.quantity_label, p?.unit_label, p?.unit_name,
-    p?.pack_size, p?.size, p?.weight, p?.volume, p?.quantity
-  );
+  const productUnit = getProductUnitLabel(p);
 
   // Try all stored image variants, not just a possibly stale primary image.
   const productImageCandidates = useMemo(() => {
@@ -233,16 +232,11 @@ export default function ProductCard({
           </Text>
 
           <View style={[s.unitLineSlot, wishlistGrid && s.wishlistUnitLineSlot, recommendationGrid && s.recommendationUnitLineSlot]}>
-            {productUnit ? (
-              <View style={[s.unitBadge, wishlistGrid && s.wishlistUnitBadge, recommendationGrid && s.recommendationUnitBadge]}>
-                <Text
-                  style={[s.unit, wishlistGrid && s.wishlistUnit, recommendationGrid && s.recommendationUnit]}
-                  numberOfLines={1}
-                >
-                  {productUnit}
-                </Text>
-              </View>
-            ) : null}
+            <ProductUnitBadge
+              label={productUnit}
+              compact={compact || wishlistGrid || recommendationGrid}
+              testID={`product-unit-${p.id}`}
+            />
           </View>
 
           <View style={[s.priceRow, wishlistGrid && s.wishlistPriceRow, recommendationGrid && s.recommendationPriceRow]}>
