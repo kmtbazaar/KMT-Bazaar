@@ -19,10 +19,6 @@ import { COLORS, RADIUS, SPACING } from "@/src/theme";
 import ProductImagesUploader from "@/src/components/ProductImagesUploader";
 import { getProductCategoryConfig } from "@/src/productCategoryConfig";
 
-const FALLBACK_PRODUCT_IMAGE =
-  "https://images.unsplash.com/photo-1542838132-92c53300491e?w=400&q=80";
-
-
 type ProductVariantDraft = {
   id: string;
   unit: string;
@@ -444,7 +440,7 @@ export default function AdminVendorProducts({ vendorId, selectedStoreId: externa
     mrp: Number(item.mrp !== "" && item.mrp !== undefined && item.mrp !== null ? item.mrp : item.price || 0),
     unit: String(item.unit || "1 pc").trim() || "1 pc",
     stock: Math.max(0, parseInt(String(item.stock ?? 0), 10) || 0),
-    image: String(item.image || item.images?.[0] || FALLBACK_PRODUCT_IMAGE),
+    image: String(item.image || item.images?.[0] || ""),
     images: Array.isArray(item.images) ? item.images : (item.image ? [item.image] : []),
     description: String(item.description || ""),
     is_available: available,
