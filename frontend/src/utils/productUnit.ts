@@ -71,7 +71,7 @@ export function getProductUnitLabel(product: any): string {
     product.volume,
     typeof product.quantity === "string" ? product.quantity : ""
   );
-  const directLabelIsGeneric = /^(standard|default|other|n\\/?a)$/i.test(directLabel);
+  const directLabelIsGeneric = ["standard", "default", "other", "na", "n/a"].includes(directLabel.toLowerCase());
   if (directLabel && !directLabelIsGeneric) return directLabel;
 
   const variants = Array.isArray(product.variants) ? product.variants : [];
