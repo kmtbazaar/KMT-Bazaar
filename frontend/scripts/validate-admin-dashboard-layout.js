@@ -25,6 +25,9 @@ assert.ok(source.includes('const kpiColumnCount = Platform.OS === "web" && scree
 assert.equal((source.match(/<KPI key=/g) || []).length, 8, "Expected all 8 KPI cards");
 assert.ok(source.includes("const kpiRows = Array.from(") && source.includes("kpiCards.slice(rowIndex * kpiColumnCount"), "Eight KPI cards must be grouped into responsive rows");
 assert.ok(source.includes("compact && s.kpiCardCompact") && source.includes("compact={kpiColumnCount === 4}"), "Desktop KPI cards must use compact dimensions");
+requireRules("headerText", ['alignItems: "center"']);
+requireRules("headerEyebrow", ["fontSize: 21", 'textAlign: "center"']);
+requireRules("headerTitle", ["fontSize: 9", 'textAlign: "center"']);
 assert.ok(source.includes("quickActionRows.map((row, rowIndex)"), "Quick Actions must use explicit three-card rows");
 assert.ok(source.includes("row.length < 3"), "Last Quick Actions row must retain empty spacer columns");
 
@@ -32,19 +35,19 @@ requireRules("kpiGrid", ['width: "100%"', 'flexDirection: "column"']);
 requireRules("kpiRow", ['width: "100%"', 'flexDirection: "row"', "gap: 10"]);
 requireRules("kpiCardWrap", ["flex: 1", "minWidth: 0"]);
 requireRules("kpiCard", ['width: "100%"', "height: 164", "minHeight: 164", "maxHeight: 164", "flexShrink: 0"]);
-requireRules("kpiCardCompact", ["height: 80", "minHeight: 80", "maxHeight: 80", "padding: 6"]);
-requireRules("kpiIconCompact", ["width: 21", "height: 21"]);
-requireRules("kpiValueCompact", ["fontSize: 14", "marginTop: 2"]);
+requireRules("kpiCardCompact", ["height: 60", "minHeight: 60", "maxHeight: 60", "padding: 5"]);
+requireRules("kpiIconCompact", ["width: 18", "height: 18"]);
+requireRules("kpiValueCompact", ["fontSize: 13", "marginTop: 1"]);
 requireRules("kpiLabelCompact", ["fontSize: 8"]);
-requireRules("kpiSubCompact", ["fontSize: 8"]);
-requireRules("kpiTapHintCompact", ["marginTop: 3"]);
+requireRules("kpiSubCompact", ["fontSize: 7"]);
+assert.ok(!source.includes("View details") && !source.includes("kpiTapHint"), "KPI cards must not reserve a View details row or bottom gap");
 requireRules("grid", ['width: "100%"', 'flexDirection: "column"']);
 requireRules("gridRow", ['width: "100%"', 'flexDirection: "row"', "gap: 10"]);
 requireRules("gridWrapper", ["flex: 1", "minWidth: 0"]);
 requireRules("gridItem", ['width: "100%"', "height: 128", "minHeight: 128", "maxHeight: 128", "flexShrink: 0"]);
 
 console.log("ADMIN_DASHBOARD_LAYOUT_VALIDATION_PASS");
-console.log("KPI: desktop 4 columns × 2 rows / compact 80px tiles; smaller screens 2 columns. Quick Actions: 3 equal columns / fixed 128px height.");
+console.log("KPI: desktop 4 columns × 2 rows / compact 60px tiles with no View details gap; centered KMT Bazaar heading. Smaller screens retain 2 columns.");
 
 if (process.argv.includes("--check-build")) {
   const dist = path.resolve("dist");
