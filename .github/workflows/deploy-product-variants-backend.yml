@@ -686,6 +686,17 @@ jobs:
           source = replace_or_insert_function(source, candidate_source, "_preserve_product_variant_descriptions", "def _apply_product_variants(")
           source = replace_or_insert_function(source, candidate_source, "_validate_product_variant_colors", "def _preserve_product_variant_descriptions(")
           source = replace_or_insert_function(source, candidate_source, "_validate_product_category_color_requirements", "def _apply_product_variants(")
+          # Colour-gallery response routes call these two helpers. Sync both into the
+          # live VPS source before the product routes; syncing only the route bodies
+          # otherwise causes runtime NameError responses on product create/update.
+          source = replace_or_insert_function(
+              source, candidate_source, "_product_display_images",
+              "class CategoryIn(BaseModel):"
+          )
+          source = replace_or_insert_function(
+              source, candidate_source, "_with_product_display_images",
+              "class CategoryIn(BaseModel):"
+          )
           # The existing generic helper above handles synchronous defs. This vendor
           # lookup is async, so isolate and insert/replace its exact top-level function.
           def replace_or_insert_async_function(live_source, candidate, function_name, insert_before):
@@ -925,7 +936,47 @@ jobs:
             exit 1
           fi
           echo "BACKEND_PRODUCT_COLOUR_NORMALIZER_VALIDATION_PASS"
- 
+
+          if ! python3 - "$TARGET" <<'PY'
+          import ast
+          import sys
+          from pathlib import Path
+
+          tree = ast.parse(Path(sys.argv[1]).read_text(encoding="utf-8"))
+          top_level = [
+              node for node in tree.body
+              if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
+          ]
+          by_name = {}
+          for node in top_level:
+              by_name.setdefault(node.name, []).append(node)
+          for helper in ("_product_display_images", "_with_product_display_images"):
+              if len(by_name.get(helper, [])) != 1:
+                  raise SystemExit(f"Expected exactly one live {helper} helper")
+          image_helper = by_name["_product_display_images"][0]
+          display_helper = by_name["_with_product_display_images"][0]
+          if image_helper.lineno >= display_helper.lineno:
+              raise SystemExit("Image extraction helper must precede display helper")
+          callers = []
+          for node in top_level:
+              if any(
+                  isinstance(child, ast.Call)
+                  and isinstance(child.func, ast.Name)
+                  and child.func.id == "_with_product_display_images"
+                  for child in ast.walk(node)
+              ):
+                  callers.append(node)
+          if not callers or any(display_helper.lineno >= caller.lineno for caller in callers):
+              raise SystemExit("Product display helper must precede every calling route")
+          print("LIVE_PRODUCT_DISPLAY_IMAGE_HELPERS_PRESENT_BEFORE_ROUTES")
+          PY
+          then
+            echo "BACKEND_PRODUCT_DISPLAY_IMAGE_HELPERS_VALIDATION_FAIL"
+            rollback
+            exit 1
+          fi
+          echo "BACKEND_PRODUCT_DISPLAY_IMAGE_HELPERS_VALIDATION_PASS"
+
           if ! grep -Fq 'async def _vendor_store_ids(vendor_id: str):' "$TARGET" || ! grep -Fq '_vendor_store_ids(current["id"])' "$TARGET"; then
             echo "BACKEND_VENDOR_STORE_LOOKUP_HELPER_MISSING"
             rollback
