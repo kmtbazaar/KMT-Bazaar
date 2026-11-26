@@ -123,7 +123,7 @@ jobs:
           assert.ok(vendorOrders.includes("it.color") && vendorOrders.includes("it.variant") && vendorOrders.includes('key={`${it.product_id}:'), "Vendor orders must identify and display each ordered colour.");
           assert.ok(customerOrder.includes("it.color") && adminOrder.includes("it.color"), "Customer and admin order details must display the selected colour.");
           assert.ok(customer.includes('width: "22%"') && customer.includes('maxWidth: "24%"'), "Four size/pack options should fit across without overlap.");
-          assert.ok(productCard.includes('fontSize: 11,\n    fontWeight: "700"'), "Product unit label must be larger and bolder.");
+          assert.ok(productCard.includes('fontSize: 11,\n    lineHeight: 14,\n    fontWeight: "900"'), "Product unit label must be larger and bolder.");
           assert.ok(productCard.includes("minWidth: 48,\n    height: 34,"), "Add button should be taller with a usable minimum width.");
 
           console.log("PRODUCT_SIZE_PACK_UI_VALIDATION_PASS");
