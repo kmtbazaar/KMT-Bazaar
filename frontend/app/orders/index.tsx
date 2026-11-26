@@ -7,6 +7,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { api } from "@/src/api";
 import { COLORS, RADIUS, SPACING } from "@/src/theme";
+import { formatRupees } from "@/src/utils/formatRupees";
 
 const STATUS_COLOR: Record<string, string> = {
   pending: "#EAB308", accepted: "#2563EB", out_for_delivery: "#F97316", delivered: "#16A34A", cancelled: "#DC2626",
@@ -48,7 +49,7 @@ export default function Orders() {
               <View style={{ flex: 1 }}>
                 <Text style={s.itemName} numberOfLines={1}>{item.items[0]?.name}{item.items.length > 1 ? ` + ${item.items.length - 1} more` : ""}</Text>
                 <Text style={s.meta}>{new Date(item.created_at).toLocaleString()}</Text>
-                <Text style={s.total}>₹{item.total} · {item.payment_method === "cod" ? "COD" : "Online"}</Text>
+                <Text style={s.total}>{formatRupees(item.total)} · {item.payment_method === "cod" ? "COD" : "Online"}</Text>
               </View>
               <MaterialCommunityIcons name="chevron-right" size={22} color={COLORS.textMuted} />
             </View>
