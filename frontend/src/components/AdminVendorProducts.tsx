@@ -267,17 +267,27 @@ export default function AdminVendorProducts({ vendorId, selectedStoreId: externa
       setNotice("Enter a valid MRP.");
       return;
     }
-    if (!Array.isArray(form.images) || form.images.filter((url: string) => !!url).length < 3) {
-      setNotice("Please add at least 3 product photos before saving.");
+    const existingProduct = products.find(
+      (product: any) => String(product.id || product._id) === String(editingProductId)
+    );
+    const requiredProductPhotos = editingProductId ? 1 : 3;
+    if (!Array.isArray(form.images) || form.images.filter((url: string) => !!String(url || "").trim()).length < requiredProductPhotos) {
+      setNotice(editingProductId
+        ? "Keep at least one product photo. Existing one-photo products can still be edited."
+        : "Please add at least 3 product photos before saving.");
       return;
     }
-    const missingColorPhotos = categoryConfig.requiresColorImages
+    const unchangedColorSetup = Boolean(existingProduct) &&
+      String(existingProduct.category_id || selectedStore?.category_id || "") === String(selectedStore?.category_id || "") &&
+      JSON.stringify(form.colors || []) === JSON.stringify(existingProduct.colors || []) &&
+      JSON.stringify(form.color_images || {}) === JSON.stringify(existingProduct.color_images || {});
+    const missingColorPhotos = categoryConfig.requiresColorImages && !unchangedColorSetup
       ? form.colors.filter((color: string) => {
           const key = Object.keys(form.color_images || {}).find((item) => item.toLowerCase() === color.toLowerCase());
           return !key || !Array.isArray(form.color_images[key]) || !form.color_images[key].some((url) => String(url || "").trim());
         })
       : [];
-    if (categoryConfig.requiresColor && !form.colors.length) {
+    if (!unchangedColorSetup && categoryConfig.requiresColor && !form.colors.length) {
       setNotice("Select at least one colour for this category.");
       return;
     }
@@ -294,10 +304,7 @@ export default function AdminVendorProducts({ vendorId, selectedStoreId: externa
     setSaving(true);
     setNotice("");
     try {
-      const existing = products.find(
-        (product: any) => String(product.id || product._id) === String(editingProductId)
-      );
-      const payload = payloadFor(form, existing ? existing.is_available !== false : true, variants);
+      const payload = payloadFor(form, existingProduct ? existingProduct.is_available !== false : true, variants);
       if (editingProductId) {
         await adminApi.updateProduct(editingProductId, payload);
         setNotice("Product updated successfully.");
