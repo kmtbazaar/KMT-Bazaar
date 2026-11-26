@@ -231,12 +231,18 @@ export default function ProductCard({
             {productName || "Product"}
           </Text>
 
-          <Text
-            style={[s.unit, wishlistGrid && s.wishlistUnit, recommendationGrid && s.recommendationUnit]}
-            numberOfLines={1}
-          >
-            {productUnit || " "}
-          </Text>
+          <View style={[s.unitLineSlot, wishlistGrid && s.wishlistUnitLineSlot, recommendationGrid && s.recommendationUnitLineSlot]}>
+            {productUnit ? (
+              <View style={[s.unitBadge, wishlistGrid && s.wishlistUnitBadge, recommendationGrid && s.recommendationUnitBadge]}>
+                <Text
+                  style={[s.unit, wishlistGrid && s.wishlistUnit, recommendationGrid && s.recommendationUnit]}
+                  numberOfLines={1}
+                >
+                  {productUnit}
+                </Text>
+              </View>
+            ) : null}
+          </View>
 
           <View style={[s.priceRow, wishlistGrid && s.wishlistPriceRow, recommendationGrid && s.recommendationPriceRow]}>
             <View style={[s.priceCol, wishlistGrid && s.wishlistPriceCol, recommendationGrid && s.recommendationPriceCol]}>
@@ -447,7 +453,7 @@ const s = StyleSheet.create({
   recommendationImgWrap: { height: 68 },
   recommendationBody: { paddingHorizontal: 4, paddingTop: 3, paddingBottom: 2 },
   recommendationName: { fontSize: 11, height: 28, lineHeight: 13 },
-  recommendationUnit: { fontSize: 8, height: 9, marginTop: 1 },
+  recommendationUnit: { fontSize: 8, lineHeight: 9 },
   recommendationPrice: { fontSize: 11 },
   recommendationMrp: { fontSize: 8, minHeight: 10 },
   recommendationPriceRow: { marginTop: 3, alignItems: "center" },
@@ -459,7 +465,7 @@ const s = StyleSheet.create({
   recommendationQtyText: { fontSize: 9, minWidth: 10 },
 
   wishlistName: { fontSize: 11, height: 28, lineHeight: 13 },
-  wishlistUnit: { fontSize: 8, height: 9, marginTop: 1 },
+  wishlistUnit: { fontSize: 8, lineHeight: 9 },
   wishlistPrice: { fontSize: 11.5 },
   wishlistMrp: { fontSize: 8, minHeight: 10 },
   wishlistPriceRow: { marginTop: 3, alignItems: "center" },
@@ -520,12 +526,17 @@ const s = StyleSheet.create({
     lineHeight: 16,
   },
 
+  unitLineSlot: { minHeight: 18, flexDirection: "row", alignItems: "center", marginTop: 2 },
+  wishlistUnitLineSlot: { minHeight: 10, marginTop: 1 },
+  recommendationUnitLineSlot: { minHeight: 10, marginTop: 1 },
+  unitBadge: { maxWidth: "100%", alignSelf: "flex-start", backgroundColor: "#FEF08A", borderColor: "#FACC15", borderWidth: 1, borderRadius: 5, paddingHorizontal: 6, paddingVertical: 1 },
+  wishlistUnitBadge: { paddingHorizontal: 4, paddingVertical: 0, borderRadius: 4 },
+  recommendationUnitBadge: { paddingHorizontal: 4, paddingVertical: 0, borderRadius: 4 },
   unit: {
-    fontSize: 11,
-    fontWeight: "700",
-    color: COLORS.textMuted,
-    marginTop: 1,
-    height: 14,
+    fontSize: 10,
+    lineHeight: 13,
+    fontWeight: "900",
+    color: "#713F12",
   },
 
   priceRow: {
