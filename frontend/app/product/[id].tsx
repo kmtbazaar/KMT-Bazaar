@@ -15,6 +15,7 @@ import { COLORS, RADIUS, SPACING, shadow } from "@/src/theme";
 import CheckoutBar from "@/src/components/CheckoutBar";
 import { useWishlist } from "@/src/WishlistContext";
 import { getProductCategoryConfig } from "@/src/productCategoryConfig";
+import { formatRupees } from "@/src/utils/formatRupees";
 
 const PRODUCT_COLOR_SWATCHES: Record<string, string> = {
   black: "#171717", white: "#FFFFFF", red: "#DC2626", blue: "#2563EB",
@@ -292,12 +293,12 @@ export default function Product() {
     const productUrl = Platform.OS === "web"
       ? `${(globalThis as any).location?.origin || "https://kmtbazaar.com"}/product/${encodeURIComponent(String(p.id || id))}`
       : `https://kmtbazaar.com/product/${encodeURIComponent(String(p.id || id))}`;
-    const message = `Check out ${p.name} on KMT Bazaar for ₹${selectedPrice}. ${productUrl}`;
+    const message = `Check out ${p.name} on KMT Bazaar for ${formatRupees(selectedPrice)}. ${productUrl}`;
     try {
       if (Platform.OS === "web") {
         const nav = (globalThis as any).navigator;
         if (typeof nav?.share === "function") {
-          await nav.share({ title: p.name, text: `₹${selectedPrice} on KMT Bazaar`, url: productUrl });
+          await nav.share({ title: p.name, text: `${formatRupees(selectedPrice)} on KMT Bazaar`, url: productUrl });
           return;
         }
         if (typeof nav?.clipboard?.writeText === "function") {
@@ -564,8 +565,8 @@ export default function Product() {
             </Text>
           </View>
           <View style={s.priceRow}>
-            <Text style={s.price}>₹{selectedPrice}</Text>
-            {selectedMrp > selectedPrice && <Text style={s.mrp}>₹{selectedMrp}</Text>}
+            <Text style={s.price}>{formatRupees(selectedPrice)}</Text>
+            {selectedMrp > selectedPrice && <Text style={s.mrp}>{formatRupees(selectedMrp)}</Text>}
             {discount > 0 && <View style={s.discPill}><Text style={s.discText}>{discount}% OFF</Text></View>}
           </View>
 
@@ -636,10 +637,16 @@ export default function Product() {
               <Text style={s.productDetailsTitle}>
                 {categoryConfig.showDescription ? categoryConfig.descriptionLabel : "Product description"}
               </Text>
-              <View style={!descriptionExpanded ? s.productDescriptionCollapsed : undefined}>
+              <Text
+                style={s.productDescriptionText}
+                testID="product-description"
+                numberOfLines={descriptionExpanded ? undefined : 10}
+              >
+                {productDescription}
+              </Text>
+              <View pointerEvents="none" style={s.productDescriptionMeasureWrap}>
                 <Text
-                  style={s.productDescriptionText}
-                  testID="product-description"
+                  style={[s.productDescriptionText, s.productDescriptionMeasure]}
                   onTextLayout={(event) => {
                     const lines = event.nativeEvent.lines?.length || 0;
                     setDescriptionLineCount((current) => current === lines ? current : lines);
@@ -724,7 +731,7 @@ export default function Product() {
                         <View style={s.suggestionCardBody}>
                           <Text style={s.suggestionCardName} numberOfLines={2}>{item.name}</Text>
                           <View style={s.suggestionCardMeta}>
-                            <Text style={s.suggestionCardPrice} numberOfLines={1}>₹{item.price}</Text>
+                            <Text style={s.suggestionCardPrice} numberOfLines={1}>{formatRupees(item.price)}</Text>
                             <Pressable
                               accessibilityRole="button"
                               accessibilityLabel={`Add ${item.name} to cart`}
@@ -819,7 +826,7 @@ export default function Product() {
               {adding ? <ActivityIndicator color="#fff" /> : (
                 <>
                   <MaterialCommunityIcons name={outOfStock ? "close-circle" : currentQty > 0 ? "shopping-bag" : "cart-plus"} color="#fff" size={20} />
-                  <Text style={s.checkoutBtnText}>{outOfStock ? "Out of Stock" : currentQty > 0 ? "View Cart" : `Add to Cart · ₹${selectedPrice}`}</Text>
+                  <Text style={s.checkoutBtnText}>{outOfStock ? "Out of Stock" : currentQty > 0 ? "View Cart" : `Add to Cart · ${formatRupees(selectedPrice)}`}</Text>
                   {!outOfStock && <MaterialCommunityIcons name="arrow-right" color="#fff" size={18} />}
                 </>
               )}
@@ -879,7 +886,7 @@ const s = StyleSheet.create({
   variantChoiceTextWrap: { flex: 1, minWidth: 0, alignItems: "flex-start", gap: 2 },
   variantChoiceUnitBadge: { maxWidth: "100%", backgroundColor: "#FEF08A", borderRadius: 6, paddingHorizontal: 5, paddingVertical: 2 },
   variantChoiceUnitBadgeActive: { backgroundColor: "#FDE047" },
-  variantChoice: { width: "23%", minWidth: 50, maxWidth: "24%", flexGrow: 1, flexShrink: 1, paddingHorizontal: 5, paddingVertical: 5, borderRadius: 9, borderWidth: 1, borderColor: "#E2E8F0", backgroundColor: "#FFFFFF", gap: 2 },
+  variantChoice: { width: "23%", minWidth: 50, maxWidth: "24%", minHeight: 60, flexGrow: 1, flexShrink: 1, paddingHorizontal: 6, paddingVertical: 10, justifyContent: "center", borderRadius: 9, borderWidth: 1, borderColor: "#E2E8F0", backgroundColor: "#FFFFFF", gap: 3 },
   variantChoiceActive: { borderColor: "#EAB308", backgroundColor: "#FEF3C7", ...shadow.soft },
   variantChoiceUnavailable: { borderColor: "#FECACA", backgroundColor: "#FFF7F7", opacity: 0.72 },
   variantChoiceTop: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 2 },
@@ -898,10 +905,11 @@ const s = StyleSheet.create({
   sectionTitle: { fontWeight: "800", color: COLORS.text, marginBottom: 6 },
   productDetailsSection: { paddingHorizontal: SPACING.lg, marginTop: SPACING.sm, marginBottom: SPACING.md, gap: 10 },
   productDetailsHeading: { color: COLORS.text, fontSize: 18, fontWeight: "900" },
-  productDetailsCard: { backgroundColor: "#FFFFFF", borderWidth: 1, borderColor: COLORS.border, borderRadius: RADIUS.md, padding: SPACING.md, gap: 8 },
+  productDetailsCard: { position: "relative", backgroundColor: "#FFFFFF", borderWidth: 1, borderColor: COLORS.border, borderRadius: RADIUS.md, padding: SPACING.md, gap: 8 },
   productDetailsTitle: { color: COLORS.text, fontSize: 14, fontWeight: "800" },
   productDescriptionText: { color: COLORS.text, fontSize: 14, lineHeight: 22, fontWeight: "500" },
-  productDescriptionCollapsed: { maxHeight: 220, overflow: "hidden" },
+  productDescriptionMeasureWrap: { position: "absolute", top: SPACING.md, left: SPACING.md, right: SPACING.md, opacity: 0, zIndex: -1 },
+  productDescriptionMeasure: { width: "100%" },
   productDescriptionToggle: { alignSelf: "flex-start", flexDirection: "row", alignItems: "center", gap: 3, paddingHorizontal: 9, paddingVertical: 5, borderRadius: 7, backgroundColor: "#FEF3C7" },
   productDescriptionToggleText: { color: "#92400E", fontSize: 12, fontWeight: "900" },
   productDescriptionEmpty: { color: COLORS.textMuted, fontSize: 13, lineHeight: 20 },
