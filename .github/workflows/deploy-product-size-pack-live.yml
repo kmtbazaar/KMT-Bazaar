@@ -117,6 +117,24 @@ jobs:
         working-directory: frontend
         run: npm install --ignore-scripts --no-audit --no-fund
 
+      - name: Validate admin overview and interactive order activity
+        working-directory: frontend
+        run: |
+          node <<'NODE'
+          const assert = require("node:assert/strict");
+          const fs = require("node:fs");
+          const admin = fs.readFileSync("app/admin/index.tsx", "utf8");
+          const api = fs.readFileSync("src/roleApi.ts", "utf8");
+          const backend = fs.readFileSync("../backend/server.py", "utf8");
+          assert.ok(admin.includes('testID="pending-orders-shortcut"') && admin.includes('colors={["#FDE047", "#FEF3C7"]}'), "Pending Orders shortcut must use a visible yellow treatment.");
+          assert.ok(admin.includes("kpiColumnCount") && admin.includes("kpiCardCompact") && admin.includes("height: 80") && admin.includes("const kpiCards = [") && (admin.match(/<KPI key=/g) || []).length === 8, "All eight overview KPIs must remain in the compact desktop grid.");
+          assert.ok(admin.includes('testID="admin-order-activity-filters"') && admin.includes('testID={`admin-order-activity-filter-${period}`}') && admin.includes("setActivityPeriod(period)"), "Order Activity must provide working daily, weekly and monthly filters.");
+          assert.ok(admin.includes('testID="admin-order-activity-chart"') && admin.includes("setSelectedActivityKey(bucket.start)") && admin.includes("accessibilityRole=\"button\""), "Every chart bar must be touch-selectable and expose its order count.");
+          assert.ok(api.includes("orderActivity: (period: \"daily\" | \"weekly\" | \"monthly\")") && api.includes("/admin/order-activity?period="), "Admin API client must call the order activity endpoint.");
+          assert.ok(backend.includes('@api.get("/admin/order-activity")') && backend.includes('selected_period not in {"daily", "weekly", "monthly"}') && backend.includes('db.orders.count_documents({'), "Backend must return accurate server-aggregated order buckets for all supported periods.");
+          console.log("ADMIN_OVERVIEW_AND_ORDER_ACTIVITY_VALIDATION_PASS");
+          NODE
+
       - name: Validate KMT Bazaar homepage stability and Shop Now Book Now navigation
         working-directory: frontend
         run: |

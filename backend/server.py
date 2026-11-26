@@ -3716,6 +3716,68 @@ async def admin_stats(_=Depends(require_roles("admin"))):
     }
 
 
+@api.get("/admin/order-activity")
+async def admin_order_activity(period: str = "daily", _=Depends(require_roles("admin"))):
+    selected_period = str(period or "daily").strip().lower()
+    if selected_period not in {"daily", "weekly", "monthly"}:
+        raise HTTPException(status_code=400, detail="Period must be daily, weekly or monthly")
+
+    now = datetime.now(timezone.utc)
+    today = now.date()
+    windows = []
+
+    if selected_period == "daily":
+        for days_ago in range(6, -1, -1):
+            day = today - timedelta(days=days_ago)
+            start_at = datetime(day.year, day.month, day.day, tzinfo=timezone.utc)
+            end_at = start_at + timedelta(days=1)
+            label = start_at.strftime("%a")
+            windows.append((start_at, end_at, label))
+    elif selected_period == "weekly":
+        current_week = today - timedelta(days=today.weekday())
+        for weeks_ago in range(7, -1, -1):
+            week_start = current_week - timedelta(weeks=weeks_ago)
+            start_at = datetime(week_start.year, week_start.month, week_start.day, tzinfo=timezone.utc)
+            end_at = start_at + timedelta(days=7)
+            label = start_at.strftime("%d %b")
+            windows.append((start_at, end_at, label))
+    else:
+        current_month_index = now.year * 12 + now.month - 1
+        for months_ago in range(11, -1, -1):
+            month_index = current_month_index - months_ago
+            year = month_index // 12
+            month = month_index % 12 + 1
+            next_month_index = month_index + 1
+            next_year = next_month_index // 12
+            next_month = next_month_index % 12 + 1
+            start_at = datetime(year, month, 1, tzinfo=timezone.utc)
+            end_at = datetime(next_year, next_month, 1, tzinfo=timezone.utc)
+            label = start_at.strftime("%b %y")
+            windows.append((start_at, end_at, label))
+
+    counts = await asyncio.gather(*[
+        db.orders.count_documents({
+            "created_at": {
+                "$gte": start_at.isoformat(),
+                "$lt": end_at.isoformat(),
+            }
+        })
+        for start_at, end_at, _label in windows
+    ])
+
+    return {
+        "period": selected_period,
+        "buckets": [
+            {
+                "start": start_at.isoformat(),
+                "label": label,
+                "orders": count,
+            }
+            for (start_at, _end_at, label), count in zip(windows, counts)
+        ],
+    }
+
+
 # ------------------ ADMIN ROOJGAR APPLICATIONS ------------------
 
 @api.get("/admin/roojgar-applications")

@@ -65,6 +65,9 @@ export default function AdminDashboard() {
   const { width: screenWidth } = useWindowDimensions();
   const { user } = useAuth();
   const [stats, setStats] = useState<any>(null);
+  const [activityPeriod, setActivityPeriod] = useState<"daily" | "weekly" | "monthly">("daily");
+  const [activityData, setActivityData] = useState<Array<{ start: string; label: string; orders: number }>>([]);
+  const [selectedActivityKey, setSelectedActivityKey] = useState("");
   const [pendingStores, setPendingStores] = useState<any[]>([]);
   const [refreshing, setRefreshing] = useState(false);
   const [serviceBookingCount, setServiceBookingCount] = useState(0);
@@ -122,9 +125,27 @@ export default function AdminDashboard() {
     }
   }, []);
 
+  const loadActivity = useCallback(async () => {
+    try {
+      const response = await adminApi.orderActivity(activityPeriod);
+      const buckets = Array.isArray(response?.buckets) ? response.buckets : [];
+      setActivityData(buckets);
+      setSelectedActivityKey((current) =>
+        buckets.some((bucket: any) => bucket.start === current)
+          ? current
+          : String(buckets[buckets.length - 1]?.start || "")
+      );
+    } catch (error) {
+      console.log("Admin order activity load error:", error);
+      setActivityData([]);
+      setSelectedActivityKey("");
+    }
+  }, [activityPeriod]);
+
   useFocusEffect(
     useCallback(() => {
       load();
+      loadActivity();
 
       let cancelled = false;
       loadAdminSettings().then((settings) => {
@@ -147,12 +168,12 @@ export default function AdminDashboard() {
       return () => {
         cancelled = true;
       };
-    }, [load])
+    }, [load, loadActivity])
   );
 
   const onRefresh = async () => {
     setRefreshing(true);
-    await load();
+    await Promise.all([load(), loadActivity()]);
     setRefreshing(false);
   };
 
@@ -252,10 +273,15 @@ export default function AdminDashboard() {
     }
   };
 
-  const maxChart = Math.max(
-    1,
-    ...((stats?.chart || []).map((c: any) => c.orders))
-  );
+  const maxChart = Math.max(1, ...activityData.map((bucket) => bucket.orders));
+  const selectedActivity = activityData.find((bucket) => bucket.start === selectedActivityKey)
+    || activityData[activityData.length - 1]
+    || null;
+  const activityPeriodLabel = activityPeriod === "daily"
+    ? "Last 7 days"
+    : activityPeriod === "weekly"
+      ? "Last 8 weeks"
+      : "Last 12 months";
   const quickActionRows = Array.from(
     { length: Math.ceil(quickActions.length / 3) },
     (_, rowIndex) => quickActions.slice(rowIndex * 3, rowIndex * 3 + 3)
@@ -381,7 +407,7 @@ export default function AdminDashboard() {
             ]}
           >
             <LinearGradient
-              colors={[THEME.brown, THEME.black]}
+              colors={["#FDE047", "#FEF3C7"]}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
               style={s.pendingGradient}
@@ -390,7 +416,7 @@ export default function AdminDashboard() {
                 <MaterialCommunityIcons
                   name="clock-alert-outline"
                   size={23}
-                  color={THEME.orange}
+                  color="#92400E"
                 />
               </View>
 
@@ -476,64 +502,97 @@ export default function AdminDashboard() {
                 <Text style={[s.cardTitle, adminSettings?.themeMode === "night" && s.textNight]}>
                   Order Activity
                 </Text>
-
                 <Animated.View style={[s.activityLiveDot, activityPulseStyle]} />
               </View>
-
               <Text style={[s.cardSub, adminSettings?.themeMode === "night" && s.mutedNight]}>
-                Orders · Last 7 days
+                Orders · {activityPeriodLabel}
               </Text>
             </View>
-
             <View style={s.chartIcon}>
-              <MaterialCommunityIcons
-                name="chart-bar"
-                size={17}
-                color={THEME.orange}
-              />
+              <MaterialCommunityIcons name="chart-bar" size={17} color={THEME.orange} />
             </View>
           </View>
 
-          <View style={s.chartRow}>
-            {(stats?.chart || []).map(
-              (c: any, i: number) => (
-                <Animated.View
-                  key={i}
-                  entering={FadeInUp
-                    .delay(500 + i * 90)
-                    .duration(520)
-                    .springify()}
-                  style={s.chartCol}
+          <View style={s.activityFilterRow} testID="admin-order-activity-filters">
+            {(["daily", "weekly", "monthly"] as const).map((period) => {
+              const active = activityPeriod === period;
+              const label = period === "daily" ? "Daily" : period === "weekly" ? "Weekly" : "Monthly";
+              return (
+                <Pressable
+                  key={period}
+                  testID={`admin-order-activity-filter-${period}`}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: active }}
+                  onPress={() => setActivityPeriod(period)}
+                  style={({ pressed }) => [
+                    s.activityFilter,
+                    active && s.activityFilterActive,
+                    pressed && s.activityFilterPressed,
+                  ]}
                 >
-                  <Text style={s.chartVal}>
-                    {c.orders}
-                  </Text>
-
-                  <View style={s.chartBarWrap}>
-                    <Animated.View
-                      entering={FadeInUp
-                        .delay(540 + i * 90)
-                        .duration(620)
-                        .springify()}
-                      style={[
-                        s.chartBar,
-                        {
-                          height: Math.max(
-                            6,
-                            (c.orders / maxChart) * 72
-                          ),
-                        },
-                      ]}
-                    />
-                  </View>
-
-                  <Text style={s.chartDay}>
-                    {c.day}
-                  </Text>
-                </Animated.View>
-              )
-            )}
+                  <Text style={[s.activityFilterText, active && s.activityFilterTextActive]}>{label}</Text>
+                </Pressable>
+              );
+            })}
           </View>
+
+          <View style={s.chartSelectedSummary} testID="admin-order-activity-selection">
+            <View style={s.chartSelectedDot} />
+            <Text style={s.chartSelectedLabel}>
+              {selectedActivity?.label || "Order activity"}
+            </Text>
+            <Text style={s.chartSelectedValue}>
+              {selectedActivity?.orders ?? 0} orders
+            </Text>
+          </View>
+
+          <View style={s.chartRow} testID="admin-order-activity-chart">
+            {activityData.map((bucket, index) => {
+              const active = bucket.start === selectedActivity?.start;
+              return (
+                <Animated.View
+                  key={bucket.start}
+                  entering={FadeInUp.delay(120 + index * 35).duration(260)}
+                  style={s.chartColOuter}
+                >
+                  <Pressable
+                    testID={`admin-order-activity-point-${index}`}
+                    accessibilityRole="button"
+                    accessibilityLabel={`${bucket.label}: ${bucket.orders} orders`}
+                    accessibilityState={{ selected: active }}
+                    hitSlop={4}
+                    onPress={() => setSelectedActivityKey(bucket.start)}
+                    style={({ pressed }) => [
+                      s.chartCol,
+                      active && s.chartColSelected,
+                      pressed && s.chartColPressed,
+                    ]}
+                  >
+                    <Text style={[s.chartVal, active && s.chartValSelected]}>
+                      {bucket.orders}
+                    </Text>
+                    <View style={[s.chartBarWrap, active && s.chartBarWrapSelected]}>
+                      <Animated.View
+                        style={[
+                          s.chartBar,
+                          active && s.chartBarSelected,
+                          { height: Math.max(5, (bucket.orders / maxChart) * 70) },
+                        ]}
+                      />
+                    </View>
+                    <Text style={[s.chartDay, active && s.chartDaySelected]} numberOfLines={1}>
+                      {bucket.label}
+                    </Text>
+                  </Pressable>
+                </Animated.View>
+              );
+            })}
+          </View>
+          {activityData.length === 0 ? (
+            <Text style={s.chartEmpty} testID="admin-order-activity-empty">
+              No order activity is available for this period.
+            </Text>
+          ) : null}
         </Animated.View>
 
         {/* ===================================================
@@ -833,16 +892,18 @@ function KPI({
           </Text>
         )}
 
-        <View style={[s.kpiTapHint, compact && s.kpiTapHintCompact, dark && s.kpiTapHintNight]}>
-          <Text style={[s.kpiTapHintText, compact && s.kpiTapHintTextCompact, { color }]}>
-            View details
-          </Text>
-          <MaterialCommunityIcons
-            name="chevron-right"
-            size={13}
-            color={color}
-          />
-        </View>
+{!compact ? (
+          <View style={[s.kpiTapHint, compact && s.kpiTapHintCompact, dark && s.kpiTapHintNight]}>
+            <Text style={[s.kpiTapHintText, compact && s.kpiTapHintTextCompact, { color }]}>
+              View details
+            </Text>
+            <MaterialCommunityIcons
+              name="chevron-right"
+              size={13}
+              color={color}
+            />
+          </View>
+        ) : null}
       </Pressable>
     </Animated.View>
   );
@@ -1053,13 +1114,13 @@ const s = StyleSheet.create({
   },
 
   kpiCardCompact: {
-    height: 96,
-    minHeight: 96,
-    maxHeight: 96,
-    padding: 7,
-    borderRadius: 14,
-    shadowRadius: 7,
-    shadowOffset: { width: 0, height: 3 },
+    height: 80,
+    minHeight: 80,
+    maxHeight: 80,
+    padding: 6,
+    borderRadius: 12,
+    shadowRadius: 5,
+    shadowOffset: { width: 0, height: 2 },
   },
 
   kpiPressed: {
@@ -1118,9 +1179,9 @@ const s = StyleSheet.create({
   },
 
   kpiIconCompact: {
-    width: 24,
-    height: 24,
-    borderRadius: 8,
+    width: 21,
+    height: 21,
+    borderRadius: 7,
   },
 
   kpiValue: {
@@ -1131,8 +1192,8 @@ const s = StyleSheet.create({
   },
 
   kpiValueCompact: {
-    fontSize: 15,
-    marginTop: 4,
+    fontSize: 14,
+    marginTop: 2,
   },
 
   kpiLabel: {
@@ -1144,7 +1205,7 @@ const s = StyleSheet.create({
 
   kpiLabelCompact: {
     fontSize: 8,
-    marginTop: 1,
+    marginTop: 0,
   },
 
   kpiSub: {
@@ -1251,11 +1312,132 @@ const s = StyleSheet.create({
     backgroundColor: THEME.success,
   },
 
+  activityFilterRow: {
+    flexDirection: "row",
+    gap: 6,
+    marginTop: 12,
+    marginBottom: 8,
+  },
+
+  activityFilter: {
+    flex: 1,
+    minHeight: 34,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: THEME.border,
+    backgroundColor: "#FAFAF9",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 8,
+  },
+
+  activityFilterActive: {
+    backgroundColor: "#FFF1E8",
+    borderColor: THEME.orange,
+  },
+
+  activityFilterPressed: {
+    opacity: 0.76,
+    transform: [{ scale: 0.98 }],
+  },
+
+  activityFilterText: {
+    color: THEME.muted,
+    fontSize: 11,
+    fontWeight: "800",
+  },
+
+  activityFilterTextActive: {
+    color: THEME.brown,
+  },
+
+  chartSelectedSummary: {
+    minHeight: 34,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 7,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    borderRadius: 10,
+    backgroundColor: "#FFF7ED",
+    marginBottom: 5,
+  },
+
+  chartSelectedDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+    backgroundColor: THEME.orange,
+  },
+
+  chartSelectedLabel: {
+    flex: 1,
+    color: THEME.brown,
+    fontSize: 11,
+    fontWeight: "800",
+  },
+
+  chartSelectedValue: {
+    color: THEME.text,
+    fontSize: 12,
+    fontWeight: "900",
+    fontVariant: ["tabular-nums"],
+  },
+
   chartRow: {
     flexDirection: "row",
-    alignItems: "flex-end",
-    height: 124,
-    marginTop: 8,
+    alignItems: "stretch",
+    minHeight: 124,
+    marginTop: 4,
+  },
+
+  chartColOuter: {
+    flex: 1,
+    minWidth: 0,
+  },
+
+
+
+  chartCol: {
+    flex: 1,
+    minHeight: 124,
+    alignItems: "center",
+    justifyContent: "flex-end",
+    gap: 4,
+    paddingHorizontal: 1,
+    paddingTop: 7,
+    borderRadius: 8,
+  },
+
+  chartColSelected: {
+    backgroundColor: "#FFF7ED",
+  },
+
+  chartColPressed: {
+    opacity: 0.72,
+  },
+
+  chartBarWrapSelected: {
+    backgroundColor: "#FDE68A",
+  },
+
+  chartBarSelected: {
+    backgroundColor: THEME.brown,
+  },
+
+  chartValSelected: {
+    color: THEME.brown,
+  },
+
+  chartDaySelected: {
+    color: THEME.brown,
+  },
+
+  chartEmpty: {
+    color: THEME.muted,
+    fontSize: 11,
+    textAlign: "center",
+    paddingVertical: 12,
   },
 
   chartCol: {
@@ -1268,7 +1450,7 @@ const s = StyleSheet.create({
 
   chartBarWrap: {
     height: 76,
-    width: "42%",
+    width: "52%",
     justifyContent: "flex-end",
     backgroundColor: "#F5F5F4",
     borderRadius: 7,
@@ -1296,35 +1478,36 @@ const s = StyleSheet.create({
 
   pendingCard: {
     marginTop: 0,
-    borderRadius: 20,
+    borderRadius: 16,
     overflow: "hidden",
-    shadowColor: THEME.brown,
-    shadowOpacity: 0.18,
-    shadowRadius: 14,
+    shadowColor: "#D97706",
+    shadowOpacity: 0.12,
+    shadowRadius: 10,
     shadowOffset: {
       width: 0,
-      height: 7,
+      height: 4,
     },
-    elevation: 4,
+    elevation: 3,
   },
 
   pendingGradient: {
-    minHeight: 78,
-    padding: 14,
+    minHeight: 66,
+    paddingHorizontal: 12,
+    paddingVertical: 9,
     flexDirection: "row",
     alignItems: "center",
-    gap: 12,
+    gap: 10,
   },
 
   pendingIcon: {
-    width: 46,
-    height: 46,
-    borderRadius: 15,
-    backgroundColor: "rgba(249,115,22,0.15)",
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    backgroundColor: "rgba(255,255,255,0.58)",
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 1,
-    borderColor: "rgba(249,115,22,0.25)",
+    borderColor: "rgba(146,64,14,0.14)",
   },
 
   pendingContent: {
@@ -1332,22 +1515,22 @@ const s = StyleSheet.create({
   },
 
   pendingTitle: {
-    color: THEME.white,
+    color: "#713F12",
     fontSize: 14,
     fontWeight: "900",
   },
 
   pendingSub: {
-    color: "rgba(255,255,255,0.62)",
+    color: "#92400E",
     fontSize: 10,
     marginTop: 3,
   },
 
   arrowCircle: {
-    width: 35,
-    height: 35,
-    borderRadius: 18,
-    backgroundColor: THEME.orange,
+    width: 31,
+    height: 31,
+    borderRadius: 16,
+    backgroundColor: "#D97706",
     alignItems: "center",
     justifyContent: "center",
   },

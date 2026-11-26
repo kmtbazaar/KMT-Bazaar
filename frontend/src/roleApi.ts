@@ -85,6 +85,11 @@ export const adminApi = {
   stats: () =>
     apiFetch<any>("/admin/stats"),
 
+  orderActivity: (period: "daily" | "weekly" | "monthly") =>
+    apiFetch<{ period: string; buckets: Array<{ start: string; label: string; orders: number }> }>(
+      `/admin/order-activity?period=${encodeURIComponent(period)}`
+    ),
+
   roojgarApplications: (status?: string) =>
     apiFetch<any[]>(
       `/admin/roojgar-applications${status ? `?status=${status}` : ""}`
