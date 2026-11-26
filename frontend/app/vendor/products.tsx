@@ -29,6 +29,7 @@ export default function VendorProducts() {
   const router = useRouter();
   const [products, setProducts] = useState<any[]>([]);
   const [categories, setCategories] = useState<any[]>([]);
+  const [stores, setStores] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -63,12 +64,34 @@ export default function VendorProducts() {
 
   const load = useCallback(async () => {
     try {
-      setProducts(await vendorApi.products());
-      setCategories(await api.categories());
+      const [productList, categoryList, vendorStats] = await Promise.all([
+        vendorApi.products(),
+        api.categories(),
+        vendorApi.stats(),
+      ]);
+      setProducts(Array.isArray(productList) ? productList : []);
+      setCategories(Array.isArray(categoryList) ? categoryList : []);
+      setStores(Array.isArray(vendorStats?.stores) ? vendorStats.stores : []);
     } catch (e) {
       console.log(e);
     }
   }, []);
+
+  // Use the store's complete category-aware editor for both add and edit.
+  const openStoreProducts = (storeId?: string) => {
+    const targetStore =
+      stores.find((store: any) => String(store.id || store._id || "") === String(storeId || "")) ||
+      stores[0];
+    const targetId = String(targetStore?.id || targetStore?._id || "");
+    if (!targetId) {
+      Alert.alert("Store not found", "No store is linked to this vendor account yet.");
+      return;
+    }
+    router.push({
+      pathname: "/vendor/store/[id]",
+      params: { id: targetId, name: String(targetStore?.name || "") },
+    } as any);
+  };
 
   useFocusEffect(
     useCallback(() => {
@@ -107,8 +130,8 @@ export default function VendorProducts() {
       setShowAddModal(false);
       resetForm();
       load();
-    } catch (e) {
-      Alert.alert("Error", "Could not add product.");
+    } catch (e: any) {
+      Alert.alert("Could not add product", e?.message || "Please check the product details and try again.");
     } finally {
       setLoading(false);
     }
@@ -155,7 +178,7 @@ export default function VendorProducts() {
           <MaterialCommunityIcons name="arrow-left" size={24} color="#000" />
         </Pressable>
         <Text style={s.headerTitle}>Products ({products.length})</Text>
-        <Pressable onPress={() => setShowAddModal(true)} style={s.headerAddBtn}>
+        <Pressable onPress={() => openStoreProducts()} style={s.headerAddBtn}>
           <MaterialCommunityIcons name="plus" size={20} color="#fff" />
         </Pressable>
       </View>
@@ -182,9 +205,26 @@ export default function VendorProducts() {
                 {Number(item.stock ?? 0) <= 0 ? " · OUT OF STOCK" : Number(item.stock ?? 0) <= 5 ? " · LOW STOCK" : ""}
               </Text>
             </View>
-            <Pressable onPress={() => handleDelete(item.id, item.name)} hitSlop={10} style={s.editBtn}>
-              <MaterialCommunityIcons name="pencil-outline" size={22} color="#D97706" />
-            </Pressable>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Edit product"
+                onPress={() => openStoreProducts(item.store_id)}
+                hitSlop={10}
+                style={s.editBtn}
+              >
+                <MaterialCommunityIcons name="pencil-outline" size={22} color="#D97706" />
+              </Pressable>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Delete product"
+                onPress={() => handleDelete(item.id, item.name)}
+                hitSlop={10}
+                style={s.editBtn}
+              >
+                <MaterialCommunityIcons name="trash-can-outline" size={21} color="#DC2626" />
+              </Pressable>
+            </View>
           </View>
         )}
       />
