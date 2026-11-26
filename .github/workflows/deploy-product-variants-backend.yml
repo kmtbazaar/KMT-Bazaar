@@ -63,6 +63,30 @@ jobs:
           assert "def _validate_product_category_color_requirements" in source
           assert "async def _vendor_store_ids(vendor_id: str):" in source
           assert "async def _resolve_vendor_item_category(" in source
+          assert "def _product_display_images(" in source and "def _with_product_display_images(" in source
+          tree = __import__("ast").parse(source)
+          image_helpers = [
+              node for node in tree.body
+              if isinstance(node, __import__("ast").FunctionDef)
+              and node.name in {"_product_display_images", "_with_product_display_images"}
+          ]
+          namespace = {}
+          exec(compile(__import__("ast").Module(body=image_helpers, type_ignores=[]), "<image-helper-check>", "exec"), namespace)
+          sample = {
+              "image": "",
+              "images": [],
+              "color_images": {"Black": ["https://cdn.example/black-1.webp", "https://cdn.example/black-2.webp"]},
+              "variants": [{"color_images": {"Blue": ["https://cdn.example/blue-1.webp"]}}],
+          }
+          normalized = namespace["_with_product_display_images"](sample)
+          assert normalized["image"] == "https://cdn.example/black-1.webp"
+          assert normalized["images"] == [
+              "https://cdn.example/black-1.webp",
+              "https://cdn.example/black-2.webp",
+              "https://cdn.example/blue-1.webp",
+          ]
+          print("BACKEND_VARIANT_COLOUR_IMAGES_PRIMARY_GALLERY_VALIDATION_PASS")
+          assert "return [_with_product_display_images(product) for product in products]" in source
           assert '_vendor_store_ids(current["id"])' in source
           assert "await _resolve_vendor_item_category(" in source
           assert "def _normalize_product_colors(raw_colors):" in source

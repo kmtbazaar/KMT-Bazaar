@@ -646,7 +646,7 @@ export default function Product() {
           <View style={s.deliveryCard}>
             <MaterialCommunityIcons name="moped-electric" size={24} color={COLORS.brand} />
             <View style={{ flex: 1 }}>
-              <Text style={s.delTitle}>Free delivery on orders above ₹199</Text>
+              <Text style={s.delTitle}>Free home delivery</Text>
               <Text style={s.delSub}>Estimated delivery: {estimatedDelivery}</Text>
             </View>
           </View>

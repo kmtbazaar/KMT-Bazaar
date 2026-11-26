@@ -1915,7 +1915,7 @@ async def list_products(
         {"_id": 0}
     ).limit(limit).to_list(limit)
 
-    return products
+    return [_with_product_display_images(product) for product in products]
 
 
 @api.get("/products/{product_id}")
@@ -1942,7 +1942,7 @@ async def get_product(product_id: str):
     if not store:
         raise HTTPException(404, "Product not found")
 
-    return p
+    return _with_product_display_images(p)
 
 
 # ------------------ CART ------------------
@@ -3549,6 +3549,56 @@ def _apply_product_variants(product_doc, variants):
     product_doc["stock"] = sum(max(0, int(item.get("stock") or 0)) for item in variants)
 
 
+def _product_display_images(image=None, images=None, color_images=None, variants=None):
+    candidates = []
+
+    def add_image(value):
+        if isinstance(value, str):
+            url = value.strip()
+        elif isinstance(value, dict):
+            url = str(value.get("url") or value.get("uri") or value.get("src") or "").strip()
+        else:
+            url = ""
+        if url and url not in candidates:
+            candidates.append(url)
+
+    add_image(image)
+    for value in images if isinstance(images, list) else []:
+        add_image(value)
+
+    image_maps = [color_images]
+    for variant in variants if isinstance(variants, list) else []:
+        if isinstance(variant, dict):
+            image_maps.append(variant.get("color_images"))
+
+    for image_map in image_maps:
+        if not isinstance(image_map, dict):
+            continue
+        for photo_list in image_map.values():
+            if not isinstance(photo_list, list):
+                continue
+            for photo in photo_list:
+                add_image(photo)
+
+    return candidates
+
+
+def _with_product_display_images(product):
+    if not isinstance(product, dict):
+        return product
+    result = dict(product)
+    display_images = _product_display_images(
+        image=result.get("image"),
+        images=result.get("images"),
+        color_images=result.get("color_images"),
+        variants=result.get("variants"),
+    )
+    if display_images:
+        result["image"] = display_images[0]
+        result["images"] = display_images
+    return result
+
+
 class CategoryIn(BaseModel):
     name: str
     icon: str = "tag"
@@ -4325,7 +4375,8 @@ async def admin_update_order(order_id: str, data: OrderStatusIn, _=Depends(requi
 
 @api.get("/admin/products")
 async def admin_list_products(_=Depends(require_roles("admin"))):
-    return await db.products.find({}, {"_id": 0}).to_list(500)
+    products = await db.products.find({}, {"_id": 0}).to_list(500)
+    return [_with_product_display_images(product) for product in products]
 
 
 @api.post("/admin/products")
@@ -4368,12 +4419,13 @@ async def admin_create_product(data: ProductIn, _=Depends(require_roles("admin")
     product_data["store_id"] = store_id
     product_data["category_id"] = category_id
     doc = {"id": pid, **product_data, "vendor_id": store.get("vendor_id")}
+    doc = _with_product_display_images(doc)
     if doc.get("images") is None:
         doc["images"] = [doc["image"]] if doc.get("image") else []
     if doc.get("mrp") is None: doc["mrp"] = doc["price"]
     await db.products.insert_one(dict(doc))
     doc.pop("_id", None)
-    return doc
+    return _with_product_display_images(doc)
 
 
 @api.put("/admin/products/{pid}")
@@ -4393,7 +4445,7 @@ async def admin_update_product(pid: str, data: ProductIn, _=Depends(require_role
 
     existing = await db.products.find_one(
         {"id": pid},
-        {"_id": 0, "id": 1, "store_id": 1, "category_id": 1, "variants": 1, "price": 1, "mrp": 1, "unit": 1, "stock": 1, "colors": 1, "color_images": 1}
+        {"_id": 0, "id": 1, "store_id": 1, "category_id": 1, "variants": 1, "price": 1, "mrp": 1, "unit": 1, "stock": 1, "colors": 1, "color_images": 1, "image": 1, "images": 1}
     )
     if not existing:
         raise HTTPException(404, "Not found")
@@ -4451,10 +4503,15 @@ async def admin_update_product(pid: str, data: ProductIn, _=Depends(require_role
     upd["store_id"] = store_id
     upd["category_id"] = category_id
     upd["vendor_id"] = store.get("vendor_id")
+    display_product = _with_product_display_images({**existing, **upd})
+    if display_product.get("images"):
+        upd["images"] = display_product["images"]
+        upd["image"] = display_product["image"]
     if upd.get("mrp") is None: upd["mrp"] = upd["price"]
     res = await db.products.update_one({"id": pid}, {"$set": upd})
     if res.matched_count == 0: raise HTTPException(404, "Not found")
-    return await db.products.find_one({"id": pid}, {"_id": 0})
+    updated_product = await db.products.find_one({"id": pid}, {"_id": 0})
+    return _with_product_display_images(updated_product)
 
 
 @api.delete("/admin/products/{pid}")
@@ -6192,7 +6249,8 @@ async def vendor_delete_store_item_category(
 async def vendor_products(current=Depends(require_roles("vendor"))):
     store_ids, _ = await _vendor_store_ids(current["id"])
     if not store_ids: return []
-    return await db.products.find({"store_id": {"$in": store_ids}}, {"_id": 0}).to_list(500)
+    products = await db.products.find({"store_id": {"$in": store_ids}}, {"_id": 0}).to_list(500)
+    return [_with_product_display_images(product) for product in products]
 
 
 @api.post("/vendor/products")
@@ -6242,6 +6300,7 @@ async def vendor_create_product(data: ProductIn, current=Depends(require_roles("
         doc.pop("variants", None)
     doc["images"] = product_images
     doc["image"] = product_images[0] if product_images else str(data.image or "").strip()
+    doc = _with_product_display_images(doc)
     doc["store_id"] = sid
     doc["category_id"] = store_category_id
     doc.update(
@@ -6344,10 +6403,15 @@ async def vendor_update_product(pid: str, data: ProductIn, current=Depends(requi
             data.item_category,
         )
     )
+    display_product = _with_product_display_images({**p, **upd})
+    if display_product.get("images"):
+        upd["images"] = display_product["images"]
+        upd["image"] = display_product["image"]
     if upd.get("mrp") is None:
         upd["mrp"] = upd["price"]
     await db.products.update_one({"id": pid}, {"$set": upd})
-    return await db.products.find_one({"id": pid}, {"_id": 0})
+    updated_product = await db.products.find_one({"id": pid}, {"_id": 0})
+    return _with_product_display_images(updated_product)
 
 
 @api.post("/vendor/products/{pid}/availability")
