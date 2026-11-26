@@ -211,11 +211,15 @@ function ProductModal({ visible, onClose, onSaved, edit, categories, stores }: a
         : "Please add at least 3 product photos before saving.");
       return;
     }
-    if (categoryConfig.requiresColor && !f.colors.length) {
+    const unchangedColourSetup = Boolean(edit) &&
+      categoryId === String(edit.category_id || "") &&
+      JSON.stringify(f.colors || []) === JSON.stringify(edit.colors || []) &&
+      JSON.stringify(f.color_images || {}) === JSON.stringify(edit.color_images || {});
+    if (!unchangedColourSetup && categoryConfig.requiresColor && !f.colors.length) {
       Alert.alert("Select product colour", "This shop category requires at least one colour.");
       return;
     }
-    const missingColorPhotos = categoryConfig.requiresColorImages
+    const missingColorPhotos = !unchangedColourSetup && categoryConfig.requiresColorImages
       ? f.colors.filter((color: string) => {
           const key = Object.keys(f.color_images || {}).find((item) => item.toLowerCase() === color.toLowerCase());
           return !key || !Array.isArray(f.color_images[key]) || !f.color_images[key].some((url: string) => String(url || "").trim());
