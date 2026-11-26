@@ -382,15 +382,51 @@ export default function Product() {
     ? Math.round(((selectedMrp - selectedPrice) / selectedMrp) * 100)
     : 0;
   const checkoutSubtotal = cart?.subtotal || selectedPrice * currentQty;
-  const productDescription = String(p?.description || "").trim();
-  const selectedVariantDescription = String(selectedVariant?.description || "").trim();
-  const productAttributeRows = categoryConfig.productAttributes
-    .map((attribute: any) => ({
-      key: String(attribute.key || attribute.label),
-      label: String(attribute.label || attribute.key),
-      value: String(p?.attributes?.[attribute.key] ?? "").trim(),
-    }))
-    .filter((attribute: any) => attribute.value);
+  const readProductDetailText = (value: any): string => {
+    if (typeof value === "string") return value.trim();
+    if (typeof value === "number" || typeof value === "boolean") return String(value);
+    if (Array.isArray(value)) return value.map(readProductDetailText).filter(Boolean).join("\n");
+    if (value && typeof value === "object") {
+      return readProductDetailText(value.text ?? value.description ?? value.details ?? value.content);
+    }
+    return "";
+  };
+  const productDescription = [
+    p?.description,
+    p?.product_description,
+    p?.productDescription,
+    p?.desc,
+    p?.long_description,
+    p?.short_description,
+    p?.product_details,
+    p?.details,
+    p?.attributes?.description,
+    p?.attributes?.product_description,
+  ].map(readProductDetailText).find(Boolean) || "";
+  const selectedVariantDescription = [
+    selectedVariant?.description,
+    selectedVariant?.details,
+    selectedVariant?.product_description,
+  ].map(readProductDetailText).find(Boolean) || "";
+  const productAttributeRows = Object.entries(
+    p?.attributes && typeof p.attributes === "object" && !Array.isArray(p.attributes) ? p.attributes : {}
+  )
+    .map(([rawKey, rawValue]) => {
+      const key = String(rawKey);
+      const configured = categoryConfig.productAttributes.find((attribute: any) =>
+        String(attribute.key || "").toLowerCase() === key.toLowerCase() ||
+        String(attribute.label || "").toLowerCase() === key.toLowerCase()
+      );
+      return {
+        key,
+        label: String(configured?.label || key.replace(/[_-]+/g, " ").replace(/\\b\\w/g, (letter) => letter.toUpperCase())),
+        value: readProductDetailText(rawValue),
+      };
+    })
+    .filter((attribute: any) => attribute.value && !/^(description|product_description)$/i.test(attribute.key));
+  const deliveryCategoryIdentity = `${productCategory?.name || p?.category_name || ""} ${productCategory?.id || p?.category_id || ""}`;
+  const isFoodOrGroceryCategory = /\\b(food|foods|grocery|groceries|kirana|supermarket|daily needs|provision|food grain|general store|staple|dairy|restaurant|fast food|cafe|bakery|sweet|snack|meal)\\b/i.test(deliveryCategoryIdentity);
+  const estimatedDelivery = isFoodOrGroceryCategory ? "30 minutes" : "4 hours";
 
   return (
     <View style={s.root} testID="product-screen">
@@ -572,41 +608,44 @@ export default function Product() {
             <MaterialCommunityIcons name="moped-electric" size={24} color={COLORS.brand} />
             <View style={{ flex: 1 }}>
               <Text style={s.delTitle}>Free delivery on orders above ₹199</Text>
-              <Text style={s.delSub}>Estimated delivery: 30-45 mins</Text>
+              <Text style={s.delSub}>Estimated delivery: {estimatedDelivery}</Text>
             </View>
           </View>
         </View>
 
-        {(productDescription || selectedVariantDescription || productAttributeRows.length > 0) ? (
-          <View style={s.productDetailsSection} testID="product-details-section">
-            <Text style={s.productDetailsHeading}>Product Details</Text>
-            {productDescription ? (
-              <View style={s.productDetailsCard}>
-                <Text style={s.productDetailsTitle}>
-                  {categoryConfig.showDescription ? categoryConfig.descriptionLabel : "Product description"}
-                </Text>
-                <Text style={s.productDescriptionText} testID="product-description">{productDescription}</Text>
-              </View>
-            ) : null}
-            {selectedVariantDescription ? (
-              <View style={s.productDetailsCard} testID="product-selected-variant-description">
-                <Text style={s.productDetailsTitle}>{selectedUnit} details</Text>
-                <Text style={s.productDescriptionText}>{selectedVariantDescription}</Text>
-              </View>
-            ) : null}
-            {productAttributeRows.length ? (
-              <View style={s.productDetailsCard} testID="product-category-attributes">
-                <Text style={s.productDetailsTitle}>Product specifications</Text>
-                {productAttributeRows.map((attribute: any) => (
-                  <View key={attribute.key} style={s.productAttributeRow}>
-                    <Text style={s.productAttributeLabel}>{attribute.label}</Text>
-                    <Text style={s.productAttributeValue}>{attribute.value}</Text>
-                  </View>
-                ))}
-              </View>
-            ) : null}
-          </View>
-        ) : null}
+        <View style={s.productDetailsSection} testID="product-details-section">
+          <Text style={s.productDetailsHeading}>Product Details</Text>
+          {productDescription ? (
+            <View style={s.productDetailsCard}>
+              <Text style={s.productDetailsTitle}>
+                {categoryConfig.showDescription ? categoryConfig.descriptionLabel : "Product description"}
+              </Text>
+              <Text style={s.productDescriptionText} testID="product-description">{productDescription}</Text>
+            </View>
+          ) : (
+            <View style={s.productDetailsCard} testID="product-description-empty">
+              <Text style={s.productDetailsTitle}>Product description</Text>
+              <Text style={s.productDescriptionEmpty}>Seller has not added a description for this product yet.</Text>
+            </View>
+          )}
+          {selectedVariantDescription ? (
+            <View style={s.productDetailsCard} testID="product-selected-variant-description">
+              <Text style={s.productDetailsTitle}>{selectedUnit} details</Text>
+              <Text style={s.productDescriptionText}>{selectedVariantDescription}</Text>
+            </View>
+          ) : null}
+          {productAttributeRows.length ? (
+            <View style={s.productDetailsCard} testID="product-category-attributes">
+              <Text style={s.productDetailsTitle}>Product specifications</Text>
+              {productAttributeRows.map((attribute: any) => (
+                <View key={attribute.key} style={s.productAttributeRow}>
+                  <Text style={s.productAttributeLabel}>{attribute.label}</Text>
+                  <Text style={s.productAttributeValue}>{attribute.value}</Text>
+                </View>
+              ))}
+            </View>
+          ) : null}
+        </View>
 
         <View style={s.suggestionsSection} testID="product-suggestions">
           <View style={s.suggestionsHeader}>
@@ -815,7 +854,8 @@ const s = StyleSheet.create({
   productDetailsHeading: { color: COLORS.text, fontSize: 18, fontWeight: "900" },
   productDetailsCard: { backgroundColor: "#FFFFFF", borderWidth: 1, borderColor: COLORS.border, borderRadius: RADIUS.md, padding: SPACING.md, gap: 8 },
   productDetailsTitle: { color: COLORS.text, fontSize: 14, fontWeight: "800" },
-  productDescriptionText: { color: COLORS.textSecondary, fontSize: 13, lineHeight: 21 },
+  productDescriptionText: { color: COLORS.text, fontSize: 14, lineHeight: 22, fontWeight: "500" },
+  productDescriptionEmpty: { color: COLORS.textMuted, fontSize: 13, lineHeight: 20 },
   productAttributeRow: { flexDirection: "row", alignItems: "flex-start", gap: 10, paddingVertical: 7, borderBottomWidth: 1, borderBottomColor: COLORS.border },
   productAttributeLabel: { width: "38%", color: COLORS.textMuted, fontSize: 12, fontWeight: "700" },
   productAttributeValue: { flex: 1, minWidth: 0, color: COLORS.text, fontSize: 13, lineHeight: 19, fontWeight: "600" },

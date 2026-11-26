@@ -1405,15 +1405,15 @@ export default function VendorStoreDetail() {
                 />
               </View>
 
-              {/* Description Input */}
-              {categoryConfig.showDescription ? (
-                <View style={s.productDescriptionPanel}>
-                  <Text style={s.sectionLabel}>{categoryConfig.descriptionLabel}</Text>
-                  <TextInput placeholder={categoryConfig.descriptionPlaceholder} placeholderTextColor="#9CA3AF"
-                    value={form.description} onChangeText={(t) => setForm({ ...form, description: t })}
-                    style={[s.inputCompact, { height: 70, textAlignVertical: "top" }]} multiline />
-                </View>
-              ) : null}
+              {/* Product description is available for every store category. */}
+              <View style={s.productDescriptionPanel} testID="vendor-store-add-product-description">
+                <Text style={s.sectionLabel}>{categoryConfig.descriptionLabel || "Product description"}</Text>
+                <TextInput testID="vendor-store-add-product-description-input"
+                  placeholder={categoryConfig.descriptionPlaceholder || "Add clear details about this product"}
+                  placeholderTextColor="#9CA3AF"
+                  value={form.description} onChangeText={(t) => setForm({ ...form, description: t })}
+                  style={[s.inputCompact, { height: 70, textAlignVertical: "top" }]} multiline />
+              </View>
 
               {/* Mark as Trending Checkbox */}
               <Pressable
@@ -1697,15 +1697,15 @@ export default function VendorStoreDetail() {
                 testID="vendor-store-edit-product-images"
               />
 
-              {/* Description Input */}
-              {categoryConfig.showDescription ? (
-                <View style={s.productDescriptionPanel}>
-                  <Text style={s.sectionLabel}>{categoryConfig.descriptionLabel}</Text>
-                  <TextInput placeholder={categoryConfig.descriptionPlaceholder} placeholderTextColor="#9CA3AF"
-                    value={editProductForm.description} onChangeText={(t) => setEditProductForm({ ...editProductForm, description: t })}
-                    style={[s.inputCompact, { height: 70, textAlignVertical: "top" }]} multiline />
-                </View>
-              ) : null}
+              {/* Product description is available for every store category. */}
+              <View style={s.productDescriptionPanel} testID="vendor-store-edit-product-description">
+                <Text style={s.sectionLabel}>{categoryConfig.descriptionLabel || "Product description"}</Text>
+                <TextInput testID="vendor-store-edit-product-description-input"
+                  placeholder={categoryConfig.descriptionPlaceholder || "Add clear details about this product"}
+                  placeholderTextColor="#9CA3AF"
+                  value={editProductForm.description} onChangeText={(t) => setEditProductForm({ ...editProductForm, description: t })}
+                  style={[s.inputCompact, { height: 70, textAlignVertical: "top" }]} multiline />
+              </View>
 
               {/* Mark as Trending Checkbox */}
               <Pressable
