@@ -534,8 +534,8 @@ const s = StyleSheet.create({
   wishlistUnitBadge: { paddingHorizontal: 4, paddingVertical: 0, borderRadius: 4 },
   recommendationUnitBadge: { paddingHorizontal: 4, paddingVertical: 0, borderRadius: 4 },
   unit: {
-    fontSize: 10,
-    lineHeight: 13,
+    fontSize: 11,
+    lineHeight: 14,
     fontWeight: "900",
     color: "#713F12",
   },
