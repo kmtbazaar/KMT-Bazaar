@@ -4391,7 +4391,7 @@ async def admin_update_product(pid: str, data: ProductIn, _=Depends(require_role
 
     existing = await db.products.find_one(
         {"id": pid},
-        {"_id": 0, "id": 1, "store_id": 1, "variants": 1, "price": 1, "mrp": 1, "unit": 1, "stock": 1, "colors": 1}
+        {"_id": 0, "id": 1, "store_id": 1, "category_id": 1, "variants": 1, "price": 1, "mrp": 1, "unit": 1, "stock": 1, "colors": 1, "color_images": 1}
     )
     if not existing:
         raise HTTPException(404, "Not found")
@@ -4427,11 +4427,24 @@ async def admin_update_product(pid: str, data: ProductIn, _=Depends(require_role
     category = await db.categories.find_one({"id": category_id}, {"_id": 0, "id": 1, "name": 1, "product_fields": 1})
     if not category:
         raise HTTPException(400, "Selected shop category was not found")
-    _validate_product_category_color_requirements(
-        category,
-        upd.get("colors", existing.get("colors", [])),
-        upd.get("color_images", existing.get("color_images", {}))
+    existing_colors = existing.get("colors") or []
+    existing_color_images = existing.get("color_images") or {}
+    next_colors = upd.get("colors", existing_colors)
+    next_color_images = upd.get("color_images", existing_color_images)
+    # Existing legacy listings may predate category colour-photo rules. Allow
+    # unrelated edits without forcing admins to rebuild an unchanged gallery.
+    # Validate strictly whenever the category, selected colours, or photo map changes.
+    colour_configuration_changed = (
+        category_id != str(existing.get("category_id") or "")
+        or next_colors != existing_colors
+        or next_color_images != existing_color_images
     )
+    if colour_configuration_changed:
+        _validate_product_category_color_requirements(
+            category,
+            next_colors,
+            next_color_images
+        )
 
     upd["store_id"] = store_id
     upd["category_id"] = category_id
