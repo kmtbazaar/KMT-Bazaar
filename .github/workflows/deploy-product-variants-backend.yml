@@ -658,6 +658,8 @@ jobs:
           source = replace_or_insert_function(source, candidate_source, "_preserve_product_variant_descriptions", "def _apply_product_variants(")
           source = replace_or_insert_function(source, candidate_source, "_validate_product_variant_colors", "def _preserve_product_variant_descriptions(")
           source = replace_or_insert_function(source, candidate_source, "_validate_product_category_color_requirements", "def _apply_product_variants(")
+          # Ensure production receives this helper; /vendor/stats returns 500 without it.
+          source = replace_or_insert_function(source, candidate_source, "_vendor_store_ids", "async def _resolve_vendor_item_category(")
 
           def replace_product_route(live_source, candidate, function_name):
               marker = f"async def {function_name}("
@@ -867,6 +869,14 @@ jobs:
             exit 1
           fi
           echo "BACKEND_PRODUCT_COLOUR_NORMALIZER_VALIDATION_PASS"
+ 
+          if ! grep -Fq 'async def _vendor_store_ids(vendor_id: str):' "$TARGET" \\
+            || ! grep -Fq 'store_data = await _vendor_store_ids(current["id"])' "$TARGET"; then
+            echo "BACKEND_VENDOR_STORE_LOOKUP_HELPER_MISSING"
+            rollback
+            exit 1
+          fi
+          echo "BACKEND_VENDOR_STORE_LOOKUP_HELPER_VALIDATION_PASS"
 
           if ! grep -Fq 'Each size/pack option owns its colour palette.' "$TARGET"; then
             echo "BACKEND_SIZE_SPECIFIC_COLOUR_VALIDATION_PATCH_MISSING"
