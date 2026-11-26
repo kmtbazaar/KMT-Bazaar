@@ -1,0 +1,123 @@
+name: Diagnose KMT Bazaar vendor store data
+
+on:
+  push:
+    branches:
+      - customer-live
+    paths:
+      - ".github/workflows/diagnose-vendor-store-data.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: customer-live
+
+      - name: Configure Hostinger SSH
+        env:
+          HOSTINGER_HOST: ${{ secrets.HOSTINGER_HOST }}
+          HOSTINGER_USER: ${{ secrets.HOSTINGER_USER }}
+          HOSTINGER_SSH_KEY: ${{ secrets.HOSTINGER_SSH_KEY }}
+          HOSTINGER_PORT: ${{ secrets.HOSTINGER_PORT }}
+        run: |
+          set -euo pipefail
+          PORT="${HOSTINGER_PORT:-22}"
+          mkdir -p "$HOME/.ssh"
+          chmod 700 "$HOME/.ssh"
+          printf '%s\\n' "$HOSTINGER_SSH_KEY" > "$HOME/.ssh/kmt-bazaar-diagnostic-key"
+          chmod 600 "$HOME/.ssh/kmt-bazaar-diagnostic-key"
+          ssh-keyscan -p "$PORT" -H "$HOSTINGER_HOST" >> "$HOME/.ssh/known_hosts" 2>/dev/null
+          printf 'port=%s\\n' "$PORT" >> "$GITHUB_OUTPUT"
+
+      - name: Read-only vendor, store, product and order database diagnostics
+        env:
+          HOSTINGER_HOST: ${{ secrets.HOSTINGER_HOST }}
+          HOSTINGER_USER: ${{ secrets.HOSTINGER_USER }}
+          HOSTINGER_PORT: ${{ secrets.HOSTINGER_PORT }}
+        run: |
+          set -euo pipefail
+          PORT="${HOSTINGER_PORT:-22}"
+          DEST="${HOSTINGER_USER}@${HOSTINGER_HOST}"
+          ssh -o BatchMode=yes -o ConnectTimeout=15 -o ServerAliveInterval=15 -o ServerAliveCountMax=3 \
+            -i "$HOME/.ssh/kmt-bazaar-diagnostic-key" -p "$PORT" "$DEST" 'bash -s' <<'REMOTE'
+          set -Eeuo pipefail
+          SERVICE=kmt-bazaar-com.service
+          PID="$(systemctl show "$SERVICE" -p MainPID --value)"
+          test "$PID" -gt 1
+          PYTHON_BIN="$(readlink -f "/proc/$PID/exe")"
+          test -x "$PYTHON_BIN"
+          cd /root/KMT-Bazaar-com/backend
+          "$PYTHON_BIN" - <<'PY'
+          import asyncio
+          import json
+          from collections import Counter
+          from pathlib import Path
+          import server
+
+          async def main():
+              await server.db.command("ping")
+              db = server.db
+              summary = {
+                  "database_connection": "ok",
+                  "users": await db.users.count_documents({}),
+                  "customers": await db.users.count_documents({"role": "customer"}),
+                  "vendors_all": await db.users.count_documents({"role": "vendor"}),
+                  "store_vendors": await db.users.count_documents({"role": "vendor", "vendor_type": {"$ne": "service"}}),
+                  "service_vendors": await db.users.count_documents({"role": "vendor", "vendor_type": "service"}),
+                  "delivery_partners": await db.users.count_documents({"role": "delivery"}),
+                  "stores_all": await db.stores.count_documents({}),
+                  "stores_approved": await db.stores.count_documents({"is_approved": True}),
+                  "products_all": await db.products.count_documents({}),
+                  "orders_all": await db.orders.count_documents({}),
+              }
+
+              stores = await db.stores.find({}, {"_id": 0}).to_list(2000)
+              key_counts = Counter()
+              for store in stores:
+                  for key in ("vendor_id", "owner_id", "user_id", "vendor_user_id", "vendor_email", "owner_email", "phone", "vendor_phone", "owner_phone"):
+                      if store.get(key) not in (None, "", [], {}):
+                          key_counts[key] += 1
+                  if isinstance(store.get("vendor"), dict):
+                      key_counts["vendor_object"] += 1
+                  if isinstance(store.get("owner"), dict):
+                      key_counts["owner_object"] += 1
+
+              summary["store_owner_field_presence"] = dict(key_counts)
+              vendors = await db.users.find(
+                  {"role": "vendor"},
+                  {"_id": 0, "id": 1, "vendor_type": 1, "active": 1}
+              ).to_list(1000)
+
+              per_vendor = []
+              for index, vendor in enumerate(vendors, 1):
+                  vendor_id = str(vendor.get("id") or "")
+                  if not vendor_id:
+                      continue
+                  ids, owned_stores = await server._vendor_store_ids(vendor_id)
+                  product_count = await db.products.count_documents({"store_id": {"$in": ids}}) if ids else 0
+                  product_docs = await db.products.find(
+                      {"store_id": {"$in": ids}}, {"_id": 0, "id": 1}
+                  ).to_list(3000) if ids else []
+                  product_ids = [x["id"] for x in product_docs if x.get("id")]
+                  order_count = await db.orders.count_documents({"items.product_id": {"$in": product_ids}}) if product_ids else 0
+                  per_vendor.append({
+                      "vendor_index": index,
+                      "vendor_type": vendor.get("vendor_type") or "legacy/missing",
+                      "active": vendor.get("active", True),
+                      "stores_matched": len(owned_stores),
+                      "products_matched": product_count,
+                      "orders_matched": order_count,
+                  })
+
+              summary["vendor_panel_results"] = per_vendor
+              print("KMT_VENDOR_DATA_DIAGNOSTICS=" + json.dumps(summary, sort_keys=True))
+              await db.client.close()
+
+          asyncio.run(main())
+          PY
+          REMOTE
