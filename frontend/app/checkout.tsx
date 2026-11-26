@@ -11,6 +11,7 @@ import * as Location from "expo-location";
 import { api, isProductDeliveryAvailableAtPincode, PRODUCT_DELIVERY_PINCODE, PRODUCT_DELIVERY_STATE } from "@/src/api";
 import { useCart } from "@/src/CartContext";
 import { COLORS, RADIUS, SPACING } from "@/src/theme";
+import { formatRupees } from "@/src/utils/formatRupees";
 
 export default function Checkout() {
   const router = useRouter();
@@ -468,10 +469,10 @@ export default function Checkout() {
 
           <Text style={s.section}>Order Summary</Text>
           <View style={s.summary}>
-            <Row l="Subtotal" v={`₹${cart?.subtotal || 0}`} />
-            <Row l="Delivery" v={cart?.delivery_fee ? `₹${cart?.delivery_fee}` : "FREE"} />
+            <Row l="Subtotal" v={formatRupees(cart?.subtotal || 0)} />
+            <Row l="Delivery" v={cart?.delivery_fee ? formatRupees(cart.delivery_fee) : "FREE"} />
             <View style={s.divider} />
-            <Row l="Total" v={`₹${cart?.total || 0}`} bold />
+            <Row l="Total" v={formatRupees(cart?.total || 0)} bold />
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -480,7 +481,7 @@ export default function Checkout() {
           <LinearGradient colors={[COLORS.accent, COLORS.accentDark]} style={[s.placeBtn, (!selectedAddr || loading || showForm || selectedAddressUnavailable) && { opacity: 0.6 }]}>
             {loading ? <ActivityIndicator color="#fff" /> : (
               <>
-                <Text style={s.placeText}>Place Order · ₹{cart?.total || 0}</Text>
+                <Text style={s.placeText}>Place Order · {formatRupees(cart?.total || 0)}</Text>
                 <MaterialCommunityIcons name="arrow-right" color="#fff" size={20} />
               </>
             )}
