@@ -4756,7 +4756,7 @@ async def admin_vendor_stores(vendor_id: str, _=Depends(require_roles("admin")))
     vendor = await db.users.find_one({"id": vendor_id, "role": Role.VENDOR.value}, {"_id": 0, "id": 1, "name": 1, "email": 1, "phone": 1, "active": 1, "vendor_type": 1, "service_type": 1})
     if not vendor:
         raise HTTPException(404, "Vendor not found")
-    stores = await db.stores.find({"vendor_id": vendor_id}, {"_id": 0}).sort("name", 1).to_list(100)
+    _, stores = await _vendor_store_ids(vendor_id)
     return {"vendor": vendor, "stores": stores}
 
 @api.put("/admin/stores/{store_id}")
@@ -5719,8 +5719,60 @@ async def public_photography_showcase():
 
 # ------------------ VENDOR ------------------
 async def _vendor_store_ids(vendor_id: str):
-    stores = await db.stores.find({"vendor_id": vendor_id}, {"_id": 0}).to_list(50)
-    return [s["id"] for s in stores], stores
+    # Support both the current vendor_id relation and legacy store ownership
+    # fields. Older store records may use owner_id/user_id or nested owner/vendor
+    # references, which must still appear on the vendor dashboard.
+    vendor = await db.users.find_one(
+        {"id": vendor_id, "role": Role.VENDOR.value},
+        {"_id": 0, "email": 1, "phone": 1}
+    )
+
+    ownership_filters = [
+        {"vendor_id": vendor_id},
+        {"owner_id": vendor_id},
+        {"user_id": vendor_id},
+        {"vendor_user_id": vendor_id},
+        {"vendor": vendor_id},
+        {"owner": vendor_id},
+        {"vendor.id": vendor_id},
+        {"vendor._id": vendor_id},
+        {"owner.id": vendor_id},
+        {"owner._id": vendor_id},
+    ]
+
+    vendor_email = normalize_email((vendor or {}).get("email"))
+    if vendor_email:
+        email_pattern = {"$regex": f"^{re.escape(vendor_email)}$", "$options": "i"}
+        ownership_filters.extend([
+            {"email": email_pattern},
+            {"vendor_email": email_pattern},
+            {"owner_email": email_pattern},
+            {"vendor.email": email_pattern},
+            {"owner.email": email_pattern},
+        ])
+
+    vendor_phone = normalize_phone((vendor or {}).get("phone"))
+    if vendor_phone:
+        phone_values = list({
+            vendor_phone,
+            f"91{vendor_phone}",
+            f"+91{vendor_phone}",
+            f"0{vendor_phone}",
+        })
+        ownership_filters.extend([
+            {"phone": {"$in": phone_values}},
+            {"vendor_phone": {"$in": phone_values}},
+            {"owner_phone": {"$in": phone_values}},
+            {"vendor.phone": {"$in": phone_values}},
+            {"owner.phone": {"$in": phone_values}},
+        ])
+
+    stores = await db.stores.find(
+        {"$or": ownership_filters},
+        {"_id": 0}
+    ).sort("name", 1).to_list(200)
+    store_ids = [str(store.get("id")) for store in stores if store.get("id")]
+    return store_ids, stores
 
 
 async def _resolve_vendor_item_category(
