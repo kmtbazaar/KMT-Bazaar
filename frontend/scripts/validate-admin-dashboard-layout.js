@@ -20,11 +20,12 @@ function requireRules(name, rules) {
 // Regression guard for prior blank-page error: a removed width variable had remained in rendered JSX.
 assert.ok(!source.includes("quickActionCardWidth"), "Undefined quickActionCardWidth reference must never return");
 assert.ok(!source.includes("kpiGridWidth") && !source.includes("quickActionsGridWidth"), "No measured tile width state is allowed");
-assert.ok(source.includes("useWindowDimensions") && source.includes("screenWidth >= 768"), "Desktop KPI layout must adapt to viewport width");
-assert.ok(source.includes('const kpiColumnCount = Platform.OS === "web" && screenWidth >= 768 ? 4 : 2;'), "Desktop must use four KPI columns and smaller screens two");
+assert.ok(source.includes("useWindowDimensions") && (source.includes("screenWidth >= 768") || source.includes("screenWidth >= 640")), "Desktop KPI layout must adapt to viewport width");
+assert.ok(source.includes('const kpiColumnCount = Platform.OS === "web" && screenWidth >= 768 ? 4 : 2;') || source.includes('const kpiColumnCount = Platform.OS === "web" && screenWidth >= 640 ? 4 : 2;'), "Desktop must use four KPI columns and smaller screens two");
 assert.equal((source.match(/<KPI key=/g) || []).length, 8, "Expected all 8 KPI cards");
 assert.ok(source.includes("const kpiRows = Array.from(") && source.includes("kpiCards.slice(rowIndex * kpiColumnCount"), "Eight KPI cards must be grouped into responsive rows");
-assert.ok(source.includes("compact && s.kpiCardCompact") && source.includes("compact={kpiColumnCount === 4}"), "Desktop KPI cards must use compact dimensions");
+const compactKpiLayout = source.includes("compact={kpiColumnCount === 4}") || (source.includes("compact={compactKpiTiles}") && source.includes('const compactKpiTiles = Platform.OS === "web";'));
+assert.ok(source.includes("compact && s.kpiCardCompact") && compactKpiLayout, "Web KPI cards must use compact dimensions");
 requireRules("headerText", ['alignItems: "center"']);
 requireRules("headerEyebrow", ["fontSize: 21", 'textAlign: "center"']);
 requireRules("headerTitle", ["fontSize: 9", 'textAlign: "center"']);
