@@ -3,6 +3,7 @@ const path = require("node:path");
 const assert = require("node:assert/strict");
 
 const source = fs.readFileSync("app/admin/index.tsx", "utf8");
+const adminActions = fs.readFileSync("src/adminSettings.ts", "utf8");
 
 function styleBlock(name) {
   const marker = `  ${name}: {`;
@@ -29,6 +30,13 @@ assert.ok(source.includes("compact && s.kpiCardCompact") && compactKpiLayout, "W
 requireRules("headerText", ['alignItems: "center"']);
 requireRules("headerEyebrow", ["fontSize: 21", 'textAlign: "center"']);
 requireRules("headerTitle", ["fontSize: 9", 'textAlign: "center"']);
+assert.ok(source.includes("AnimatedBrandLogo size={60}"), "Admin profile brand logo must be enlarged");
+requireRules("logoBox", ["width: 64", "height: 64"]);
+requireRules("logoutButton", ['marginLeft: "auto"', "zIndex: 2"]);
+const overviewDuplicateActions = ["Customers", "Vendors", "Delivery Partners", "Vendor Service", "Service Bookings", "All Orders", "Commission"];
+for (const label of overviewDuplicateActions) assert.ok(!adminActions.includes(`label: "${label}"`), `Overview duplicate must not be a Quick Action: ${label}`);
+for (const label of ["Products", "Categories", "Daily Services", "Banners", "Roojgar"]) assert.ok(adminActions.includes(`label: "${label}"`), `Distinct Quick Action must remain: ${label}`);
+assert.ok(adminActions.includes("validLabels") && adminActions.includes("filter((label: any) => validLabels.has(label))"), "Old saved quick-action entries must be cleaned against the current allowed list");
 assert.ok(source.includes("quickActionRows.map((row, rowIndex)"), "Quick Actions must use explicit three-card rows");
 assert.ok(source.includes("row.length < 3"), "Last Quick Actions row must retain empty spacer columns");
 
