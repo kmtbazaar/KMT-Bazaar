@@ -17,6 +17,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { adminApi } from "@/src/roleApi";
 import { COLORS, RADIUS, SPACING } from "@/src/theme";
+import { formatRupees } from "@/src/utils/formatRupees";
 
 const STATUSES = [
   { key: "all", label: "All" },
@@ -270,7 +271,7 @@ export default function AdminOrders() {
                   </Text>
 
                   <Text style={s.total}>
-                    ₹{item.total} ·{" "}
+                    {formatRupees(item.total)} ·{" "}
                     {item.payment_method?.toUpperCase()}
                   </Text>
                 </View>
