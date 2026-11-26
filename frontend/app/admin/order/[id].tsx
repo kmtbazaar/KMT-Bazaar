@@ -17,6 +17,7 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { adminApi } from "@/src/roleApi";
 import { COLORS, RADIUS, SPACING } from "@/src/theme";
+import { formatRupees } from "@/src/utils/formatRupees";
 
 export default function AdminOrderDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -195,7 +196,7 @@ export default function AdminOrderDetail() {
                 </View>
 
                 <Text style={s.bold}>
-                  ₹{it.line_total}
+                  {formatRupees(it.line_total)}
                 </Text>
               </View>
             )
@@ -227,27 +228,27 @@ export default function AdminOrderDetail() {
         <Box title="Bill Summary">
           <Row
             l="Subtotal"
-            v={`₹${order.subtotal ?? 0}`}
+            v={formatRupees(order.subtotal ?? 0)}
           />
 
           <Row
             l="Delivery"
             v={
               order.delivery_fee
-                ? `₹${order.delivery_fee}`
+                ? formatRupees(order.delivery_fee)
                 : "FREE"
             }
           />
 
           {Number(order.tax ?? 0) > 0 && (
-            <Row l="Tax (previous order)" v={`₹${order.tax}`} />
+            <Row l="Tax (previous order)" v={formatRupees(order.tax)} />
           )}
 
           <View style={s.divider} />
 
           <Row
             l="Total Paid"
-            v={`₹${order.total ?? 0}`}
+            v={formatRupees(order.total ?? 0)}
             bold
           />
 
