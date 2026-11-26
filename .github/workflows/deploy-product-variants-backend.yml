@@ -683,7 +683,7 @@ jobs:
 
           source = replace_or_insert_async_function(
               source, candidate_source, "_vendor_store_ids",
-              "async def _resolve_vendor_item_category("
+              "async def vendor_create_store("
           )
 
           def replace_product_route(live_source, candidate, function_name):
