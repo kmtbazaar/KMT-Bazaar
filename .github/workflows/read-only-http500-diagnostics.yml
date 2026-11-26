@@ -1,0 +1,100 @@
+name: Read-only KMT Bazaar HTTP 500 diagnostics
+
+on:
+  push:
+    branches:
+      - customer-live
+    paths:
+      - ".github/workflows/read-only-http500-diagnostics.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  inspect-production:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Configure production SSH
+        env:
+          HOSTINGER_HOST: ${{ secrets.HOSTINGER_HOST }}
+          HOSTINGER_USER: ${{ secrets.HOSTINGER_USER }}
+          HOSTINGER_SSH_KEY: ${{ secrets.HOSTINGER_SSH_KEY }}
+          HOSTINGER_PORT: ${{ secrets.HOSTINGER_PORT }}
+        run: |
+          set -euo pipefail
+          for key in HOSTINGER_HOST HOSTINGER_USER HOSTINGER_SSH_KEY; do
+            if [ -z "${!key:-}" ]; then
+              echo "::error::Missing required Actions secret: $key"
+              exit 1
+            fi
+          done
+          PORT="${HOSTINGER_PORT:-22}"
+          mkdir -p "$HOME/.ssh"
+          chmod 700 "$HOME/.ssh"
+          printf '%s\n' "$HOSTINGER_SSH_KEY" > "$HOME/.ssh/kmt_bazaar_diagnostics_key"
+          chmod 600 "$HOME/.ssh/kmt_bazaar_diagnostics_key"
+          ssh-keyscan -p "$PORT" -H "$HOSTINGER_HOST" >> "$HOME/.ssh/known_hosts" 2>/dev/null
+          printf 'port=%s\n' "$PORT" >> "$GITHUB_OUTPUT"
+      - name: Read recent backend and Nginx errors
+        env:
+          HOSTINGER_HOST: ${{ secrets.HOSTINGER_HOST }}
+          HOSTINGER_USER: ${{ secrets.HOSTINGER_USER }}
+          HOSTINGER_PORT: ${{ steps.configure.outputs.port }}
+        run: |
+          set -euo pipefail
+          RAW="$RUNNER_TEMP/kmt-http500-diagnostics.log"
+          DEST="${HOSTINGER_USER}@${HOSTINGER_HOST}"
+          timeout 90s ssh -o BatchMode=yes -o ConnectTimeout=15 -o ServerAliveInterval=15 -o ServerAliveCountMax=3 \
+            -i "$HOME/.ssh/kmt_bazaar_diagnostics_key" -p "$HOSTINGER_PORT" "$DEST" '
+              echo "__SERVICE_STATE__"
+              systemctl is-active kmt-bazaar-com.service || true
+              systemctl show kmt-bazaar-com.service -p ActiveState -p SubState -p ExecMainStartTimestamp --no-pager || true
+              echo "__BACKEND_JOURNAL__"
+              journalctl -u kmt-bazaar-com.service --since "12 hours ago" -n 1800 --no-pager -o short-iso 2>&1 || true
+              echo "__NGINX_ERRORS__"
+              tail -n 200 /var/log/nginx/error.log 2>/dev/null || true
+            ' > "$RAW"
+          python3 - "$RAW" <<'PY'
+          import re
+          import sys
+          from pathlib import Path
+
+          lines = Path(sys.argv[1]).read_text(errors="replace").splitlines()
+          cleaned = []
+          for line in lines:
+              line = re.sub(r"(?i)(authorization\\s*[:=]\\s*bearer\\s+)[^\\s,]+", r"\\1[REDACTED]", line)
+              line = re.sub(r"(?i)((?:access_?token|refresh_?token|password|secret)\\s*[:=]\\s*)[^\\s,]+", r"\\1[REDACTED]", line)
+              line = re.sub(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}", "[EMAIL]", line)
+              line = re.sub(r"(?<!\\d)(?:\\+?91[- ]?)?[6-9]\\d{9}(?!\\d)", "[PHONE]", line)
+              cleaned.append(line)
+
+          hits = []
+          for i, line in enumerate(cleaned):
+              low = line.lower()
+              if (
+                  "__service_state__" in low
+                  or "__backend_journal__" in low
+                  or "__nginx_errors__" in low
+                  or "traceback" in low
+                  or "exception" in low
+                  or "internal server error" in low
+                  or re.search(r"\\b500\\b", low)
+                  or "error" in low
+                  or "upstream prematurely closed" in low
+                  or "connect() failed" in low
+              ):
+                  hits.extend(range(max(0, i - 4), min(len(cleaned), i + 28)))
+          selected = sorted(set(hits))
+          if not selected:
+              print("NO_BACKEND_OR_NGINX_ERROR_MARKERS_FOUND")
+              print("TOTAL_LOG_LINES=" + str(len(cleaned)))
+          else:
+              selected = selected[-520:]
+              previous = None
+              for i in selected:
+                  if previous is not None and i > previous + 1:
+                      print("... [log lines omitted] ...")
+                  print(cleaned[i])
+                  previous = i
+              print("MATCHED_LOG_LINES=" + str(len(selected)))
+          PY
