@@ -202,6 +202,14 @@ jobs:
           const uploader = fs.readFileSync("src/components/ProductImagesUploader.tsx", "utf8");
           const adminVendor = fs.readFileSync("src/components/AdminVendorProducts.tsx", "utf8");
           const productCard = fs.readFileSync("src/components/ProductCard.tsx", "utf8");
+          const formatRupees = fs.readFileSync("src/utils/formatRupees.ts", "utf8");
+          const customerOrders = fs.readFileSync("app/orders/index.tsx", "utf8");
+          const customerOrderDetail = fs.readFileSync("app/orders/[id].tsx", "utf8");
+          const cart = fs.readFileSync("app/(tabs)/cart.tsx", "utf8");
+          const checkout = fs.readFileSync("app/checkout.tsx", "utf8");
+          const adminOrders = fs.readFileSync("app/admin/orders.tsx", "utf8");
+          const adminOrderDetail = fs.readFileSync("app/admin/order/[id].tsx", "utf8");
+          const vendorOrders = fs.readFileSync("app/vendor/orders.tsx", "utf8");
           const tabsLayout = fs.readFileSync("app/(tabs)/_layout.tsx", "utf8");
           const cartScreen = fs.readFileSync("app/(tabs)/cart.tsx", "utf8");
           const cartContext = fs.readFileSync("src/CartContext.tsx", "utf8");
@@ -216,6 +224,9 @@ jobs:
           assert.ok(api.includes("MAX_PRODUCT_IMAGE_SOURCE_BYTES = 10 * 1024 * 1024") && api.includes("MAX_PRODUCT_IMAGE_UPLOAD_BYTES = 250 * 1024"), "Production API must allow 10 MB product-photo originals and limit compressed browser uploads to 250 KB.");
           assert.ok(productCard.includes("height: 155,") && productCard.includes('contentFit="contain"'), "Customer product cards must display larger full photos without cropping.");
           assert.ok(productCard.includes("unitBadge") && productCard.includes('backgroundColor: "#FEF08A"') && productCard.includes('fontWeight: "900"'), "Product unit labels such as 1 pc must use bold yellow highlight pills.");
+          assert.ok(formatRupees.includes('Intl.NumberFormat("en-IN"') && productCard.includes("formatRupees(p.price)") && customer.includes("formatRupees(selectedPrice)"), "Product prices must use Indian rupee grouping such as ₹75,000.");
+          assert.ok(customerOrders.includes("formatRupees(item.total)") && customerOrderDetail.includes("formatRupees(order.total)") && cart.includes("formatRupees(cart.total)") && checkout.includes("formatRupees(cart?.total || 0)"), "Customer cart, checkout and order totals must use grouped rupee formatting.");
+          assert.ok(adminOrders.includes("formatRupees(item.total)") && adminOrderDetail.includes("formatRupees(order.total ?? 0)") && vendorOrders.includes("return formatRupees(value)"), "Admin and vendor order totals must use grouped rupee formatting.");
           assert.ok(tabsLayout.includes('const isMobileTabBar = Platform.OS !== "web" || width <= 1024;') && tabsLayout.includes("const insets = useSafeAreaInsets();") && tabsLayout.includes('bottom: isMobileTabBar && Platform.OS === "web" ? -28 : -18') && tabsLayout.includes("height: isMobileTabBar ? 92 + insets.bottom : 82") && tabsLayout.includes("paddingBottom: isMobileTabBar ? insets.bottom + 8 : 0") && tabsLayout.includes("tabBarItemStyle: {") && tabsLayout.includes("flex: 1") && tabsLayout.includes("minWidth: 0") && tabsLayout.includes('justifyContent: isMobileTabBar ? "flex-end" : "center"') && tabsLayout.includes("paddingBottom: 0"), "Mobile customer taskbar items must use equal-width slots, zero bottom offset, and the device safe-area inset.");
           assert.ok(backend.includes("MAX_UPLOAD_BYTES = 10 * 1024 * 1024") && backend.includes("PRODUCT_IMAGE_MAX_BYTES = 240 * 1024") && backend.includes("_encode_product_webp(image)"), "Backend must accept product-photo originals up to 10 MB and store them as WebP at or below 240 KB.");
           assert.ok(vendor.includes("vendor-store-add-product-size-pack-picker"), "Actual store vendor Add Product screen must render size/pack options");
@@ -291,8 +302,8 @@ jobs:
           assert.ok(customer.includes("categoryConfig.showColors && selectedVariantColors.length"), "Customer colour selector must respect the Shop Category and selected RAM/Storage option.");
           assert.ok(customer.includes("p?.color_images") && customer.includes("productColorThumb"), "Customer must show matching colour photos below the main product gallery.");
           assert.ok(customer.includes("{categoryConfig.showVariants ? (") && customer.includes("categoryConfig.showDescription") && customer.includes("p?.description"), "Customer detail must retain variants and display saved product descriptions.");
-          assert.ok(customer.includes("variantChoiceUnitBadge") && customer.includes('backgroundColor: "#FEF08A"') && customer.includes("variantSelector: { marginTop: 8, padding: 10"), "Customer RAM/size/category option tiles must be compact and yellow-highlight their values.");
-          assert.ok(customer.includes("descriptionLineCount > 10") && customer.includes("product-description-see-more") && customer.includes("setDescriptionExpanded") && customer.includes("maxHeight: 220"), "Product details must expand after ten lines with a working See more control.");
+          assert.ok(customer.includes("variantChoiceUnitBadge") && customer.includes('backgroundColor: "#FEF08A"') && customer.includes("variantSelector: { marginTop: 8, padding: 10") && customer.includes("minHeight: 60") && customer.includes("paddingVertical: 10"), "Customer RAM/size/category option tiles must be yellow-highlighted and twice as tall.");
+          assert.ok(customer.includes("descriptionLineCount > 10") && customer.includes("product-description-see-more") && customer.includes("setDescriptionExpanded") && customer.includes("numberOfLines={descriptionExpanded ? undefined : 10}") && customer.includes("productDescriptionMeasureWrap"), "Product details must show a working See more control after ten measured lines.");
           assert.ok(customer.includes("productAttributeValuePill") && customer.includes("product-selected-unit-highlight"), "Category specification and selected unit values must use bold yellow highlight pills.");
           const adminVendor = fs.readFileSync("src/components/AdminVendorProducts.tsx", "utf8");
           assert.ok(admin.includes("category-product-field-settings") && (admin.match(/<Switch/g) || []).length >= 5 && admin.includes("cf-variant-options") && admin.includes("cf-product-attributes"), "Admin must configure category options and specifications.");
