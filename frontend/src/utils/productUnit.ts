@@ -1,8 +1,11 @@
-function valueText(value: any): string {
-  if (typeof value === "string" && value.trim()) return value.trim();
-  if (typeof value === "number" && Number.isFinite(value) && value > 0) return String(value);
-  if (value && typeof value === "object") {
-    return valueText(value.value ?? value.label ?? value.text ?? value.name ?? value.selected_value);
+function valueText(...values: any[]): string {
+  for (const value of values) {
+    if (typeof value === "string" && value.trim()) return value.trim();
+    if (typeof value === "number" && Number.isFinite(value) && value > 0) return String(value);
+    if (value && typeof value === "object") {
+      const nested = valueText(value.value, value.label, value.text, value.name, value.selected_value);
+      if (nested) return nested;
+    }
   }
   return "";
 }
