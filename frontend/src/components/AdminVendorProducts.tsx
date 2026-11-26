@@ -363,6 +363,15 @@ export default function AdminVendorProducts({ vendorId, selectedStoreId: externa
   const categoryConfig = getProductCategoryConfig(shopCategory, `${form.name} ${form.item_category}`);
   const shopCategoryName = shopCategory.name || selectedStore?.category_name || selectedStore?.category_id || "Not set";
 
+  useEffect(() => {
+    if (!categoryConfig.showVariants || !categoryConfig.variantOptions.length) return;
+    setForm((current) => {
+      const selected = String(current.unit || "").trim().toLowerCase();
+      const isAvailable = categoryConfig.variantOptions.some((option: string) => option.toLowerCase() === selected);
+      return isAvailable ? current : { ...current, unit: categoryConfig.variantOptions[0] };
+    });
+  }, [categoryConfig]);
+
   const resetProductForm = () => {
     setEditingProductId("");
     setBaseVariantId("");
