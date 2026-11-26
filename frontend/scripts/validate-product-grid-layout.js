@@ -12,6 +12,7 @@ const categoryPage = read("app/category/[id].tsx");
 const search = read("app/search.tsx");
 const store = read("app/store/[id].tsx");
 const productCard = read("src/components/ProductCard.tsx");
+const productDetail = read("app/product/[id].tsx");
 
 // Home uses its dedicated category browser (with a left rail of item categories).
 assert.match(
@@ -57,8 +58,22 @@ assert.match(store, /filteredProducts\.map\(\(item: any\) => \([\s\S]*<StoreProd
 assert.match(store, /productGrid:\s*\{[\s\S]*flexDirection:\s*"row"[\s\S]*flexWrap:\s*"wrap"/);
 assert.doesNotMatch(store, /<FlatList|removeClippedSubviews=\{true\}/);
 
-assert.match(productCard, /unit:\s*\{\s*fontSize:\s*11,\s*fontWeight:\s*"700"/,
-  "Product unit labels should be readable and visibly emphasized.");
+assert.match(productCard, /unitBadge:\s*\{[\s\S]*?backgroundColor:\s*"#FEF08A"/,
+  "Product unit labels must use a yellow highlight pill.");
+assert.match(productCard, /unit:\s*\{[\s\S]*?fontWeight:\s*"900"/,
+  "Product unit labels must be bold.");
+assert.match(productDetail, /descriptionLineCount\s*>\s*10[\s\S]*?product-description-see-more[\s\S]*?setDescriptionExpanded/,
+  "Product descriptions longer than ten lines must have a working See more control.");
+assert.match(productDetail, /productDescriptionCollapsed:\s*\{\s*maxHeight:\s*220,\s*overflow:\s*"hidden"/,
+  "Product descriptions must initially show only ten 22px lines.");
+assert.match(productDetail, /variantSelector:\s*\{[^\n]*padding:\s*10/);
+assert.match(productDetail, /variantChoice:\s*\{[^\n]*paddingVertical:\s*5/);
+assert.match(productDetail, /variantChoiceUnitBadge:\s*\{[^\n]*backgroundColor:\s*"#FEF08A"/,
+  "RAM / size choices must highlight their values in yellow.");
+assert.match(productDetail, /productAttributeValuePill:\s*\{[^\n]*backgroundColor:\s*"#FEF08A"/,
+  "Category specification values must use yellow highlight pills.");
+assert.match(productDetail, /product-selected-unit-highlight/,
+  "Selected RAM / size must be highlighted on the product detail screen.");
 assert.match(productCard, /addBtn:\s*\{[\s\S]*?minWidth:\s*48,[\s\S]*?height:\s*34,/,
   "The main Add button should be taller and keep a minimum tap width.");
 assert.match(productCard, /stepper:\s*\{[\s\S]*?height:\s*34,/,
