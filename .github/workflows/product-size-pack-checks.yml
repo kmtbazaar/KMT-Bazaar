@@ -14,6 +14,8 @@ on:
       - "frontend/app/orders/[id].tsx"
       - "frontend/app/admin/order/[id].tsx"
       - "frontend/src/components/ProductCard.tsx"
+      - "frontend/app/admin/products.tsx"
+      - "frontend/src/components/AdminVendorProducts.tsx"
       - "frontend/src/components/ProductUnitBadge.tsx"
       - "frontend/src/utils/productUnit.ts"
       - "frontend/src/components/CheckoutBar.tsx"
@@ -63,6 +65,7 @@ jobs:
           const adminOrder = fs.readFileSync("app/admin/order/[id].tsx", "utf8");
           const config = fs.readFileSync("src/productCategoryConfig.ts", "utf8");
           const adminVendor = fs.readFileSync("src/components/AdminVendorProducts.tsx", "utf8");
+          const adminProducts = fs.readFileSync("app/admin/products.tsx", "utf8");
           const backend = fs.readFileSync("../backend/server.py", "utf8");
 
           assert.ok(vendor.includes("categoryConfig.variantOptions.map") && !vendor.includes("PRODUCT_UNIT_OPTIONS"), "Vendor must use category-specific variant options, not a universal size list.");
@@ -107,6 +110,10 @@ jobs:
           assert.ok(customer.includes("variantChoiceColors") && customer.includes("colorGroupLabel"), "Customers must be able to distinguish repeated RAM / Storage options by their colour groups.");
           assert.ok(backend.includes("seen_unit_colors") && backend.includes("color_keys == previous_colors") && backend.includes("can repeat only with a different colour group"), "Backend must allow repeated sizes only when their colour groups differ and reject duplicate groups.");
           assert.ok(!vendor.includes("categoryConfig.productAttributes.map") && !vendor.includes("vendor-store-add-product-attributes") && !vendor.includes("vendor-store-edit-product-attributes") && adminVendor.includes("categoryConfig.productAttributes.map"), "Store vendor Add/Edit forms must hide category-specific specifications while the Admin editor retains them.");
+          assert.ok(adminProducts.includes("getProductCategoryConfig") && adminProducts.includes("pf-colour-options") && adminProducts.includes("pf-colour-images-") && adminProducts.includes("pf-product-attributes") && adminProducts.includes("pf-add-variant"), "Global Admin Add/Edit form must send category-specific colour photos, variants and required specifications.");
+          assert.ok(adminProducts.includes("requiredPhotoCount = edit ? 1 : 3") && adminProducts.includes("unchangedColourSetup") && adminProducts.includes("disabled={saving}"), "Global Admin Edit must accept legacy one-photo listings and prevent repeated saves.");
+          assert.ok(adminVendor.includes("requiredProductPhotos = editingProductId ? 1 : 3") && adminVendor.includes("unchangedColorSetup"), "Admin vendor product editor must also allow legacy photo counts and unchanged colour galleries.");
+          assert.ok(backend.includes("colour_configuration_changed") && backend.includes('"color_images": 1'), "Admin update API must preserve unchanged legacy colour galleries.");
           assert.ok(vendor.includes("color_images: categoryConfig.showColors ? form.color_images : {}") && adminVendor.includes("form.color_images"), "Both product editors must save colour-specific galleries.");
           assert.ok(customer.includes('testID="product-size-pack-selector"'), "Customer product details must render the size/pack selector.");
           assert.ok(customer.includes("categoryConfig.showDescription") && customer.includes("p?.description") && customer.includes('testID="product-description"'), "Customer product detail must display saved product descriptions.");
@@ -158,6 +165,6 @@ jobs:
       - name: Validate customer product grid, unit badges and image browsing
         run: node scripts/validate-product-grid-layout.js
       - name: Lint changed product UI files
-        run: npx eslint "app/vendor/store/[id].tsx" "app/vendor/products.tsx" "app/product/[id].tsx" "app/(tabs)/categories.tsx" "app/home-category/[id].tsx" "app/store/[id].tsx" "src/components/ProductCard.tsx" "src/components/ProductUnitBadge.tsx" "src/utils/productUnit.ts" "src/components/CheckoutBar.tsx" "src/components/BrandMark.tsx" --no-cache
+        run: npx eslint "app/vendor/store/[id].tsx" "app/vendor/products.tsx" "app/admin/products.tsx" "src/components/AdminVendorProducts.tsx" "app/product/[id].tsx" "app/(tabs)/categories.tsx" "app/home-category/[id].tsx" "app/store/[id].tsx" "src/components/ProductCard.tsx" "src/components/ProductUnitBadge.tsx" "src/utils/productUnit.ts" "src/components/CheckoutBar.tsx" "src/components/BrandMark.tsx" --no-cache
       - name: Build web app
         run: npm run build:web
