@@ -1,0 +1,301 @@
+name: Deploy Admin Order Activity API to kmtbazaar.com
+
+on:
+  push:
+    branches:
+      - customer-live
+    paths:
+      - "backend/server.py"
+      - ".github/workflows/deploy-admin-order-activity-live.yml"
+  workflow_dispatch:
+    inputs:
+      confirm_live_deploy:
+        description: "Confirm the targeted Admin Order Activity API deployment"
+        required: true
+        type: choice
+        options:
+          - "yes"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: kmt-bazaar-com-backend-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: github.event_name != 'workflow_dispatch' || inputs.confirm_live_deploy == 'yes'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: customer-live
+
+      - name: Validate targeted Admin Order Activity route
+        run: |
+          python -m py_compile backend/server.py
+          python - <<'PY'
+          import ast
+          from pathlib import Path
+          source = Path("backend/server.py").read_text(encoding="utf-8")
+          tree = ast.parse(source)
+          matches = [
+              node for node in tree.body
+              if isinstance(node, ast.AsyncFunctionDef) and node.name == "admin_order_activity"
+          ]
+          assert len(matches) == 1, "Expected exactly one admin_order_activity handler"
+          handler = matches[0]
+          assert any(
+              isinstance(decorator, ast.Call)
+              and isinstance(decorator.func, ast.Attribute)
+              and decorator.func.attr == "get"
+              and decorator.args
+              and isinstance(decorator.args[0], ast.Constant)
+              and decorator.args[0].value == "/admin/order-activity"
+              for decorator in handler.decorator_list
+          ), "Admin order activity route decorator is missing"
+          for period in ('"daily"', '"weekly"', '"monthly"'):
+              assert period in source, f"Missing supported order activity period: {period}"
+          assert 'db.orders.count_documents({' in source
+          assert 'Depends(require_roles("admin"))' in source
+          print("ADMIN_ORDER_ACTIVITY_BACKEND_VALIDATION_PASS")
+          PY
+
+      - name: Check required Hostinger SSH configuration
+        env:
+          HOSTINGER_HOST: ${{ secrets.HOSTINGER_HOST }}
+          HOSTINGER_USER: ${{ secrets.HOSTINGER_USER }}
+          HOSTINGER_SSH_KEY: ${{ secrets.HOSTINGER_SSH_KEY }}
+        run: |
+          set -euo pipefail
+          missing=()
+          [ -n "$HOSTINGER_HOST" ] || missing+=("HOSTINGER_HOST")
+          [ -n "$HOSTINGER_USER" ] || missing+=("HOSTINGER_USER")
+          [ -n "$HOSTINGER_SSH_KEY" ] || missing+=("HOSTINGER_SSH_KEY")
+          if [ "${#missing[@]}" -gt 0 ]; then
+            echo "::error::Missing repository Actions secrets: ${missing[*]}"
+            exit 1
+          fi
+
+      - name: Configure SSH
+        id: ssh
+        env:
+          HOSTINGER_HOST: ${{ secrets.HOSTINGER_HOST }}
+          HOSTINGER_SSH_KEY: ${{ secrets.HOSTINGER_SSH_KEY }}
+          HOSTINGER_PORT: ${{ secrets.HOSTINGER_PORT }}
+        run: |
+          set -euo pipefail
+          PORT="${HOSTINGER_PORT:-22}"
+          mkdir -p "$HOME/.ssh"
+          chmod 700 "$HOME/.ssh"
+          printf '%s\n' "$HOSTINGER_SSH_KEY" > "$HOME/.ssh/kmt_bazaar_admin_activity_key"
+          chmod 600 "$HOME/.ssh/kmt_bazaar_admin_activity_key"
+          ssh-keyscan -p "$PORT" -H "$HOSTINGER_HOST" >> "$HOME/.ssh/known_hosts" 2>/dev/null
+          printf 'port=%s\n' "$PORT" >> "$GITHUB_OUTPUT"
+
+      - name: Deploy only the Admin Order Activity route
+        timeout-minutes: 5
+        env:
+          HOSTINGER_HOST: ${{ secrets.HOSTINGER_HOST }}
+          HOSTINGER_USER: ${{ secrets.HOSTINGER_USER }}
+          HOSTINGER_PORT: ${{ steps.ssh.outputs.port }}
+        run: |
+          set -euo pipefail
+          DEST="${HOSTINGER_USER}@${HOSTINGER_HOST}"
+          CANDIDATE_PATH="/tmp/kmt-admin-order-activity-candidate-${GITHUB_SHA}.py"
+          scp -o BatchMode=yes -o ConnectTimeout=15 \
+            -i "$HOME/.ssh/kmt_bazaar_admin_activity_key" -P "$HOSTINGER_PORT" \
+            backend/server.py "$DEST:$CANDIDATE_PATH"
+          ssh -o BatchMode=yes -o ConnectTimeout=15 -o ServerAliveInterval=15 -o ServerAliveCountMax=3 \
+            -i "$HOME/.ssh/kmt_bazaar_admin_activity_key" -p "$HOSTINGER_PORT" "$DEST" \
+            "DEPLOY_SHA='$GITHUB_SHA' CANDIDATE_PATH='$CANDIDATE_PATH' bash -s" <<'REMOTE'
+          set -Eeuo pipefail
+          exec 9>/run/kmt-bazaar-com-backend-deploy.lock
+          flock -n 9 || { echo "STOP: Another backend deployment is running."; exit 1; }
+
+          TARGET=/root/KMT-Bazaar-com/backend/server.py
+          test -s "$TARGET"
+          test -s "$CANDIDATE_PATH"
+          BACKUP="/root/kmt-bazaar-com-backend-admin-activity-backup-${DEPLOY_SHA:0:12}-$(date +%Y%m%d-%H%M%S).py"
+          TEMP_TARGET="${TARGET}.admin-activity-${DEPLOY_SHA:0:12}.tmp"
+          trap 'rm -f "$CANDIDATE_PATH" "$TEMP_TARGET"' EXIT
+
+          python3 - "$TARGET" "$CANDIDATE_PATH" "$BACKUP" "$TEMP_TARGET" <<'PY'
+          import ast
+          import os
+          import re
+          import shutil
+          import sys
+          from pathlib import Path
+
+          target_path, candidate_path, backup_path, temp_path = map(Path, sys.argv[1:])
+          live_source = target_path.read_text(encoding="utf-8")
+          candidate_source = candidate_path.read_text(encoding="utf-8")
+          live_tree = ast.parse(live_source)
+          candidate_tree = ast.parse(candidate_source)
+
+          def find_handler(tree):
+              return [
+                  node for node in tree.body
+                  if isinstance(node, ast.AsyncFunctionDef) and node.name == "admin_order_activity"
+              ]
+
+          candidate_handlers = find_handler(candidate_tree)
+          if len(candidate_handlers) != 1:
+              raise SystemExit("STOP: Candidate must contain exactly one admin_order_activity handler.")
+
+          candidate_handler = candidate_handlers[0]
+          candidate_route = any(
+              isinstance(decorator, ast.Call)
+              and isinstance(decorator.func, ast.Attribute)
+              and decorator.func.attr == "get"
+              and decorator.args
+              and isinstance(decorator.args[0], ast.Constant)
+              and decorator.args[0].value == "/admin/order-activity"
+              for decorator in candidate_handler.decorator_list
+          )
+          if not candidate_route:
+              raise SystemExit("STOP: Candidate route path is not /admin/order-activity.")
+
+          candidate_lines = candidate_source.splitlines()
+          handler_start = min(
+              [candidate_handler.lineno] + [decorator.lineno for decorator in candidate_handler.decorator_list]
+          ) - 1
+          handler_end = candidate_handler.end_lineno
+          candidate_block = "\n".join(candidate_lines[handler_start:handler_end]).rstrip()
+
+          # Reject collisions with a different live handler for the same route.
+          live_route_nodes = []
+          for node in live_tree.body:
+              if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                  continue
+              for decorator in node.decorator_list:
+                  if (
+                      isinstance(decorator, ast.Call)
+                      and isinstance(decorator.func, ast.Attribute)
+                      and decorator.func.attr == "get"
+                      and decorator.args
+                      and isinstance(decorator.args[0], ast.Constant)
+                      and decorator.args[0].value == "/admin/order-activity"
+                  ):
+                      live_route_nodes.append(node)
+          if any(node.name != "admin_order_activity" for node in live_route_nodes):
+              raise SystemExit("STOP: A different live handler already owns /admin/order-activity.")
+
+          live_handlers = find_handler(live_tree)
+          if len(live_handlers) > 1 or (live_handlers and not live_route_nodes):
+              raise SystemExit("STOP: Existing admin_order_activity handler is ambiguous.")
+
+          live_lines = live_source.splitlines()
+          if live_handlers:
+              live_handler = live_handlers[0]
+              live_start = min(
+                  [live_handler.lineno] + [decorator.lineno for decorator in live_handler.decorator_list]
+              ) - 1
+              live_end = live_handler.end_lineno
+              updated_lines = live_lines[:live_start] + candidate_block.splitlines() + live_lines[live_end:]
+              print("ADMIN_ORDER_ACTIVITY_ROUTE=REPLACED")
+          else:
+              anchor = "# ------------------ ADMIN ROOJGAR APPLICATIONS ------------------"
+              if live_source.count(anchor) != 1:
+                  raise SystemExit("STOP: Could not uniquely locate the safe admin route insertion point.")
+              insert_at = live_source.index(anchor)
+              updated_source = live_source[:insert_at] + candidate_block + "\n\n\n" + live_source[insert_at:]
+              updated_lines = updated_source.splitlines()
+              print("ADMIN_ORDER_ACTIVITY_ROUTE=INSERTED")
+
+          updated_source = "\n".join(updated_lines).rstrip() + "\n"
+          updated_tree = ast.parse(updated_source)
+          if len(find_handler(updated_tree)) != 1:
+              raise SystemExit("STOP: Updated backend must contain one admin_order_activity handler.")
+
+          live_imports = set()
+          for node in live_tree.body:
+              if isinstance(node, ast.Import):
+                  live_imports.update(alias.asname or alias.name.split(".")[0] for alias in node.names)
+              elif isinstance(node, ast.ImportFrom):
+                  live_imports.update(alias.asname or alias.name for alias in node.names)
+          if "timedelta" not in live_imports:
+              datetime_imports = [
+                  node for node in live_tree.body
+                  if isinstance(node, ast.ImportFrom) and node.module == "datetime"
+              ]
+              if len(datetime_imports) != 1:
+                  raise SystemExit("STOP: Could not safely add the timedelta import.")
+              import_node = datetime_imports[0]
+              import_lines = live_source.splitlines()
+              import_line = import_lines[import_node.lineno - 1]
+              if "(" in import_line:
+                  # Parenthesized datetime import: add the name before the closing parenthesis.
+                  import_lines[import_node.end_lineno - 1] = import_lines[import_node.end_lineno - 1].replace(")", ", timedelta)", 1)
+              else:
+                  import_lines[import_node.lineno - 1] = import_line.rstrip() + ", timedelta"
+              updated_source = "\n".join(import_lines).rstrip() + "\n"
+              ast.parse(updated_source)
+              print("ADMIN_ORDER_ACTIVITY_TIMEDELTA_IMPORT=ADDED")
+
+          required_names = {"datetime", "timezone", "timedelta", "asyncio", "db", "require_roles", "HTTPException"}
+          names = set(live_imports)
+          for node in live_tree.body:
+              if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+                  names.add(node.name)
+              elif isinstance(node, (ast.Assign, ast.AnnAssign)):
+                  targets = node.targets if isinstance(node, ast.Assign) else [node.target]
+                  for target in targets:
+                      if isinstance(target, ast.Name):
+                          names.add(target.id)
+          missing = sorted(required_names - names)
+          if missing:
+              raise SystemExit("STOP: Live backend is missing required existing dependencies: " + ", ".join(missing))
+
+          shutil.copy2(target_path, backup_path)
+          temp_path.write_text(updated_source, encoding="utf-8")
+          ast.parse(temp_path.read_text(encoding="utf-8"))
+          os.chmod(temp_path, target_path.stat().st_mode)
+          os.replace(temp_path, target_path)
+          print("BACKEND_BACKUP=" + str(backup_path))
+          print("ADMIN_ORDER_ACTIVITY_SOURCE_PATCHED=YES")
+          PY
+
+          rollback() {
+            echo "ADMIN_ACTIVITY_ROLLBACK_START"
+            cp -a "$BACKUP" "$TARGET"
+            systemctl restart kmt-bazaar-com.service || true
+            echo "ADMIN_ACTIVITY_BACKUP=$BACKUP"
+          }
+
+          if ! python3 -m py_compile "$TARGET"; then
+            rollback
+            exit 1
+          fi
+          if ! systemctl restart kmt-bazaar-com.service; then
+            rollback
+            exit 1
+          fi
+
+          for ATTEMPT in $(seq 1 12); do
+            if systemctl is-active --quiet kmt-bazaar-com.service; then break; fi
+            sleep 2
+          done
+          if ! systemctl is-active --quiet kmt-bazaar-com.service; then
+            rollback
+            exit 1
+          fi
+
+          ACTIVITY_CODE=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 15 \
+            --resolve kmtbazaar.com:443:127.0.0.1 \
+            "https://kmtbazaar.com/api/admin/order-activity?period=daily" || true)
+          PRODUCTS_CODE=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 15 \
+            --resolve kmtbazaar.com:443:127.0.0.1 \
+            "https://kmtbazaar.com/api/products" || true)
+          echo "ADMIN_ORDER_ACTIVITY_UNAUTH_STATUS=$ACTIVITY_CODE"
+          echo "PRODUCTS=$PRODUCTS_CODE"
+          if { [ "$ACTIVITY_CODE" != "401" ] && [ "$ACTIVITY_CODE" != "403" ]; } || [ "$PRODUCTS_CODE" != "200" ]; then
+            rollback
+            exit 1
+          fi
+
+          echo "ADMIN_ORDER_ACTIVITY_DEPLOYMENT_PASS"
+          echo "DEPLOYED_COMMIT=$DEPLOY_SHA"
+          REMOTE
