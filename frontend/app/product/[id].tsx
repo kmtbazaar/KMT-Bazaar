@@ -8,7 +8,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
-import Animated, { useAnimatedStyle, useSharedValue, withSpring } from "react-native-reanimated";
+import Animated, { runOnJS, useAnimatedStyle, useSharedValue, withSpring } from "react-native-reanimated";
 import { API, api } from "@/src/api";
 import { useCart } from "@/src/CartContext";
 import { COLORS, RADIUS, SPACING, shadow } from "@/src/theme";
@@ -16,6 +16,7 @@ import CheckoutBar from "@/src/components/CheckoutBar";
 import { useWishlist } from "@/src/WishlistContext";
 import { getProductCategoryConfig } from "@/src/productCategoryConfig";
 import { formatRupees } from "@/src/utils/formatRupees";
+import BrandMark from "@/src/components/BrandMark";
 
 const PRODUCT_COLOR_SWATCHES: Record<string, string> = {
   black: "#171717", white: "#FFFFFF", red: "#DC2626", blue: "#2563EB",
@@ -50,24 +51,6 @@ export default function Product() {
       { scale: zoomScale.value },
     ],
   }));
-  const imageZoomGesture = Gesture.Simultaneous(
-    Gesture.Pinch()
-      .onUpdate((event) => { zoomScale.value = Math.max(1, Math.min(4, event.scale)); })
-      .onEnd(() => {
-        if (zoomScale.value <= 1.02) {
-          zoomScale.value = withSpring(1);
-          zoomOffsetX.value = withSpring(0);
-          zoomOffsetY.value = withSpring(0);
-        }
-      }),
-    Gesture.Pan()
-      .onUpdate((event) => {
-        if (zoomScale.value > 1) {
-          zoomOffsetX.value = event.translationX;
-          zoomOffsetY.value = event.translationY;
-        }
-      })
-  );
   useEffect(() => {
     setDescriptionExpanded(false);
     setDescriptionLineCount(0);
@@ -237,6 +220,41 @@ export default function Product() {
   }, [p?.images, p?.image, p?.color_images, selectedVariant?.color_images, selectedColor, categoryConfig.showColors]);
   // Render one matching copy after the original set so the loop can wrap without reversing direction.
   const carouselImages = useMemo(() => productImages.length > 1 ? [...productImages, ...productImages] : productImages, [productImages]);
+
+  const changeViewerImage = (direction: number) => {
+    if (productImages.length < 2) return;
+    setViewerImageIndex((current) => (current + direction + productImages.length) % productImages.length);
+    zoomScale.value = withSpring(1);
+    zoomOffsetX.value = withSpring(0);
+    zoomOffsetY.value = withSpring(0);
+  };
+
+  const imageZoomGesture = Gesture.Simultaneous(
+    Gesture.Pinch()
+      .onUpdate((event) => { zoomScale.value = Math.max(1, Math.min(4, event.scale)); })
+      .onEnd(() => {
+        if (zoomScale.value <= 1.02) {
+          zoomScale.value = withSpring(1);
+          zoomOffsetX.value = withSpring(0);
+          zoomOffsetY.value = withSpring(0);
+        }
+      }),
+    Gesture.Pan()
+      .onUpdate((event) => {
+        if (zoomScale.value > 1.02) {
+          zoomOffsetX.value = event.translationX;
+          zoomOffsetY.value = event.translationY;
+        }
+      })
+      .onEnd((event) => {
+        if (zoomScale.value > 1.02) return;
+        if (event.translationX < -60) {
+          runOnJS(changeViewerImage)(1);
+        } else if (event.translationX > 60) {
+          runOnJS(changeViewerImage)(-1);
+        }
+      })
+  );
 
   useEffect(() => {
     carouselPageRef.current = 0;
@@ -641,21 +659,14 @@ export default function Product() {
                 style={s.productDescriptionText}
                 testID="product-description"
                 numberOfLines={descriptionExpanded ? undefined : 10}
+                onTextLayout={(event) => {
+                  const lines = event.nativeEvent.lines?.length || 0;
+                  setDescriptionLineCount((current) => current === lines ? current : lines);
+                }}
               >
                 {productDescription}
               </Text>
-              <View pointerEvents="none" style={s.productDescriptionMeasureWrap}>
-                <Text
-                  style={[s.productDescriptionText, s.productDescriptionMeasure]}
-                  onTextLayout={(event) => {
-                    const lines = event.nativeEvent.lines?.length || 0;
-                    setDescriptionLineCount((current) => current === lines ? current : lines);
-                  }}
-                >
-                  {productDescription}
-                </Text>
-              </View>
-              {descriptionLineCount > 10 ? (
+              {descriptionLineCount >= 10 || productDescription.length > 420 ? (
                 <Pressable
                   testID="product-description-see-more"
                   accessibilityRole="button"
@@ -687,7 +698,14 @@ export default function Product() {
               {productAttributeRows.map((attribute: any) => (
                 <View key={attribute.key} style={s.productAttributeRow}>
                   <Text style={s.productAttributeLabel}>{attribute.label}</Text>
-                  <View style={s.productAttributeValuePill}><Text style={s.productAttributeValue}>{attribute.value}</Text></View>
+                  <View style={s.productAttributeValuePill}>
+                    <View style={s.productAttributeValueContent}>
+                      {/^(brand|manufacturer)$/i.test(String(attribute.key).replace(/[_-]+/g, " ").trim()) ? (
+                        <BrandMark brand={attribute.value} size={17} />
+                      ) : null}
+                      <Text style={s.productAttributeValue}>{attribute.value}</Text>
+                    </View>
+                  </View>
                 </View>
               ))}
             </View>
@@ -787,7 +805,7 @@ export default function Product() {
               </Animated.View>
             </View>
           </GestureDetector>
-          <Text style={s.imageViewerHint}>Pinch to zoom · drag to move</Text>
+          <Text style={s.imageViewerHint}>Swipe left or right to view photos · pinch to zoom · drag to move</Text>
         </View>
       </Modal>
 
@@ -908,14 +926,13 @@ const s = StyleSheet.create({
   productDetailsCard: { position: "relative", backgroundColor: "#FFFFFF", borderWidth: 1, borderColor: COLORS.border, borderRadius: RADIUS.md, padding: SPACING.md, gap: 8 },
   productDetailsTitle: { color: COLORS.text, fontSize: 14, fontWeight: "800" },
   productDescriptionText: { color: COLORS.text, fontSize: 14, lineHeight: 22, fontWeight: "500" },
-  productDescriptionMeasureWrap: { position: "absolute", top: SPACING.md, left: SPACING.md, right: SPACING.md, opacity: 0, zIndex: -1 },
-  productDescriptionMeasure: { width: "100%" },
   productDescriptionToggle: { alignSelf: "flex-start", flexDirection: "row", alignItems: "center", gap: 3, paddingHorizontal: 9, paddingVertical: 5, borderRadius: 7, backgroundColor: "#FEF3C7" },
   productDescriptionToggleText: { color: "#92400E", fontSize: 12, fontWeight: "900" },
   productDescriptionEmpty: { color: COLORS.textMuted, fontSize: 13, lineHeight: 20 },
   productAttributeRow: { flexDirection: "row", alignItems: "flex-start", gap: 10, paddingVertical: 7, borderBottomWidth: 1, borderBottomColor: COLORS.border },
   productAttributeLabel: { width: "38%", color: COLORS.textMuted, fontSize: 12, fontWeight: "700" },
   productAttributeValuePill: { alignSelf: "flex-start", maxWidth: "62%", backgroundColor: "#FEF08A", borderRadius: 6, paddingHorizontal: 7, paddingVertical: 3 },
+  productAttributeValueContent: { flexDirection: "row", alignItems: "center", gap: 5, flexShrink: 1 },
   productAttributeValue: { flexShrink: 1, minWidth: 0, color: "#713F12", fontSize: 12, lineHeight: 17, fontWeight: "900" },
   desc: { color: COLORS.textSecondary, lineHeight: 22 },
   deliveryCard: { flexDirection: "row", alignItems: "center", gap: SPACING.md, backgroundColor: COLORS.brandLight, padding: SPACING.md, borderRadius: RADIUS.md, marginTop: SPACING.lg },

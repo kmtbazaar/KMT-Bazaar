@@ -14,6 +14,11 @@ on:
       - "frontend/app/orders/[id].tsx"
       - "frontend/app/admin/order/[id].tsx"
       - "frontend/src/components/ProductCard.tsx"
+      - "frontend/src/components/CheckoutBar.tsx"
+      - "frontend/src/components/BrandMark.tsx"
+      - "frontend/app/(tabs)/categories.tsx"
+      - "frontend/app/home-category/[id].tsx"
+      - "frontend/app/store/[id].tsx"
       - "frontend/scripts/validate-product-grid-layout.js"
       - ".github/workflows/product-size-pack-checks.yml"
 
@@ -130,6 +135,6 @@ jobs:
           console.log("Validated category-specific options, variant prices/descriptions/stock, and customer selector/cart wiring.");
           NODE
       - name: Lint changed product UI files
-        run: npx eslint "app/vendor/store/[id].tsx" "app/vendor/products.tsx" "app/product/[id].tsx" "src/components/ProductCard.tsx" --no-cache
+        run: npx eslint "app/vendor/store/[id].tsx" "app/vendor/products.tsx" "app/product/[id].tsx" "app/(tabs)/categories.tsx" "app/home-category/[id].tsx" "app/store/[id].tsx" "src/components/ProductCard.tsx" "src/components/CheckoutBar.tsx" "src/components/BrandMark.tsx" --no-cache
       - name: Build web app
         run: npm run build:web

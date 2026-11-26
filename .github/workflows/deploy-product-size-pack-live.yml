@@ -9,6 +9,8 @@ on:
       - "frontend/app/vendor/store/**"
       - "frontend/app/product/**"
       - "frontend/src/components/ProductCard.tsx"
+      - "frontend/src/components/CheckoutBar.tsx"
+      - "frontend/src/components/BrandMark.tsx"
       - "frontend/app/(tabs)/home.tsx"
       - "frontend/app/search.tsx"
       - "frontend/src/api.ts"

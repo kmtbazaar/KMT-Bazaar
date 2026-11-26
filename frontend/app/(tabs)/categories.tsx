@@ -11,6 +11,8 @@ import ImagePlaceholder from "@/src/components/ImagePlaceholder";
 import CheckoutBar from "@/src/components/CheckoutBar";
 import { useCart } from "@/src/CartContext";
 import { useWishlist } from "@/src/WishlistContext";
+import { formatRupees } from "@/src/utils/formatRupees";
+import BrandMark from "@/src/components/BrandMark";
 
 const RAIL_WIDTH = 88;
 
@@ -128,19 +130,22 @@ export function CategoryProductTile({ p }: { p: any }) {
       </View>
 
       <View style={s.categoryProductBody}>
-        <NativeText style={s.categoryProductName} numberOfLines={2}>
-          {productName}
-        </NativeText>
+        <View style={s.categoryProductTitleRow}>
+          <BrandMark product={p} size={17} />
+          <NativeText style={s.categoryProductName} numberOfLines={2}>
+            {productName}
+          </NativeText>
+        </View>
         <NativeText style={s.categoryProductUnit} numberOfLines={1}>
           {productUnit || " "}
         </NativeText>
         <View style={s.categoryProductPriceRow}>
           <View style={{ flexShrink: 1 }}>
             <NativeText style={s.categoryProductPrice}>
-              {p?.price != null ? "₹" + p.price : "Price unavailable"}
+              {p?.price != null ? formatRupees(p.price) : "Price unavailable"}
             </NativeText>
             {Number(p?.mrp) > Number(p?.price) && (
-              <NativeText style={s.categoryProductMrp}>{"₹" + p.mrp}</NativeText>
+              <NativeText style={s.categoryProductMrp}>{formatRupees(p.mrp)}</NativeText>
             )}
           </View>
 
@@ -574,7 +579,10 @@ const s = StyleSheet.create({
     justifyContent: "center",
   },
   categoryProductBody: { paddingHorizontal: 7, paddingTop: 11, paddingBottom: 8 },
+  categoryProductTitleRow: { flexDirection: "row", alignItems: "flex-start", gap: 5 },
   categoryProductName: {
+    flex: 1,
+    minWidth: 0,
     color: COLORS.text,
     fontSize: 13,
     lineHeight: 17,

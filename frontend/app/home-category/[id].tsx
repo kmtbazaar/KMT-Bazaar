@@ -16,6 +16,7 @@ import CheckoutBar from "@/src/components/CheckoutBar";
 import { useCart } from "@/src/CartContext";
 import { COLORS, RADIUS, SPACING } from "@/src/theme";
 import { CategoryProductTile } from "../(tabs)/categories";
+import BrandMark, { isKnownBrand } from "@/src/components/BrandMark";
 
 const RAIL_WIDTH = 88;
 
@@ -234,11 +235,15 @@ export default function HomeCategoryBrowser() {
                   style={[s.categoryItem, active && s.categoryItemActive]}
                 >
                   <View style={[s.categoryIcon, active && s.categoryIconActive]}>
-                    <MaterialCommunityIcons
-                      name={iconName as any}
-                      size={21}
-                      color={active ? "#fff" : COLORS.textMuted}
-                    />
+                    {isKnownBrand(category.name) ? (
+                      <BrandMark brand={category.name} size={22} />
+                    ) : (
+                      <MaterialCommunityIcons
+                        name={iconName as any}
+                        size={21}
+                        color={active ? "#fff" : COLORS.textMuted}
+                      />
+                    )}
                   </View>
                   <NativeText
                     style={[s.categoryLabel, active && s.categoryLabelActive]}

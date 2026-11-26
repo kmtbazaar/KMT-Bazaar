@@ -8,6 +8,7 @@ import { useRouter } from "expo-router";
 import { useCart } from "@/src/CartContext";
 import Animated, { useAnimatedStyle, useSharedValue, withSequence, withSpring, withTiming } from "react-native-reanimated";
 import { shadow } from "@/src/theme";
+import { formatRupees } from "@/src/utils/formatRupees";
 import * as Haptics from "expo-haptics";
 
 
@@ -129,7 +130,7 @@ export function CheckoutSackVisual({ subtotal = 0, itemCount = 0 }: { subtotal?:
           <View style={styles.sackOpenOverlay} pointerEvents="none" />
           <View style={styles.brandPlate}>
             <Text style={styles.brandPlateTitle}>KMT BAZAAR</Text>
-            <Text style={styles.brandPlatePrice}>₹{subtotal.toFixed(0)}</Text>
+            <Text style={styles.brandPlatePrice}>{formatRupees(subtotal)}</Text>
           </View>
           <View style={styles.countTagConnector} />
           <View style={styles.countBadge}>
@@ -340,7 +341,7 @@ export default function CheckoutBar({ route = "/cart", label = "View Cart", bott
             <Animated.View style={[styles.sackOpenOverlay, sackOpenAnim]} pointerEvents="none" />
             <Animated.View style={[styles.brandPlate, sackOpenAnim]}>
               <Text style={styles.brandPlateTitle}>KMT BAZAAR</Text>
-              <Text style={styles.brandPlatePrice}>₹{subtotal.toFixed(0)}</Text>
+              <Text style={styles.brandPlatePrice}>{formatRupees(subtotal)}</Text>
             </Animated.View>
             <View style={styles.countTagConnector} />
             <View style={styles.countBadge}>

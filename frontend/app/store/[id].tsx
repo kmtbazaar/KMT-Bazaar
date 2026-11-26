@@ -16,6 +16,8 @@ import { useCart } from "@/src/CartContext";
 import { useWishlist } from "@/src/WishlistContext";
 import CheckoutBar from "@/src/components/CheckoutBar";
 import { COLORS, IMAGE_FALLBACK_URL, RADIUS, SPACING } from "@/src/theme";
+import { formatRupees } from "@/src/utils/formatRupees";
+import BrandMark, { isKnownBrand } from "@/src/components/BrandMark";
 
 function itemCategoryIcon(name: string): any {
   const key = name.toLowerCase();
@@ -127,9 +129,12 @@ function StoreProductTile({ p }: { p: any }) {
       </View>
 
       <View style={s.storeTileBody}>
-        <NativeText style={s.storeTileName} numberOfLines={2}>
-          {productName}
-        </NativeText>
+        <View style={s.storeTileTitleRow}>
+          <BrandMark product={p} size={17} />
+          <NativeText style={s.storeTileName} numberOfLines={2}>
+            {productName}
+          </NativeText>
+        </View>
         <NativeText style={s.storeTileUnit} numberOfLines={1}>
           {productUnit || " "}
         </NativeText>
@@ -137,10 +142,10 @@ function StoreProductTile({ p }: { p: any }) {
         <View style={s.storeTilePriceRow}>
           <View style={{ flexShrink: 1 }}>
             <NativeText style={s.storeTilePrice}>
-              {p?.price != null ? ("₹" + p.price) : "Price unavailable"}
+              {p?.price != null ? formatRupees(p.price) : "Price unavailable"}
             </NativeText>
             {Number(p?.mrp) > Number(p?.price) && (
-              <NativeText style={s.storeTileMrp}>{"₹" + p.mrp}</NativeText>
+              <NativeText style={s.storeTileMrp}>{formatRupees(p.mrp)}</NativeText>
             )}
           </View>
 
@@ -379,11 +384,15 @@ export default function StoreProducts() {
                   style={[s.categoryItem, active && s.categoryItemActive]}
                 >
                   <View style={[s.categoryIcon, active && s.categoryIconActive]}>
-                    <MaterialCommunityIcons
-                      name={itemCategoryIcon(category.name)}
-                      size={21}
-                      color={active ? "#fff" : COLORS.textMuted}
-                    />
+                    {isKnownBrand(category.name) ? (
+                      <BrandMark brand={category.name} size={22} />
+                    ) : (
+                      <MaterialCommunityIcons
+                        name={itemCategoryIcon(category.name)}
+                        size={21}
+                        color={active ? "#fff" : COLORS.textMuted}
+                      />
+                    )}
                   </View>
                   <Text
                     style={[s.categoryLabel, active && s.categoryLabelActive]}
@@ -633,7 +642,10 @@ const s = StyleSheet.create({
     paddingTop: 11,
     paddingBottom: 8,
   },
+  storeTileTitleRow: { flexDirection: "row", alignItems: "flex-start", gap: 5 },
   storeTileName: {
+    flex: 1,
+    minWidth: 0,
     color: COLORS.text,
     fontSize: 13,
     lineHeight: 17,
