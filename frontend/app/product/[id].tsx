@@ -382,6 +382,15 @@ export default function Product() {
     ? Math.round(((selectedMrp - selectedPrice) / selectedMrp) * 100)
     : 0;
   const checkoutSubtotal = cart?.subtotal || selectedPrice * currentQty;
+  const productDescription = String(p?.description || "").trim();
+  const selectedVariantDescription = String(selectedVariant?.description || "").trim();
+  const productAttributeRows = categoryConfig.productAttributes
+    .map((attribute: any) => ({
+      key: String(attribute.key || attribute.label),
+      label: String(attribute.label || attribute.key),
+      value: String(p?.attributes?.[attribute.key] ?? "").trim(),
+    }))
+    .filter((attribute: any) => attribute.value);
 
   return (
     <View style={s.root} testID="product-screen">
@@ -567,6 +576,37 @@ export default function Product() {
             </View>
           </View>
         </View>
+
+        {(productDescription || selectedVariantDescription || productAttributeRows.length > 0) ? (
+          <View style={s.productDetailsSection} testID="product-details-section">
+            <Text style={s.productDetailsHeading}>Product Details</Text>
+            {productDescription ? (
+              <View style={s.productDetailsCard}>
+                <Text style={s.productDetailsTitle}>
+                  {categoryConfig.showDescription ? categoryConfig.descriptionLabel : "Product description"}
+                </Text>
+                <Text style={s.productDescriptionText} testID="product-description">{productDescription}</Text>
+              </View>
+            ) : null}
+            {selectedVariantDescription ? (
+              <View style={s.productDetailsCard} testID="product-selected-variant-description">
+                <Text style={s.productDetailsTitle}>{selectedUnit} details</Text>
+                <Text style={s.productDescriptionText}>{selectedVariantDescription}</Text>
+              </View>
+            ) : null}
+            {productAttributeRows.length ? (
+              <View style={s.productDetailsCard} testID="product-category-attributes">
+                <Text style={s.productDetailsTitle}>Product specifications</Text>
+                {productAttributeRows.map((attribute: any) => (
+                  <View key={attribute.key} style={s.productAttributeRow}>
+                    <Text style={s.productAttributeLabel}>{attribute.label}</Text>
+                    <Text style={s.productAttributeValue}>{attribute.value}</Text>
+                  </View>
+                ))}
+              </View>
+            ) : null}
+          </View>
+        ) : null}
 
         <View style={s.suggestionsSection} testID="product-suggestions">
           <View style={s.suggestionsHeader}>
@@ -771,6 +811,14 @@ const s = StyleSheet.create({
   variantChoiceUnitActive: { color: COLORS.accentDark },
   divider: { height: 1, backgroundColor: COLORS.border, marginVertical: SPACING.lg },
   sectionTitle: { fontWeight: "800", color: COLORS.text, marginBottom: 6 },
+  productDetailsSection: { paddingHorizontal: SPACING.lg, marginTop: SPACING.sm, marginBottom: SPACING.md, gap: 10 },
+  productDetailsHeading: { color: COLORS.text, fontSize: 18, fontWeight: "900" },
+  productDetailsCard: { backgroundColor: "#FFFFFF", borderWidth: 1, borderColor: COLORS.border, borderRadius: RADIUS.md, padding: SPACING.md, gap: 8 },
+  productDetailsTitle: { color: COLORS.text, fontSize: 14, fontWeight: "800" },
+  productDescriptionText: { color: COLORS.textSecondary, fontSize: 13, lineHeight: 21 },
+  productAttributeRow: { flexDirection: "row", alignItems: "flex-start", gap: 10, paddingVertical: 7, borderBottomWidth: 1, borderBottomColor: COLORS.border },
+  productAttributeLabel: { width: "38%", color: COLORS.textMuted, fontSize: 12, fontWeight: "700" },
+  productAttributeValue: { flex: 1, minWidth: 0, color: COLORS.text, fontSize: 13, lineHeight: 19, fontWeight: "600" },
   desc: { color: COLORS.textSecondary, lineHeight: 22 },
   deliveryCard: { flexDirection: "row", alignItems: "center", gap: SPACING.md, backgroundColor: COLORS.brandLight, padding: SPACING.md, borderRadius: RADIUS.md, marginTop: SPACING.lg },
   delTitle: { fontWeight: "700", color: COLORS.brandDark },
