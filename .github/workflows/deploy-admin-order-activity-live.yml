@@ -210,33 +210,40 @@ jobs:
           if len(find_handler(updated_tree)) != 1:
               raise SystemExit("STOP: Updated backend must contain one admin_order_activity handler.")
 
-          live_imports = set()
-          for node in live_tree.body:
+          updated_tree = ast.parse(updated_source)
+          updated_imports = set()
+          for node in updated_tree.body:
               if isinstance(node, ast.Import):
-                  live_imports.update(alias.asname or alias.name.split(".")[0] for alias in node.names)
+                  updated_imports.update(alias.asname or alias.name.split(".")[0] for alias in node.names)
               elif isinstance(node, ast.ImportFrom):
-                  live_imports.update(alias.asname or alias.name for alias in node.names)
-          if "timedelta" not in live_imports:
+                  updated_imports.update(alias.asname or alias.name for alias in node.names)
+          if "timedelta" not in updated_imports:
               datetime_imports = [
-                  node for node in live_tree.body
+                  node for node in updated_tree.body
                   if isinstance(node, ast.ImportFrom) and node.module == "datetime"
               ]
               if len(datetime_imports) != 1:
                   raise SystemExit("STOP: Could not safely add the timedelta import.")
               import_node = datetime_imports[0]
-              import_lines = live_source.splitlines()
+              import_lines = updated_source.splitlines()
               import_line = import_lines[import_node.lineno - 1]
               if "(" in import_line:
-                  # Parenthesized datetime import: add the name before the closing parenthesis.
                   import_lines[import_node.end_lineno - 1] = import_lines[import_node.end_lineno - 1].replace(")", ", timedelta)", 1)
               else:
                   import_lines[import_node.lineno - 1] = import_line.rstrip() + ", timedelta"
               updated_source = "\n".join(import_lines).rstrip() + "\n"
-              ast.parse(updated_source)
+              updated_tree = ast.parse(updated_source)
               print("ADMIN_ORDER_ACTIVITY_TIMEDELTA_IMPORT=ADDED")
 
+          updated_imports = set()
+          for node in updated_tree.body:
+              if isinstance(node, ast.Import):
+                  updated_imports.update(alias.asname or alias.name.split(".")[0] for alias in node.names)
+              elif isinstance(node, ast.ImportFrom):
+                  updated_imports.update(alias.asname or alias.name for alias in node.names)
+
           required_names = {"datetime", "timezone", "timedelta", "asyncio", "db", "require_roles", "HTTPException"}
-          names = set(live_imports)
+          names = set(updated_imports)
           for node in live_tree.body:
               if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
                   names.add(node.name)
