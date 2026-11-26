@@ -13,6 +13,8 @@ import { useCart } from "@/src/CartContext";
 import { useWishlist } from "@/src/WishlistContext";
 import { formatRupees } from "@/src/utils/formatRupees";
 import BrandMark from "@/src/components/BrandMark";
+import ProductUnitBadge from "@/src/components/ProductUnitBadge";
+import { getProductUnitLabel } from "@/src/utils/productUnit";
 
 const RAIL_WIDTH = 88;
 
@@ -33,17 +35,7 @@ export function CategoryProductTile({ p }: { p: any }) {
 
   const productName =
     firstProductText(p?.name, p?.product_name, p?.productName, p?.title) || "Product";
-  const productUnit = firstProductText(
-    p?.unit,
-    p?.quantity_label,
-    p?.unit_label,
-    p?.unit_name,
-    p?.pack_size,
-    p?.size,
-    p?.weight,
-    p?.volume,
-    p?.quantity
-  );
+  const productUnit = getProductUnitLabel(p);
 
   const imageCandidates = React.useMemo(() => {
     const rawValues = [
@@ -136,9 +128,9 @@ export function CategoryProductTile({ p }: { p: any }) {
             {productName}
           </NativeText>
         </View>
-        <NativeText style={s.categoryProductUnit} numberOfLines={1}>
-          {productUnit || " "}
-        </NativeText>
+        <View style={s.categoryProductUnitSlot}>
+          <ProductUnitBadge label={productUnit} compact testID={`category-product-unit-${productId}`} />
+        </View>
         <View style={s.categoryProductPriceRow}>
           <View style={{ flexShrink: 1 }}>
             <NativeText style={s.categoryProductPrice}>
@@ -589,12 +581,11 @@ const s = StyleSheet.create({
     fontWeight: "800",
     minHeight: 34,
   },
-  categoryProductUnit: {
-    color: COLORS.textSecondary,
-    fontSize: 11,
-    lineHeight: 15,
+  categoryProductUnitSlot: {
+    minHeight: 18,
     marginTop: 2,
-    minHeight: 15,
+    alignItems: "flex-start",
+    justifyContent: "center",
   },
   categoryProductPriceRow: {
     flexDirection: "row",
