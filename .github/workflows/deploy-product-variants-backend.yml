@@ -676,10 +676,10 @@ jobs:
                   live_start = live_matches[0]
                   live_end_match = re.search(r"(?m)^(?:def |async def |class |@api\\.)", live_source[live_start + len(marker):])
                   live_end = live_start + len(marker) + live_end_match.start() if live_end_match else len(live_source)
-                  return live_source[:live_start] + function_block + "\\n\\n" + live_source[live_end:]
+                  return live_source[:live_start] + function_block + "\n\n" + live_source[live_end:]
               if live_source.count(insert_before) != 1:
                   raise SystemExit(f"STOP: Could not locate safe async insertion point for {function_name}; no VPS changes made.")
-              return live_source.replace(insert_before, function_block + "\\n\\n" + insert_before, 1)
+              return live_source.replace(insert_before, function_block + "\n\n" + insert_before, 1)
 
           source = replace_or_insert_async_function(
               source, candidate_source, "_vendor_store_ids",
