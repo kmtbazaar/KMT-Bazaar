@@ -269,7 +269,15 @@ jobs:
             echo "ADMIN_ACTIVITY_ROLLBACK_START"
             cp -a "$BACKUP" "$TARGET"
             systemctl restart kmt-bazaar-com.service || true
+            ROLLBACK_PRODUCTS_CODE=0
+            for ATTEMPT in $(seq 1 24); do
+              ROLLBACK_PRODUCTS_CODE=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 10 --resolve kmtbazaar.com:443:127.0.0.1 https://kmtbazaar.com/api/products || true)
+              echo "ROLLBACK_API_READY_ATTEMPT=$ATTEMPT PRODUCTS=$ROLLBACK_PRODUCTS_CODE"
+              [ "$ROLLBACK_PRODUCTS_CODE" = "200" ] && break
+              sleep 3
+            done
             echo "ADMIN_ACTIVITY_BACKUP=$BACKUP"
+            echo "ROLLBACK_PRODUCTS=$ROLLBACK_PRODUCTS_CODE"
           }
 
           if ! python3 -m py_compile "$TARGET"; then
@@ -277,28 +285,48 @@ jobs:
             exit 1
           fi
           if ! systemctl restart kmt-bazaar-com.service; then
+            systemctl status kmt-bazaar-com.service --no-pager || true
+            journalctl -u kmt-bazaar-com.service -n 100 --no-pager || true
             rollback
             exit 1
           fi
 
-          for ATTEMPT in $(seq 1 12); do
+          for ATTEMPT in $(seq 1 24); do
             if systemctl is-active --quiet kmt-bazaar-com.service; then break; fi
             sleep 2
           done
           if ! systemctl is-active --quiet kmt-bazaar-com.service; then
+            echo "ADMIN_ACTIVITY_SERVICE_NOT_ACTIVE"
+            systemctl status kmt-bazaar-com.service --no-pager || true
+            journalctl -u kmt-bazaar-com.service -n 100 --no-pager || true
             rollback
             exit 1
           fi
 
-          ACTIVITY_CODE=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 15 \
-            --resolve kmtbazaar.com:443:127.0.0.1 \
-            "https://kmtbazaar.com/api/admin/order-activity?period=daily" || true)
-          PRODUCTS_CODE=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 15 \
-            --resolve kmtbazaar.com:443:127.0.0.1 \
-            "https://kmtbazaar.com/api/products" || true)
+          # systemd can report active before Uvicorn is listening. Wait for the public API health route.
+          PRODUCTS_CODE=0
+          for ATTEMPT in $(seq 1 24); do
+            PRODUCTS_CODE=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 10 --resolve kmtbazaar.com:443:127.0.0.1 https://kmtbazaar.com/api/products || true)
+            echo "BACKEND_API_READY_ATTEMPT=$ATTEMPT PRODUCTS=$PRODUCTS_CODE"
+            [ "$PRODUCTS_CODE" = "200" ] && break
+            sleep 3
+          done
+
+          if [ "$PRODUCTS_CODE" != "200" ]; then
+            echo "ADMIN_ACTIVITY_BACKEND_HEALTH_WAIT_FAILED"
+            systemctl status kmt-bazaar-com.service --no-pager || true
+            journalctl -u kmt-bazaar-com.service -n 100 --no-pager || true
+            rollback
+            exit 1
+          fi
+
+          ACTIVITY_CODE=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 15 --resolve kmtbazaar.com:443:127.0.0.1 "https://kmtbazaar.com/api/admin/order-activity?period=daily" || true)
           echo "ADMIN_ORDER_ACTIVITY_UNAUTH_STATUS=$ACTIVITY_CODE"
           echo "PRODUCTS=$PRODUCTS_CODE"
-          if { [ "$ACTIVITY_CODE" != "401" ] && [ "$ACTIVITY_CODE" != "403" ]; } || [ "$PRODUCTS_CODE" != "200" ]; then
+          if [ "$ACTIVITY_CODE" != "401" ] && [ "$ACTIVITY_CODE" != "403" ]; then
+            echo "ADMIN_ORDER_ACTIVITY_ROUTE_HEALTH_FAILED"
+            systemctl status kmt-bazaar-com.service --no-pager || true
+            journalctl -u kmt-bazaar-com.service -n 100 --no-pager || true
             rollback
             exit 1
           fi
