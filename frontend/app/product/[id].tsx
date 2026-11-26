@@ -35,6 +35,8 @@ export default function Product() {
   const categoryConfig = getProductCategoryConfig(productCategory || { name: p?.category_name });
   const [selectedVariantId, setSelectedVariantId] = useState<string | null>(null);
   const [selectedColor, setSelectedColor] = useState<string | null>(null);
+  const [descriptionExpanded, setDescriptionExpanded] = useState(false);
+  const [descriptionLineCount, setDescriptionLineCount] = useState(0);
   const [imageViewerVisible, setImageViewerVisible] = useState(false);
   const [viewerImageIndex, setViewerImageIndex] = useState(0);
   const zoomScale = useSharedValue(1);
@@ -65,6 +67,11 @@ export default function Product() {
         }
       })
   );
+  useEffect(() => {
+    setDescriptionExpanded(false);
+    setDescriptionLineCount(0);
+  }, [id]);
+
   const selectedVariant = Array.isArray(p?.variants)
     ? p.variants.find((variant: any) => String(variant.id) === String(selectedVariantId)) || p.variants[0] || null
     : null;
@@ -546,9 +553,16 @@ export default function Product() {
         ) : null}
         <View style={s.card}>
           <Text style={s.name} testID="product-name">{p.name}</Text>
-          <Text style={[s.unit, outOfStock && s.outOfStockText]}>
-            {categoryConfig.showVariants && selectedUnit ? `${selectedUnit} · ` : ""}{outOfStock ? "OUT OF STOCK" : `${availableStock} in stock`}
-          </Text>
+          <View style={s.unitStockRow}>
+            {categoryConfig.showVariants && selectedUnit ? (
+              <View style={s.unitBadge} testID="product-selected-unit-highlight">
+                <Text style={s.unitBadgeText}>{selectedUnit}</Text>
+              </View>
+            ) : null}
+            <Text style={[s.unit, outOfStock && s.outOfStockText]}>
+              {outOfStock ? "OUT OF STOCK" : `${availableStock} in stock`}
+            </Text>
+          </View>
           <View style={s.priceRow}>
             <Text style={s.price}>₹{selectedPrice}</Text>
             {selectedMrp > selectedPrice && <Text style={s.mrp}>₹{selectedMrp}</Text>}
@@ -591,8 +605,10 @@ export default function Product() {
                     testID={`product-size-pack-option-${index + 1}`}
                   >
                     <View style={s.variantChoiceTop}>
-                      <View style={{ flex: 1 }}>
-                        <Text style={[s.variantChoiceUnit, active && s.variantChoiceUnitActive]}>{variant.unit || "Standard"}</Text>
+                      <View style={s.variantChoiceTextWrap}>
+                        <View style={[s.variantChoiceUnitBadge, active && s.variantChoiceUnitBadgeActive]}>
+                          <Text style={[s.variantChoiceUnit, active && s.variantChoiceUnitActive]}>{variant.unit || "Standard"}</Text>
+                        </View>
                         {colorGroupLabel ? <Text style={s.variantChoiceColors}>{colorGroupLabel}</Text> : null}
                       </View>
                       {active ? <MaterialCommunityIcons name="check-circle" size={16} color={COLORS.accent} /> : null}
@@ -620,7 +636,31 @@ export default function Product() {
               <Text style={s.productDetailsTitle}>
                 {categoryConfig.showDescription ? categoryConfig.descriptionLabel : "Product description"}
               </Text>
-              <Text style={s.productDescriptionText} testID="product-description">{productDescription}</Text>
+              <View style={!descriptionExpanded ? s.productDescriptionCollapsed : undefined}>
+                <Text
+                  style={s.productDescriptionText}
+                  testID="product-description"
+                  onTextLayout={(event) => {
+                    const lines = event.nativeEvent.lines?.length || 0;
+                    setDescriptionLineCount((current) => current === lines ? current : lines);
+                  }}
+                >
+                  {productDescription}
+                </Text>
+              </View>
+              {descriptionLineCount > 10 ? (
+                <Pressable
+                  testID="product-description-see-more"
+                  accessibilityRole="button"
+                  accessibilityLabel={descriptionExpanded ? "See less product description" : "See more product description"}
+                  onPress={() => setDescriptionExpanded((expanded) => !expanded)}
+                  style={s.productDescriptionToggle}
+                  hitSlop={6}
+                >
+                  <Text style={s.productDescriptionToggleText}>{descriptionExpanded ? "See less" : "See more"}</Text>
+                  <MaterialCommunityIcons name={descriptionExpanded ? "chevron-up" : "chevron-down"} size={16} color="#92400E" />
+                </Pressable>
+              ) : null}
             </View>
           ) : (
             <View style={s.productDetailsCard} testID="product-description-empty">
@@ -640,7 +680,7 @@ export default function Product() {
               {productAttributeRows.map((attribute: any) => (
                 <View key={attribute.key} style={s.productAttributeRow}>
                   <Text style={s.productAttributeLabel}>{attribute.label}</Text>
-                  <Text style={s.productAttributeValue}>{attribute.value}</Text>
+                  <View style={s.productAttributeValuePill}><Text style={s.productAttributeValue}>{attribute.value}</Text></View>
                 </View>
               ))}
             </View>
@@ -809,33 +849,39 @@ const s = StyleSheet.create({
   carouselCount: { color: COLORS.textMuted, fontSize: 11, fontWeight: "700", marginLeft: 8 },
   card: { paddingHorizontal: SPACING.lg, paddingTop: SPACING.sm, paddingBottom: SPACING.lg },
   name: { fontSize: 22, fontWeight: "800", color: COLORS.text, marginTop: 0 },
-  unit: { color: COLORS.textMuted, marginTop: 2, fontSize: 13 },
+  unitStockRow: { flexDirection: "row", alignItems: "center", flexWrap: "wrap", gap: 7, marginTop: 4 },
+  unitBadge: { alignSelf: "flex-start", backgroundColor: "#FEF08A", borderColor: "#FACC15", borderWidth: 1, borderRadius: 6, paddingHorizontal: 7, paddingVertical: 3 },
+  unitBadgeText: { color: "#713F12", fontSize: 12, lineHeight: 16, fontWeight: "900" },
+  unit: { color: COLORS.textMuted, marginTop: 0, fontSize: 12, fontWeight: "600" },
   outOfStockText: { color: COLORS.error, fontWeight: "900", fontSize: 16, letterSpacing: 0.4, marginTop: 6 },
   priceRow: { flexDirection: "row", alignItems: "center", gap: 10, marginTop: 6 },
   price: { fontSize: 28, fontWeight: "800", color: COLORS.text },
   mrp: { fontSize: 16, color: COLORS.textMuted, textDecorationLine: "line-through" },
   discPill: { backgroundColor: COLORS.success, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 4 },
   discText: { color: "#fff", fontWeight: "800", fontSize: 11 },
-  productColorSelector: { marginTop: SPACING.md, padding: SPACING.md, borderRadius: 16, borderWidth: 1, borderColor: "#BFDBFE", backgroundColor: "#EFF6FF", gap: 10 },
+  productColorSelector: { marginTop: 8, padding: 9, borderRadius: 13, borderWidth: 1, borderColor: "#BFDBFE", backgroundColor: "#EFF6FF", gap: 7 },
   productColorHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8 },
-  productColorTitle: { color: COLORS.text, fontSize: 15, fontWeight: "900" },
+  productColorTitle: { color: COLORS.text, fontSize: 13, fontWeight: "900" },
   productColorSelected: { color: "#1D4ED8", fontSize: 12, fontWeight: "800" },
-  productColorOptions: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
-  productColorChoice: { minWidth: 66, alignItems: "center", gap: 4, paddingHorizontal: 5, paddingVertical: 5, borderRadius: 11, borderWidth: 1, borderColor: "transparent" },
-  productColorThumb: { width: 46, height: 46, borderRadius: 9, backgroundColor: "#FFFFFF", borderWidth: 1, borderColor: "#CBD5E1" },
+  productColorOptions: { flexDirection: "row", flexWrap: "wrap", gap: 7 },
+  productColorChoice: { minWidth: 56, alignItems: "center", gap: 3, paddingHorizontal: 4, paddingVertical: 4, borderRadius: 9, borderWidth: 1, borderColor: "transparent" },
+  productColorThumb: { width: 36, height: 36, borderRadius: 8, backgroundColor: "#FFFFFF", borderWidth: 1, borderColor: "#CBD5E1" },
   productColorChoiceActive: { borderColor: "#2563EB", backgroundColor: "#DBEAFE" },
-  productColorSwatch: { width: 30, height: 30, borderRadius: 15, borderWidth: 1, borderColor: "rgba(15,23,42,0.14)", alignItems: "center", justifyContent: "center" },
+  productColorSwatch: { width: 25, height: 25, borderRadius: 13, borderWidth: 1, borderColor: "rgba(15,23,42,0.14)", alignItems: "center", justifyContent: "center" },
   productColorSwatchWhite: { borderColor: "#94A3B8" },
-  productColorLabel: { color: COLORS.textSecondary, fontSize: 10, fontWeight: "700" },
+  productColorLabel: { color: COLORS.textSecondary, fontSize: 9, fontWeight: "800" },
   productColorLabelActive: { color: "#1D4ED8", fontWeight: "900" },
-  variantSelector: { marginTop: SPACING.sm, padding: SPACING.md, borderRadius: 18, borderWidth: 1, borderColor: "#FED7AA", backgroundColor: "#FFF7ED", gap: 12 },
+  variantSelector: { marginTop: 8, padding: 10, borderRadius: 14, borderWidth: 1, borderColor: "#FDE68A", backgroundColor: "#FFFBEB", gap: 8 },
   variantSelectorHeader: { flexDirection: "row", alignItems: "center", gap: 10 },
-  variantSelectorTitle: { color: COLORS.text, fontSize: 16, fontWeight: "900" },
-  variantSelectorSubtitle: { color: COLORS.textSecondary, fontSize: 12, marginTop: 3 },
-  variantChoices: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
-  variantChoice: { width: "22%", minWidth: 56, maxWidth: "24%", flexGrow: 1, flexShrink: 1, paddingHorizontal: 5, paddingVertical: 7, borderRadius: 10, borderWidth: 1.2, borderColor: "#E2E8F0", backgroundColor: "#FFFFFF", gap: 3 },
-  variantChoiceActive: { borderColor: COLORS.accent, backgroundColor: "#FFEDD5", ...shadow.soft },
-  variantChoiceUnavailable: { borderColor: "#FECACA", backgroundColor: "#FFF7F7" },
+  variantSelectorTitle: { color: COLORS.text, fontSize: 14, fontWeight: "900" },
+  variantSelectorSubtitle: { color: COLORS.textSecondary, fontSize: 10, marginTop: 2 },
+  variantChoices: { flexDirection: "row", flexWrap: "wrap", gap: 5 },
+  variantChoiceTextWrap: { flex: 1, minWidth: 0, alignItems: "flex-start", gap: 2 },
+  variantChoiceUnitBadge: { maxWidth: "100%", backgroundColor: "#FEF08A", borderRadius: 6, paddingHorizontal: 5, paddingVertical: 2 },
+  variantChoiceUnitBadgeActive: { backgroundColor: "#FDE047" },
+  variantChoice: { width: "23%", minWidth: 50, maxWidth: "24%", flexGrow: 1, flexShrink: 1, paddingHorizontal: 5, paddingVertical: 5, borderRadius: 9, borderWidth: 1, borderColor: "#E2E8F0", backgroundColor: "#FFFFFF", gap: 2 },
+  variantChoiceActive: { borderColor: "#EAB308", backgroundColor: "#FEF3C7", ...shadow.soft },
+  variantChoiceUnavailable: { borderColor: "#FECACA", backgroundColor: "#FFF7F7", opacity: 0.72 },
   variantChoiceTop: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 2 },
   imageViewerOverlay: { flex: 1, backgroundColor: "rgba(2,6,23,0.98)", paddingTop: Platform.OS === "ios" ? 48 : 22, paddingBottom: 26 },
   imageViewerToolbar: { height: 46, paddingHorizontal: 18, flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
@@ -845,9 +891,9 @@ const s = StyleSheet.create({
   imageViewerImageWrap: { width: "100%", height: "100%", alignItems: "center", justifyContent: "center" },
   imageViewerImage: { width: "100%", height: "100%" },
   imageViewerHint: { color: "rgba(255,255,255,0.7)", fontSize: 12, fontWeight: "600", textAlign: "center", paddingTop: 10 },
-  variantChoiceUnit: { color: COLORS.text, fontSize: 11, fontWeight: "800", flexShrink: 1 },
-  variantChoiceColors: { color: COLORS.textSecondary, fontSize: 9, fontWeight: "700", marginTop: 2 },
-  variantChoiceUnitActive: { color: COLORS.accentDark },
+  variantChoiceUnit: { color: "#713F12", fontSize: 10, fontWeight: "900", flexShrink: 1 },
+  variantChoiceColors: { color: COLORS.textSecondary, fontSize: 8, fontWeight: "700", marginTop: 1 },
+  variantChoiceUnitActive: { color: "#713F12" },
   divider: { height: 1, backgroundColor: COLORS.border, marginVertical: SPACING.lg },
   sectionTitle: { fontWeight: "800", color: COLORS.text, marginBottom: 6 },
   productDetailsSection: { paddingHorizontal: SPACING.lg, marginTop: SPACING.sm, marginBottom: SPACING.md, gap: 10 },
@@ -855,10 +901,14 @@ const s = StyleSheet.create({
   productDetailsCard: { backgroundColor: "#FFFFFF", borderWidth: 1, borderColor: COLORS.border, borderRadius: RADIUS.md, padding: SPACING.md, gap: 8 },
   productDetailsTitle: { color: COLORS.text, fontSize: 14, fontWeight: "800" },
   productDescriptionText: { color: COLORS.text, fontSize: 14, lineHeight: 22, fontWeight: "500" },
+  productDescriptionCollapsed: { maxHeight: 220, overflow: "hidden" },
+  productDescriptionToggle: { alignSelf: "flex-start", flexDirection: "row", alignItems: "center", gap: 3, paddingHorizontal: 9, paddingVertical: 5, borderRadius: 7, backgroundColor: "#FEF3C7" },
+  productDescriptionToggleText: { color: "#92400E", fontSize: 12, fontWeight: "900" },
   productDescriptionEmpty: { color: COLORS.textMuted, fontSize: 13, lineHeight: 20 },
   productAttributeRow: { flexDirection: "row", alignItems: "flex-start", gap: 10, paddingVertical: 7, borderBottomWidth: 1, borderBottomColor: COLORS.border },
   productAttributeLabel: { width: "38%", color: COLORS.textMuted, fontSize: 12, fontWeight: "700" },
-  productAttributeValue: { flex: 1, minWidth: 0, color: COLORS.text, fontSize: 13, lineHeight: 19, fontWeight: "600" },
+  productAttributeValuePill: { alignSelf: "flex-start", maxWidth: "62%", backgroundColor: "#FEF08A", borderRadius: 6, paddingHorizontal: 7, paddingVertical: 3 },
+  productAttributeValue: { flexShrink: 1, minWidth: 0, color: "#713F12", fontSize: 12, lineHeight: 17, fontWeight: "900" },
   desc: { color: COLORS.textSecondary, lineHeight: 22 },
   deliveryCard: { flexDirection: "row", alignItems: "center", gap: SPACING.md, backgroundColor: COLORS.brandLight, padding: SPACING.md, borderRadius: RADIUS.md, marginTop: SPACING.lg },
   delTitle: { fontWeight: "700", color: COLORS.brandDark },
