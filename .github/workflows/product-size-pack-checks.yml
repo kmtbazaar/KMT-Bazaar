@@ -128,8 +128,10 @@ jobs:
           );
           assert.ok(
             adminVendor.includes('getProductCategoryConfig(shopCategory, `${form.name} ${form.item_category}`)') &&
-            adminVendor.includes("categoryConfig.variantOptions.map"),
-            "Admin vendor product sizes must use the same product-name-aware, shop-category-specific options as the vendor editor."
+            adminVendor.includes("categoryConfig.variantOptions.map") &&
+            adminVendor.includes("if (!categoryConfig.showVariants || !categoryConfig.variantOptions.length) return;") &&
+            adminVendor.includes("return isAvailable ? current : { ...current, unit: categoryConfig.variantOptions[0] };"),
+            "Admin vendor product sizes must use the same product-name-aware, shop-category-specific options as the vendor editor and auto-select a valid first base option."
           );
           assert.ok(
             adminVendor.includes("findDuplicateVariantSizeColorIndex") &&
