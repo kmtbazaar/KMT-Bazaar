@@ -23,29 +23,93 @@ const FALLBACK_PRODUCT_IMAGE =
   "https://images.unsplash.com/photo-1542838132-92c53300491e?w=400&q=80";
 
 
-type ProductVariantDraft = { id: string; unit: string; price: string; mrp: string; stock: string; description: string };
-const PRODUCT_COLOR_OPTIONS = ["Black", "White", "Red", "Blue", "Navy", "Green", "Yellow", "Pink", "Purple", "Orange", "Brown", "Grey", "Maroon", "Beige"];
-
-const buildVariantPayload = (base: any, extras: ProductVariantDraft[], baseVariantId = "", baseDescription = "") => [
-  {
-    ...(baseVariantId ? { id: baseVariantId } : {}),
-    unit: String(base.unit || "").trim(),
-    price: Number.parseFloat(String(base.price)),
-    mrp: base.mrp ? Number.parseFloat(String(base.mrp)) : Number.parseFloat(String(base.price)),
-    stock: Number.parseInt(String(base.stock), 10),
-    description: String(baseDescription || "").trim(),
-  },
-  ...extras.map((variant) => ({
-    ...(variant.id ? { id: variant.id } : {}),
-    unit: String(variant.unit || "").trim(),
-    price: Number.parseFloat(String(variant.price)),
-    mrp: variant.mrp ? Number.parseFloat(String(variant.mrp)) : Number.parseFloat(String(variant.price)),
-    stock: Number.parseInt(String(variant.stock), 10),
-    description: String(variant.description || "").trim(),
-  })),
+type ProductVariantDraft = {
+  id: string;
+  unit: string;
+  price: string;
+  mrp: string;
+  stock: string;
+  description: string;
+  colors?: string[];
+  color_images?: Record<string, string[]>;
+};
+const PRODUCT_COLOR_OPTIONS = [
+  "Black", "White", "Red", "Blue", "Navy", "Light Blue", "Dark Blue",
+  "Charcoal", "Olive", "Cream", "Green", "Yellow", "Pink", "Purple",
+  "Orange", "Brown", "Grey", "Maroon", "Beige",
 ];
 
-const validateVariantDrafts = (variants: any[], requireDescriptions = false) => {
+const buildVariantPayload = (base: any, extras: ProductVariantDraft[], baseVariantId = "", baseColors: string[] = []) => {
+  const availableColors = Array.from(new Set((baseColors || []).map((color) => String(color || "").trim()).filter(Boolean)));
+  return [
+    {
+      ...(baseVariantId ? { id: baseVariantId } : {}),
+      unit: String(base.unit || "").trim(),
+      price: Number.parseFloat(String(base.price)),
+      mrp: base.mrp ? Number.parseFloat(String(base.mrp)) : Number.parseFloat(String(base.price)),
+      stock: Number.parseInt(String(base.stock), 10),
+      description: "",
+      colors: availableColors,
+    },
+    ...extras.map((variant) => {
+      const optionColors = Array.isArray(variant.colors) ? variant.colors : availableColors;
+      const selectedOptionColors = Array.from(new Map(
+        optionColors
+          .map((color) => String(color || "").trim())
+          .filter(Boolean)
+          .map((color) => [color.toLowerCase(), color])
+      ).values());
+      const optionColorImages = Object.fromEntries(
+        Object.entries(variant.color_images || {})
+          .filter(([color, images]) =>
+            selectedOptionColors.some((selected) => selected.toLowerCase() === color.toLowerCase()) &&
+            Array.isArray(images)
+          )
+          .map(([color, images]) => {
+            const selectedColor = selectedOptionColors.find((selected) => selected.toLowerCase() === color.toLowerCase()) || color;
+            return [selectedColor, (images as string[]).filter((url) => typeof url === "string" && url.trim())];
+          })
+      );
+      return {
+        ...(variant.id ? { id: variant.id } : {}),
+        unit: String(variant.unit || "").trim(),
+        price: Number.parseFloat(String(variant.price)),
+        mrp: variant.mrp ? Number.parseFloat(String(variant.mrp)) : Number.parseFloat(String(variant.price)),
+        stock: Number.parseInt(String(variant.stock), 10),
+        description: String(variant.description || "").trim(),
+        colors: selectedOptionColors,
+        color_images: optionColorImages,
+      };
+    }),
+  ];
+};
+
+const findDuplicateVariantSizeColorIndex = (variants: any[]) => {
+  for (let index = 0; index < variants.length; index += 1) {
+    const current = variants[index];
+    const currentUnit = String(current.unit || "").trim().toLowerCase();
+    const currentColors = new Set(
+      (Array.isArray(current.colors) ? current.colors : [])
+        .map((color: any) => String(color || "").trim().toLowerCase())
+        .filter(Boolean)
+    );
+    for (let previousIndex = 0; previousIndex < index; previousIndex += 1) {
+      const previous = variants[previousIndex];
+      if (String(previous.unit || "").trim().toLowerCase() !== currentUnit) continue;
+      const previousColors = new Set(
+        (Array.isArray(previous.colors) ? previous.colors : [])
+          .map((color: any) => String(color || "").trim().toLowerCase())
+          .filter(Boolean)
+      );
+      const sameColorGroup = currentColors.size === previousColors.size &&
+        [...currentColors].every((color) => previousColors.has(color));
+      if (!currentColors.size || !previousColors.size || sameColorGroup) return index;
+    }
+  }
+  return -1;
+};
+
+const validateVariantDrafts = (variants: any[], requireDescriptions = false, requireColors = false) => {
   if (variants.some((variant) =>
     !variant.unit ||
     !Number.isFinite(variant.price) || variant.price < 0 ||
@@ -54,15 +118,132 @@ const validateVariantDrafts = (variants: any[], requireDescriptions = false) => 
   )) {
     return "Every size/pack option needs a label, valid price/MRP, and non-negative stock.";
   }
-  if (requireDescriptions && variants.some((variant) => !String(variant.description || "").trim())) {
-    return "Add a description for every option when a product has multiple variants.";
+  if (requireDescriptions && variants.slice(1).some((variant) => !String(variant.description || "").trim())) {
+    return "Add a description for every added size/pack option.";
   }
-  const labels = variants.map((variant) => variant.unit.toLowerCase());
-  if (new Set(labels).size !== labels.length) {
-    return "Each size/pack option must have a unique label.";
+  if (requireColors && variants.some((variant) => !Array.isArray(variant.colors) || variant.colors.length === 0)) {
+    return "Select at least one colour for every size/pack option.";
+  }
+  if (findDuplicateVariantSizeColorIndex(variants) >= 0) {
+    return "For the same RAM / Storage or size, choose different colours for each option.";
   }
   return "";
 };
+
+const validateRequiredColors = (config: any, colors: string[], imagesByColor: Record<string, string[]>) => {
+  if (config.requiresColor && !colors.length) return "Select at least one colour for this product category.";
+  if (config.requiresColorImages) {
+    const missing = colors.filter((color) => {
+      const key = Object.keys(imagesByColor || {}).find((item) => item.toLowerCase() === color.toLowerCase());
+      return !key || !Array.isArray(imagesByColor[key]) || !imagesByColor[key].some((url) => String(url || "").trim());
+    });
+    if (missing.length) return "Upload at least one matching photo for each selected colour: " + missing.join(", ");
+  }
+  return "";
+};
+
+function AdminVariantColorChoices({
+  value,
+  availableColors,
+  onChange,
+  testID,
+  variantLabel,
+  imagesByColor = {},
+  onImagesChange,
+}: {
+  value?: string[];
+  availableColors: string[];
+  onChange: (colors: string[]) => void;
+  testID: string;
+  variantLabel: string;
+  imagesByColor?: Record<string, string[]>;
+  onImagesChange: (images: Record<string, string[]>) => void;
+}) {
+  const selectedColors = Array.isArray(value) ? value : [];
+  const [activeImageColor, setActiveImageColor] = useState(selectedColors[0] || "");
+  const colorOptions = Array.from(new Set([
+    ...availableColors,
+    ...PRODUCT_COLOR_OPTIONS,
+    ...selectedColors,
+  ]));
+  const activeImageKey = Object.keys(imagesByColor).find(
+    (key) => key.toLowerCase() === activeImageColor.toLowerCase()
+  );
+
+  React.useEffect(() => {
+    if (!selectedColors.some((color) => color.toLowerCase() === activeImageColor.toLowerCase())) {
+      setActiveImageColor(selectedColors[0] || "");
+    }
+  }, [selectedColors.join("|"), activeImageColor]);
+
+  const toggleColor = (color: string) => {
+    const exists = selectedColors.some((item) => item.toLowerCase() === color.toLowerCase());
+    const next = exists
+      ? selectedColors.filter((item) => item.toLowerCase() !== color.toLowerCase())
+      : [...selectedColors, color];
+    const nextImages = { ...imagesByColor };
+    const imageKey = Object.keys(nextImages).find((key) => key.toLowerCase() === color.toLowerCase());
+    if (exists && imageKey) delete nextImages[imageKey];
+    onChange(next);
+    onImagesChange(nextImages);
+    if (exists && activeImageColor.toLowerCase() === color.toLowerCase()) {
+      setActiveImageColor(next[0] || "");
+    } else if (!exists) {
+      setActiveImageColor(color);
+    }
+  };
+
+  return (
+    <View style={styles.variantColorPanel} testID={testID}>
+      <Text style={styles.variantColorTitle}>Choose colours for this {variantLabel} option</Text>
+      <Text style={styles.variantColorHint}>A size can have its own colour group, separate from the main product colour selection.</Text>
+      <View style={styles.unitChipContainer}>
+        {colorOptions.map((color) => {
+          const active = selectedColors.some((item) => item.toLowerCase() === color.toLowerCase());
+          return (
+            <Pressable
+              key={color}
+              accessibilityRole="button"
+              accessibilityState={{ selected: active }}
+              onPress={() => toggleColor(color)}
+              style={[styles.unitChip, active && styles.unitChipActive]}
+            >
+              <Text style={[styles.unitChipText, active && styles.unitChipTextActive]}>{color}</Text>
+            </Pressable>
+          );
+        })}
+      </View>
+      {selectedColors.length ? (
+        <>
+          <Text style={styles.variantColorHint}>Optional photos for each selected colour</Text>
+          <View style={styles.unitChipContainer}>
+            {selectedColors.map((color) => (
+              <Pressable
+                key={color}
+                accessibilityRole="button"
+                accessibilityState={{ selected: activeImageColor === color }}
+                onPress={() => setActiveImageColor(color)}
+                style={[styles.unitChip, activeImageColor === color && styles.unitChipActive]}
+              >
+                <Text style={[styles.unitChipText, activeImageColor === color && styles.unitChipTextActive]}>{color} photos</Text>
+              </Pressable>
+            ))}
+          </View>
+          {activeImageColor ? (
+            <ProductImagesUploader
+              value={activeImageKey ? imagesByColor[activeImageKey] || [] : []}
+              onChange={(images) => onImagesChange({ ...imagesByColor, [activeImageColor]: images })}
+              label={"Upload photos for each selected colour"}
+              minCount={1}
+              maxCount={6}
+              testID={testID + "-images-" + activeImageColor.toLowerCase().replace(/\s+/g, "-")}
+            />
+          ) : null}
+        </>
+      ) : null}
+    </View>
+  );
+}
 
 const emptyProductForm = () => ({
   name: "",
@@ -98,8 +279,8 @@ export default function AdminVendorProducts({ vendorId, selectedStoreId: externa
   const [form, setForm] = useState(emptyProductForm);
   const [variantDrafts, setVariantDrafts] = useState<ProductVariantDraft[]>([]);
   const [baseVariantId, setBaseVariantId] = useState("");
-  const [baseVariantDescription, setBaseVariantDescription] = useState("");
   const [activeProductColor, setActiveProductColor] = useState("");
+  const [customProductColor, setCustomProductColor] = useState("");
   const [productItemCategoryName, setProductItemCategoryName] = useState("");
   const [itemCategoryName, setItemCategoryName] = useState("");
   const [editingItemCategoryId, setEditingItemCategoryId] = useState("");
@@ -179,15 +360,15 @@ export default function AdminVendorProducts({ vendorId, selectedStoreId: externa
   }, [loadStoreData]);
 
   const shopCategory = shopCategories.find((item: any) => String(item.id) === String(selectedStore?.category_id)) || { name: selectedStore?.category_name || selectedStore?.category_id || "" };
-  const categoryConfig = getProductCategoryConfig(shopCategory);
+  const categoryConfig = getProductCategoryConfig(shopCategory, `${form.name} ${form.item_category}`);
   const shopCategoryName = shopCategory.name || selectedStore?.category_name || selectedStore?.category_id || "Not set";
 
   const resetProductForm = () => {
     setEditingProductId("");
     setBaseVariantId("");
     setVariantDrafts([]);
-    setBaseVariantDescription("");
     setActiveProductColor("");
+    setCustomProductColor("");
     setProductItemCategoryName("");
     setForm(emptyProductForm());
   };
@@ -203,7 +384,6 @@ export default function AdminVendorProducts({ vendorId, selectedStoreId: externa
     const primaryVariant = savedVariants[0];
     setEditingProductId(String(product.id || product._id || ""));
     setBaseVariantId(String(primaryVariant?.id || ""));
-    setBaseVariantDescription(String(primaryVariant?.description || ""));
     setVariantDrafts(savedVariants.slice(1).map((variant: any) => ({
       id: String(variant.id || ""),
       unit: String(variant.unit || ""),
@@ -211,6 +391,8 @@ export default function AdminVendorProducts({ vendorId, selectedStoreId: externa
       mrp: String(variant.mrp ?? variant.price ?? ""),
       stock: String(variant.stock ?? 0),
       description: String(variant.description || ""),
+      colors: Array.isArray(variant.colors) ? variant.colors.map((color: any) => String(color)) : undefined,
+      color_images: variant.color_images && typeof variant.color_images === "object" ? { ...variant.color_images } : {},
     })));
     setForm({
       name: String(product.name || ""),
@@ -229,8 +411,18 @@ export default function AdminVendorProducts({ vendorId, selectedStoreId: externa
       item_category_id: String(product.item_category_id || ""),
     });
     setProductItemCategoryName("");
+    setCustomProductColor("");
+    setActiveProductColor("");
     setNotice("");
     setModalVisible(true);
+  };
+
+  const addCustomProductColor = () => {
+    const color = customProductColor.trim().replace(/\s+/g, " ");
+    if (!color || form.colors.some((item: string) => item.toLowerCase() === color.toLowerCase())) return;
+    setForm((current) => ({ ...current, colors: [...current.colors, color] }));
+    setActiveProductColor(color);
+    setCustomProductColor("");
   };
 
   const payloadFor = (item: any, available: boolean, variants?: any[]) => ({
@@ -259,12 +451,23 @@ export default function AdminVendorProducts({ vendorId, selectedStoreId: externa
       setNotice("This store needs a shop category before products can be added.");
       return;
     }
-    if (!String(form.name).trim() || !String(form.price).trim() || !Number.isFinite(Number(form.price)) || Number(form.price) < 0) {
+    if (!String(form.name).trim() || !String(form.price).trim() || !Number.isFinite(Number(form.price)) || Number(form.price) <= 0) {
       setNotice("Enter a product name and a valid selling price.");
       return;
     }
     if (form.mrp && (!Number.isFinite(Number(form.mrp)) || Number(form.mrp) < 0)) {
       setNotice("Enter a valid MRP.");
+      return;
+    }
+    if (!String(form.stock || "").trim() || !Number.isInteger(Number(form.stock)) || Number(form.stock) < 0) {
+      setNotice("Enter a valid stock quantity.");
+      return;
+    }
+    if (
+      categoryConfig.variantLabel === "RAM / Storage" &&
+      !categoryConfig.variantOptions.some((option: string) => option.toLowerCase() === String(form.unit || "").trim().toLowerCase())
+    ) {
+      setNotice("Choose RAM / Storage for the main product before adding it.");
       return;
     }
     const existingProduct = products.find(
@@ -274,22 +477,19 @@ export default function AdminVendorProducts({ vendorId, selectedStoreId: externa
       String(existingProduct.category_id || selectedStore?.category_id || "") === String(selectedStore?.category_id || "") &&
       JSON.stringify(form.colors || []) === JSON.stringify(existingProduct.colors || []) &&
       JSON.stringify(form.color_images || {}) === JSON.stringify(existingProduct.color_images || {});
-    const missingColorPhotos = categoryConfig.requiresColorImages && !unchangedColorSetup
-      ? form.colors.filter((color: string) => {
-          const key = Object.keys(form.color_images || {}).find((item) => item.toLowerCase() === color.toLowerCase());
-          return !key || !Array.isArray(form.color_images[key]) || !form.color_images[key].some((url) => String(url || "").trim());
-        })
-      : [];
-    if (!unchangedColorSetup && categoryConfig.requiresColor && !form.colors.length) {
-      setNotice("Select at least one colour for this category.");
+    const colorError = unchangedColorSetup
+      ? ""
+      : validateRequiredColors(categoryConfig, form.colors, form.color_images);
+    if (colorError) {
+      setNotice(colorError);
       return;
     }
-    if (missingColorPhotos.length) {
-      setNotice("Upload a matching photo for each selected colour: " + missingColorPhotos.join(", "));
-      return;
-    }
-    const variants = categoryConfig.showVariants ? buildVariantPayload(form, variantDrafts, baseVariantId, baseVariantDescription) : undefined;
-    const variantError = variants ? validateVariantDrafts(variants, variants.length > 1) : "";
+    const variants = categoryConfig.showVariants
+      ? buildVariantPayload(form, variantDrafts, baseVariantId, form.colors)
+      : undefined;
+    const variantError = variants
+      ? validateVariantDrafts(variants, variants.length > 1, categoryConfig.showColors)
+      : "";
     if (variantError) {
       setNotice(variantError);
       return;
@@ -604,11 +804,13 @@ export default function AdminVendorProducts({ vendorId, selectedStoreId: externa
             </View>
             <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 12 }}>
               <TextInput
+                testID="admin-vendor-product-name"
                 value={form.name}
                 onChangeText={(value) => setForm((current) => ({ ...current, name: value }))}
-                placeholder="Product name *"
+                placeholder="Product name (enter full name) *"
                 placeholderTextColor="#9CA3AF"
-                style={styles.input}
+                multiline
+                style={[styles.input, styles.productNameInput]}
               />
               {categoryConfig.showVariants && categoryConfig.variantOptions.length > 0 ? (
                 <View style={styles.unitPickerPanel} testID="admin-vendor-product-size-pack-picker">
@@ -650,25 +852,27 @@ export default function AdminVendorProducts({ vendorId, selectedStoreId: externa
                   })}
                   {activeItemCategories.length === 0 ? <Text style={styles.muted}>Add a store item category above first; selecting a category is optional.</Text> : null}
                 </View>
-                <View style={styles.productCategoryCreateRow}>
-                  <TextInput
-                    value={productItemCategoryName}
-                    onChangeText={setProductItemCategoryName}
-                    placeholder="New item category (e.g. Shoes)"
-                    placeholderTextColor="#047857"
-                    style={[styles.input, styles.productCategoryInput]}
-                    onSubmitEditing={() => { void createItemCategoryForProduct(); }}
-                    returnKeyType="done"
-                  />
-                  <Pressable
-                    disabled={!productItemCategoryName.trim()}
-                    onPress={() => { void createItemCategoryForProduct(); }}
-                    style={[styles.productCategoryButton, !productItemCategoryName.trim() && { opacity: 0.55 }]}
-                    accessibilityLabel="Create and select item category"
-                  >
-                    <MaterialCommunityIcons name="plus" size={19} color="#fff" />
-                  </Pressable>
-                </View>
+                {editingProductId ? (
+                  <View style={styles.productCategoryCreateRow}>
+                    <TextInput
+                      value={productItemCategoryName}
+                      onChangeText={setProductItemCategoryName}
+                      placeholder="New item category (e.g. Shoes)"
+                      placeholderTextColor="#047857"
+                      style={[styles.input, styles.productCategoryInput]}
+                      onSubmitEditing={() => { void createItemCategoryForProduct(); }}
+                      returnKeyType="done"
+                    />
+                    <Pressable
+                      disabled={!productItemCategoryName.trim()}
+                      onPress={() => { void createItemCategoryForProduct(); }}
+                      style={[styles.productCategoryButton, !productItemCategoryName.trim() && { opacity: 0.55 }]}
+                      accessibilityLabel="Create and select item category"
+                    >
+                      <MaterialCommunityIcons name="plus" size={19} color="#fff" />
+                    </Pressable>
+                  </View>
+                ) : null}
               </View>
               <View style={styles.formRow}>
                 <TextInput
@@ -715,21 +919,22 @@ export default function AdminVendorProducts({ vendorId, selectedStoreId: externa
                   <Pressable
                     testID="admin-vendor-product-add-variant"
                     accessibilityRole="button"
-                    onPress={() => setVariantDrafts((current) => [...current, { id: "", unit: "", price: "", mrp: "", stock: "10", description: "" }])}
+                    onPress={() => setVariantDrafts((current) => [...current, {
+                      id: "",
+                      unit: "",
+                      price: "",
+                      mrp: "",
+                      stock: "10",
+                      description: "",
+                      colors: [...form.colors],
+                      color_images: {},
+                    }])}
                     style={styles.addVariantButton}
                   >
                     <MaterialCommunityIcons name="plus" size={17} color="#FFFFFF" />
                     <Text style={styles.addVariantButtonText}>Add size</Text>
                   </Pressable>
                 </View>
-                {variantDrafts.length > 0 ? (
-                  <View style={styles.variantDraftCard}>
-                    <Text style={styles.variantDraftLabel}>Description for the first option</Text>
-                    <TextInput value={baseVariantDescription} onChangeText={setBaseVariantDescription}
-                      placeholder="Describe the differences for this option" placeholderTextColor="#64748B"
-                      style={[styles.input, styles.descriptionInput]} multiline />
-                  </View>
-                ) : null}
                 {variantDrafts.map((variant, index) => (
                   <View key={`${variant.id || "new"}-${index}`} style={styles.variantDraftCard}>
                     <View style={styles.variantDraftTopRow}>
@@ -743,12 +948,39 @@ export default function AdminVendorProducts({ vendorId, selectedStoreId: externa
                         <MaterialCommunityIcons name="trash-can-outline" size={17} color="#B91C1C" />
                       </Pressable>
                     </View>
+                    {categoryConfig.variantOptions.length ? (
+                      <View style={styles.unitChipContainer}>
+                        {categoryConfig.variantOptions.map((option: string) => {
+                          const active = variant.unit.trim().toLowerCase() === option.toLowerCase();
+                          return (
+                            <Pressable
+                              key={option}
+                              accessibilityRole="button"
+                              accessibilityState={{ selected: active }}
+                              onPress={() => setVariantDrafts((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, unit: option } : item))}
+                              style={[styles.unitChip, active && styles.unitChipActive]}
+                            >
+                              <Text style={[styles.unitChipText, active && styles.unitChipTextActive]}>{option}</Text>
+                            </Pressable>
+                          );
+                        })}
+                      </View>
+                    ) : null}
                     <TextInput
-                      placeholder="Size / pack (e.g. UK 8 or 500 g)"
+                      placeholder={`Or enter custom ${categoryConfig.variantLabel}`}
                       placeholderTextColor="#64748B"
                       value={variant.unit}
                       onChangeText={(value) => setVariantDrafts((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, unit: value } : item))}
                       style={styles.input}
+                    />
+                    <AdminVariantColorChoices
+                      value={variant.colors ?? form.colors}
+                      availableColors={form.colors}
+                      variantLabel={categoryConfig.variantLabel}
+                      imagesByColor={variant.color_images || {}}
+                      onChange={(colors) => setVariantDrafts((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, colors } : item))}
+                      onImagesChange={(color_images) => setVariantDrafts((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, color_images } : item))}
+                      testID={`admin-vendor-product-add-variant-colours-${index}`}
                     />
                     <TextInput value={variant.description}
                       onChangeText={(value) => setVariantDrafts((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, description: value } : item))}
@@ -790,20 +1022,47 @@ export default function AdminVendorProducts({ vendorId, selectedStoreId: externa
                   <Text style={styles.variantManagerHint}>Select colours, then attach a matching photo gallery to each.</Text>
                   <View style={styles.unitChipContainer}>
                     {PRODUCT_COLOR_OPTIONS.map((color) => {
-                      const active = form.colors.includes(color);
+                      const active = form.colors.some((item: string) => item.toLowerCase() === color.toLowerCase());
                       return <Pressable key={color} onPress={() => {
                         setForm((current) => {
-                          const selected = current.colors.includes(color);
-                          const colors = selected ? current.colors.filter((value: string) => value !== color) : [...current.colors, color];
+                          const selected = current.colors.some((value: string) => value.toLowerCase() === color.toLowerCase());
+                          const colors = selected
+                            ? current.colors.filter((value: string) => value.toLowerCase() !== color.toLowerCase())
+                            : [...current.colors, color];
                           const color_images = { ...(current.color_images || {}) };
-                          if (selected) delete color_images[color];
+                          const imageKey = Object.keys(color_images).find((key) => key.toLowerCase() === color.toLowerCase());
+                          if (selected && imageKey) delete color_images[imageKey];
                           return { ...current, colors, color_images };
                         });
-                        setActiveProductColor((current) => current === color ? "" : color);
+                        setActiveProductColor((current) => current.toLowerCase() === color.toLowerCase() ? "" : color);
                       }} style={[styles.unitChip, active && styles.unitChipActive]}>
                         <Text style={[styles.unitChipText, active && styles.unitChipTextActive]}>{color}</Text>
                       </Pressable>;
                     })}
+                    {form.colors.filter((color: string) => !PRODUCT_COLOR_OPTIONS.some((item) => item.toLowerCase() === color.toLowerCase())).map((color: string) => (
+                      <Pressable key={color} onPress={() => setActiveProductColor(color)} style={[styles.unitChip, styles.unitChipActive]}>
+                        <Text style={[styles.unitChipText, styles.unitChipTextActive]}>{color}</Text>
+                      </Pressable>
+                    ))}
+                  </View>
+                  <View style={styles.customColorRow}>
+                    <TextInput
+                      value={customProductColor}
+                      onChangeText={setCustomProductColor}
+                      placeholder={"Add another " + categoryConfig.colorLabel.toLowerCase()}
+                      placeholderTextColor="#64748B"
+                      style={[styles.input, styles.customColorInput]}
+                      onSubmitEditing={addCustomProductColor}
+                      returnKeyType="done"
+                    />
+                    <Pressable
+                      disabled={!customProductColor.trim()}
+                      onPress={addCustomProductColor}
+                      style={[styles.smallPrimaryButton, !customProductColor.trim() && { opacity: 0.5 }]}
+                      accessibilityLabel="Add custom product colour"
+                    >
+                      <MaterialCommunityIcons name="plus" size={19} color="#FFFFFF" />
+                    </Pressable>
                   </View>
                   {form.colors.length ? (
                     <View style={styles.unitChipContainer}>
@@ -813,11 +1072,16 @@ export default function AdminVendorProducts({ vendorId, selectedStoreId: externa
                       </Pressable>)}
                     </View>
                   ) : null}
-                  {activeProductColor && form.colors.includes(activeProductColor) ? (
-                    <ProductImagesUploader value={form.color_images[activeProductColor] || []}
+                  {activeProductColor && form.colors.some((color: string) => color.toLowerCase() === activeProductColor.toLowerCase()) ? (
+                    <ProductImagesUploader
+                      value={form.color_images[Object.keys(form.color_images).find((key) => key.toLowerCase() === activeProductColor.toLowerCase()) || activeProductColor] || []}
                       onChange={(images) => setForm((current) => ({ ...current, color_images: { ...(current.color_images || {}), [activeProductColor]: images } }))}
-                      label={activeProductColor + " photos"} minCount={1} maxCount={6}
-                      testID={"admin-vendor-product-colour-images-" + activeProductColor.toLowerCase()} />
+                      label={activeProductColor + " photos"}
+                      minCount={1}
+                      maxCount={6}
+                      allowMultipleSelection
+                      testID={"admin-vendor-product-colour-images-" + activeProductColor.toLowerCase().replace(/\s+/g, "-")}
+                    />
                   ) : null}
                 </View>
               ) : null}
@@ -951,6 +1215,12 @@ const styles = StyleSheet.create({
   imageButton: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, height: 34, borderRadius: 17, borderWidth: 1, borderColor: "#FED7AA", backgroundColor: "#FFF7ED" },
   imageButtonText: { color: "#9A3412", fontWeight: "800", fontSize: 12 },
   descriptionInput: { height: 76, textAlignVertical: "top" },
+  productNameInput: { minHeight: 48, textAlignVertical: "top" },
+  customColorRow: { flexDirection: "row", alignItems: "center", gap: 7, marginTop: 8 },
+  customColorInput: { flex: 1, minWidth: 0, marginBottom: 0 },
+  variantColorPanel: { borderWidth: 1, borderColor: "#FED7AA", backgroundColor: "#FFFBF5", borderRadius: 10, padding: 9, gap: 8 },
+  variantColorTitle: { color: "#7C2D12", fontSize: 12, fontWeight: "900" },
+  variantColorHint: { color: "#9A3412", fontSize: 10, lineHeight: 14 },
   checkboxRow: { flexDirection: "row", alignItems: "center", gap: 7, marginBottom: 10 },
   checkboxText: { fontSize: 13, fontWeight: "800", color: "#111827" },
   modalActions: { flexDirection: "row", gap: 8, marginTop: 2 },
