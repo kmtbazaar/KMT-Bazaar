@@ -909,8 +909,7 @@ jobs:
           fi
           echo "BACKEND_VENDOR_STORE_LOOKUP_HELPER_VALIDATION_PASS"
 
-          if ! grep -Fq 'async def _resolve_vendor_item_category(' "$TARGET" \\
-            || ! grep -Fq 'await _resolve_vendor_item_category(' "$TARGET"; then
+          if ! grep -Fq 'async def _resolve_vendor_item_category(' "$TARGET" || ! grep -Fq 'await _resolve_vendor_item_category(' "$TARGET"; then
             echo "BACKEND_VENDOR_ITEM_CATEGORY_RESOLVER_MISSING"
             rollback
             exit 1
