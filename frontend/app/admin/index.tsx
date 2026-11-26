@@ -327,7 +327,7 @@ export default function AdminDashboard() {
               <AnimatedBrandLogo size={52} />
             </View>
 
-            <View style={s.headerText}>
+            <View pointerEvents="box-none" style={s.headerText}>
               <Text style={s.headerEyebrow}>
                 KMT BAZAAR
               </Text>
@@ -949,8 +949,9 @@ const s = StyleSheet.create({
   },
 
   headerText: {
-    flex: 1,
-    marginLeft: 12,
+    position: "absolute",
+    left: 0,
+    right: 0,
     alignItems: "center",
   },
 
