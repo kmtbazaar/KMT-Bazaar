@@ -19,6 +19,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { WebView } from "react-native-webview";
 import { API, api } from "@/src/api";
 import { COLORS, RADIUS, SPACING } from "@/src/theme";
+import { formatRupees } from "@/src/utils/formatRupees";
 
 const STAGES = [
   { key: "pending", label: "Order Placed", icon: "receipt" },
@@ -265,7 +266,7 @@ export default function OrderDetail() {
               </View>
 
               <Text style={s.itemPrice}>
-                ₹{it.line_total}
+                {formatRupees(it.line_total)}
               </Text>
               <MaterialCommunityIcons name="chevron-right" size={18} color={COLORS.textMuted} />
               </View>
@@ -318,27 +319,27 @@ export default function OrderDetail() {
 
           <Row
             l="Subtotal"
-            v={`₹${order.subtotal}`}
+            v={formatRupees(order.subtotal)}
           />
 
           <Row
             l="Delivery"
             v={
               order.delivery_fee
-                ? `₹${order.delivery_fee}`
+                ? formatRupees(order.delivery_fee)
                 : "FREE"
             }
           />
 
           {Number(order.tax || 0) > 0 && (
-            <Row l="Tax (previous order)" v={`₹${order.tax}`} />
+            <Row l="Tax (previous order)" v={formatRupees(order.tax)} />
           )}
 
           <View style={s.divider} />
 
           <Row
             l="Total Paid"
-            v={`₹${order.total}`}
+            v={formatRupees(order.total)}
             bold
           />
 
