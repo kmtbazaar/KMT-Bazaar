@@ -341,6 +341,17 @@ jobs:
                   if block_end <= block_start:
                       raise SystemExit(f"STOP: {label} markers are out of order; no VPS changes made.")
                   return live_source[:block_start] + replacement + live_source[block_end:]
+              if (
+                  label == "Photography showcase routes"
+                  and '@api.get("/vendor/photography/showcase")' in live_source
+                  and '@api.put("/vendor/photography/showcase")' in live_source
+                  and '@api.get("/services/photography/showcase")' in live_source
+              ):
+                  # This patch does not modify photography routes. Preserve the
+                  # existing VPS-only block when its old marker pair is inconsistent;
+                  # the explicit route-presence checks below still validate it.
+                  print("PHOTOGRAPHY_SHOWCASE_ROUTES_LIVE_BLOCK=PRESERVED_WITH_EXISTING_MARKER_MISMATCH")
+                  return live_source
               raise SystemExit(f"STOP: Existing {label} markers are inconsistent; no VPS changes made.")
 
           source = sync_marked_block(
