@@ -971,7 +971,15 @@ jobs:
           fi
 
           # Read-only database audit: verify the live service is connected to populated vendor data.
-          PYTHON_BIN="$(readlink -f "/proc/$(systemctl show kmt-bazaar-com.service -p MainPID --value)/exe")"
+          EXEC_PATH="$(systemctl show kmt-bazaar-com.service -p ExecStart --value | sed -n 's/.*path=\\([^ ;]*\\).*/\\1/p')"
+          test -n "$EXEC_PATH" && test -x "$EXEC_PATH"
+          if [[ "$EXEC_PATH" == */bin/python || "$EXEC_PATH" == */bin/python3 ]]; then
+            PYTHON_BIN="$EXEC_PATH"
+          else
+            SHEBANG="$(head -n 1 "$EXEC_PATH")"
+            PYTHON_BIN="${SHEBANG#\\#!}"
+          fi
+          test -x "$PYTHON_BIN"
           cd /root/KMT-Bazaar-com/backend
           "$PYTHON_BIN" - <<'PY'
           import asyncio
