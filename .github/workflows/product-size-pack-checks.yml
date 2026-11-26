@@ -14,6 +14,8 @@ on:
       - "frontend/app/orders/[id].tsx"
       - "frontend/app/admin/order/[id].tsx"
       - "frontend/src/components/ProductCard.tsx"
+      - "frontend/src/components/ProductUnitBadge.tsx"
+      - "frontend/src/utils/productUnit.ts"
       - "frontend/src/components/CheckoutBar.tsx"
       - "frontend/src/components/BrandMark.tsx"
       - "frontend/app/(tabs)/categories.tsx"
@@ -52,6 +54,9 @@ jobs:
           const api = fs.readFileSync("src/api.ts", "utf8");
           const customer = fs.readFileSync("app/product/[id].tsx", "utf8");
           const productCard = fs.readFileSync("src/components/ProductCard.tsx", "utf8");
+          const productUnitBadge = fs.readFileSync("src/components/ProductUnitBadge.tsx", "utf8");
+          const productUnit = fs.readFileSync("src/utils/productUnit.ts", "utf8");
+          const categories = fs.readFileSync("app/(tabs)/categories.tsx", "utf8");
           const vendorOrders = fs.readFileSync("app/vendor/orders.tsx", "utf8");
           const vendorDashboard = fs.readFileSync("app/vendor/index.tsx", "utf8");
           const customerOrder = fs.readFileSync("app/orders/[id].tsx", "utf8");
@@ -129,12 +134,30 @@ jobs:
           assert.ok(customerOrder.includes("it.color") && adminOrder.includes("it.color"), "Customer and admin order details must display the selected colour.");
           assert.ok(customer.includes('width: "22%"') && customer.includes('maxWidth: "24%"'), "Four size/pack options should fit across without overlap.");
           assert.ok(productCard.includes('fontSize: 11,\n    lineHeight: 14,\n    fontWeight: "900"'), "Product unit label must be larger and bolder.");
+          assert.ok(
+            productCard.includes("getProductUnitLabel(p)") &&
+            productCard.includes("ProductUnitBadge") &&
+            categories.includes("getProductUnitLabel(p)") &&
+            categories.includes("ProductUnitBadge") &&
+            customer.includes("getProductUnitLabel(item)") &&
+            customer.includes("recommendation-unit-") &&
+            productUnitBadge.includes('backgroundColor: "#FEF08A"') &&
+            productUnitBadge.includes('fontWeight: "900"') &&
+            productUnit.includes("product.variants") &&
+            /ram|memory/i.test(productUnit) &&
+            /storage|rom/i.test(productUnit),
+            "All category, product and You May Also Like cards must show saved unit/RAM values as yellow-highlight badges."
+          );
+          assert.ok(customer.includes("productDescription.length > 180"), "See more must remain visible on web even when onTextLayout does not report the hidden lines.");
+          assert.ok(customer.includes("product-image-viewer-next") && customer.includes("product-image-viewer-previous") && customer.includes("activeOffsetX([-12, 12])"), "The enlarged product image viewer must support clear left/right navigation.");
           assert.ok(productCard.includes("minWidth: 48,\n    height: 34,"), "Add button should be taller with a usable minimum width.");
 
           console.log("PRODUCT_SIZE_PACK_UI_VALIDATION_PASS");
           console.log("Validated category-specific options, variant prices/descriptions/stock, and customer selector/cart wiring.");
           NODE
+      - name: Validate customer product grid, unit badges and image browsing
+        run: node scripts/validate-product-grid-layout.js
       - name: Lint changed product UI files
-        run: npx eslint "app/vendor/store/[id].tsx" "app/vendor/products.tsx" "app/product/[id].tsx" "app/(tabs)/categories.tsx" "app/home-category/[id].tsx" "app/store/[id].tsx" "src/components/ProductCard.tsx" "src/components/CheckoutBar.tsx" "src/components/BrandMark.tsx" --no-cache
+        run: npx eslint "app/vendor/store/[id].tsx" "app/vendor/products.tsx" "app/product/[id].tsx" "app/(tabs)/categories.tsx" "app/home-category/[id].tsx" "app/store/[id].tsx" "src/components/ProductCard.tsx" "src/components/ProductUnitBadge.tsx" "src/utils/productUnit.ts" "src/components/CheckoutBar.tsx" "src/components/BrandMark.tsx" --no-cache
       - name: Build web app
         run: npm run build:web
