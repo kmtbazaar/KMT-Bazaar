@@ -290,6 +290,11 @@ jobs:
           const config = fs.readFileSync("src/productCategoryConfig.ts", "utf8");
           const vendor = fs.readFileSync("app/vendor/store/[id].tsx", "utf8");
           const customer = fs.readFileSync("app/product/[id].tsx", "utf8");
+          const categories = fs.readFileSync("app/(tabs)/categories.tsx", "utf8");
+          const homeCategory = fs.readFileSync("app/home-category/[id].tsx", "utf8");
+          const storePage = fs.readFileSync("app/store/[id].tsx", "utf8");
+          const checkoutBar = fs.readFileSync("src/components/CheckoutBar.tsx", "utf8");
+          const brandMark = fs.readFileSync("src/components/BrandMark.tsx", "utf8");
           const admin = fs.readFileSync("app/admin/categories.tsx", "utf8");
           const backend = fs.readFileSync("../backend/server.py", "utf8");
 
@@ -308,7 +313,10 @@ jobs:
           assert.ok(customer.includes("p?.color_images") && customer.includes("productColorThumb"), "Customer must show matching colour photos below the main product gallery.");
           assert.ok(customer.includes("{categoryConfig.showVariants ? (") && customer.includes("categoryConfig.showDescription") && customer.includes("p?.description"), "Customer detail must retain variants and display saved product descriptions.");
           assert.ok(customer.includes("variantChoiceUnitBadge") && customer.includes('backgroundColor: "#FEF08A"') && customer.includes("variantSelector: { marginTop: 8, padding: 10") && customer.includes("minHeight: 60") && customer.includes("paddingVertical: 10"), "Customer RAM/size/category option tiles must be yellow-highlighted and twice as tall.");
-          assert.ok(customer.includes("descriptionLineCount > 10") && customer.includes("product-description-see-more") && customer.includes("setDescriptionExpanded") && customer.includes("numberOfLines={descriptionExpanded ? undefined : 10}") && customer.includes("productDescriptionMeasureWrap"), "Product details must show a working See more control after ten measured lines.");
+          assert.ok(customer.includes("descriptionLineCount >= 10") && customer.includes("product-description-see-more") && customer.includes("setDescriptionExpanded") && customer.includes("numberOfLines={descriptionExpanded ? undefined : 10}") && customer.includes("onTextLayout") && !customer.includes("productDescriptionMeasureWrap"), "Product details must show a working See more control from the visible ten-line description.");
+          assert.ok(categories.includes("formatRupees(p.price)") && categories.includes("formatRupees(p.mrp)") && checkoutBar.includes("formatRupees(subtotal)"), "Category product tiles and the floating customer taskbar must use grouped rupee amounts.");
+          assert.ok(brandMark.includes('slug: "oppo"') && brandMark.includes("cdn.simpleicons.org") && homeCategory.includes("isKnownBrand(category.name)") && storePage.includes("isKnownBrand(category.name)") && categories.includes("<BrandMark product={p}"), "Customer item categories and product cards must use real brand marks such as OPPO.");
+          assert.ok(customer.includes("runOnJS(changeViewerImage)(1)") && customer.includes("runOnJS(changeViewerImage)(-1)") && customer.includes("translationX < -60") && customer.includes("translationX > 60"), "Enlarged product images must swipe left and right through the full gallery.");
           assert.ok(customer.includes("productAttributeValuePill") && customer.includes("product-selected-unit-highlight"), "Category specification and selected unit values must use bold yellow highlight pills.");
           const adminVendor = fs.readFileSync("src/components/AdminVendorProducts.tsx", "utf8");
           assert.ok(admin.includes("category-product-field-settings") && (admin.match(/<Switch/g) || []).length >= 5 && admin.includes("cf-variant-options") && admin.includes("cf-product-attributes"), "Admin must configure category options and specifications.");
@@ -419,7 +427,7 @@ jobs:
 
       - name: Lint changed product and branding screens
         working-directory: frontend
-        run: npx eslint "app/vendor/store/[id].tsx" "app/vendor/products.tsx" "app/product/[id].tsx" "src/components/ProductCard.tsx" "src/components/AnimatedBrandLogo.tsx" "app/auth/login.tsx" "app/admin/index.tsx" "app/delivery/index.tsx" "app/vendor/holiday-dashboard.tsx" "app/vendor/car-rental-dashboard.tsx" "app/role/[role].tsx" "app/(tabs)/profile.tsx" "app/(tabs)/cart.tsx" "app/addresses.tsx" "app/checkout.tsx" "app/index.tsx" "app/search.tsx" "src/components/ParticleLogoSplash.tsx" "components/AIAssistant.tsx" "components/BotHeader.tsx" "app/assistant.tsx" "components/ChatBubble.tsx" "components/TypingIndicator.tsx" "src/components/RobotAvatar.tsx" "src/components/RobotCompanion3D.tsx" "app/(tabs)/_layout.tsx" "app/(tabs)/home.tsx" "app/RoojgarForm.tsx" "app/orders/[id].tsx" "app/support/returns.tsx" "src/api.ts" "src/components/AdminVendorProducts.tsx" --no-cache
+        run: npx eslint "app/vendor/store/[id].tsx" "app/vendor/products.tsx" "app/product/[id].tsx" "app/(tabs)/categories.tsx" "app/home-category/[id].tsx" "app/store/[id].tsx" "src/components/ProductCard.tsx" "src/components/CheckoutBar.tsx" "src/components/BrandMark.tsx" "src/components/AnimatedBrandLogo.tsx" "app/auth/login.tsx" "app/admin/index.tsx" "app/delivery/index.tsx" "app/vendor/holiday-dashboard.tsx" "app/vendor/car-rental-dashboard.tsx" "app/role/[role].tsx" "app/(tabs)/profile.tsx" "app/(tabs)/cart.tsx" "app/addresses.tsx" "app/checkout.tsx" "app/index.tsx" "app/search.tsx" "src/components/ParticleLogoSplash.tsx" "components/AIAssistant.tsx" "components/BotHeader.tsx" "app/assistant.tsx" "components/ChatBubble.tsx" "components/TypingIndicator.tsx" "src/components/RobotAvatar.tsx" "src/components/RobotCompanion3D.tsx" "app/(tabs)/_layout.tsx" "app/(tabs)/home.tsx" "app/RoojgarForm.tsx" "app/orders/[id].tsx" "app/support/returns.tsx" "src/api.ts" "src/components/AdminVendorProducts.tsx" --no-cache
 
       - name: Validate customer billing, invoice PDF, refund/return help and order item navigation
         working-directory: frontend
