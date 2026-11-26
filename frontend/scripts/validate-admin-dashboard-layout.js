@@ -32,9 +32,9 @@ requireRules("kpiGrid", ['width: "100%"', 'flexDirection: "column"']);
 requireRules("kpiRow", ['width: "100%"', 'flexDirection: "row"', "gap: 10"]);
 requireRules("kpiCardWrap", ["flex: 1", "minWidth: 0"]);
 requireRules("kpiCard", ['width: "100%"', "height: 164", "minHeight: 164", "maxHeight: 164", "flexShrink: 0"]);
-requireRules("kpiCardCompact", ["height: 96", "minHeight: 96", "maxHeight: 96", "padding: 7"]);
-requireRules("kpiIconCompact", ["width: 24", "height: 24"]);
-requireRules("kpiValueCompact", ["fontSize: 15", "marginTop: 4"]);
+requireRules("kpiCardCompact", ["height: 80", "minHeight: 80", "maxHeight: 80", "padding: 6"]);
+requireRules("kpiIconCompact", ["width: 21", "height: 21"]);
+requireRules("kpiValueCompact", ["fontSize: 14", "marginTop: 2"]);
 requireRules("kpiLabelCompact", ["fontSize: 8"]);
 requireRules("kpiSubCompact", ["fontSize: 8"]);
 requireRules("kpiTapHintCompact", ["marginTop: 3"]);
@@ -44,7 +44,7 @@ requireRules("gridWrapper", ["flex: 1", "minWidth: 0"]);
 requireRules("gridItem", ['width: "100%"', "height: 128", "minHeight: 128", "maxHeight: 128", "flexShrink: 0"]);
 
 console.log("ADMIN_DASHBOARD_LAYOUT_VALIDATION_PASS");
-console.log("KPI: desktop 4 columns × 2 rows / compact 96px tiles; smaller screens 2 columns. Quick Actions: 3 equal columns / fixed 128px height.");
+console.log("KPI: desktop 4 columns × 2 rows / compact 80px tiles; smaller screens 2 columns. Quick Actions: 3 equal columns / fixed 128px height.");
 
 if (process.argv.includes("--check-build")) {
   const dist = path.resolve("dist");
