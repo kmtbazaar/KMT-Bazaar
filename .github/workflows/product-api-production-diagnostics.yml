@@ -34,7 +34,7 @@ jobs:
           chmod 700 "$HOME/.ssh"
           printf '%s\n' "$HOSTINGER_SSH_KEY" > "$HOME/.ssh/kmt_bazaar_diagnostics_key"
           chmod 600 "$HOME/.ssh/kmt_bazaar_diagnostics_key"
-          ssh-keyscan -p "$PORT" -H "$HOSTINGER_HOST" >> "$HOME/.ssh/known_hosts" 2>/dev/null
+          ssh-keyscan -p "$PORT" -H "$HOSTINGER_HOST" >> "$HOME/.ssh/known_hosts" 2>/dev/null || true
           echo "SSH_READY"
 
       - name: Read backend service and recent product API errors
@@ -48,7 +48,7 @@ jobs:
           PORT="${HOSTINGER_PORT:-22}"
           DEST="${HOSTINGER_USER}@${HOSTINGER_HOST}"
           RAW="$RUNNER_TEMP/kmt-product-api-journal.log"
-          timeout 90s ssh -o BatchMode=yes -o ConnectTimeout=15 -o ServerAliveInterval=15 -o ServerAliveCountMax=3 -i "$HOME/.ssh/kmt_bazaar_diagnostics_key" -p "$PORT" "$DEST" '
+          timeout 90s ssh -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o ConnectTimeout=15 -o ServerAliveInterval=15 -o ServerAliveCountMax=3 -i "$HOME/.ssh/kmt_bazaar_diagnostics_key" -p "$PORT" "$DEST" '
             echo "__SERVICE_STATE__"
             systemctl is-active kmt-bazaar-com.service || true
             echo "__SERVICE_STATUS__"
