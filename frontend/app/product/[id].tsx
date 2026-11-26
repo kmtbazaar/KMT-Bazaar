@@ -17,6 +17,8 @@ import { useWishlist } from "@/src/WishlistContext";
 import { getProductCategoryConfig } from "@/src/productCategoryConfig";
 import { formatRupees } from "@/src/utils/formatRupees";
 import BrandMark from "@/src/components/BrandMark";
+import ProductUnitBadge from "@/src/components/ProductUnitBadge";
+import { getProductUnitLabel } from "@/src/utils/productUnit";
 
 const PRODUCT_COLOR_SWATCHES: Record<string, string> = {
   black: "#171717", white: "#FFFFFF", red: "#DC2626", blue: "#2563EB",
@@ -240,6 +242,8 @@ export default function Product() {
         }
       }),
     Gesture.Pan()
+      .activeOffsetX([-12, 12])
+      .failOffsetY([-18, 18])
       .onUpdate((event) => {
         if (zoomScale.value > 1.02) {
           zoomOffsetX.value = event.translationX;
@@ -248,9 +252,9 @@ export default function Product() {
       })
       .onEnd((event) => {
         if (zoomScale.value > 1.02) return;
-        if (event.translationX < -60) {
+        if (event.translationX < -45) {
           runOnJS(changeViewerImage)(1);
-        } else if (event.translationX > 60) {
+        } else if (event.translationX > 45) {
           runOnJS(changeViewerImage)(-1);
         }
       })
@@ -666,7 +670,7 @@ export default function Product() {
               >
                 {productDescription}
               </Text>
-              {descriptionLineCount >= 10 || productDescription.length > 420 ? (
+              {descriptionLineCount >= 10 || productDescription.length > 180 || productDescription.split(/\r?\n/).length > 8 ? (
                 <Pressable
                   testID="product-description-see-more"
                   accessibilityRole="button"
@@ -748,6 +752,9 @@ export default function Product() {
                         </View>
                         <View style={s.suggestionCardBody}>
                           <Text style={s.suggestionCardName} numberOfLines={2}>{item.name}</Text>
+                          <View style={s.suggestionUnitSlot}>
+                            <ProductUnitBadge label={getProductUnitLabel(item)} compact testID={`recommendation-unit-${item.id}`} />
+                          </View>
                           <View style={s.suggestionCardMeta}>
                             <Text style={s.suggestionCardPrice} numberOfLines={1}>{formatRupees(item.price)}</Text>
                             <Pressable
@@ -803,6 +810,28 @@ export default function Product() {
               <Animated.View style={[s.imageViewerImageWrap, zoomImageStyle]}>
                 <Image source={{ uri: imageViewerUri }} style={s.imageViewerImage} contentFit="contain" />
               </Animated.View>
+              {productImages.length > 1 ? (
+                <>
+                  <Pressable
+                    testID="product-image-viewer-previous"
+                    accessibilityRole="button"
+                    accessibilityLabel="Previous product photo"
+                    onPress={() => changeViewerImage(-1)}
+                    style={[s.imageViewerArrow, s.imageViewerArrowLeft]}
+                  >
+                    <MaterialCommunityIcons name="chevron-left" size={30} color="#FFFFFF" />
+                  </Pressable>
+                  <Pressable
+                    testID="product-image-viewer-next"
+                    accessibilityRole="button"
+                    accessibilityLabel="Next product photo"
+                    onPress={() => changeViewerImage(1)}
+                    style={[s.imageViewerArrow, s.imageViewerArrowRight]}
+                  >
+                    <MaterialCommunityIcons name="chevron-right" size={30} color="#FFFFFF" />
+                  </Pressable>
+                </>
+              ) : null}
             </View>
           </GestureDetector>
           <Text style={s.imageViewerHint}>Swipe left or right to view photos · pinch to zoom · drag to move</Text>
@@ -913,6 +942,9 @@ const s = StyleSheet.create({
   imageViewerCount: { color: "#FFFFFF", fontSize: 13, fontWeight: "800" },
   imageViewerClose: { width: 42, height: 42, borderRadius: 21, alignItems: "center", justifyContent: "center", backgroundColor: "rgba(255,255,255,0.12)" },
   imageViewerStage: { flex: 1, overflow: "hidden", alignItems: "center", justifyContent: "center" },
+  imageViewerArrow: { position: "absolute", top: "50%", width: 44, height: 44, borderRadius: 22, backgroundColor: "rgba(255,255,255,0.16)", alignItems: "center", justifyContent: "center", zIndex: 5, elevation: 5, transform: [{ translateY: -22 }] },
+  imageViewerArrowLeft: { left: 10 },
+  imageViewerArrowRight: { right: 10 },
   imageViewerImageWrap: { width: "100%", height: "100%", alignItems: "center", justifyContent: "center" },
   imageViewerImage: { width: "100%", height: "100%" },
   imageViewerHint: { color: "rgba(255,255,255,0.7)", fontSize: 12, fontWeight: "600", textAlign: "center", paddingTop: 10 },
@@ -957,7 +989,8 @@ const s = StyleSheet.create({
   suggestionImageFallback: { flex: 1, alignItems: "center", justifyContent: "center" },
   suggestionCardBody: { paddingHorizontal: 6, paddingTop: 7, paddingBottom: 6, flex: 1 },
   suggestionCardName: { color: COLORS.text, fontSize: 12, lineHeight: 16, height: 32, fontWeight: "600" },
-  suggestionCardMeta: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 3, marginTop: 7 },
+  suggestionUnitSlot: { minHeight: 17, marginTop: 3, alignItems: "flex-start", justifyContent: "center" },
+  suggestionCardMeta: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 3, marginTop: 4 },
   suggestionCardPrice: { color: COLORS.text, fontSize: 11, fontWeight: "800", flexShrink: 1 },
   suggestionAddButton: { minWidth: 35, paddingHorizontal: 4, height: 22, borderRadius: RADIUS.sm, borderWidth: 1, borderColor: COLORS.accent, backgroundColor: COLORS.accentLight, alignItems: "center", justifyContent: "center" },
   suggestionAddButtonDisabled: { borderColor: COLORS.border, backgroundColor: COLORS.surfaceSecondary },
