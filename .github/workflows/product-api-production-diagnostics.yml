@@ -32,7 +32,7 @@ jobs:
           PORT="${HOSTINGER_PORT:-22}"
           mkdir -p "$HOME/.ssh"
           chmod 700 "$HOME/.ssh"
-          printf '%s\\n' "$HOSTINGER_SSH_KEY" > "$HOME/.ssh/kmt_bazaar_diagnostics_key"
+          printf '%s\n' "$HOSTINGER_SSH_KEY" > "$HOME/.ssh/kmt_bazaar_diagnostics_key"
           chmod 600 "$HOME/.ssh/kmt_bazaar_diagnostics_key"
           ssh-keyscan -p "$PORT" -H "$HOSTINGER_HOST" >> "$HOME/.ssh/known_hosts" 2>/dev/null
           echo "SSH_READY"
@@ -64,14 +64,15 @@ jobs:
           from pathlib import Path
 
           lines = Path(sys.argv[1]).read_text(errors="replace").splitlines()
+          safe_lines = []
           for line in lines:
-              line = re.sub(r"(?i)(authorization\\s*[:=]\\s*bearer\\s+)[^\\s,]+", r"\\1[REDACTED]", line)
-              line = re.sub(r"(?i)((?:access_?token|refresh_?token|password|secret)\\s*[:=]\\s*)[^\\s,]+", r"\\1[REDACTED]", line)
-              # Replace common email-shaped strings in logs; IDs and stack traces remain useful.
-              line = re.sub(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}", "[EMAIL]", line)
-          # Retain only service markers, product endpoint failures and nearby traceback context.
+              line = re.sub(r"(?i)(authorization\s*[:=]\s*bearer\s+)[^\s,]+", r"\1[REDACTED]", line)
+              line = re.sub(r"(?i)((?:access_?token|refresh_?token|password|secret)\s*[:=]\s*)[^\s,]+", r"\1[REDACTED]", line)
+              line = re.sub(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}", "[EMAIL]", line)
+              safe_lines.append(line)
+
           hits = []
-          for i, line in enumerate(lines):
+          for i, line in enumerate(safe_lines):
               lower = line.lower()
               if (
                   "__service_" in lower
@@ -80,23 +81,25 @@ jobs:
                   or "traceback" in lower
                   or "500 internal server error" in lower
                   or "exception" in lower
-                  or "error" in lower and ("product" in lower or "mongo" in lower or "database" in lower)
+                  or ("error" in lower and ("product" in lower or "mongo" in lower or "database" in lower))
                   or (("/api/vendor/products" in lower or "/api/admin/products" in lower) and ("500" in lower or "error" in lower))
-                  or ("upstream prematurely closed" in lower)
-                  or ("connect() failed" in lower)
+                  or "upstream prematurely closed" in lower
+                  or "connect() failed" in lower
               ):
-                  hits.extend(range(max(0, i-3), min(len(lines), i+36)))
+                  hits.extend(range(max(0, i-3), min(len(safe_lines), i+36)))
+
           selected = sorted(set(hits))
           if not selected:
               print("NO_MATCHING_PRODUCT_API_OR_SERVICE_ERRORS_IN_LAST_24H")
-              print("TOTAL_JOURNAL_LINES=" + str(len(lines)))
+              print("TOTAL_JOURNAL_LINES=" + str(len(safe_lines)))
               raise SystemExit(0)
+
           last = selected[-420:]
           previous = None
           for i in last:
               if previous is not None and i > previous + 1:
                   print("... [log lines omitted] ...")
-              print(lines[i])
+              print(safe_lines[i])
               previous = i
           print("MATCHED_LOG_LINES=" + str(len(last)))
           PY
