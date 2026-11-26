@@ -27,8 +27,8 @@ assert.ok(adminProducts.includes("adminApi.stores()"), "Admin product page must 
 assert.ok(adminProducts.includes("stores={stores}"), "Product modal must receive store choices.");
 assert.ok(adminProducts.includes('testID={`pf-store-${storeId}`}'), "Admin product modal must expose store choices.");
 assert.ok(adminProducts.includes("store_id: String(selectedStore.id || selectedStore._id)"), "Saved products must include store_id.");
-assert.ok(adminProducts.includes('category_id: String(f.category_id || "").trim()'), "Saved products must retain the selected shop category.");
-assert.ok(adminProducts.includes('!String(f.category_id || "").trim() || !categories.some'), "Admin product form must require a valid shop category selection.");
+assert.ok(adminProducts.includes('const categoryId = String(f.category_id || "").trim()') && adminProducts.includes("category_id: categoryId,"), "Saved products must retain the selected shop category.");
+assert.ok(adminProducts.includes("if (!categoryId || !categories.some"), "Admin product form must require a valid shop category selection.");
 assert.ok(adminProducts.includes("Could not save product"), "Product save failures must be shown to the admin.");
 assert.ok(adminProducts.includes("Platform, Alert }"), "Alert must be imported for form validation and save errors.");
 
