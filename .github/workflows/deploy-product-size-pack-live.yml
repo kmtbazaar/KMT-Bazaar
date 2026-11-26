@@ -208,6 +208,7 @@ jobs:
           const customer = fs.readFileSync("app/product/[id].tsx", "utf8");
           const uploader = fs.readFileSync("src/components/ProductImagesUploader.tsx", "utf8");
           const adminVendor = fs.readFileSync("src/components/AdminVendorProducts.tsx", "utf8");
+          const adminProducts = fs.readFileSync("app/admin/products.tsx", "utf8");
           const productCard = fs.readFileSync("src/components/ProductCard.tsx", "utf8");
           const productUnitBadge = fs.readFileSync("src/components/ProductUnitBadge.tsx", "utf8");
           const productUnit = fs.readFileSync("src/utils/productUnit.ts", "utf8");
@@ -278,7 +279,11 @@ jobs:
           assert.ok(adminVendor.includes("buildVariantPayload") && adminVendor.includes("validateVariantDrafts"), "Admin Store Vendor must validate and save variant-specific price, MRP and stock.");
           assert.ok(adminVendor.includes("createItemCategoryForProduct") && adminVendor.includes("productItemCategoryName"), "Admin Store Vendor must create and select item categories inside the product form.");
           assert.ok(adminVendor.includes("<ProductImagesUploader") && uploader.includes("compressProductPhotoForWeb"), "Admin Store Vendor must use the shared compressed product-photo uploader.");
-          assert.ok(adminVendor.includes("payloadFor(form, existing ? existing.is_available !== false : true, variants)"), "Admin product create/edit must persist the selected variants.");
+          assert.ok(adminVendor.includes("payloadFor(form, existingProduct ? existingProduct.is_available !== false : true, variants)"), "Admin product create/edit must persist the selected variants.");
+          assert.ok(adminVendor.includes("requiredProductPhotos = editingProductId ? 1 : 3") && adminVendor.includes("unchangedColorSetup"), "Admin Store Vendor must allow editing legacy one-photo products and unchanged colour galleries.");
+          assert.ok(adminProducts.includes("getProductCategoryConfig") && adminProducts.includes("pf-colour-options") && adminProducts.includes("pf-colour-images-") && adminProducts.includes("pf-product-attributes") && adminProducts.includes("pf-add-variant"), "Global Admin Add/Edit must provide category-specific options, required colours/photos, variants and product specifications.");
+          assert.ok(adminProducts.includes("requiredPhotoCount = edit ? 1 : 3") && adminProducts.includes("unchangedColourSetup") && adminProducts.includes("disabled={saving}"), "Global Admin Edit must allow legacy one-photo products and avoid duplicate saves.");
+          assert.ok(backend.includes("colour_configuration_changed") && backend.includes('"color_images": 1'), "Backend must preserve unchanged legacy colour galleries when admins edit unrelated product fields.");
           assert.ok(categoryConfig.includes('variant_label: "RAM / Storage"') && categoryConfig.includes('variant_options: ["4 GB / 64 GB"'), "Mobile category must use RAM/storage choices.");
                     assert.ok(vendor.includes("onPress={() => setEditProductForm((current) => ({ ...current, unit: option }))}"), "Edit Product chip selection must update form state");
           assert.ok(vendor.includes("...form,"), "Product request must spread saved form fields");
@@ -434,7 +439,7 @@ jobs:
 
       - name: Lint changed product and branding screens
         working-directory: frontend
-        run: npx eslint "app/vendor/store/[id].tsx" "app/vendor/products.tsx" "app/product/[id].tsx" "app/(tabs)/categories.tsx" "app/home-category/[id].tsx" "app/store/[id].tsx" "src/components/ProductCard.tsx" "src/components/ProductUnitBadge.tsx" "src/utils/productUnit.ts" "src/components/CheckoutBar.tsx" "src/components/BrandMark.tsx" "src/components/AnimatedBrandLogo.tsx" "app/auth/login.tsx" "app/admin/index.tsx" "app/delivery/index.tsx" "app/vendor/holiday-dashboard.tsx" "app/vendor/car-rental-dashboard.tsx" "app/role/[role].tsx" "app/(tabs)/profile.tsx" "app/(tabs)/cart.tsx" "app/addresses.tsx" "app/checkout.tsx" "app/index.tsx" "app/search.tsx" "src/components/ParticleLogoSplash.tsx" "components/AIAssistant.tsx" "components/BotHeader.tsx" "app/assistant.tsx" "components/ChatBubble.tsx" "components/TypingIndicator.tsx" "src/components/RobotAvatar.tsx" "src/components/RobotCompanion3D.tsx" "app/(tabs)/_layout.tsx" "app/(tabs)/home.tsx" "app/RoojgarForm.tsx" "app/orders/[id].tsx" "app/support/returns.tsx" "src/api.ts" "src/components/AdminVendorProducts.tsx" --no-cache
+        run: npx eslint "app/vendor/store/[id].tsx" "app/vendor/products.tsx" "app/admin/products.tsx" "app/product/[id].tsx" "app/(tabs)/categories.tsx" "app/home-category/[id].tsx" "app/store/[id].tsx" "src/components/ProductCard.tsx" "src/components/ProductUnitBadge.tsx" "src/utils/productUnit.ts" "src/components/CheckoutBar.tsx" "src/components/BrandMark.tsx" "src/components/AnimatedBrandLogo.tsx" "app/auth/login.tsx" "app/admin/index.tsx" "app/delivery/index.tsx" "app/vendor/holiday-dashboard.tsx" "app/vendor/car-rental-dashboard.tsx" "app/role/[role].tsx" "app/(tabs)/profile.tsx" "app/(tabs)/cart.tsx" "app/addresses.tsx" "app/checkout.tsx" "app/index.tsx" "app/search.tsx" "src/components/ParticleLogoSplash.tsx" "components/AIAssistant.tsx" "components/BotHeader.tsx" "app/assistant.tsx" "components/ChatBubble.tsx" "components/TypingIndicator.tsx" "src/components/RobotAvatar.tsx" "src/components/RobotCompanion3D.tsx" "app/(tabs)/_layout.tsx" "app/(tabs)/home.tsx" "app/RoojgarForm.tsx" "app/orders/[id].tsx" "app/support/returns.tsx" "src/api.ts" "src/components/AdminVendorProducts.tsx" --no-cache
 
       - name: Validate customer billing, invoice PDF, refund/return help and order item navigation
         working-directory: frontend
