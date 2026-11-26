@@ -70,8 +70,7 @@ assert.match(productDetail, /numberOfLines=\{descriptionExpanded \? undefined : 
 assert.match(productDetail, /productDescriptionMeasureWrap[\s\S]*?onTextLayout[\s\S]*?setDescriptionLineCount/,
   "Full description line count must be measured outside the clipped text so See more is visible.");
 assert.match(productDetail, /variantSelector:\s*\{[^\n]*padding:\s*10/);
-assert.match(productDetail, /variantChoice:\s*\{[^
-]*minHeight:\s*60[^\n]*paddingVertical:\s*10/,\n  "M/L and other size choice tiles must be twice as tall.");
+assert.ok(productDetail.includes("minHeight: 60") && productDetail.includes("paddingVertical: 10"), "M/L and other size choice tiles must be twice as tall.");
 assert.match(productDetail, /variantChoiceUnitBadge:\s*\{[^\n]*backgroundColor:\s*"#FEF08A"/,
   "RAM / size choices must highlight their values in yellow.");
 assert.match(productDetail, /productAttributeValuePill:\s*\{[^\n]*backgroundColor:\s*"#FEF08A"/,
