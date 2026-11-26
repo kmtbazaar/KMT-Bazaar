@@ -13,6 +13,7 @@ const search = read("app/search.tsx");
 const store = read("app/store/[id].tsx");
 const productCard = read("src/components/ProductCard.tsx");
 const productDetail = read("app/product/[id].tsx");
+const formatRupees = read("src/utils/formatRupees.ts");
 
 // Home uses its dedicated category browser (with a left rail of item categories).
 assert.match(
@@ -64,10 +65,13 @@ assert.match(productCard, /unit:\s*\{[\s\S]*?fontWeight:\s*"900"/,
   "Product unit labels must be bold.");
 assert.match(productDetail, /descriptionLineCount\s*>\s*10[\s\S]*?product-description-see-more[\s\S]*?setDescriptionExpanded/,
   "Product descriptions longer than ten lines must have a working See more control.");
-assert.match(productDetail, /productDescriptionCollapsed:\s*\{\s*maxHeight:\s*220,\s*overflow:\s*"hidden"/,
-  "Product descriptions must initially show only ten 22px lines.");
+assert.match(productDetail, /numberOfLines=\{descriptionExpanded \? undefined : 10\}/,
+  "Product descriptions must initially show ten lines.");
+assert.match(productDetail, /productDescriptionMeasureWrap[\s\S]*?onTextLayout[\s\S]*?setDescriptionLineCount/,
+  "Full description line count must be measured outside the clipped text so See more is visible.");
 assert.match(productDetail, /variantSelector:\s*\{[^\n]*padding:\s*10/);
-assert.match(productDetail, /variantChoice:\s*\{[^\n]*paddingVertical:\s*5/);
+assert.match(productDetail, /variantChoice:\s*\{[^
+]*minHeight:\s*60[^\n]*paddingVertical:\s*10/,\n  "M/L and other size choice tiles must be twice as tall.");
 assert.match(productDetail, /variantChoiceUnitBadge:\s*\{[^\n]*backgroundColor:\s*"#FEF08A"/,
   "RAM / size choices must highlight their values in yellow.");
 assert.match(productDetail, /productAttributeValuePill:\s*\{[^\n]*backgroundColor:\s*"#FEF08A"/,
@@ -76,6 +80,8 @@ assert.match(productDetail, /product-selected-unit-highlight/,
   "Selected RAM / size must be highlighted on the product detail screen.");
 assert.match(productCard, /addBtn:\s*\{[\s\S]*?minWidth:\s*48,[\s\S]*?height:\s*34,/,
   "The main Add button should be taller and keep a minimum tap width.");
+assert.ok(formatRupees.includes('Intl.NumberFormat("en-IN"') && productCard.includes("formatRupees(p.price)") && productDetail.includes("formatRupees(selectedPrice)"),
+  "Product prices must use Indian rupee grouping such as ₹75,000.");
 assert.match(productCard, /stepper:\s*\{[\s\S]*?height:\s*34,/,
   "The quantity stepper should stay vertically aligned with the Add button.");
 
