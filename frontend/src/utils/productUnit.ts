@@ -60,6 +60,20 @@ export function getProductUnitLabel(product: any): string {
     return storage ? `${ramLabel} / ${storage}` : ramLabel;
   }
 
+  const directLabel = valueText(
+    product.unit,
+    product.quantity_label,
+    product.unit_label,
+    product.unit_name,
+    product.pack_size,
+    product.size,
+    product.weight,
+    product.volume,
+    typeof product.quantity === "string" ? product.quantity : ""
+  );
+  const directLabelIsGeneric = /^(standard|default|other|n\\/?a)$/i.test(directLabel);
+  if (directLabel && !directLabelIsGeneric) return directLabel;
+
   const variants = Array.isArray(product.variants) ? product.variants : [];
   const preferredVariant = variants.find((variant: any) => variant?.is_default || variant?.is_active)
     || variants.find((variant: any) => valueText(variant?.unit, variant?.unit_label, variant?.pack_size, variant?.size))
@@ -76,18 +90,6 @@ export function getProductUnitLabel(product: any): string {
   );
   if (variantLabel) return variantLabel;
 
-  const directLabel = valueText(
-    product.unit,
-    product.quantity_label,
-    product.unit_label,
-    product.unit_name,
-    product.pack_size,
-    product.size,
-    product.weight,
-    product.volume,
-    typeof product.quantity === "string" ? product.quantity : ""
-  );
-  if (directLabel) return directLabel;
 
   const variantText = valueText(product.variant, product.variant_name, product.variant_label);
   if (variantText) return variantText;
