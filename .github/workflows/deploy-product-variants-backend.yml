@@ -62,7 +62,9 @@ jobs:
           assert "Each size/pack option owns its colour palette." in source
           assert "def _validate_product_category_color_requirements" in source
           assert "async def _vendor_store_ids(vendor_id: str):" in source
+          assert "async def _resolve_vendor_item_category(" in source
           assert '_vendor_store_ids(current["id"])' in source
+          assert "await _resolve_vendor_item_category(" in source
           assert "def _normalize_product_colors(raw_colors):" in source
           assert "def _normalize_product_color_images" in source
           print("CATEGORY_SPECIFIC_PRODUCT_FIELDS_VALIDATION_PASS")
@@ -685,6 +687,11 @@ jobs:
               source, candidate_source, "_vendor_store_ids",
               "async def vendor_create_store("
           )
+          # Product CRUD routes call this resolver; it must be merged with those routes.
+          source = replace_or_insert_async_function(
+              source, candidate_source, "_resolve_vendor_item_category",
+              "class OnlineIn(BaseModel):"
+          )
 
           def replace_product_route(live_source, candidate, function_name):
               marker = f"async def {function_name}("
@@ -901,6 +908,14 @@ jobs:
             exit 1
           fi
           echo "BACKEND_VENDOR_STORE_LOOKUP_HELPER_VALIDATION_PASS"
+
+          if ! grep -Fq 'async def _resolve_vendor_item_category(' "$TARGET" \\
+            || ! grep -Fq 'await _resolve_vendor_item_category(' "$TARGET"; then
+            echo "BACKEND_VENDOR_ITEM_CATEGORY_RESOLVER_MISSING"
+            rollback
+            exit 1
+          fi
+          echo "BACKEND_VENDOR_ITEM_CATEGORY_RESOLVER_VALIDATION_PASS"
 
           if ! grep -Fq 'Each size/pack option owns its colour palette.' "$TARGET"; then
             echo "BACKEND_SIZE_SPECIFIC_COLOUR_VALIDATION_PATCH_MISSING"
