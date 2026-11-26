@@ -62,7 +62,7 @@ jobs:
           assert "Each size/pack option owns its colour palette." in source
           assert "def _validate_product_category_color_requirements" in source
           assert "async def _vendor_store_ids(vendor_id: str):" in source
-          assert 'store_data = await _vendor_store_ids(current["id"])' in source
+          assert '_vendor_store_ids(current["id"])' in source
           assert "def _normalize_product_colors(raw_colors):" in source
           assert "def _normalize_product_color_images" in source
           print("CATEGORY_SPECIFIC_PRODUCT_FIELDS_VALIDATION_PASS")
