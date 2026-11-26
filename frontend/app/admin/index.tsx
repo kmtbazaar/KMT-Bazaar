@@ -1440,14 +1440,6 @@ const s = StyleSheet.create({
     paddingVertical: 12,
   },
 
-  chartCol: {
-    flex: 1,
-    height: "100%",
-    alignItems: "center",
-    justifyContent: "flex-end",
-    gap: 4,
-  },
-
   chartBarWrap: {
     height: 76,
     width: "52%",
