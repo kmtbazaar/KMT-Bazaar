@@ -419,13 +419,13 @@ export default function Product() {
       );
       return {
         key,
-        label: String(configured?.label || key.replace(/[_-]+/g, " ").replace(/\\b\\w/g, (letter) => letter.toUpperCase())),
+        label: String(configured?.label || key.replace(/[_-]+/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase())),
         value: readProductDetailText(rawValue),
       };
     })
     .filter((attribute: any) => attribute.value && !/^(description|product_description)$/i.test(attribute.key));
   const deliveryCategoryIdentity = `${productCategory?.name || p?.category_name || ""} ${productCategory?.id || p?.category_id || ""}`;
-  const isFoodOrGroceryCategory = /\\b(food|foods|grocery|groceries|kirana|supermarket|daily needs|provision|food grain|general store|staple|dairy|restaurant|fast food|cafe|bakery|sweet|snack|meal)\\b/i.test(deliveryCategoryIdentity);
+  const isFoodOrGroceryCategory = /\b(food|foods|grocery|groceries|kirana|supermarket|daily needs|provision|food grain|general store|staple|dairy|restaurant|fast food|cafe|bakery|sweet|snack|meal)\b/i.test(deliveryCategoryIdentity);
   const estimatedDelivery = isFoodOrGroceryCategory ? "30 minutes" : "4 hours";
 
   return (
