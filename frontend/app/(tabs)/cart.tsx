@@ -13,6 +13,7 @@ import { useAuth } from "@/src/AuthContext";
 import { COLORS, RADIUS, SPACING, shadow } from "@/src/theme";
 import { isProductDeliveryAvailableAtPincode, PRODUCT_DELIVERY_PINCODE, normalizeProductDeliveryAddress } from "@/src/api";
 import AnimatedBrandLogo, { BrandingFooter } from "@/src/components/AnimatedBrandLogo";
+import { formatRupees } from "@/src/utils/formatRupees";
 
 export default function Cart() {
   const router = useRouter();
@@ -110,7 +111,7 @@ export default function Cart() {
               <Text style={s.itemName} numberOfLines={2}>{it.name}</Text>
               <Text style={s.itemUnit}>{it.unit}{it.color ? ` · ${it.color}` : ""}</Text>
               <View style={s.itemRow}>
-                <Text style={s.itemPrice}>₹{it.line_total}</Text>
+                <Text style={s.itemPrice}>{formatRupees(it.line_total)}</Text>
                 <View style={s.qtyBox}>
                   <Pressable testID={`qty-dec-${it.product_id}-${it.variant || "default"}`} onPress={() => onQty(it.product_id, it.quantity - 1, it.variant, it.color)} hitSlop={8}>
                     <MaterialCommunityIcons name="minus" size={18} color="#fff" />
@@ -127,10 +128,10 @@ export default function Cart() {
 
         <View style={s.bill} testID="cart-bill">
           <Text style={s.billTitle}>Bill Details</Text>
-          <Row label="Item total" value={`₹${cart.subtotal}`} />
-          <Row label="Delivery fee" value={cart.delivery_fee ? `₹${cart.delivery_fee}` : "FREE"} valueColor={cart.delivery_fee ? undefined : COLORS.success} />
+          <Row label="Item total" value={formatRupees(cart.subtotal)} />
+          <Row label="Delivery fee" value={cart.delivery_fee ? formatRupees(cart.delivery_fee) : "FREE"} valueColor={cart.delivery_fee ? undefined : COLORS.success} />
           <View style={s.dash} />
-          <Row label="To Pay" value={`₹${cart.total}`} bold />
+          <Row label="To Pay" value={formatRupees(cart.total)} bold />
         </View>
 
         <View style={[s.promise, deliveryUnavailable && s.promiseUnavailable]}>
@@ -148,7 +149,7 @@ export default function Cart() {
 
       <View style={s.checkoutBar}>
         <View>
-          <Text style={s.checkoutTotal}>₹{cart.total}</Text>
+          <Text style={s.checkoutTotal}>{formatRupees(cart.total)}</Text>
           <Text style={s.checkoutSub}>Total · {cart.item_count} items</Text>
         </View>
         <Pressable testID="proceed-to-checkout" onPress={() => router.push("/checkout" as any)} style={{ flex: 1, marginLeft: 12 }} disabled={busy || deliveryUnavailable}>
