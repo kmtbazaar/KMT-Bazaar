@@ -159,8 +159,8 @@ jobs:
           assert.ok(vendor.includes("color_images: categoryConfig.showColors ? form.color_images : {}") && adminVendor.includes("form.color_images"), "Both product editors must save colour-specific galleries.");
           assert.ok(
             adminVendor.includes('image: String(item.image || item.images?.[0] || "")') &&
-            !adminVendor.includes("FALLBACK_PRODUCT_IMAGE"),
-            "Admin store product create/edit must not replace uploaded colour galleries with a generic fallback thumbnail."
+            adminVendor.includes('<Image source={{ uri: product.image || FALLBACK_PRODUCT_IMAGE }}'),
+            "Admin product saves must leave the primary image empty when there is no upload (so the backend can derive it from colour galleries) while retaining a display-only list placeholder."
           );
           assert.ok(customer.includes('testID="product-size-pack-selector"'), "Customer product details must render the size/pack selector.");
           assert.ok(customer.includes("categoryConfig.showDescription") && customer.includes("p?.description") && customer.includes('testID="product-description"'), "Customer product detail must display saved product descriptions.");
