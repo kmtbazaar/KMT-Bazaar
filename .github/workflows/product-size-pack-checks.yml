@@ -66,6 +66,8 @@ jobs:
           const config = fs.readFileSync("src/productCategoryConfig.ts", "utf8");
           const adminVendor = fs.readFileSync("src/components/AdminVendorProducts.tsx", "utf8");
           const adminProducts = fs.readFileSync("app/admin/products.tsx", "utf8");
+          const adminVendorManage = fs.readFileSync("app/admin/vendor/[id].tsx", "utf8");
+          const adminUsers = fs.readFileSync("app/admin/users.tsx", "utf8");
           const backend = fs.readFileSync("../backend/server.py", "utf8");
 
           assert.ok(vendor.includes("categoryConfig.variantOptions.map") && !vendor.includes("PRODUCT_UNIT_OPTIONS"), "Vendor must use category-specific variant options, not a universal size list.");
@@ -118,6 +120,39 @@ jobs:
           assert.ok(adminProducts.includes("getProductCategoryConfig") && adminProducts.includes("pf-colour-options") && adminProducts.includes("pf-colour-images-") && adminProducts.includes("pf-product-attributes") && adminProducts.includes("pf-add-variant"), "Global Admin Add/Edit form must send category-specific colour photos, variants and required specifications.");
           assert.ok(!adminProducts.includes("requiredPhotoCount") && adminProducts.includes("unchangedColourSetup") && adminProducts.includes("disabled={saving}"), "Global Admin must not require main product photos and must prevent repeated saves.");
           assert.ok(!adminVendor.includes("requiredProductPhotos") && adminVendor.includes("unchangedColorSetup"), "Admin vendor editor must not require main product photos and must preserve unchanged colour galleries.");
+          assert.ok(
+            adminUsers.includes('pathname: "/admin/vendor/[id]"') &&
+            adminVendorManage.includes('import AdminVendorProducts from "@/src/components/AdminVendorProducts"') &&
+            adminVendorManage.includes('<AdminVendorProducts vendorId={String(id)} selectedStoreId={selectedStoreId} showStoreSelector={false} />'),
+            "The store-vendor Manage button must open the admin store manager with its selected store product editor."
+          );
+          assert.ok(
+            adminVendor.includes('getProductCategoryConfig(shopCategory, `${form.name} ${form.item_category}`)') &&
+            adminVendor.includes("categoryConfig.variantOptions.map"),
+            "Admin vendor product sizes must use the same product-name-aware, shop-category-specific options as the vendor editor."
+          );
+          assert.ok(
+            adminVendor.includes("findDuplicateVariantSizeColorIndex") &&
+            adminVendor.includes("const selectedOptionColors = Array.from(new Map(") &&
+            adminVendor.includes("For the same RAM / Storage or size, choose different colours for each option.") &&
+            adminVendor.includes("validateVariantDrafts(variants, variants.length > 1, categoryConfig.showColors)"),
+            "Admin Add/Edit must validate variant descriptions, colours and duplicate size-colour groups like the vendor editor."
+          );
+          assert.ok(
+            adminVendor.includes("AdminVariantColorChoices") &&
+            adminVendor.includes("availableColors={form.colors}") &&
+            adminVendor.includes("variant.color_images || {}") &&
+            adminVendor.includes("color_images: optionColorImages") &&
+            adminVendor.includes("Upload photos for each selected colour") &&
+            adminVendor.includes("admin-vendor-product-add-variant-colours-"),
+            "Every admin size/pack option must have its own selectable colour group and optional per-colour photo gallery."
+          );
+          assert.ok(
+            adminVendor.includes("const colorError = unchangedColorSetup") &&
+            adminVendor.includes("validateRequiredColors(categoryConfig, form.colors, form.color_images)") &&
+            adminVendor.includes("const addCustomProductColor"),
+            "Admin Add/Edit must retain vendor-style required colour/photo validation and custom colour options."
+          );
           assert.ok(backend.includes("colour_configuration_changed") && backend.includes('"color_images": 1'), "Admin update API must preserve unchanged legacy colour galleries.");
           assert.ok(vendor.includes("color_images: categoryConfig.showColors ? form.color_images : {}") && adminVendor.includes("form.color_images"), "Both product editors must save colour-specific galleries.");
           assert.ok(customer.includes('testID="product-size-pack-selector"'), "Customer product details must render the size/pack selector.");
