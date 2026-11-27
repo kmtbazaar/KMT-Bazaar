@@ -30,7 +30,7 @@ const VENDOR_TYPES = [
 const SERVICE_TYPES = [
 { id: "holiday", label: "Holiday", icon: "airplane-takeoff" },
 { id: "car_rental", label: "Car Rental", icon: "car" },
-{ id: "premium_decorator", label: "Premium Decorator", icon: "party-popper" },
+{ id: "premium_decorator", label: "Events", icon: "party-popper" },
 { id: "photography", label: "Photography", icon: "camera-outline" },
 ];
 

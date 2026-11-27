@@ -11,6 +11,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import Animated, { 
   FadeIn, 
   FadeOut, 
+  interpolateColor,
   useSharedValue, 
   useAnimatedStyle, 
   withDelay,
@@ -61,39 +62,94 @@ const MAX_RECENT_SEARCHES = 5;
 // Day/night fade transitions run on Reanimated UI-thread values.
 const KARMATAR_STARS=Array.from({length:14},(_,i)=>({left:(5+(i*19)%90)+"%",top:9+(i*13)%48}));
 
-function getKarmatarLocalDaylight(){
- try{
-  const hourPart=new Intl.DateTimeFormat("en-IN",{timeZone:"Asia/Kolkata",hour:"2-digit",hourCycle:"h23"}).formatToParts(new Date()).find(part=>part.type==="hour")?.value;
-  const hour=Number(hourPart);
-  if(Number.isFinite(hour)) return hour>=6&&hour<18;
- }catch{}
- const localHour=new Date().getHours();
- return localHour>=6&&localHour<18;
+type KarmatarTimeVisual = {
+ skyDarkness: number;
+ sunTone: number;
+ sunOpacity: number;
+ moonOpacity: number;
+ sunX: number;
+};
+
+const clampKarmatar = (value: number) => Math.max(0, Math.min(1, value));
+
+function getKarmatarTimeVisual(now = new Date()): KarmatarTimeVisual {
+ let minutes = 12 * 60;
+ try {
+  const parts = new Intl.DateTimeFormat("en-IN", {
+   timeZone: "Asia/Kolkata",
+   hour: "2-digit",
+   minute: "2-digit",
+   hourCycle: "h23",
+  }).formatToParts(now);
+  const hour = Number(parts.find(part => part.type === "hour")?.value);
+  const minute = Number(parts.find(part => part.type === "minute")?.value);
+  if (Number.isFinite(hour) && Number.isFinite(minute)) minutes = hour * 60 + minute;
+ } catch {
+  minutes = now.getHours() * 60 + now.getMinutes();
+ }
+
+ const sunriseStart = 5 * 60 + 15;
+ const dayStart = 7 * 60 + 45;
+ const sunsetStart = 16 * 60 + 15;
+ const nightStart = 18 * 60 + 45;
+
+ if (minutes < sunriseStart || minutes >= nightStart) {
+  return { skyDarkness: 1, sunTone: 1, sunOpacity: 0, moonOpacity: 1, sunX: 34 };
+ }
+ if (minutes < dayStart) {
+  const progress = clampKarmatar((minutes - sunriseStart) / (dayStart - sunriseStart));
+  return { skyDarkness: 1 - progress, sunTone: 0, sunOpacity: 1, moonOpacity: 1 - progress, sunX: progress * 15 };
+ }
+ if (minutes < sunsetStart) {
+  return { skyDarkness: 0, sunTone: 1, sunOpacity: 1, moonOpacity: 0, sunX: 15 };
+ }
+ const progress = clampKarmatar((minutes - sunsetStart) / (nightStart - sunsetStart));
+ const twilight = clampKarmatar((minutes - (18 * 60)) / (nightStart - 18 * 60));
+ return { skyDarkness: progress, sunTone: 2, sunOpacity: 1 - twilight, moonOpacity: twilight, sunX: 15 + progress * 19 };
 }
 
 function KarmatarHeroScene(){
- const [isKarmatarDay,setIsKarmatarDay]=useState(getKarmatarLocalDaylight);
- const cycle=useSharedValue(isKarmatarDay?0:1),drift=useSharedValue(0);
+ const [timeVisual,setTimeVisual]=useState(getKarmatarTimeVisual);
+ const skyDarkness=useSharedValue(timeVisual.skyDarkness);
+ const sunTone=useSharedValue(timeVisual.sunTone);
+ const sunOpacity=useSharedValue(timeVisual.sunOpacity);
+ const moonOpacity=useSharedValue(timeVisual.moonOpacity);
+ const sunX=useSharedValue(timeVisual.sunX);
+ const drift=useSharedValue(0);
 
  useEffect(()=>{
-  const syncKarmatarClock=()=>setIsKarmatarDay(getKarmatarLocalDaylight());
+  const syncKarmatarClock=()=>{
+   const next=getKarmatarTimeVisual();
+   setTimeVisual(current=>Object.keys(next).every(key=>
+    current[key as keyof KarmatarTimeVisual]===next[key as keyof KarmatarTimeVisual]
+   )?current:next);
+  };
   syncKarmatarClock();
   const clockTimer=setInterval(syncKarmatarClock,60*1000);
   return ()=>clearInterval(clockTimer);
  },[]);
 
  useEffect(()=>{
-  cycle.value=withTiming(isKarmatarDay?0:1,{duration:1800});
- },[isKarmatarDay]);
+  skyDarkness.value=withTiming(timeVisual.skyDarkness,{duration:1800});
+  sunTone.value=withTiming(timeVisual.sunTone,{duration:1800});
+  sunOpacity.value=withTiming(timeVisual.sunOpacity,{duration:1800});
+  moonOpacity.value=withTiming(timeVisual.moonOpacity,{duration:1800});
+  sunX.value=withTiming(timeVisual.sunX,{duration:2200});
+ },[timeVisual]);
 
  useEffect(()=>{
   drift.value=withRepeat(withTiming(1,{duration:30000}),-1,true);
  },[]);
 
- const day=useAnimatedStyle(()=>({opacity:1-cycle.value}));
- const night=useAnimatedStyle(()=>({opacity:cycle.value}));
- const sun=useAnimatedStyle(()=>({opacity:1-cycle.value,transform:[{translateX:cycle.value*30}]}));
- const moon=useAnimatedStyle(()=>({opacity:cycle.value}));
+ const day=useAnimatedStyle(()=>({opacity:1-skyDarkness.value}));
+ const night=useAnimatedStyle(()=>({opacity:skyDarkness.value}));
+ const sun=useAnimatedStyle(()=>({
+  opacity:sunOpacity.value,
+  backgroundColor:interpolateColor(sunTone.value,[0,1,2],["#E95B4B","#FFF0B8","#E95B4B"]),
+  borderColor:interpolateColor(sunTone.value,[0,1,2],["#FFD3B8","#FFFDF0","#FFD3B8"]),
+  transform:[{translateX:sunX.value}],
+ }));
+ const moon=useAnimatedStyle(()=>({opacity:moonOpacity.value}));
  const brandGlow=useAnimatedStyle(()=>({opacity:.76+Math.sin(drift.value*Math.PI*2)*.24,transform:[{scale:1+Math.sin(drift.value*Math.PI*2)*.025}]}));
  const neon=useAnimatedStyle(()=>({opacity:.9+Math.sin(drift.value*Math.PI*2)*.1}));
  const signal=useAnimatedStyle(()=>({opacity:.35+Math.abs(Math.sin(drift.value*Math.PI*4))*.65}));
@@ -1007,7 +1063,7 @@ export default function Home() {
             { id: "holiday", title: "Holiday", sub: "Holiday packages", icon: "airplane-takeoff", path: "/holiday" },
             { id: "car_rental", title: "Car Rental", sub: "Cars & trips", icon: "car", path: "/car-rental" },
             { id: "daily_service", title: "Daily Services", sub: "Repair & local work", icon: "tools", path: "/daily-services" },
-            { id: "premium_decorator", title: "Premium Decorator", sub: "Wedding & event decor", icon: "party-popper", path: "/service/premium_decorator" },
+            { id: "premium_decorator", title: "Events", sub: "Wedding, birthday & event decoration", icon: "party-popper", path: "/service/premium_decorator" },
             { id: "photography", title: "Photography", sub: "Event & professional shoots", icon: "camera-outline", path: "/service/photography" },
           ]}
           showsHorizontalScrollIndicator={false}
@@ -1252,7 +1308,7 @@ const s = StyleSheet.create({
   karmatarSceneLift:{position:"absolute",top:0,left:0,right:0,bottom:0,transform:[{translateY:-52}]},
   karmatarDaySky:{...StyleSheet.absoluteFillObject,overflow:"hidden"},
   karmatarNightSky:{...StyleSheet.absoluteFillObject,overflow:"hidden"},
-  karmatarSun:{position:"absolute",left:"6%",top:48,width:28,height:28,borderRadius:14,backgroundColor:"#FFF3B0",borderWidth:2,borderColor:"#FFFBE8",shadowColor:"#FFE36E",shadowOpacity:1,shadowRadius:14,elevation:8},karmatarMoon:{position:"absolute",right:"6%",top:48,width:28,height:28,borderRadius:14,backgroundColor:"#FFF9DF",borderWidth:2,borderColor:"#FFFFFF",shadowColor:"#EAF2FF",shadowOpacity:1,shadowRadius:14,elevation:8},
+  karmatarSun:{position:"absolute",left:"7%",top:18,width:22,height:22,borderRadius:11,backgroundColor:"#E95B4B",borderWidth:1.5,borderColor:"#FFD3B8",shadowColor:"#F56B50",shadowOpacity:0.95,shadowRadius:9,elevation:7},karmatarMoon:{position:"absolute",right:"7%",top:18,width:22,height:22,borderRadius:11,backgroundColor:"#FFFFFF",borderWidth:1.5,borderColor:"#FFFFFF",shadowColor:"#EAF2FF",shadowOpacity:1,shadowRadius:9,elevation:7},
 karmatarStar:{position:"absolute",width:2,height:2,borderRadius:2,backgroundColor:"#FFF7DA",opacity:.75},karmatarGroundBack:{position:"absolute",left:0,right:0,bottom:6,height:12,backgroundColor:"#547B55",borderTopLeftRadius:26,borderTopRightRadius:26},
   karmatarSchool:{position:"absolute",left:"2%",top:126,width:"29%",height:47,backgroundColor:"#E9E9D8",borderWidth:1,borderColor:"#A6B99C",zIndex:5},karmatarSchoolRoof:{position:"absolute",top:0,left:-2,right:-2,height:7,backgroundColor:"#477755",borderTopWidth:2,borderColor:"#D7E2D0"},karmatarSchoolSign:{position:"absolute",top:10,left:2,right:2,height:10,backgroundColor:"#D6E6D2",alignItems:"center",justifyContent:"center"},karmatarSchoolSignText:{fontSize:5,color:"#20553A",fontWeight:"900"},karmatarSchoolWindows:{position:"absolute",top:25,left:5,right:5,flexDirection:"row",justifyContent:"space-between"},karmatarSchoolWindow:{width:12,height:10,backgroundColor:"#648A98",borderWidth:1,borderColor:"#F0F0DC"},karmatarSchoolDoor:{position:"absolute",bottom:0,left:"44%",width:13,height:18,backgroundColor:"#6B624F"},
   karmatarStation:{position:"absolute",left:"34%",top:105,width:"34%",height:60,zIndex:6,alignItems:"center"},karmatarStationArch:{position:"absolute",top:9,width:"78%",height:51,borderTopLeftRadius:38,borderTopRightRadius:38,borderWidth:4,borderBottomWidth:0,borderColor:"#D9C9B0",backgroundColor:"#5C4A3E",alignItems:"center",overflow:"hidden"},karmatarStationOpening:{position:"absolute",left:7,right:7,top:17,bottom:0,borderTopLeftRadius:27,borderTopRightRadius:27,backgroundColor:"#465D69"},karmatarStationSign:{position:"absolute",top:1,left:1,right:1,height:15,backgroundColor:"transparent",alignItems:"center",justifyContent:"center",zIndex:2,overflow:"visible"},karmatarStationSignText:{fontSize:7,color:"#FFF1E9",fontWeight:"900",letterSpacing:.2,textShadowColor:"#FF3328",textShadowRadius:5},karmatarStationSignSub:{fontSize:5,color:"#FFF1E9",fontWeight:"900",letterSpacing:.15,textShadowColor:"#FF3328",textShadowRadius:4},

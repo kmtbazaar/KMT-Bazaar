@@ -1149,7 +1149,7 @@ async def request_email_signup_otp(data: EmailSignupOtpRequestIn):
 
     if data.role == Role.VENDOR and data.vendor_type == VendorType.SERVICE:
         if data.service_type not in {ServiceType.HOLIDAY, ServiceType.CAR_RENTAL, ServiceType.PREMIUM_DECORATOR, ServiceType.PHOTOGRAPHY}:
-            raise HTTPException(status_code=400, detail="Choose Holiday, Car Rental, Premium Decorator or Photography")
+            raise HTTPException(status_code=400, detail="Choose Holiday, Car Rental, Events or Photography")
         if data.service_type in {ServiceType.HOLIDAY, ServiceType.CAR_RENTAL}:
             existing_service_vendor = await db.users.find_one({
                 "role": Role.VENDOR.value,
@@ -4781,7 +4781,7 @@ async def admin_service_booking_status(booking_id: str, data: OrderStatusIn, _=D
         ServiceType.HOLIDAY.value: {"pending", "confirmed", "travel_scheduled", "completed", "cancelled"},
         ServiceType.CAR_RENTAL.value: {"pending", "booking_requested", "accepted", "vehicle_assigned", "trip_started", "completed", "cancelled"},
         ServiceType.PREMIUM_DECORATOR.value: {"pending", "confirmed", "event_planning", "completed", "cancelled"},
-        ServiceType.PHOTOGRAPHY.value: {"pending", "confirmed", "shoot_scheduled", "shoot_completed", "completed", "cancelled"},
+        ServiceType.PHOTOGRAPHY.value: {"pending", "accepted", "confirmed", "shoot_scheduled", "shoot_completed", "completed", "cancelled"},
     }
     status = data.status.strip().lower()
     if status not in allowed.get(service_type, set()):
@@ -4942,7 +4942,7 @@ async def _notify_service_booking_created(booking: dict):
         ServiceType.DAILY_SERVICE.value: "Daily Service",
         ServiceType.HOLIDAY.value: "Holiday",
         ServiceType.CAR_RENTAL.value: "Car Rental",
-        ServiceType.PREMIUM_DECORATOR.value: "Premium Decorator",
+        ServiceType.PREMIUM_DECORATOR.value: "Events",
         ServiceType.PHOTOGRAPHY.value: "Photography",
     }.get(service_type, "Service")
     service_name = booking.get("service_name") or label
@@ -4990,7 +4990,7 @@ SERVICE_TYPES = {
     },
     "premium_decorator": {
         "id": "premium_decorator",
-        "name": "Premium Decorator",
+        "name": "Events",
         "icon": "party-popper",
         "description": "Premium wedding, birthday and event decoration packages",
     },
@@ -5374,7 +5374,7 @@ async def vendor_service_booking_status(
         "car_rental": {"booking_requested", "accepted", "vehicle_assigned", "trip_started", "completed", "cancelled"},
         "daily_service": {"booking_requested", "provider_accepted", "provider_on_the_way", "service_started", "completed", "cancelled"},
         "premium_decorator": {"confirmed", "event_planning", "completed", "cancelled"},
-        "photography": {"confirmed", "shoot_scheduled", "shoot_completed", "completed", "cancelled"},
+        "photography": {"accepted", "confirmed", "shoot_scheduled", "shoot_completed", "completed", "cancelled"},
     }
     st = data.status.strip().lower()
     if st not in allowed.get(booking.get("service_type"), set()):

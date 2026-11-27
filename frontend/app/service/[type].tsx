@@ -12,7 +12,7 @@ const META: Record<string, { title: string; icon: string; sub: string }> = {
   holiday: { title: "Holiday", icon: "airplane-takeoff", sub: "Holiday packages & trip bookings" },
   car_rental: { title: "Car Rental", icon: "car", sub: "Cars, rentals & trip bookings" },
   daily_service: { title: "Daily Services", icon: "tools", sub: "Repair, mistri, labour & local services" },
-  premium_decorator: { title: "Premium Decorator", icon: "party-popper", sub: "Premium wedding and event decoration" },
+  premium_decorator: { title: "Events", icon: "party-popper", sub: "Wedding, birthday and event decoration" },
   photography: { title: "Photography", icon: "camera-outline", sub: "Wedding, event and professional photography" },
 };
 

@@ -10,38 +10,44 @@ const TYPE:any={
  daily_service:{label:"Daily Service",icon:"tools"},
  holiday:{label:"Holiday",icon:"airplane-takeoff"},
  car_rental:{label:"Car Rental",icon:"car"},
- premium_decorator:{label:"Premium Decorator",icon:"party-popper"},
+ premium_decorator:{label:"Events",icon:"party-popper"},
  photography:{label:"Photography",icon:"camera-outline"}
 };
 
 export default function AdminServiceBookings(){
- const r=useRouter(),[d,setD]=useState<any[]>([]),[selected,setSelected]=useState<any>(null);
+ const r=useRouter(),[d,setD]=useState<any[]>([]),[selected,setSelected]=useState<any>(null),[savingBookingId,setSavingBookingId]=useState("");
  const load=()=>adminApi.serviceBookings().then(setD).catch(()=>setD([]));
  useEffect(()=>{load();const timer=setInterval(load,10000);return()=>clearInterval(timer)},[]);
 
  const update=async(x:any,status:string)=>{
+  if(!x?.id||savingBookingId===x.id)return;
+  setSavingBookingId(x.id);
   try{
-   await adminApi.updateServiceBooking(x.id,status);
+   const updated=await adminApi.updateServiceBooking(x.id,status);
+   setD(current=>current.map(item=>item.id===x.id?updated:item));
+   setSelected(current=>current?.id===x.id?updated:current);
    await load();
-   const label=x.service_type==="car_rental"?(status==="accepted"?"Car booking accepted":"Car booking cancelled"):(status==="confirmed"?"Booking confirmed":"Booking cancelled");
+   const label=status==="accepted"?(TYPE[x.service_type]?.label||"Service")+" booking accepted":status==="confirmed"?"Booking confirmed":"Booking cancelled";
    if(Platform.OS==="web")window.alert(label);else Alert.alert("Booking",label);
   }catch(e:any){
    if(Platform.OS==="web")window.alert(e?.message||"Could not update booking");
    else Alert.alert("Booking",e?.message||"Could not update booking");
+  }finally{
+   setSavingBookingId("");
   }
  };
 
  const pendingAction=(x:any)=>{
   const status=String(x.status||"pending").toLowerCase();
   if(!["pending","booking_requested"].includes(status))return null;
-  return x.service_type==="car_rental"?"accept":"confirm";
+  return ["car_rental","photography"].includes(x.service_type)?"accept":"confirm";
  };
 
  const title=selected?(TYPE[selected.service_type]?.label||"Service")+" Booking":"Booking Details";
  return <SafeAreaView style={s.root}>
   <View style={s.h}>
    <Pressable onPress={()=>r.back()}><MaterialCommunityIcons name="arrow-left" size={24}/></Pressable>
-   <View style={{flex:1}}><Text style={s.t}>Service Bookings</Text><Text style={s.sub}>Admin approval queue · Daily Service, Holiday, Car Rental, Decorator & Photography</Text></View><View style={s.bell}><MaterialCommunityIcons name="bell-outline" size={20} color="#0284C7"/>{d.filter((x:any)=>["pending","booking_requested"].includes(String(x.status||"").toLowerCase())).length>0&&<View style={s.badge}><Text style={s.badgeText}>{d.filter((x:any)=>["pending","booking_requested"].includes(String(x.status||"").toLowerCase())).length}</Text></View>}</View>
+   <View style={{flex:1}}><Text style={s.t}>Service Bookings</Text><Text style={s.sub}>Admin approval queue · Daily Service, Holiday, Car Rental, Events & Photography</Text></View><View style={s.bell}><MaterialCommunityIcons name="bell-outline" size={20} color="#0284C7"/>{d.filter((x:any)=>["pending","booking_requested"].includes(String(x.status||"").toLowerCase())).length>0&&<View style={s.badge}><Text style={s.badgeText}>{d.filter((x:any)=>["pending","booking_requested"].includes(String(x.status||"").toLowerCase())).length}</Text></View>}</View>
   </View>
 
   <ScrollView contentContainerStyle={s.b}>
@@ -59,8 +65,8 @@ export default function AdminServiceBookings(){
       <Text style={s.line}>{x.booking_date||"Date not set"}{x.booking_time?" · "+x.booking_time:""}</Text>
       <Text style={s.line} numberOfLines={1}>{ex.service_address||ex.pickup_location||ex.destination||"Booking details available"}</Text>
       {action&&<View style={s.actions}>
-       <Pressable onPress={()=>update(x,action==="accept"?"accepted":"confirmed")} style={[s.action,s.confirm]}><MaterialCommunityIcons name={action==="accept"?"check-circle":"check-circle"} size={17} color="#fff"/><Text style={s.actionText}>{action==="accept"?"Accept":"Confirm"}</Text></Pressable>
-       <Pressable onPress={()=>update(x,"cancelled")} style={[s.action,s.cancel]}><MaterialCommunityIcons name="close-circle" size={17} color="#fff"/><Text style={s.actionText}>Cancel</Text></Pressable>
+       <Pressable disabled={savingBookingId===x.id} onPress={(event:any)=>{event.stopPropagation?.();update(x,action==="accept"?"accepted":"confirmed")}} style={[s.action,s.confirm,savingBookingId===x.id&&{opacity:0.55}]}><MaterialCommunityIcons name="check-circle" size={17} color="#fff"/><Text style={s.actionText}>{savingBookingId===x.id?"Saving...":action==="accept"?"Accept":"Confirm"}</Text></Pressable>
+       <Pressable disabled={savingBookingId===x.id} onPress={(event:any)=>{event.stopPropagation?.();update(x,"cancelled")}} style={[s.action,s.cancel,savingBookingId===x.id&&{opacity:0.55}]}><MaterialCommunityIcons name="close-circle" size={17} color="#fff"/><Text style={s.actionText}>Cancel</Text></Pressable>
       </View>}
       <Text style={s.view}>Tap to view full customer + order details</Text>
     </Pressable>
@@ -100,8 +106,8 @@ export default function AdminServiceBookings(){
       <Text style={m.status}>Current status: {String(selected.status||"pending").toUpperCase()}</Text>
 
       {action&&<View style={s.actions}>
-       <Pressable onPress={()=>{const st=action==="accept"?"accepted":"confirmed";setSelected(null);update(selected,st)}} style={[s.action,s.confirm]}><Text style={s.actionText}>{action==="accept"?"Accept Booking":"Confirm Booking"}</Text></Pressable>
-       <Pressable onPress={()=>{setSelected(null);update(selected,"cancelled")}} style={[s.action,s.cancel]}><Text style={s.actionText}>Cancel Booking</Text></Pressable>
+       <Pressable disabled={savingBookingId===selected.id} onPress={()=>{const st=action==="accept"?"accepted":"confirmed";update(selected,st)}} style={[s.action,s.confirm,savingBookingId===selected.id&&{opacity:0.55}]}><Text style={s.actionText}>{savingBookingId===selected.id?"Saving...":action==="accept"?"Accept Booking":"Confirm Booking"}</Text></Pressable>
+       <Pressable disabled={savingBookingId===selected.id} onPress={()=>update(selected,"cancelled")} style={[s.action,s.cancel,savingBookingId===selected.id&&{opacity:0.55}]}><Text style={s.actionText}>Cancel Booking</Text></Pressable>
       </View>}
      </>})()}
     </ScrollView>

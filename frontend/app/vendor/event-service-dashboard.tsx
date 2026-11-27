@@ -14,7 +14,7 @@ export default function EventServiceVendorDashboard({ serviceType }: { serviceTy
   const router = useRouter();
   const { user, logout } = useAuth();
   const isDecorator = (serviceType || user?.service_type) === "premium_decorator";
-  const title = isDecorator ? "Premium Decorator" : "Photography";
+  const title = isDecorator ? "Events" : "Photography";
   const [stats, setStats] = useState<any>(null);
   const [pendingBookings, setPendingBookings] = useState(0);
 
@@ -59,7 +59,7 @@ export default function EventServiceVendorDashboard({ serviceType }: { serviceTy
           <KPI label="Pending" value={pendingBookings} icon="clock-outline" />
         </View>
         <Text style={s.section}>{isDecorator ? "Event Decoration" : "Photography Studio"}</Text>
-        <Action icon="briefcase-outline" title={isDecorator ? "Decoration Packages" : "Photography Packages"} sub={isDecorator ? "Add wedding, birthday and celebration packages" : "Add wedding, event and professional shoot packages"} onPress={() => router.push("/service-vendor/services" as any)} />
+        <Action icon="briefcase-outline" title={isDecorator ? "Events Packages" : "Photography Packages"} sub={isDecorator ? "Add wedding, birthday and event decoration packages" : "Add wedding, event and professional shoot packages"} onPress={() => router.push("/service-vendor/services" as any)} />
         {!isDecorator && <Action icon="movie-open-play-outline" title="Wedding Reels & Karizma Album" sub="Manage Haldi, Mehndi and wedding YouTube reels plus your 40-page album PDF" onPress={() => router.push("/service-vendor/photography-showcase" as any)} />}
         <Action icon="calendar-check-outline" title="Bookings" sub="View customer details and update event / shoot status" onPress={() => router.push("/service-vendor/service-bookings" as any)} badge={pendingBookings} />
         <Action icon="chart-line" title="Earnings" sub="Revenue, commission and estimated payout" onPress={() => router.push("/service-vendor/earnings" as any)} />
