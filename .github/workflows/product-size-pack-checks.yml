@@ -68,6 +68,7 @@ jobs:
           const adminProducts = fs.readFileSync("app/admin/products.tsx", "utf8");
           const adminVendorManage = fs.readFileSync("app/admin/vendor/[id].tsx", "utf8");
           const adminUsers = fs.readFileSync("app/admin/users.tsx", "utf8");
+          const homeCategory = fs.readFileSync("app/home-category/[id].tsx", "utf8");
           const backend = fs.readFileSync("../backend/server.py", "utf8");
 
           assert.ok(vendor.includes("categoryConfig.variantOptions.map") && !vendor.includes("PRODUCT_UNIT_OPTIONS"), "Vendor must use category-specific variant options, not a universal size list.");
@@ -157,6 +158,21 @@ jobs:
           );
           assert.ok(backend.includes("colour_configuration_changed") && backend.includes('"color_images": 1'), "Admin update API must preserve unchanged legacy colour galleries.");
           assert.ok(vendor.includes("color_images: categoryConfig.showColors ? form.color_images : {}") && adminVendor.includes("form.color_images"), "Both product editors must save colour-specific galleries.");
+          assert.ok(
+            homeCategory.includes("api.stores()") &&
+            homeCategory.includes("store.category_id || \"\"") &&
+            homeCategory.includes("api.itemCategories(undefined, storeId)") &&
+            homeCategory.includes("storeItemCategoryLists.flatMap") &&
+            homeCategory.includes("categoryIds") &&
+            homeCategory.includes("selectedIds.has(productItemId)"),
+            "Customer Home category browser must load store-owned Item Categories for all approved stores in that shop category, merge duplicates by name, and filter each vendor's products."
+          );
+          assert.ok(
+            homeCategory.includes("for (const category of configuredItemCategories) addCategory(category)") &&
+            homeCategory.includes("for (const product of products)") &&
+            homeCategory.includes("product-derived legacy categories too"),
+            "Product-derived legacy item categories must remain visible alongside configured vendor categories."
+          );
           assert.ok(
             adminVendor.includes('image: String(item.image || item.images?.[0] || "")') &&
             adminVendor.includes('<Image source={{ uri: product.image || FALLBACK_PRODUCT_IMAGE }}'),

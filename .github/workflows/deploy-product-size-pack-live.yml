@@ -70,6 +70,7 @@ on:
       - "frontend/src/components/RobotCompanion3D.tsx"
       - "frontend/app/(tabs)/_layout.tsx"
       - "frontend/app/(tabs)/categories.tsx"
+      - "frontend/app/home-category/**"
       - "frontend/src/api.ts"
       - ".github/workflows/deploy-product-size-pack-live.yml"
   workflow_dispatch:

@@ -77,7 +77,7 @@ export default function HomeCategoryBrowser() {
 
       setLoading(true);
       try {
-        const [categoryList, productList, itemCategoryList] = await Promise.all([
+        const [categoryList, productList, itemCategoryList, storeList] = await Promise.all([
           api.categories().catch((error) => {
             console.warn("Home category lookup unavailable:", error);
             return [];
@@ -87,10 +87,29 @@ export default function HomeCategoryBrowser() {
             return [];
           }),
           api.itemCategories(String(id)).catch((error) => {
-            console.warn("Configured item categories unavailable; using product categories:", error);
+            console.warn("Global item categories unavailable; loading store categories:", error);
+            return [];
+          }),
+          api.stores().catch((error) => {
+            console.warn("Approved stores unavailable while loading store item categories:", error);
             return [];
           }),
         ]);
+
+        const categoryStoreIds = Array.from(new Set(
+          (Array.isArray(storeList) ? storeList : [])
+            .filter((store: any) => String(store.category_id || "") === String(id))
+            .map((store: any) => String(store.id || store._id || ""))
+            .filter(Boolean)
+        ));
+        const storeItemCategoryLists = await Promise.all(
+          categoryStoreIds.map((storeId) =>
+            api.itemCategories(undefined, storeId).catch((error) => {
+              console.warn("Store item categories unavailable for store " + storeId + ":", error);
+              return [];
+            })
+          )
+        );
 
         if (!mounted) return;
 
@@ -99,7 +118,10 @@ export default function HomeCategoryBrowser() {
           availableCategories.find((category: any) => String(category.id) === String(id)) || null
         );
         setProducts(Array.isArray(productList) ? productList : []);
-        setConfiguredItemCategories(Array.isArray(itemCategoryList) ? itemCategoryList : []);
+        setConfiguredItemCategories([
+          ...(Array.isArray(itemCategoryList) ? itemCategoryList : []),
+          ...storeItemCategoryLists.flatMap((list: any) => Array.isArray(list) ? list : []),
+        ]);
         setSelectedItemCategory("All");
       } catch (error) {
         console.warn("Unable to load Home category browser:", error);
@@ -121,23 +143,44 @@ export default function HomeCategoryBrowser() {
   }, [id]);
 
   const itemCategories = useMemo(() => {
-    if (configuredItemCategories.length) return configuredItemCategories;
+    const byName = new Map<string, any>();
+    const addCategory = (category: any) => {
+      const name = String(category?.name || "").trim();
+      if (!name) return;
+      const nameKey = name.toLowerCase();
+      const categoryId = String(category?.id || category?._id || "");
+      const existing = byName.get(nameKey);
+      if (!existing) {
+        const slug = nameKey.replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+        byName.set(nameKey, {
+          ...category,
+          id: categoryId || "legacy-" + slug,
+          name,
+          categoryIds: categoryId ? [categoryId] : [],
+          icon: String(category?.icon || "tag-outline"),
+        });
+        return;
+      }
+      if (categoryId && !existing.categoryIds.includes(categoryId)) {
+        existing.categoryIds.push(categoryId);
+      }
+      if ((!existing.icon || existing.icon === "tag-outline") && category?.icon) {
+        existing.icon = category.icon;
+      }
+    };
 
-    const byId = new Map<string, any>();
+    for (const category of configuredItemCategories) addCategory(category);
+    // Keep product-derived legacy categories too, even when some configured categories exist.
     for (const product of products) {
       const name = String(product?.item_category || "").trim();
       if (!name) continue;
-      const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
-      const key = String(product?.item_category_id || "legacy-" + slug);
-      if (!byId.has(key)) {
-        byId.set(key, {
-          id: key,
-          name,
-          icon: String(product?.item_category_icon || "tag-outline"),
-        });
-      }
+      addCategory({
+        id: String(product?.item_category_id || ""),
+        name,
+        icon: String(product?.item_category_icon || "tag-outline"),
+      });
     }
-    return Array.from(byId.values());
+    return Array.from(byName.values());
   }, [configuredItemCategories, products]);
 
   const filteredProducts = useMemo(() => {
@@ -148,12 +191,15 @@ export default function HomeCategoryBrowser() {
     );
     if (!selected) return products;
 
-    const selectedId = String(selected.id ?? selected._id ?? "");
+    const selectedIds = new Set([
+      String(selected.id ?? selected._id ?? ""),
+      ...(Array.isArray(selected.categoryIds) ? selected.categoryIds.map((value: any) => String(value)) : []),
+    ].filter(Boolean));
     const selectedName = String(selected.name || "").trim().toLowerCase();
     return products.filter((product: any) => {
       const productItemId = String(product?.item_category_id || "");
       const productItemName = String(product?.item_category || "").trim().toLowerCase();
-      return (selectedId && productItemId === selectedId) ||
+      return selectedIds.has(productItemId) ||
         (selectedName && productItemName === selectedName);
     });
   }, [products, selectedItemCategory, itemCategories]);
