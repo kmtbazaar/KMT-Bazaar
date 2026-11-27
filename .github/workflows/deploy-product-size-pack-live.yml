@@ -14,6 +14,9 @@ on:
       - "frontend/src/components/CheckoutBar.tsx"
       - "frontend/src/components/BrandMark.tsx"
       - "frontend/app/(tabs)/home.tsx"
+      - "frontend/app/admin/service-bookings.tsx"
+      - "frontend/app/vendor/service-bookings.tsx"
+      - "frontend/app/admin/service-vendors.tsx"
       - "frontend/app/search.tsx"
       - "frontend/src/api.ts"
       - "frontend/src/CartContext.tsx"
@@ -369,7 +372,7 @@ jobs:
           assert.ok(home.includes("VIDYA SAGAR") && home.includes("RAILWAY STATION") && home.includes("RGRG +2 HIGH SCHOOL") && home.includes('karmatarStationArch:{position:"absolute",top:9,width:"78%"') && home.includes('karmatarStationSign:{position:"absolute",top:1,left:1,right:1,height:15') && home.includes('textShadowColor:"#FF3328"'), "Vidyasagar station sign must have rounded top corners and remain visible");
           assert.ok(home.includes("HOME DELIVERY") && home.includes("karmatarGrassWall") && home.includes('testID="home-karmatar-home-delivery-room"'), "Grass-wall home delivery room must appear");
           assert.ok(!home.includes('testID="home-karmatar-road"') && home.includes('testID="home-karmatar-railway-crossing"') && !home.includes("karmatarGateArm") && !home.includes("karmatarGateStripe"), "Road and long railway beam must stay removed while the signal post remains");
-          assert.ok(!home.includes("karmatarCloud") && !home.includes("karmatarCloudTrack") && home.includes('karmatarGroundBack:{position:"absolute",left:0,right:0,bottom:6,height:12') && home.includes("karmatarDaySky") && home.includes("karmatarNightSky") && home.includes("getKarmatarLocalDaylight") && home.includes("timeZone:\"Asia/Kolkata\"") && home.includes("setInterval(syncKarmatarClock,60*1000)") && home.includes("withTiming(isKarmatarDay?0:1") && home.includes("karmatarSun") && home.includes("karmatarMoon") && !home.includes("api.karmatarWeather()") && !home.includes("KARMATAR_RAIN_DROPS"), "Hero day/night mock must follow the live Karmatar IST clock, keep ground clear of search and show the sun or moon");
+          assert.ok(!home.includes("karmatarCloud") && !home.includes("karmatarCloudTrack") && home.includes('karmatarGroundBack:{position:"absolute",left:0,right:0,bottom:6,height:12') && home.includes("karmatarDaySky") && home.includes("karmatarNightSky") && home.includes("getKarmatarTimeVisual") && home.includes("sunriseStart") && home.includes("dayStart") && home.includes("sunsetStart") && home.includes("nightStart") && home.includes("interpolateColor") && home.includes("#E95B4B") && home.includes("#FFF0B8") && home.includes("sunOpacity") && home.includes("moonOpacity") && home.includes("timeZone:\"Asia/Kolkata\"") && home.includes("setInterval(syncKarmatarClock,60*1000)") && home.includes('karmatarSun:{position:"absolute",left:"7%",top:18,width:22,height:22,borderRadius:11') && home.includes('karmatarMoon:{position:"absolute",right:"7%",top:18,width:22,height:22,borderRadius:11') && home.includes("karmatarSun") && home.includes("karmatarMoon") && !home.includes("api.karmatarWeather()") && !home.includes("KARMATAR_RAIN_DROPS"), "Hero day/night mock must follow the live Karmatar IST clock, keep ground clear of search and show the sun or moon");
           assert.ok(!home.includes("VillageDayNight") && !home.includes("VillageSmokePuff") && !home.includes("villageMainHut") && !home.includes("villageDayLayer"), "The old village animation must be fully removed");
           assert.ok(!home.includes("FestivalDecor") && !home.includes("FESTIVAL_FIREWORKS") && !home.includes("home-chhath-soop"), "The previous festival ghat scene must be replaced");
           assert.ok(!home.includes("chhath-hero-240-q26.webp"), "The hero must remain animated CSS/View layers, not a flat replacement image");
@@ -438,6 +441,26 @@ jobs:
             assert.ok(source.includes("AnimatedBrandLogo") || source.includes("BrandingFooter"), `Missing animated brand in ${file}`);
           }
           console.log("ANIMATED_BRANDING_VALIDATION_PASS");
+          NODE
+
+      - name: Validate Events naming and Photography admin approval
+        working-directory: frontend
+        run: |
+          node <<'NODE'
+          const assert = require("node:assert/strict");
+          const fs = require("node:fs");
+          const home = fs.readFileSync("app/(tabs)/home.tsx", "utf8");
+          const register = fs.readFileSync("app/auth/register.tsx", "utf8");
+          const serviceRoute = fs.readFileSync("app/service/[type].tsx", "utf8");
+          const adminBookings = fs.readFileSync("app/admin/service-bookings.tsx", "utf8");
+          const vendorBookings = fs.readFileSync("app/vendor/service-bookings.tsx", "utf8");
+          const adminVendors = fs.readFileSync("app/admin/service-vendors.tsx", "utf8");
+          const backend = fs.readFileSync("../backend/server.py", "utf8");
+          assert.ok(home.includes('title: "Events"') && register.includes('label: "Events"') && serviceRoute.includes('premium_decorator: { title: "Events"') && adminBookings.includes('premium_decorator:{label:"Events"') && adminVendors.includes('premium_decorator:"Events"'), "Premium Decorator must be labelled Events throughout customer, registration and admin service screens.");
+          assert.ok(adminBookings.includes('return ["car_rental","photography"].includes(x.service_type)?"accept":"confirm"') && adminBookings.includes('adminApi.updateServiceBooking(x.id,status)'), "Pending Photography requests must expose an admin Accept action wired to the booking status API.");
+          assert.ok(backend.includes('ServiceType.PHOTOGRAPHY.value: {"pending", "accepted", "confirmed", "shoot_scheduled"') && backend.includes('"photography": {"accepted", "confirmed", "shoot_scheduled"'), "Admin and vendor APIs must allow Photography to move through accepted and shoot stages.");
+          assert.ok(vendorBookings.includes('photography:["accepted","shoot_scheduled","shoot_completed","completed"]') && vendorBookings.includes('function bookingStages(x:any):string[]') && vendorBookings.includes('x?.service_type==="photography"') && vendorBookings.includes('return ["confirmed","shoot_scheduled","shoot_completed","completed"]'), "Photography vendors must advance newly accepted bookings while retaining progression for older confirmed bookings.");
+          console.log("EVENTS_AND_PHOTOGRAPHY_ADMIN_APPROVAL_VALIDATION_PASS");
           NODE
 
       - name: Lint changed product and branding screens

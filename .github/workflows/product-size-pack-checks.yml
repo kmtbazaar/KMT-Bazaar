@@ -22,6 +22,12 @@ on:
       - "frontend/src/components/BrandMark.tsx"
       - "frontend/app/(tabs)/categories.tsx"
       - "frontend/app/(tabs)/home.tsx"
+      - "frontend/app/admin/service-bookings.tsx"
+      - "frontend/app/vendor/service-bookings.tsx"
+      - "frontend/app/admin/service-vendors.tsx"
+      - "frontend/app/auth/register.tsx"
+      - "frontend/app/service/[type].tsx"
+      - "frontend/app/vendor/event-service-dashboard.tsx"
       - "frontend/app/home-category/[id].tsx"
       - "frontend/app/store/[id].tsx"
       - "frontend/scripts/validate-product-grid-layout.js"
@@ -263,13 +269,39 @@ jobs:
             "Category product prices must remain on one line in the category product grid."
           );
           assert.ok(
-            home.includes('karmatarSun:{position:"absolute",left:"6%",top:48,width:28,height:28,borderRadius:14') &&
-            home.includes('karmatarMoon:{position:"absolute",right:"6%",top:48,width:28,height:28,borderRadius:14') &&
-            home.includes("cycle.value*30"),
+            home.includes('karmatarSun:{position:"absolute",left:"7%",top:18,width:22,height:22,borderRadius:11') &&
+            home.includes('karmatarMoon:{position:"absolute",right:"7%",top:18,width:22,height:22,borderRadius:11') &&
+            home.includes("getKarmatarTimeVisual") &&
+            home.includes("sunriseStart") &&
+            home.includes("dayStart") &&
+            home.includes("sunsetStart") &&
+            home.includes("nightStart") &&
+            home.includes("interpolateColor") &&
+            home.includes("#E95B4B") &&
+            home.includes("#FFF0B8"),
             "Home day/night sun and moon must be smaller and kept clear of the scene text labels."
           );
           console.log("SINGLE_LINE_PRODUCT_PRICE_AND_HERO_LAYOUT_VALIDATION_PASS");
           NODE
+      - name: Validate Events naming and Photography admin approval
+        run: |
+          node <<'NODE'
+          const assert = require("node:assert/strict");
+          const fs = require("node:fs");
+          const home = fs.readFileSync("app/(tabs)/home.tsx", "utf8");
+          const register = fs.readFileSync("app/auth/register.tsx", "utf8");
+          const serviceRoute = fs.readFileSync("app/service/[type].tsx", "utf8");
+          const adminBookings = fs.readFileSync("app/admin/service-bookings.tsx", "utf8");
+          const vendorBookings = fs.readFileSync("app/vendor/service-bookings.tsx", "utf8");
+          const adminVendors = fs.readFileSync("app/admin/service-vendors.tsx", "utf8");
+          const backend = fs.readFileSync("../backend/server.py", "utf8");
+          assert.ok(home.includes('title: "Events"') && register.includes('label: "Events"') && serviceRoute.includes('premium_decorator: { title: "Events"') && adminBookings.includes('premium_decorator:{label:"Events"') && adminVendors.includes('premium_decorator:"Events"'), "Premium Decorator must be labelled Events throughout customer, registration and admin service screens.");
+          assert.ok(adminBookings.includes('return ["car_rental","photography"].includes(x.service_type)?"accept":"confirm"') && adminBookings.includes('adminApi.updateServiceBooking(x.id,status)'), "Pending Photography requests must expose an admin Accept action wired to the booking status API.");
+          assert.ok(backend.includes('ServiceType.PHOTOGRAPHY.value: {"pending", "accepted", "confirmed", "shoot_scheduled"') && backend.includes('"photography": {"accepted", "confirmed", "shoot_scheduled"'), "Admin and vendor APIs must allow Photography to move through accepted and shoot stages.");
+          assert.ok(vendorBookings.includes('photography:["accepted","shoot_scheduled","shoot_completed","completed"]') && vendorBookings.includes('function bookingStages(x:any):string[]') && vendorBookings.includes('x?.service_type==="photography"') && vendorBookings.includes('return ["confirmed","shoot_scheduled","shoot_completed","completed"]'), "Photography vendors must advance newly accepted bookings while retaining progression for older confirmed bookings.");
+          console.log("EVENTS_AND_PHOTOGRAPHY_ADMIN_APPROVAL_VALIDATION_PASS");
+          NODE
+
       - name: Validate customer product grid, unit badges and image browsing
         run: node scripts/validate-product-grid-layout.js
       - name: Lint changed product UI files
