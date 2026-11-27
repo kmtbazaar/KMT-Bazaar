@@ -241,11 +241,22 @@ export default function ProductCard({
 
           <View style={[s.priceRow, wishlistGrid && s.wishlistPriceRow, recommendationGrid && s.recommendationPriceRow]}>
             <View style={[s.priceCol, wishlistGrid && s.wishlistPriceCol, recommendationGrid && s.recommendationPriceCol]}>
-              <Text style={[s.price, wishlistGrid && s.wishlistPrice, recommendationGrid && s.recommendationPrice]}>
+              <Text
+                testID="product-card-price"
+                numberOfLines={1}
+                adjustsFontSizeToFit
+                minimumFontScale={0.66}
+                ellipsizeMode="clip"
+                style={[s.price, wishlistGrid && s.wishlistPrice, recommendationGrid && s.recommendationPrice]}
+              >
                 {formatRupees(p.price)}
               </Text>
 
               <Text
+                numberOfLines={1}
+                adjustsFontSizeToFit
+                minimumFontScale={0.7}
+                ellipsizeMode="clip"
                 style={[
                   s.mrp,
                   wishlistGrid && s.wishlistMrp,
@@ -452,7 +463,7 @@ const s = StyleSheet.create({
   recommendationPrice: { fontSize: 11 },
   recommendationMrp: { fontSize: 8, minHeight: 10 },
   recommendationPriceRow: { marginTop: 3, alignItems: "center" },
-  recommendationPriceCol: { flexShrink: 1, minWidth: 0 },
+  recommendationPriceCol: { flex: 1, minWidth: 0, flexShrink: 1 },
   recommendationAddBtn: { height: 22, paddingHorizontal: 2, paddingVertical: 1, gap: 0 },
   recommendationAddText: { fontSize: 8.5 },
   recommendationStepper: { height: 22, paddingHorizontal: 0, flexShrink: 0 },
@@ -464,7 +475,7 @@ const s = StyleSheet.create({
   wishlistPrice: { fontSize: 11.5 },
   wishlistMrp: { fontSize: 8, minHeight: 10 },
   wishlistPriceRow: { marginTop: 3, alignItems: "center" },
-  wishlistPriceCol: { flexShrink: 1, minWidth: 0 },
+  wishlistPriceCol: { flex: 1, minWidth: 0, flexShrink: 1 },
   wishlistAddBtn: { height: 24, paddingHorizontal: 2, paddingVertical: 1, gap: 0 },
   wishlistAddText: { fontSize: 8.5 },
   wishlistStepper: { height: 24, paddingHorizontal: 0, flexShrink: 0 },
@@ -543,6 +554,8 @@ const s = StyleSheet.create({
   },
 
   priceCol: {
+    flex: 1,
+    minWidth: 0,
     flexDirection: "column",
     alignItems: "flex-start",
     gap: 0,

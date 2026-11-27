@@ -21,6 +21,7 @@ on:
       - "frontend/src/components/CheckoutBar.tsx"
       - "frontend/src/components/BrandMark.tsx"
       - "frontend/app/(tabs)/categories.tsx"
+      - "frontend/app/(tabs)/home.tsx"
       - "frontend/app/home-category/[id].tsx"
       - "frontend/app/store/[id].tsx"
       - "frontend/scripts/validate-product-grid-layout.js"
@@ -237,9 +238,41 @@ jobs:
           console.log("PRODUCT_SIZE_PACK_UI_VALIDATION_PASS");
           console.log("Validated category-specific options, variant prices/descriptions/stock, and customer selector/cart wiring.");
           NODE
+      - name: Validate single-line product prices and clear day/night hero icons
+        run: |
+          node <<'NODE'
+          const assert = require("node:assert/strict");
+          const fs = require("node:fs");
+          const productCard = fs.readFileSync("src/components/ProductCard.tsx", "utf8");
+          const categories = fs.readFileSync("app/(tabs)/categories.tsx", "utf8");
+          const home = fs.readFileSync("app/(tabs)/home.tsx", "utf8");
+          assert.ok(
+            productCard.includes('testID="product-card-price"') &&
+            productCard.includes("numberOfLines={1}") &&
+            productCard.includes("adjustsFontSizeToFit") &&
+            productCard.includes("minimumFontScale={0.66}") &&
+            productCard.includes("flex: 1,\\n    minWidth: 0,"),
+            "Product-card prices must fit on one line by shrinking within the available row width."
+          );
+          assert.ok(
+            categories.includes('testID="category-product-price"') &&
+            categories.includes("categoryProductPriceCol: { flex: 1, minWidth: 0, flexShrink: 1 }") &&
+            categories.includes("numberOfLines={1}") &&
+            categories.includes("adjustsFontSizeToFit") &&
+            categories.includes("minimumFontScale={0.66}"),
+            "Category product prices must remain on one line in the category product grid."
+          );
+          assert.ok(
+            home.includes('karmatarSun:{position:"absolute",left:"6%",top:48,width:28,height:28,borderRadius:14') &&
+            home.includes('karmatarMoon:{position:"absolute",right:"6%",top:48,width:28,height:28,borderRadius:14') &&
+            home.includes("cycle.value*30"),
+            "Home day/night sun and moon must be smaller and kept clear of the scene text labels."
+          );
+          console.log("SINGLE_LINE_PRODUCT_PRICE_AND_HERO_LAYOUT_VALIDATION_PASS");
+          NODE
       - name: Validate customer product grid, unit badges and image browsing
         run: node scripts/validate-product-grid-layout.js
       - name: Lint changed product UI files
-        run: npx eslint "app/vendor/store/[id].tsx" "app/vendor/products.tsx" "app/admin/products.tsx" "src/components/AdminVendorProducts.tsx" "app/product/[id].tsx" "app/(tabs)/categories.tsx" "app/home-category/[id].tsx" "app/store/[id].tsx" "src/components/ProductCard.tsx" "src/components/ProductUnitBadge.tsx" "src/utils/productUnit.ts" "src/components/CheckoutBar.tsx" "src/components/BrandMark.tsx" --no-cache
+        run: npx eslint "app/vendor/store/[id].tsx" "app/vendor/products.tsx" "app/admin/products.tsx" "src/components/AdminVendorProducts.tsx" "app/product/[id].tsx" "app/(tabs)/categories.tsx" "app/home-category/[id].tsx" "app/store/[id].tsx" "src/components/ProductCard.tsx" "app/(tabs)/home.tsx" "src/components/ProductUnitBadge.tsx" "src/utils/productUnit.ts" "src/components/CheckoutBar.tsx" "src/components/BrandMark.tsx" --no-cache
       - name: Build web app
         run: npm run build:web

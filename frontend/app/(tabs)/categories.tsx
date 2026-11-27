@@ -132,12 +132,27 @@ export function CategoryProductTile({ p }: { p: any }) {
           <ProductUnitBadge label={productUnit} compact testID={`category-product-unit-${productId}`} />
         </View>
         <View style={s.categoryProductPriceRow}>
-          <View style={{ flexShrink: 1 }}>
-            <NativeText style={s.categoryProductPrice}>
+          <View style={s.categoryProductPriceCol}>
+            <NativeText
+              testID="category-product-price"
+              style={s.categoryProductPrice}
+              numberOfLines={1}
+              adjustsFontSizeToFit
+              minimumFontScale={0.66}
+              ellipsizeMode="clip"
+            >
               {p?.price != null ? formatRupees(p.price) : "Price unavailable"}
             </NativeText>
             {Number(p?.mrp) > Number(p?.price) && (
-              <NativeText style={s.categoryProductMrp}>{formatRupees(p.mrp)}</NativeText>
+              <NativeText
+                style={s.categoryProductMrp}
+                numberOfLines={1}
+                adjustsFontSizeToFit
+                minimumFontScale={0.7}
+                ellipsizeMode="clip"
+              >
+                {formatRupees(p.mrp)}
+              </NativeText>
             )}
           </View>
 
@@ -594,7 +609,8 @@ const s = StyleSheet.create({
     gap: 5,
     marginTop: 7,
   },
-  categoryProductPrice: { color: COLORS.text, fontSize: 14, fontWeight: "900" },
+  categoryProductPriceCol: { flex: 1, minWidth: 0, flexShrink: 1 },
+  categoryProductPrice: { width: "100%", color: COLORS.text, fontSize: 14, fontWeight: "900" },
   categoryProductMrp: {
     color: COLORS.textMuted,
     fontSize: 10,
