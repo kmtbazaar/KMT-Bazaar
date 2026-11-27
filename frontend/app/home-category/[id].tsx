@@ -21,25 +21,62 @@ import BrandMark, { isKnownBrand } from "@/src/components/BrandMark";
 const RAIL_WIDTH = 88;
 
 function itemCategoryIcon(name: string): any {
-  const key = String(name || "").toLowerCase();
-  if (key.includes("t-shirt") || key.includes("shirt")) return "tshirt-crew-outline";
-  if (key.includes("jean") || key.includes("trouser")) return "hanger";
-  if (key.includes("dress")) return "human-female-dress";
-  if (key.includes("footwear") || key.includes("shoe")) return "shoe-sneaker";
-  if (key.includes("fruit") || key.includes("vegetable")) return "fruit-cherries";
-  if (key.includes("rice") || key.includes("atta") || key.includes("dal")) return "grain";
-  if (key.includes("dairy")) return "cow";
-  if (key.includes("snack") || key.includes("dessert")) return "food";
-  if (key.includes("beverage") || key.includes("drink")) return "cup-outline";
-  if (key.includes("mobile") || key.includes("phone")) return "cellphone";
-  if (key.includes("laptop") || key.includes("computer")) return "laptop";
-  if (key.includes("audio") || key.includes("headphone")) return "headphones";
-  if (key.includes("tv") || key.includes("television")) return "television";
-  if (key.includes("access")) return "shopping";
-  if (key.includes("medicine") || key.includes("prescription")) return "pill";
-  if (key.includes("vitamin")) return "pill-multiple";
-  if (key.includes("baby")) return "baby-face-outline";
-  if (key.includes("personal")) return "face-woman";
+  const key = String(name || "")
+    .toLowerCase()
+    .replace(/&/g, " and ")
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+  const has = (...terms: string[]) => terms.some((term) => key.includes(term));
+
+  // Apparel and fashion.
+  if (has("t shirt", "tshirt", "shirt", "topwear", "top wear", "polo", "blouse")) return "tshirt-crew-outline";
+  if (has("jean", "denim", "trouser", "pant", "legging", "bottomwear", "bottom wear")) return "hanger";
+  if (has("saree", "sari", "kurti", "dress", "gown", "ethnic wear")) return "human-female-dress";
+  if (has("footwear", "shoe", "sneaker", "sandal", "slipper")) return "shoe-sneaker";
+  if (has("watch", "smartwatch")) return "watch";
+  if (has("bag", "luggage", "backpack", "wallet", "purse")) return "bag-personal-outline";
+  if (has("jewellery", "jewelry", "necklace", "earring", "ring")) return "diamond-stone";
+  if (has("eyewear", "glasses", "sunglasses")) return "sunglasses";
+  if (has("fashion", "clothing", "apparel", "garment", "wear")) return "hanger";
+
+  // Grocery and food.
+  if (has("fruit", "fruits")) return "fruit-cherries";
+  if (has("vegetable", "vegetables", "veggie")) return "carrot";
+  if (has("rice", "atta", "dal", "grain", "flour", "pulses", "cereal")) return "grain";
+  if (has("dairy", "milk", "cheese", "butter", "curd", "yogurt")) return "cow";
+  if (has("snack", "chips", "biscuit", "cookie", "chocolate", "sweet", "dessert")) return "food";
+  if (has("beverage", "drink", "juice", "tea", "coffee", "water")) return "cup-outline";
+  if (has("grocery", "groceries", "supermarket", "general store", "daily needs", "household")) return "basket-outline";
+
+  // Electronics and accessories.
+  if (has("mobile", "phone", "smartphone", "tablet")) return "cellphone";
+  if (has("laptop", "computer", "desktop")) return "laptop";
+  if (has("audio", "headphone", "earphone", "speaker", "sound")) return "headphones";
+  if (has("tv", "television")) return "television";
+  if (has("accessor")) return "shopping-outline";
+
+  // Health, beauty and baby care.
+  if (has("medicine", "pharmacy", "prescription", "medical", "health")) return "pill";
+  if (has("vitamin", "supplement")) return "pill-multiple";
+  if (has("baby", "infant", "newborn")) return "baby-face-outline";
+  if (has("personal care", "beauty", "cosmetic", "makeup", "skincare", "skin care", "grooming")) return "face-woman";
+  if (has("perfume", "fragrance")) return "spray-bottle";
+
+  // Home, kitchen, books, toys and other stores.
+  if (has("furniture", "sofa", "chair", "table")) return "sofa";
+  if (has("home decor", "decor", "decoration")) return "home-variant-outline";
+  if (has("kitchen", "cookware", "utensil", "dinnerware")) return "silverware-fork-knife";
+  if (has("appliance", "refrigerator", "washing machine", "microwave")) return "microwave";
+  if (has("book", "books", "novel")) return "book-open-page-variant";
+  if (has("stationery", "school supplies", "pen", "pencil")) return "pencil-ruler";
+  if (has("toy", "toys", "game")) return "teddy-bear";
+  if (has("sport", "fitness", "gym", "exercise")) return "dumbbell";
+  if (has("car", "automotive", "vehicle", "bike", "automobile")) return "car";
+  if (has("pet", "pets", "animal")) return "paw";
+  if (has("plant", "flower", "garden")) return "flower";
+  if (has("hardware", "tool", "tools")) return "hammer-wrench";
+  if (has("home", "household")) return "home-outline";
+
   return "tag-outline";
 }
 
@@ -152,12 +189,15 @@ export default function HomeCategoryBrowser() {
       const existing = byName.get(nameKey);
       if (!existing) {
         const slug = nameKey.replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+        const matchedIcon = itemCategoryIcon(name);
         byName.set(nameKey, {
           ...category,
           id: categoryId || "legacy-" + slug,
           name,
           categoryIds: categoryId ? [categoryId] : [],
-          icon: String(category?.icon || "tag-outline"),
+          icon: matchedIcon !== "tag-outline"
+            ? matchedIcon
+            : String(category?.icon || "tag-outline"),
         });
         return;
       }
@@ -271,7 +311,10 @@ export default function HomeCategoryBrowser() {
             {itemCategories.map((category: any) => {
               const key = categoryKey(category);
               const active = selectedItemCategory === key;
-              const iconName = category.icon || itemCategoryIcon(category.name);
+              const matchedIcon = itemCategoryIcon(category.name);
+              const iconName = matchedIcon !== "tag-outline"
+                ? matchedIcon
+                : category.icon || matchedIcon;
               return (
                 <Pressable
                   key={key}

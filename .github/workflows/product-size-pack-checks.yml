@@ -174,6 +174,16 @@ jobs:
             "Product-derived legacy item categories must remain visible alongside configured vendor categories."
           );
           assert.ok(
+            homeCategory.includes("function itemCategoryIcon(name: string)") &&
+            homeCategory.includes('has("jean", "denim", "trouser", "pant"') &&
+            homeCategory.includes('has("mobile", "phone", "smartphone", "tablet")') &&
+            homeCategory.includes('has("fruit", "fruits")') &&
+            homeCategory.includes("const matchedIcon = itemCategoryIcon(category.name)") &&
+            homeCategory.includes('matchedIcon !== "tag-outline"') &&
+            homeCategory.includes("isKnownBrand(category.name)"),
+            "Customer item-category icons must be selected from category names, with apparel, grocery and electronics mappings, while retaining real brand marks."
+          );
+          assert.ok(
             adminVendor.includes('image: String(item.image || item.images?.[0] || "")') &&
             adminVendor.includes('<Image source={{ uri: product.image || FALLBACK_PRODUCT_IMAGE }}'),
             "Admin product saves must leave the primary image empty when there is no upload (so the backend can derive it from colour galleries) while retaining a display-only list placeholder."
