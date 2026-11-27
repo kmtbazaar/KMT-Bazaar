@@ -251,7 +251,7 @@ jobs:
             productCard.includes("numberOfLines={1}") &&
             productCard.includes("adjustsFontSizeToFit") &&
             productCard.includes("minimumFontScale={0.66}") &&
-            productCard.includes("flex: 1,\\n    minWidth: 0,"),
+            productCard.includes("flex: 1,\n    minWidth: 0,"),
             "Product-card prices must fit on one line by shrinking within the available row width."
           );
           assert.ok(
