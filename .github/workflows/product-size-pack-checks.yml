@@ -119,9 +119,30 @@ jobs:
           assert.ok(vendor.includes('setForm((current) => ({ ...current, unit: option }));') && vendor.includes('clearAddValidationError("baseSize")'), "Selecting a RAM / Storage option must update the product unit and clear its validation error.");
           assert.ok(vendor.includes("vendor-store-edit-product-size-pack-picker"), "Store vendor Edit Product screen must render the size/pack picker.");
           assert.ok(vendor.includes("toggleEditFashionSize(option)") && vendor.includes("setEditProductForm((current) => ({ ...current, unit: option }))"), "Edit size choices must update either the Fashion multi-select variants or the selected non-Fashion unit.");
-          assert.ok(vendor.includes('testID="vendor-store-add-product-fashion-photos"') && vendor.includes('testID="vendor-store-edit-product-fashion-photos"') && vendor.includes("addFashionSelectedSizes") && vendor.includes("editFashionSelectedSizes") && vendor.includes("toggleAddFashionSize(option)") && vendor.includes("toggleEditFashionSize(option)"), "Fashion Add/Edit must use one shared photo gallery and multi-select size chips.");
+          assert.ok(
+            vendor.includes('testID="vendor-store-edit-product-fashion-photos"') &&
+            !vendor.includes('testID="vendor-store-add-product-fashion-photos"') &&
+            vendor.includes("addFashionSelectedSizes") &&
+            vendor.includes("editFashionSelectedSizes") &&
+            vendor.includes("toggleAddFashionSize(option)") &&
+            vendor.includes("toggleEditFashionSize(option)") &&
+            vendor.includes("showImageUploads={true}") &&
+            vendor.includes("imagesByColor[activeColor]") &&
+            vendor.includes("missingFashionColorPhotos"),
+            "Fashion Add must upload separate photos for each selected colour; Edit must retain its existing gallery and both forms must keep multi-size selection."
+          );
           assert.ok(vendor.includes("vendor-store-add-product-item-category-picker"), "Add Product must render the distinct item-category box.");
           assert.ok(vendor.indexOf('testID="vendor-store-add-product-item-category-picker"') < vendor.indexOf('testID="vendor-store-add-product-size-pack-picker"'), "Add Product item category picker must appear above the clothing size/pack picker.");
+          const fashionAddOrder = [
+            'testID="vendor-store-add-product-name"',
+            'testID="vendor-store-add-product-item-category-picker"',
+            'testID="vendor-store-add-product-size-pack-picker"',
+            'testID="vendor-store-add-product-colours"',
+            'testID="vendor-store-add-product-price-panel"',
+            'testID="vendor-store-add-product-description"',
+          ].map((marker) => vendor.indexOf(marker));
+          assert.ok(fashionAddOrder.every((index) => index >= 0) && fashionAddOrder.every((index, position) => position === 0 || fashionAddOrder[position - 1] < index), "Fashion Add Product must follow Name, Item Category, Sizes, Colours, Price and Fabric/Fit Details.");
+          assert.ok(vendor.includes('backgroundColor: "#F0FDF4"') && vendor.includes('borderColor: "#A7F3D0"') && vendor.includes("fashionDetailsPanel"), "Fashion Price and Fabric/Fit panels must use the soft green Item Category palette.");
           assert.ok(vendor.includes("vendor-store-edit-product-item-category-picker"), "Edit Product must render the distinct item-category box.");
           assert.ok(vendorOrders.includes('testID={`vendor-order-open-${item.id}`}') && vendorOrders.includes("onPress={() => setSelectedOrder(item)}"), "Tapping a vendor order card must open its full order details.");
           assert.ok(vendorOrders.includes('testID="vendor-order-detail-modal"') && vendorOrders.includes("Pickup / delivery address") && vendorOrders.includes("Payment and bill") && vendorOrders.includes("getOrderAddress(order.address)"), "Vendor order detail must show customer address and payment/bill details.");
