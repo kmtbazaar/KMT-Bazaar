@@ -229,18 +229,20 @@ export function getProductCategoryConfig(category: any, productContext = ""): Pr
   const schema: ProductCategorySchema = {
     ...defaults,
     ...saved,
-    show_variants: isClothingCategory ? true : (typeof saved.show_variants === "boolean" ? saved.show_variants : defaults.show_variants),
+    show_variants: isFoodCategory || isClothingCategory
+      ? true
+      : typeof saved.show_variants === "boolean" ? saved.show_variants : defaults.show_variants,
     show_colors: showColors,
     show_description: typeof saved.show_description === "boolean" ? saved.show_description : defaults.show_description,
     requires_color: requiresColor,
     requires_color_images: isFoodCategory
       ? false
       : typeof saved.requires_color_images === "boolean" ? saved.requires_color_images : defaults.requires_color_images,
-    variant_label: isJeansProduct ? defaults.variant_label : String(saved.variant_label || defaults.variant_label),
+    variant_label: isFoodCategory || isJeansProduct ? defaults.variant_label : String(saved.variant_label || defaults.variant_label),
     variant_options: variantOptions,
     color_label: String(saved.color_label || defaults.color_label),
-    description_label: String(saved.description_label || defaults.description_label),
-    description_placeholder: String(saved.description_placeholder || defaults.description_placeholder),
+    description_label: isFoodCategory ? defaults.description_label : String(saved.description_label || defaults.description_label),
+    description_placeholder: isFoodCategory ? defaults.description_placeholder : String(saved.description_placeholder || defaults.description_placeholder),
     product_attributes: productAttributes,
   };
   return {
