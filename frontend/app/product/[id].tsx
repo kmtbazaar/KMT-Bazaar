@@ -27,14 +27,11 @@ const PRODUCT_COLOR_SWATCHES: Record<string, string> = {
   gray: "#9CA3AF", maroon: "#7F1D1D", beige: "#D6C1A1",
 };
 
-const FASHION_SIZE_COLOR_BY_LABEL: Record<string, { backgroundColor: string; borderColor: string; activeBackground: string; textColor: string }> = {
-  XS: { backgroundColor: "#FCE7F3", borderColor: "#F9A8D4", activeBackground: "#DB2777", textColor: "#831843" },
-  S: { backgroundColor: "#DBEAFE", borderColor: "#93C5FD", activeBackground: "#2563EB", textColor: "#1E3A8A" },
-  M: { backgroundColor: "#DCFCE7", borderColor: "#86EFAC", activeBackground: "#16A34A", textColor: "#14532D" },
-  L: { backgroundColor: "#FEF9C3", borderColor: "#FDE047", activeBackground: "#CA8A04", textColor: "#713F12" },
-  XL: { backgroundColor: "#FFEDD5", borderColor: "#FDBA74", activeBackground: "#EA580C", textColor: "#7C2D12" },
-  XXL: { backgroundColor: "#F3E8FF", borderColor: "#D8B4FE", activeBackground: "#9333EA", textColor: "#581C87" },
-  XXXL: { backgroundColor: "#CFFAFE", borderColor: "#67E8F9", activeBackground: "#0891B2", textColor: "#164E63" },
+const FASHION_SIZE_BUTTON_COLORS = {
+  backgroundColor: "#F3E8FF",
+  borderColor: "#D8B4FE",
+  activeBackground: "#9333EA",
+  textColor: "#581C87",
 };
 
 export default function Product() {
@@ -664,7 +661,6 @@ export default function Product() {
                   : [];
                 const colorGroupLabel = repeatedUnit ? variantColors.slice(0, 2).join(" / ") + (variantColors.length > 2 ? ` +${variantColors.length - 2}` : "") : "";
                 const sizeLabel = String(variant.unit || "Standard").trim();
-                const fashionSizePalette = FASHION_SIZE_COLOR_BY_LABEL[sizeLabel.toUpperCase()] || FASHION_SIZE_COLOR_BY_LABEL.XXL;
                 const sizeTestId = sizeLabel.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
                 return (
                   <Pressable
@@ -678,8 +674,8 @@ export default function Product() {
                     style={[
                       isFashionSizeSelector ? s.fashionSizeChoice : s.variantChoice,
                       isFashionSizeSelector && {
-                        backgroundColor: active ? fashionSizePalette.activeBackground : fashionSizePalette.backgroundColor,
-                        borderColor: active ? fashionSizePalette.activeBackground : fashionSizePalette.borderColor,
+                        backgroundColor: active ? FASHION_SIZE_BUTTON_COLORS.activeBackground : FASHION_SIZE_BUTTON_COLORS.backgroundColor,
+                        borderColor: active ? FASHION_SIZE_BUTTON_COLORS.activeBackground : FASHION_SIZE_BUTTON_COLORS.borderColor,
                       },
                       active && (isFashionSizeSelector ? s.fashionSizeChoiceActive : s.variantChoiceActive),
                       unavailable && s.variantChoiceUnavailable,
@@ -688,7 +684,7 @@ export default function Product() {
                   >
                     {isFashionSizeSelector ? (
                       <View style={s.fashionSizeChoiceContent}>
-                        <Text style={[s.fashionSizeChoiceText, { color: active ? "#FFFFFF" : fashionSizePalette.textColor }, active && s.fashionSizeChoiceTextActive]}>{sizeLabel}</Text>
+                        <Text style={[s.fashionSizeChoiceText, { color: active ? "#FFFFFF" : FASHION_SIZE_BUTTON_COLORS.textColor }, active && s.fashionSizeChoiceTextActive]}>{sizeLabel}</Text>
                         {active ? <MaterialCommunityIcons name="check-circle" size={16} color="#FFFFFF" /> : null}
                       </View>
                     ) : (
