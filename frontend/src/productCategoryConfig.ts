@@ -138,7 +138,7 @@ export function getDefaultProductFieldSchema(categoryName: string, productContex
       show_variants: true, show_colors: false, show_description: true,
       requires_color: false, requires_color_images: false,
       variant_label: "Portion / Serving",
-      variant_options: ["Half", "Full", "Regular", "Large", "Single", "Combo"],
+      variant_options: ["1 kg", "500 gm", "1 Plate", "Half", "Full", "Regular", "Large", "Single", "Combo"],
       color_label: "Colour",
       description_label: "Ingredients & food details",
       description_placeholder: "Describe ingredients, preparation style and serving information.",
