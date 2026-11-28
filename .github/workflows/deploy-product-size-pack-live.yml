@@ -290,6 +290,25 @@ jobs:
           assert.ok(backend.includes("colour_configuration_changed") && backend.includes('"color_images": 1'), "Backend must preserve unchanged legacy colour galleries when admins edit unrelated product fields.");
           assert.ok(categoryConfig.includes('variant_label: "RAM / Storage"') && categoryConfig.includes('variant_options: ["4 GB / 64 GB"'), "Mobile category must use RAM/storage choices.");
           assert.ok(!vendor.includes("photoCount < 3") && !vendor.includes("nextImages.length < 3") && !backend.includes("Please upload at least 3 different product photos"), "Vendor product create/edit and backend must not require three main product photos.");
+          assert.ok(
+            vendor.includes('testID="vendor-store-add-product-food-photos"') &&
+            vendor.includes('testID="vendor-store-edit-product-food-photos"') &&
+            vendor.includes("minCount={2}") && vendor.includes("maxCount={2}") &&
+            vendor.includes("Add exactly two product photos"),
+            "Production Food Vendor Add/Edit must require exactly two photos, not three."
+          );
+          assert.ok(
+            categoryConfig.includes('variant_options: ["1 kg", "500 gm", "200 gm", "100 gm", "Full", "Half", "1 pc", "Single", "Double", "1 Plate", "Half Plate"]') &&
+            categoryConfig.includes("product_attributes: []") &&
+            categoryConfig.includes('description_label: "Product description"'),
+            "Production Food category must show serving/weight choices and no category-specific specification fields."
+          );
+          assert.ok(
+            vendor.includes("...(availableColors.length ? { colors: availableColors } : {})") &&
+            vendor.includes("...(selectedOptionColors.length ? { colors: selectedOptionColors } : {})") &&
+            vendor.includes("variants.length > 1 && !isFoodCategory"),
+            "Food Add/Edit must omit empty colour arrays and must not require per-portion specifications."
+          );
           assert.ok(vendor.indexOf('testID="vendor-store-add-product-colours"') < vendor.indexOf('testID="vendor-store-add-product-description"') && vendor.indexOf('testID="vendor-store-edit-product-colours"') < vendor.indexOf('testID="vendor-store-edit-product-description"'), "Vendor descriptions must appear below their colour pickers.");
                     assert.ok(vendor.includes("onPress={() => setEditProductForm((current) => ({ ...current, unit: option }))}"), "Edit Product chip selection must update form state");
           assert.ok(vendor.includes("...form,"), "Product request must spread saved form fields");
