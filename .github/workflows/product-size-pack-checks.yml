@@ -85,7 +85,18 @@ jobs:
           assert.ok(vendor.includes("vendor-store-add-variant-size-") && vendor.includes("Choose {categoryConfig.variantLabel}"), "Each Add Size row must show selectable category-specific options such as RAM / Storage for mobile products.");
           assert.ok(vendor.includes("PRODUCT_COLOR_OPTIONS.map((color) => color.label)") && vendor.includes("variant.colors ?? form.colors"), "Each added size row must show a selectable colour palette and retain its chosen colours.");
           assert.ok(vendor.includes("guideAddFormToField") && vendor.includes("addProductScrollRef.current?.scrollTo") && vendor.includes("addValidationError"), "Missing required fields must guide the vendor to the relevant Add Product section.");
-          assert.ok(!vendor.includes('testID="vendor-store-add-product-images"') && !vendor.includes('testID="vendor-store-edit-product-images"') && !vendor.includes("photoCount < 3") && !vendor.includes("nextImages.length < 3"), "Vendor Add/Edit must not render or require a three-photo main product gallery.");
+          assert.ok(
+            vendor.includes('testID="vendor-store-add-product-food-photos"') &&
+            vendor.includes('testID="vendor-store-edit-product-food-photos"') &&
+            vendor.includes("minCount={2}") && vendor.includes("maxCount={2}") &&
+            vendor.includes("Add exactly two product photos"),
+            "Food Vendor Add/Edit must use a two-photo uploader and remove the old three-photo requirement."
+          );
+          assert.ok(
+            vendor.includes("...(availableColors.length ? { colors: availableColors } : {})") &&
+            vendor.includes("...(selectedOptionColors.length ? { colors: selectedOptionColors } : {})"),
+            "Products without colour options must omit empty variant colour arrays so Food/Grocery Add/Edit is accepted by the API."
+          );
           assert.ok(!vendorProducts.includes("ProductImagesUploader") && !vendorProducts.includes("at least 3 different product photos"), "Legacy vendor Products must not expose a main product photo uploader or three-photo rule.");
           assert.ok(vendor.indexOf('testID="vendor-store-add-product-colours"') < vendor.indexOf('testID="vendor-store-add-product-description"') && vendor.indexOf('testID="vendor-store-edit-product-colours"') < vendor.indexOf('testID="vendor-store-edit-product-description"'), "Vendor Add/Edit descriptions must appear directly below the colour picker.");
           assert.ok(!adminVendor.includes('testID="admin-vendor-product-images"') && !adminProducts.includes('testID="pf-images"'), "Admin product forms must not render the main product photo uploader.");
@@ -97,6 +108,13 @@ jobs:
           assert.ok(imageUploader.includes("allowMultipleSelection = false") && vendor.includes("allowMultipleSelection"), "Batch photo selection must be opt-in for Vendor Store and remain disabled for Admin by default.");
           assert.ok(adminVendor.includes("categoryConfig.variantOptions.map") && !adminVendor.includes("PRODUCT_UNIT_OPTIONS"), "Admin Vendor editor must use category-specific variant options.");
           assert.ok(config.includes('variant_label: "RAM / Storage"') && config.includes('variant_options: ["4 GB / 64 GB"') && config.includes('variant_label: isJeansProduct ? "Waist size (inches)" : "Clothing size"') && config.includes('["28", "30", "32", "34", "36", "38", "40", "42", "44", "46", "48", "50", "52"]') && config.includes('variant_label: "Shoe size (UK)"'), "Mobile, Jeans/Fashion and footwear must have dedicated option systems.");
+          assert.ok(
+            config.includes('variant_options: ["1 kg", "500 gm", "200 gm", "100 gm", "Full", "Half", "1 pc", "Single", "Double", "1 Plate", "Half Plate"]') &&
+            config.includes('product_attributes: []') &&
+            config.includes('description_label: "Product description"') &&
+            config.includes("show_variants: isFoodCategory || isClothingCategory"),
+            "Food category must use the requested serving/weight buttons and hide category-specific specifications."
+          );
           assert.ok(vendor.includes("vendor-store-add-product-size-pack-picker"), "Store vendor Add Product screen must render the size/pack picker.");
           assert.ok(vendor.includes('setForm((current) => ({ ...current, unit: option }));') && vendor.includes('clearAddValidationError("baseSize")'), "Selecting a RAM / Storage option must update the product unit and clear its validation error.");
           assert.ok(vendor.includes("vendor-store-edit-product-size-pack-picker"), "Store vendor Edit Product screen must render the size/pack picker.");
