@@ -215,6 +215,15 @@ jobs:
             "Admin product saves must leave the primary image empty when there is no upload (so the backend can derive it from colour galleries) while retaining a display-only list placeholder."
           );
           assert.ok(customer.includes('testID="product-size-pack-selector"'), "Customer product details must render the size/pack selector.");
+          assert.ok(
+            customer.includes("savedProductVariants") &&
+            customer.includes("shouldShowVariantSelector = categoryConfig.showVariants || hasSavedProductVariants") &&
+            customer.includes('fashionSizeOrder = ["XS", "S", "M", "L", "XL", "XXL", "XXXL"]') &&
+            customer.includes('testID={isFashionSizeSelector ? `product-fashion-size-${sizeTestId}`') &&
+            customer.includes("fashionSizeChoiceActive") &&
+            customer.includes("await add(p.id, 1, selectedVariant?.id, selectedColor)"),
+            "Fashion customers must see saved sizes as selectable M/L/XL/XXL buttons, in correct order, with selected-size pricing and cart variant wiring."
+          );
           assert.ok(customer.includes("categoryConfig.showDescription") && customer.includes("p?.description") && customer.includes('testID="product-description"'), "Customer product detail must display saved product descriptions.");
           assert.ok(customer.includes('testID="product-category-attributes"') && customer.includes("categoryConfig.productAttributes") && customer.includes("p?.attributes"), "Customer product detail must display category-specific specifications.");
           assert.ok(customer.includes('suggestionCard: { width: "100%", height: 196') && customer.includes('suggestionImageWrap: { width: "100%", height: 106'), "You may also like product cards must have increased height and image area.");
