@@ -63,7 +63,7 @@ export default function Product() {
     : [];
   const hasSavedProductVariants = savedProductVariants.length > 0;
   const shouldShowVariantSelector = categoryConfig.showVariants || hasSavedProductVariants;
-  const productCategoryIdentity = `${productCategory?.name || p?.category_name || ""} ${p?.name || ""}`;
+  const productCategoryIdentity = String(productCategory?.name || p?.category_name || "");
   const isFashionSizeSelector = /(clothing|fashion|apparel|garment|wear|shirt|jeans|textile|kurta|dress)/i.test(productCategoryIdentity);
   const selectedVariant = Array.isArray(p?.variants)
     ? p.variants.find((variant: any) => String(variant.id) === String(selectedVariantId)) || p.variants[0] || null
@@ -72,7 +72,8 @@ export default function Product() {
     ? selectedVariant.colors.map((color: any) => String(color))
     : Array.isArray(p?.colors) ? p.colors.map((color: any) => String(color)) : [];
   const selectedVariantColorKey = selectedVariantColors.join("|");
-  const selectedUnit = String(selectedVariant?.unit || (shouldShowVariantSelector ? p?.unit : "") || "Standard");
+  const selectedUnitRaw = String(selectedVariant?.unit || (shouldShowVariantSelector ? p?.unit : "") || "Standard").trim();
+  const selectedUnit = isFashionSizeSelector ? selectedUnitRaw.replace(/\s+/g, " ").toUpperCase() : selectedUnitRaw;
   const selectedPrice = Number(selectedVariant?.price ?? p?.price ?? 0);
   const selectedMrp = Number(selectedVariant?.mrp ?? p?.mrp ?? selectedPrice);
   const availableStock = Math.max(0, Number(selectedVariant?.stock ?? p?.stock ?? p?.available_quantity ?? p?.quantity_in_stock ?? 0));
@@ -418,7 +419,7 @@ export default function Product() {
   const fashionSizeOrder = ["XS", "S", "M", "L", "XL", "XXL", "XXXL"];
   const variantOptions = isFashionSizeSelector
     ? rawVariantOptions
-        .map((variant: any) => ({ ...variant, unit: String(variant.unit || "").trim().replace(/\\s+/g, " ").toUpperCase() }))
+        .map((variant: any) => ({ ...variant, unit: String(variant.unit || "").trim().replace(/\s+/g, " ").toUpperCase() }))
         .sort((left: any, right: any) => {
           const leftUnit = String(left.unit || "");
           const rightUnit = String(right.unit || "");
