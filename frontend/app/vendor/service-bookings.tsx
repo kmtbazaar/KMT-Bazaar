@@ -1,3 +1,4 @@
+import { safeGoBack } from "@/src/navigation";
 import { LocalizedText as Text, LocalizedTextInput as TextInput } from "@/src/LocalizedText";
 import React,{useEffect,useState}from"react";
 import{View,StyleSheet,Pressable,ScrollView,Alert,Platform,Modal}from"react-native";
@@ -37,7 +38,7 @@ export default function VendorBookings(){
  const label=currentType==="car_rental"?"Car Rental":currentType==="holiday"?"Holiday":currentType==="premium_decorator"?"Events":currentType==="photography"?"Photography":"Daily Service";
  return <SafeAreaView style={s.root}>
   <View style={s.h}>
-   <Pressable onPress={()=>r.back()}><MaterialCommunityIcons name="arrow-left" size={24}/></Pressable>
+   <Pressable onPress={()=>safeGoBack(r, user?.vendor_type === "service" ? "/service-vendor" : "/vendor")}><MaterialCommunityIcons name="arrow-left" size={24}/></Pressable>
    <View style={{flex:1}}><Text style={s.t}>{label} Bookings</Text><Text style={s.sub}>Customer requests for your service</Text></View>
   </View>
   <ScrollView contentContainerStyle={s.b}>

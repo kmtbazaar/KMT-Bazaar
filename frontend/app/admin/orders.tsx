@@ -1,3 +1,4 @@
+import { safeGoBack } from "@/src/navigation";
 import { LocalizedText as Text, LocalizedTextInput as TextInput } from "@/src/LocalizedText";
 import React, { useCallback, useState } from "react";
 import Animated, { FadeInDown } from "react-native-reanimated";
@@ -98,7 +99,7 @@ export default function AdminOrders() {
     >
       <View style={s.header}>
         <Pressable
-          onPress={() => router.replace("/admin")}
+          onPress={() => safeGoBack(router, "/admin")}
           hitSlop={10}
           accessibilityRole="button"
           accessibilityLabel="Back to Admin Dashboard"

@@ -1,3 +1,4 @@
+import { safeGoBack } from "@/src/navigation";
 import { LocalizedText as Text, LocalizedTextInput as TextInput } from "@/src/LocalizedText";
 import React,{useEffect,useState}from"react";
 import{View,StyleSheet,Pressable,ScrollView,Alert,Platform,Modal}from"react-native";
@@ -46,7 +47,7 @@ export default function AdminServiceBookings(){
  const title=selected?(TYPE[selected.service_type]?.label||"Service")+" Booking":"Booking Details";
  return <SafeAreaView style={s.root}>
   <View style={s.h}>
-   <Pressable onPress={()=>r.back()}><MaterialCommunityIcons name="arrow-left" size={24}/></Pressable>
+   <Pressable onPress={()=>safeGoBack(r, "/admin")}><MaterialCommunityIcons name="arrow-left" size={24}/></Pressable>
    <View style={{flex:1}}><Text style={s.t}>Service Bookings</Text><Text style={s.sub}>Admin approval queue · Daily Service, Holiday, Car Rental, Events & Photography</Text></View><View style={s.bell}><MaterialCommunityIcons name="bell-outline" size={20} color="#0284C7"/>{d.filter((x:any)=>["pending","booking_requested"].includes(String(x.status||"").toLowerCase())).length>0&&<View style={s.badge}><Text style={s.badgeText}>{d.filter((x:any)=>["pending","booking_requested"].includes(String(x.status||"").toLowerCase())).length}</Text></View>}</View>
   </View>
 

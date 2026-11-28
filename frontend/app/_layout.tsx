@@ -1,6 +1,6 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Stack, useRouter, useSegments } from "expo-router";
-import { ActivityIndicator, PanResponder, Platform, View } from "react-native";
+import { ActivityIndicator, Platform, View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
@@ -13,59 +13,109 @@ import { WishlistProvider } from "@/src/WishlistContext";
  
 function GlobalPullToRefresh({ children }: { children: React.ReactNode }) {
   const [refreshing, setRefreshing] = useState(false);
-  const startCanRefreshRef = useRef(false);
+  const refreshingRef = useRef(false);
 
-  const isAtTopOfScrollArea = (target: any) => {
-    if (Platform.OS !== "web" || typeof window === "undefined") return false;
-    let node = target;
-    while (node && node !== document.body && node.nodeType === 1) {
-      const element = node as HTMLElement;
-      const overflowY = window.getComputedStyle(element).overflowY;
-      const isVerticalScroller = (overflowY === "auto" || overflowY === "scroll") &&
-        element.scrollHeight > element.clientHeight + 2;
-      if (isVerticalScroller) return element.scrollTop <= 1;
-      node = element.parentElement;
-    }
-    return true;
-  };
+  useEffect(() => {
+    if (Platform.OS !== "web" || typeof document === "undefined") return;
 
-  const onTouchStart = (event: any) => {
-    if (Platform.OS !== "web" || refreshing) {
-      startCanRefreshRef.current = false;
-      return;
-    }
-    // Allow the pull to start anywhere inside the page's scroll area, but
-    // only when that scroll area is already at its top edge.
-    startCanRefreshRef.current = isAtTopOfScrollArea(event?.target);
-  };
+    let startY: number | null = null;
+    let startX = 0;
+    let pullDistance = 0;
+    let pullAllowed = false;
+    let reloadTimer: number | undefined;
 
-  const panResponder = useMemo(() => PanResponder.create({
-    onStartShouldSetPanResponder: () => false,
-    onStartShouldSetPanResponderCapture: () => false,
-    onMoveShouldSetPanResponderCapture: (_event, gesture) =>
-      Platform.OS === "web" &&
-      !refreshing &&
-      startCanRefreshRef.current &&
-      gesture.dy > 72 &&
-      gesture.dy > Math.abs(gesture.dx) * 1.25,
-    onPanResponderTerminationRequest: () => false,
-    onPanResponderRelease: (_event, gesture) => {
-      const shouldRefresh = Platform.OS === "web" &&
-        startCanRefreshRef.current &&
-        gesture.dy >= 92 &&
-        gesture.dy > Math.abs(gesture.dx) * 1.25;
-      startCanRefreshRef.current = false;
-      if (!shouldRefresh || typeof window === "undefined") return;
+    const canPullFromTop = (target: EventTarget | null) => {
+      let node = target instanceof Element ? target : null;
+
+      // Every scrollable ancestor must be at its top edge. This prevents a
+      // pull inside an inner list from refreshing while an outer page is scrolled.
+      while (node && node !== document.body && node !== document.documentElement) {
+        const element = node as HTMLElement;
+        const style = window.getComputedStyle(element);
+        const isVerticalScroller =
+          ["auto", "scroll", "overlay"].includes(style.overflowY) &&
+          element.scrollHeight > element.clientHeight + 2;
+
+        if (isVerticalScroller && element.scrollTop > 1) return false;
+        node = element.parentElement;
+      }
+
+      return (
+        window.scrollY <= 1 &&
+        document.documentElement.scrollTop <= 1 &&
+        (!document.body || document.body.scrollTop <= 1)
+      );
+    };
+
+    const resetGesture = () => {
+      startY = null;
+      startX = 0;
+      pullDistance = 0;
+      pullAllowed = false;
+    };
+
+    const onTouchStart = (event: TouchEvent) => {
+      if (refreshingRef.current || event.touches.length !== 1) {
+        resetGesture();
+        return;
+      }
+
+      const touch = event.touches[0];
+      startY = touch.clientY;
+      startX = touch.clientX;
+      pullDistance = 0;
+      pullAllowed = canPullFromTop(event.target);
+    };
+
+    const onTouchMove = (event: TouchEvent) => {
+      if (!pullAllowed || startY === null || event.touches.length !== 1) return;
+
+      const touch = event.touches[0];
+      const deltaY = touch.clientY - startY;
+      const deltaX = touch.clientX - startX;
+
+      if (deltaY <= 0 || Math.abs(deltaX) > deltaY * 1.2) {
+        resetGesture();
+        return;
+      }
+
+      pullDistance = deltaY;
+      // Once the gesture is clearly a downward pull, stop the browser's
+      // competing overscroll gesture so the refresh threshold is reliable.
+      if (deltaY > 14 && event.cancelable) event.preventDefault();
+    };
+
+    const onTouchEnd = () => {
+      const shouldRefresh =
+        pullAllowed &&
+        !refreshingRef.current &&
+        pullDistance >= 96 &&
+        startY !== null;
+
+      resetGesture();
+      if (!shouldRefresh) return;
+
+      refreshingRef.current = true;
       setRefreshing(true);
-      window.setTimeout(() => window.location.reload(), 100);
-    },
-    onPanResponderTerminate: () => {
-      startCanRefreshRef.current = false;
-    },
-  }), [refreshing]);
+      reloadTimer = window.setTimeout(() => window.location.reload(), 180);
+    };
+
+    document.addEventListener("touchstart", onTouchStart, { capture: true, passive: true });
+    document.addEventListener("touchmove", onTouchMove, { capture: true, passive: false });
+    document.addEventListener("touchend", onTouchEnd, true);
+    document.addEventListener("touchcancel", resetGesture, true);
+
+    return () => {
+      document.removeEventListener("touchstart", onTouchStart, true);
+      document.removeEventListener("touchmove", onTouchMove, true);
+      document.removeEventListener("touchend", onTouchEnd, true);
+      document.removeEventListener("touchcancel", resetGesture, true);
+      if (reloadTimer !== undefined) window.clearTimeout(reloadTimer);
+    };
+  }, []);
 
   return (
-    <View style={{ flex: 1 }} onTouchStart={onTouchStart} {...panResponder.panHandlers}>
+    <View style={{ flex: 1 }}>
       {children}
       {refreshing ? (
         <View pointerEvents="none" style={{
@@ -74,7 +124,11 @@ function GlobalPullToRefresh({ children }: { children: React.ReactNode }) {
           alignSelf: "center",
           zIndex: 9999,
           elevation: 20,
-          padding: 9,
+          flexDirection: "row",
+          alignItems: "center",
+          gap: 8,
+          paddingHorizontal: 13,
+          paddingVertical: 9,
           borderRadius: 22,
           backgroundColor: "#FFFFFF",
           shadowColor: "#0F172A",
@@ -82,13 +136,12 @@ function GlobalPullToRefresh({ children }: { children: React.ReactNode }) {
           shadowOpacity: 0.16,
           shadowRadius: 6,
         }}>
-          <ActivityIndicator size="small" color="#0284C7" />
+          <ActivityIndicator size="small" color="#7E22CE" />
         </View>
       ) : null}
     </View>
   );
 }
-
 function vendorHomeRoute(user: any) {
   if (user?.role !== "vendor") return `/${user?.role || "auth/login"}`;
   return user?.vendor_type === "service" ? "/service-vendor" : "/vendor";
