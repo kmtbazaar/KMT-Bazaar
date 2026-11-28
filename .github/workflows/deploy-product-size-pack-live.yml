@@ -306,11 +306,13 @@ jobs:
           assert.ok(
             vendor.includes("...(availableColors.length ? { colors: availableColors } : {})") &&
             vendor.includes("...(selectedOptionColors.length ? { colors: selectedOptionColors } : {})") &&
-            vendor.includes("variants.length > 1 && !isFoodCategory"),
+            vendor.includes("(isFoodCategory || isFashionCategory) ? -1 : variants.findIndex") &&
+            vendor.includes("editCategoryConfig.requiresColor"),
             "Food Add/Edit must omit empty colour arrays and must not require per-portion specifications."
           );
           assert.ok(vendor.indexOf('testID="vendor-store-add-product-colours"') < vendor.indexOf('testID="vendor-store-add-product-description"') && vendor.indexOf('testID="vendor-store-edit-product-colours"') < vendor.indexOf('testID="vendor-store-edit-product-description"'), "Vendor descriptions must appear below their colour pickers.");
-                    assert.ok(vendor.includes("onPress={() => setEditProductForm((current) => ({ ...current, unit: option }))}"), "Edit Product chip selection must update form state");
+                    assert.ok(vendor.includes("toggleEditFashionSize(option)") && vendor.includes("setEditProductForm((current) => ({ ...current, unit: option }))"), "Edit size choices must update either Fashion multi-select variants or the non-Fashion unit.");
+                    assert.ok(vendor.includes('testID="vendor-store-add-product-fashion-photos"') && vendor.includes('testID="vendor-store-edit-product-fashion-photos"') && vendor.includes("addFashionSelectedSizes") && vendor.includes("editFashionSelectedSizes"), "Fashion Add/Edit must upload photos once and select multiple sizes together.");
           assert.ok(vendor.includes("...form,"), "Product request must spread saved form fields");
           assert.ok(customer.includes("selectedUnit"), "Customer detail must display the saved or selected unit.");
           assert.ok(customer.includes("testID=\"product-size-pack-selector\""), "Customer detail must show selectable size/pack options.");
