@@ -58,6 +58,13 @@ export default function Product() {
     setDescriptionLineCount(0);
   }, [id]);
 
+  const savedProductVariants = Array.isArray(p?.variants)
+    ? p.variants.filter((variant: any) => variant && String(variant.unit || "").trim())
+    : [];
+  const hasSavedProductVariants = savedProductVariants.length > 0;
+  const shouldShowVariantSelector = categoryConfig.showVariants || hasSavedProductVariants;
+  const productCategoryIdentity = `${productCategory?.name || p?.category_name || ""} ${p?.name || ""}`;
+  const isFashionSizeSelector = /(clothing|fashion|apparel|garment|wear|shirt|jeans|textile|kurta|dress)/i.test(productCategoryIdentity);
   const selectedVariant = Array.isArray(p?.variants)
     ? p.variants.find((variant: any) => String(variant.id) === String(selectedVariantId)) || p.variants[0] || null
     : null;
@@ -65,7 +72,7 @@ export default function Product() {
     ? selectedVariant.colors.map((color: any) => String(color))
     : Array.isArray(p?.colors) ? p.colors.map((color: any) => String(color)) : [];
   const selectedVariantColorKey = selectedVariantColors.join("|");
-  const selectedUnit = String(selectedVariant?.unit || (categoryConfig.showVariants ? p?.unit : "") || "Standard");
+  const selectedUnit = String(selectedVariant?.unit || (shouldShowVariantSelector ? p?.unit : "") || "Standard");
   const selectedPrice = Number(selectedVariant?.price ?? p?.price ?? 0);
   const selectedMrp = Number(selectedVariant?.mrp ?? p?.mrp ?? selectedPrice);
   const availableStock = Math.max(0, Number(selectedVariant?.stock ?? p?.stock ?? p?.available_quantity ?? p?.quantity_in_stock ?? 0));
@@ -405,9 +412,24 @@ export default function Product() {
   };
 
   if (loading || !p) return <View style={s.center}><ActivityIndicator color={COLORS.brand} size="large" /></View>;
-  const variantOptions = !categoryConfig.showVariants ? [] : Array.isArray(p.variants) && p.variants.length
-    ? p.variants
+  const rawVariantOptions = !shouldShowVariantSelector ? [] : savedProductVariants.length
+    ? savedProductVariants
     : [{ id: null, unit: selectedUnit, price: p.price, mrp: p.mrp, stock: p.stock }];
+  const fashionSizeOrder = ["XS", "S", "M", "L", "XL", "XXL", "XXXL"];
+  const variantOptions = isFashionSizeSelector
+    ? rawVariantOptions
+        .map((variant: any) => ({ ...variant, unit: String(variant.unit || "").trim().replace(/\\s+/g, " ").toUpperCase() }))
+        .sort((left: any, right: any) => {
+          const leftUnit = String(left.unit || "");
+          const rightUnit = String(right.unit || "");
+          const leftRank = fashionSizeOrder.indexOf(leftUnit);
+          const rightRank = fashionSizeOrder.indexOf(rightUnit);
+          if (leftRank >= 0 && rightRank >= 0) return leftRank - rightRank;
+          if (leftRank >= 0) return -1;
+          if (rightRank >= 0) return 1;
+          return leftUnit.localeCompare(rightUnit, undefined, { numeric: true, sensitivity: "base" });
+        })
+    : rawVariantOptions;
   const discount = selectedMrp > selectedPrice && selectedMrp > 0
     ? Math.round(((selectedMrp - selectedPrice) / selectedMrp) * 100)
     : 0;
@@ -577,7 +599,7 @@ export default function Product() {
         <View style={s.card}>
           <Text style={s.name} testID="product-name">{p.name}</Text>
           <View style={s.unitStockRow}>
-            {categoryConfig.showVariants && selectedUnit ? (
+            {shouldShowVariantSelector && selectedUnit ? (
               <View style={s.unitBadge} testID="product-selected-unit-highlight">
                 <Text style={s.unitBadgeText}>{selectedUnit}</Text>
               </View>
@@ -594,12 +616,16 @@ export default function Product() {
 
 
 
-          {categoryConfig.showVariants ? (
-          <View style={s.variantSelector} testID="product-size-pack-selector">
+          {shouldShowVariantSelector ? (
+          <View style={[s.variantSelector, isFashionSizeSelector && s.fashionSizeSelector]} testID="product-size-pack-selector">
             <View style={s.variantSelectorHeader}>
               <View style={{ flex: 1 }}>
-                <Text style={s.variantSelectorTitle}>Choose {categoryConfig.variantLabel.toLowerCase()}</Text>
-                <Text style={s.variantSelectorSubtitle}>Select an option; its price and stock update above.</Text>
+                <Text style={s.variantSelectorTitle}>{isFashionSizeSelector ? "Choose your size" : `Choose ${categoryConfig.variantLabel.toLowerCase()}`}</Text>
+                <Text style={s.variantSelectorSubtitle}>
+                  {isFashionSizeSelector
+                    ? "Tap M, L, XL or XXL. Price and stock update for the selected size."
+                    : "Select an option; its price and stock update above."}
+                </Text>
               </View>
               <MaterialCommunityIcons name="package-variant" size={23} color={COLORS.accent} />
             </View>
@@ -617,25 +643,40 @@ export default function Product() {
                   ? variant.colors.map((color: any) => String(color || "").trim()).filter(Boolean)
                   : [];
                 const colorGroupLabel = repeatedUnit ? variantColors.slice(0, 2).join(" / ") + (variantColors.length > 2 ? ` +${variantColors.length - 2}` : "") : "";
+                const sizeLabel = String(variant.unit || "Standard").trim();
+                const sizeTestId = sizeLabel.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
                 return (
                   <Pressable
                     key={variantId || `legacy-${variant.unit || "standard"}-${index}`}
                     accessibilityRole="button"
-                    accessibilityLabel={"Select option " + (variant.unit || "standard") + (colorGroupLabel ? " in colours " + variantColors.join(", ") : "")}
+                    accessibilityLabel={isFashionSizeSelector
+                      ? "Select clothing size " + sizeLabel
+                      : "Select option " + (variant.unit || "standard") + (colorGroupLabel ? " in colours " + variantColors.join(", ") : "")}
                     accessibilityState={{ selected: active }}
                     onPress={() => setSelectedVariantId(variantId)}
-                    style={[s.variantChoice, active && s.variantChoiceActive, unavailable && s.variantChoiceUnavailable]}
-                    testID={`product-size-pack-option-${index + 1}`}
+                    style={[
+                      isFashionSizeSelector ? s.fashionSizeChoice : s.variantChoice,
+                      active && (isFashionSizeSelector ? s.fashionSizeChoiceActive : s.variantChoiceActive),
+                      unavailable && s.variantChoiceUnavailable,
+                    ]}
+                    testID={isFashionSizeSelector ? `product-fashion-size-${sizeTestId}` : `product-size-pack-option-${index + 1}`}
                   >
-                    <View style={s.variantChoiceTop}>
-                      <View style={s.variantChoiceTextWrap}>
-                        <View style={[s.variantChoiceUnitBadge, active && s.variantChoiceUnitBadgeActive]}>
-                          <Text style={[s.variantChoiceUnit, active && s.variantChoiceUnitActive]}>{variant.unit || "Standard"}</Text>
-                        </View>
-                        {colorGroupLabel ? <Text style={s.variantChoiceColors}>{colorGroupLabel}</Text> : null}
+                    {isFashionSizeSelector ? (
+                      <View style={s.fashionSizeChoiceContent}>
+                        <Text style={[s.fashionSizeChoiceText, active && s.fashionSizeChoiceTextActive]}>{sizeLabel}</Text>
+                        {active ? <MaterialCommunityIcons name="check-circle" size={16} color="#FFFFFF" /> : null}
                       </View>
-                      {active ? <MaterialCommunityIcons name="check-circle" size={16} color={COLORS.accent} /> : null}
-                    </View>
+                    ) : (
+                      <View style={s.variantChoiceTop}>
+                        <View style={s.variantChoiceTextWrap}>
+                          <View style={[s.variantChoiceUnitBadge, active && s.variantChoiceUnitBadgeActive]}>
+                            <Text style={[s.variantChoiceUnit, active && s.variantChoiceUnitActive]}>{variant.unit || "Standard"}</Text>
+                          </View>
+                          {colorGroupLabel ? <Text style={s.variantChoiceColors}>{colorGroupLabel}</Text> : null}
+                        </View>
+                        {active ? <MaterialCommunityIcons name="check-circle" size={16} color={COLORS.accent} /> : null}
+                      </View>
+                    )}
                   </Pressable>
                 );
               })}
@@ -926,10 +967,16 @@ const s = StyleSheet.create({
   productColorLabel: { color: COLORS.textSecondary, fontSize: 9, fontWeight: "800" },
   productColorLabelActive: { color: "#1D4ED8", fontWeight: "900" },
   variantSelector: { marginTop: 8, padding: 10, borderRadius: 14, borderWidth: 1, borderColor: "#FDE68A", backgroundColor: "#FFFBEB", gap: 8 },
+  fashionSizeSelector: { borderColor: "#A7F3D0", backgroundColor: "#F0FDF4" },
   variantSelectorHeader: { flexDirection: "row", alignItems: "center", gap: 10 },
   variantSelectorTitle: { color: COLORS.text, fontSize: 14, fontWeight: "900" },
   variantSelectorSubtitle: { color: COLORS.textSecondary, fontSize: 10, marginTop: 2 },
-  variantChoices: { flexDirection: "row", flexWrap: "wrap", gap: 5 },
+  variantChoices: { flexDirection: "row", flexWrap: "wrap", gap: 7 },
+  fashionSizeChoice: { width: "22%", minWidth: 48, maxWidth: "24%", minHeight: 48, flexGrow: 1, flexShrink: 1, paddingHorizontal: 7, paddingVertical: 9, justifyContent: "center", alignItems: "center", borderRadius: 10, borderWidth: 1.5, borderColor: "#D1D5DB", backgroundColor: "#FFFFFF" },
+  fashionSizeChoiceActive: { borderColor: "#047857", backgroundColor: "#047857", ...shadow.soft },
+  fashionSizeChoiceContent: { width: "100%", flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 3 },
+  fashionSizeChoiceText: { color: "#1F2937", fontSize: 14, fontWeight: "900", textAlign: "center" },
+  fashionSizeChoiceTextActive: { color: "#FFFFFF" },
   variantChoiceTextWrap: { flex: 1, minWidth: 0, alignItems: "flex-start", gap: 2 },
   variantChoiceUnitBadge: { maxWidth: "100%", backgroundColor: "#FEF08A", borderRadius: 6, paddingHorizontal: 5, paddingVertical: 2 },
   variantChoiceUnitBadgeActive: { backgroundColor: "#FDE047" },
