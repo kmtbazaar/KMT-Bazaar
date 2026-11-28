@@ -206,6 +206,7 @@ export function getDefaultProductFieldFlags(categoryName: string) {
 export function getProductCategoryConfig(category: any, productContext = ""): ProductCategoryConfig {
   const name = String(category?.name || "").trim().toLowerCase();
   const isClothingCategory = /(clothing|fashion|apparel|garment|wear|shirt|jeans|textile|kurta|dress)/.test(name);
+  const isFoodCategory = /(restaurant|food|cafe|bakery|sweet|snack|meal|fast food|restaurant food)/.test(name);
   const isJeansProduct = isClothingCategory && /(jeans|denim|trousers?|pants?)/.test(`${name} ${String(productContext || "").toLowerCase()}`);
   const defaults = getDefaultProductFieldSchema(name, productContext);
   const saved = category?.product_fields && typeof category.product_fields === "object" ? category.product_fields : {};
@@ -213,9 +214,16 @@ export function getProductCategoryConfig(category: any, productContext = ""): Pr
   const showColors = isClothingCategory || requiresColor || (typeof saved.show_colors === "boolean" ? saved.show_colors : defaults.show_colors);
   const variantOptions = isJeansProduct
     ? defaults.variant_options
-    : Array.isArray(saved.variant_options)
-      ? saved.variant_options.map((value: any) => String(value || "").trim()).filter(Boolean).slice(0, 60)
-      : defaults.variant_options;
+    : isFoodCategory
+      ? Array.from(new Set([
+          ...defaults.variant_options,
+          ...(Array.isArray(saved.variant_options)
+            ? saved.variant_options.map((value: any) => String(value || "").trim()).filter(Boolean)
+            : []),
+        ])).filter(Boolean).slice(0, 60)
+      : Array.isArray(saved.variant_options)
+        ? saved.variant_options.map((value: any) => String(value || "").trim()).filter(Boolean).slice(0, 60)
+        : defaults.variant_options;
   const productAttributes = saved.product_attributes !== undefined
     ? normalizeProductAttributeFields(saved.product_attributes)
     : defaults.product_attributes;
