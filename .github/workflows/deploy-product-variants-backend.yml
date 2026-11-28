@@ -872,6 +872,54 @@ jobs:
               or '@api.get("/services/photography/showcase")' not in source:
               raise SystemExit("STOP: Photography showcase API blocks are incomplete; no VPS changes made.")
 
+          # Apply the exact-name Food-category migration to the live startup hook.
+          food_migration_start = "# KMT_RESTAURANT_STORE_CATEGORY_MIGRATION_BEGIN"
+          food_migration_end = "# KMT_RESTAURANT_STORE_CATEGORY_MIGRATION_END"
+          food_migration_body = extract_marked_block(
+              candidate_source,
+              food_migration_start,
+              food_migration_end,
+              "restaurant store category migration",
+          )
+          food_migration_block = (
+              food_migration_start + "\n"
+              + food_migration_body.strip("\r\n") + "\n"
+              + food_migration_end
+          )
+          live_food_start_count = source.count(food_migration_start)
+          live_food_end_count = source.count(food_migration_end)
+          if live_food_start_count == 0 and live_food_end_count == 0:
+              startup_decorator = '@app.on_event("startup")'
+              if source.count(startup_decorator) != 1:
+                  raise SystemExit("STOP: Could not uniquely locate startup hook for Food-category migration; no VPS changes made.")
+              source = source.replace(startup_decorator, food_migration_block + "\n\n" + startup_decorator, 1)
+          elif live_food_start_count == 1 and live_food_end_count == 1:
+              live_food_start = source.index(food_migration_start)
+              live_food_end = source.index(food_migration_end, live_food_start) + len(food_migration_end)
+              source = source[:live_food_start] + food_migration_block + source[live_food_end:]
+          else:
+              raise SystemExit("STOP: Existing Food-category migration markers are inconsistent; no VPS changes made.")
+
+          startup_function = "async def on_startup():"
+          if source.count(startup_function) != 1:
+              raise SystemExit("STOP: Could not uniquely locate on_startup for Food-category migration; no VPS changes made.")
+          startup_start = source.index(startup_function)
+          shutdown_decorator = '\n\n@app.on_event("shutdown")'
+          startup_end = source.find(shutdown_decorator, startup_start)
+          if startup_end < 0:
+              raise SystemExit("STOP: Could not isolate on_startup; no VPS changes made.")
+          startup_block = source[startup_start:startup_end]
+          migration_call = "    await _migrate_named_restaurant_store_categories()"
+          if migration_call not in startup_block:
+              seed_call = "    await seed_db()"
+              if startup_block.count(seed_call) != 1:
+                  raise SystemExit("STOP: Could not safely place Food-category migration after seed_db; no VPS changes made.")
+              startup_block = startup_block.replace(seed_call, seed_call + "\n" + migration_call, 1)
+              source = source[:startup_start] + startup_block + source[startup_end:]
+
+          if "await _migrate_named_restaurant_store_categories()" not in source:
+              raise SystemExit("STOP: Food-category migration is not connected to startup; no VPS changes made.")
+
           if source != original:
               mode = path.stat().st_mode & 0o777
               temporary = path.with_suffix(path.suffix + ".targeted-backend.tmp")
