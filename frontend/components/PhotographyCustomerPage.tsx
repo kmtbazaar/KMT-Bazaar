@@ -1,3 +1,4 @@
+import { safeGoBack } from "@/src/navigation";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { View, ScrollView, StyleSheet, Pressable, ActivityIndicator, Modal, TextInput, Alert, Platform, Linking, Animated } from "react-native";
 import { Image } from "expo-image";
@@ -39,7 +40,7 @@ export default function PhotographyCustomerPage() {
     <Animated.View pointerEvents="none" testID="photography-wedding-ambient-lights" style={[s.orb,s.orbOne,{opacity:glowOne.interpolate({inputRange:[0,1],outputRange:[0.08,0.34]}),transform:[{translateY:glowOne.interpolate({inputRange:[0,1],outputRange:[0,-25]})}]}]}/>
     <Animated.View pointerEvents="none" style={[s.orb,s.orbTwo,{opacity:glowTwo.interpolate({inputRange:[0,1],outputRange:[0.08,0.3]}),transform:[{translateY:glowTwo.interpolate({inputRange:[0,1],outputRange:[0,28]})}]}]}/>
     <Animated.View style={[s.heroInner,{opacity:fade,transform:[{translateY:fade.interpolate({inputRange:[0,1],outputRange:[24,0]})}]}]}>
-     <View style={s.top}><Pressable onPress={()=>router.back()}><MaterialCommunityIcons name="arrow-left" size={23} color="#FFF3D8"/></Pressable><Text style={s.brand}>{String(profile.brand_title||DEFAULT.brand_title).toUpperCase()}</Text><View style={{width:23}}/></View>
+     <View style={s.top}><Pressable onPress={()=>safeGoBack(router, "/(tabs)/home")}><MaterialCommunityIcons name="arrow-left" size={23} color="#FFF3D8"/></Pressable><Text style={s.brand}>{String(profile.brand_title||DEFAULT.brand_title).toUpperCase()}</Text><View style={{width:23}}/></View>
      <View style={s.heroSeal}><MaterialCommunityIcons name="flower-tulip" size={15} color="#E7CD98"/><Text style={s.heroSealText}>LOVE HURT STUDIO  ·  WEDDING FILMS & PHOTOGRAPHY</Text><MaterialCommunityIcons name="flower-tulip" size={15} color="#E7CD98"/></View>
      <Text style={s.eyebrow}>✦  A LOVE STORY, BEAUTIFULLY TOLD  ✦</Text>
      <Text style={s.headline}>{profile.headline||DEFAULT.headline}</Text><Text style={s.intro}>{profile.intro||DEFAULT.intro}</Text>

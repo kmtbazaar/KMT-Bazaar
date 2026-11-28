@@ -1,3 +1,4 @@
+import { safeGoBack } from "@/src/navigation";
 import { LocalizedText as Text } from "@/src/LocalizedText";
 import React from "react";
 import { View, StyleSheet, TouchableOpacity } from "react-native";
@@ -16,7 +17,7 @@ export default function BotHeader({ talking = false, onRobotPress }: BotHeaderPr
     <View style={styles.container}>
       <BlurView intensity={42} tint="dark" style={StyleSheet.absoluteFillObject} />
       <TouchableOpacity
-        onPress={() => router.back()}
+        onPress={() => safeGoBack(router, "/(tabs)/home")}
         style={styles.backButton}
         accessibilityRole="button"
         accessibilityLabel="Go back"
