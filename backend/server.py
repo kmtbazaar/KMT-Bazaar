@@ -7089,6 +7089,36 @@ async def seed_db():
     if await db.stores.count_documents({}) == 0:
         await db.stores.insert_many([dict(s) for s in SEED_STORES])
 
+    # Keep these restaurant stores under the Food shop category.
+    food_category = await db.categories.find_one(
+        {"name": {"$regex": "^Food$", "$options": "i"}},
+        {"_id": 0, "id": 1}
+    )
+    if food_category and food_category.get("id"):
+        food_store_name = {
+            "$regex": r"^(Naya\\s+Adda?\\s+Fast\\s*Food|Jharkhandi\\s+Hotel)$",
+            "$options": "i",
+        }
+        food_stores = await db.stores.find(
+            {"name": food_store_name},
+            {"_id": 0, "id": 1}
+        ).to_list(20)
+        food_store_ids = [str(store["id"]) for store in food_stores if store.get("id")]
+        if food_store_ids:
+            food_category_id = str(food_category["id"])
+            await db.stores.update_many(
+                {"id": {"$in": food_store_ids}, "category_id": {"$ne": food_category_id}},
+                {"$set": {"category_id": food_category_id}}
+            )
+            await db.products.update_many(
+                {"store_id": {"$in": food_store_ids}, "category_id": {"$ne": food_category_id}},
+                {"$set": {"category_id": food_category_id}}
+            )
+            await db.item_categories.update_many(
+                {"store_id": {"$in": food_store_ids}, "category_id": {"$ne": food_category_id}},
+                {"$set": {"category_id": food_category_id}}
+            )
+
     # Existing demo stores ko approved rakho
     # Sirf un stores ko update karega jisme is_approved field abhi nahi hai.
     await db.stores.update_many(
