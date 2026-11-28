@@ -1222,20 +1222,22 @@ export default function VendorStoreDetail() {
                 </View>
               ) : null}
 
-              {showColorOptions ? (
-              <View
-                onLayout={(event) => rememberAddFieldPosition("colors", event.nativeEvent.layout.y)}
-                style={addValidationError?.field === "colors" ? s.fieldErrorWrap : undefined}
-              >
-                <ProductColorPicker value={form.colors} colorLabel={categoryConfig.colorLabel}
-                  onChange={(colors) => {
-                    setForm((current) => ({ ...current, colors }));
-                    clearAddValidationError("colors");
-                  }}
-                  imagesByColor={form.color_images}
-                  onImagesChange={(color_images) => setForm((current) => ({ ...current, color_images }))}
-                  testID="vendor-store-add-product-colours" />
-              </View>
+              {categoryConfig.showColors ? (
+                showColorOptions ? (
+                  <View
+                    onLayout={(event) => rememberAddFieldPosition("colors", event.nativeEvent.layout.y)}
+                    style={addValidationError?.field === "colors" ? s.fieldErrorWrap : undefined}
+                  >
+                    <ProductColorPicker value={form.colors} colorLabel={categoryConfig.colorLabel}
+                      onChange={(colors) => {
+                        setForm((current) => ({ ...current, colors }));
+                        clearAddValidationError("colors");
+                      }}
+                      imagesByColor={form.color_images}
+                      onImagesChange={(color_images) => setForm((current) => ({ ...current, color_images }))}
+                      testID="vendor-store-add-product-colours" />
+                  </View>
+                ) : null
               ) : null}
 
               {/* Product description is available for every store category. */}
@@ -1495,12 +1497,14 @@ export default function VendorStoreDetail() {
                 </View>
               ) : null}
 
-              {showColorOptions ? (
-              <ProductColorPicker value={editProductForm.colors} colorLabel={categoryConfig.colorLabel}
-                onChange={(colors) => setEditProductForm((current) => ({ ...current, colors }))}
-                imagesByColor={editProductForm.color_images}
-                onImagesChange={(color_images) => setEditProductForm((current) => ({ ...current, color_images }))}
-                testID="vendor-store-edit-product-colours" />
+              {categoryConfig.showColors ? (
+                showColorOptions ? (
+                  <ProductColorPicker value={editProductForm.colors} colorLabel={categoryConfig.colorLabel}
+                    onChange={(colors) => setEditProductForm((current) => ({ ...current, colors }))}
+                    imagesByColor={editProductForm.color_images}
+                    onImagesChange={(color_images) => setEditProductForm((current) => ({ ...current, color_images }))}
+                    testID="vendor-store-edit-product-colours" />
+                ) : null
               ) : null}
 
               {/* Product description is available for every store category. */}
