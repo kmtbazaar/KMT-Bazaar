@@ -113,6 +113,17 @@ const findDuplicateVariantSizeColorIndex = (variants: any[]) => {
   return -1;
 };
 
+const createFashionVariantDraft = (unit: string, values: any = {}, colors: string[] = []): ProductVariantDraft => ({
+  id: String(values.id || ""),
+  unit,
+  price: String(values.price ?? ""),
+  mrp: String(values.mrp ?? values.price ?? ""),
+  stock: String(values.stock ?? "0"),
+  description: String(values.description || ""),
+  ...(Array.isArray(values.colors) ? { colors: values.colors.map((color: any) => String(color)) } : colors.length ? { colors: [...colors] } : {}),
+  color_images: values.color_images && typeof values.color_images === "object" ? { ...values.color_images } : {},
+});
+
 const validateVariantDrafts = (variants: any[], requireDescriptions = false, requireColors = false) => {
   if (variants.some((variant) =>
     !variant.unit ||
@@ -146,13 +157,14 @@ const validateRequiredColors = (config: any, colors: string[], imagesByColor: Re
   return "";
 };
 
-function ProductColorPicker({ value, onChange, testID, colorLabel = "Colour", imagesByColor = {}, onImagesChange }: {
+function ProductColorPicker({ value, onChange, testID, colorLabel = "Colour", imagesByColor = {}, onImagesChange, showImageUploads = true }: {
   value: string[];
   onChange: (colors: string[]) => void;
   testID: string;
   colorLabel?: string;
   imagesByColor?: Record<string, string[]>;
   onImagesChange: (images: Record<string, string[]>) => void;
+  showImageUploads?: boolean;
 }) {
   const [customColor,setCustomColor]=useState("");
   const [activeColor,setActiveColor]=useState(value[0]||"");
@@ -200,7 +212,7 @@ function ProductColorPicker({ value, onChange, testID, colorLabel = "Colour", im
         </Pressable>
       </View>
       <Text style={s.productColorSelectedCount}>{value.length?value.length+" colour option(s) selected":"No colour options selected"}</Text>
-      {value.length>0?(
+      {value.length>0 && showImageUploads?(
         <View style={s.productColorImagePanel}>
           <Text style={s.productColorTitle}>Attach photos to each colour</Text>
           <Text style={s.productColorHint}>Choose a colour, then upload its matching product photos.</Text>
@@ -221,7 +233,7 @@ function ProductColorPicker({ value, onChange, testID, colorLabel = "Colour", im
     </View>
   );
 }
-function VariantColorChoices({ value, availableColors, onChange, testID, variantLabel, imagesByColor = {}, onImagesChange }: {
+function VariantColorChoices({ value, availableColors, onChange, testID, variantLabel, imagesByColor = {}, onImagesChange, showImageUploads = true, colorsRequired = true }: {
   value?: string[];
   availableColors: string[];
   onChange: (colors: string[]) => void;
@@ -229,6 +241,8 @@ function VariantColorChoices({ value, availableColors, onChange, testID, variant
   variantLabel: string;
   imagesByColor?: Record<string, string[]>;
   onImagesChange: (images: Record<string, string[]>) => void;
+  showImageUploads?: boolean;
+  colorsRequired?: boolean;
 }) {
   const selectedColors = Array.isArray(value) ? value : [];
   const [activeImageColor, setActiveImageColor] = useState(selectedColors[0] || "");
@@ -278,8 +292,8 @@ function VariantColorChoices({ value, availableColors, onChange, testID, variant
           );
         })}
       </View>
-      <Text style={s.productColorSelectedCount}>{selectedColors.length ? selectedColors.length + " colour(s) selected" : "Select at least one colour for this size"}</Text>
-      {selectedColors.length ? (
+      <Text style={s.productColorSelectedCount}>{selectedColors.length ? selectedColors.length + " colour(s) selected" : colorsRequired ? "Select at least one colour for this size" : "Colour is optional for this size"}</Text>
+      {selectedColors.length > 0 && showImageUploads ? (
         <View style={s.productColorImagePanel} testID={testID + "-color-images"}>
           <Text style={s.productColorTitle}>Upload photos for each selected colour</Text>
           <Text style={s.productColorHint}>These photos belong only to this size/pack option.</Text>
@@ -346,6 +360,8 @@ export default function VendorStoreDetail() {
   const addFieldPositions = useRef<Record<string, number>>({});
   const [addVariantDrafts, setAddVariantDrafts] = useState<ProductVariantDraft[]>([]);
   const [editVariantDrafts, setEditVariantDrafts] = useState<ProductVariantDraft[]>([]);
+  const [addFashionSelectedSizes, setAddFashionSelectedSizes] = useState<string[]>([]);
+  const [editFashionSelectedSizes, setEditFashionSelectedSizes] = useState<string[]>([]);
   const [editBaseVariantId, setEditBaseVariantId] = useState("");
   const [form, setForm] = useState({
     name: "",
@@ -387,6 +403,7 @@ export default function VendorStoreDetail() {
   );
   const isFoodCategory = categoryConfig.variantLabel === "Portion / Serving" ||
     /(restaurant|food|cafe|bakery|sweet|snack|meal|fast food)/i.test(storeCategoryName);
+  const isFashionCategory = /(clothing|fashion|apparel|garment|wear|shirt|jeans|textile|kurta|dress)/i.test(storeCategoryName);
   const showColorOptions = !isFoodCategory && categoryConfig.showColors;
 
   const [showEditProductModal, setShowEditProductModal] = useState(false);
@@ -408,6 +425,65 @@ export default function VendorStoreDetail() {
     item_category: "",
     item_category_id: "",
   });
+  const editCategoryConfig = useMemo(
+    () => getProductCategoryConfig(
+      categories.find((item: any) => String(item.id) === String(store?.category_id)),
+      `${editProductForm.name} ${editProductForm.item_category}`
+    ),
+    [categories, store?.category_id, editProductForm.name, editProductForm.item_category]
+  );
+  const isEditFoodCategory = editCategoryConfig.variantLabel === "Portion / Serving" ||
+    /(restaurant|food|cafe|bakery|sweet|snack|meal|fast food)/i.test(storeCategoryName);
+  const isEditFashionCategory = /(clothing|fashion|apparel|garment|wear|shirt|jeans|textile|kurta|dress)/i.test(storeCategoryName);
+  const showEditColorOptions = !isEditFoodCategory && editCategoryConfig.showColors;
+
+  const toggleAddFashionSize = (option: string) => {
+    const exists = addFashionSelectedSizes.some((size) => size.toLowerCase() === option.toLowerCase());
+    if (exists) {
+      if (addFashionSelectedSizes[0]?.toLowerCase() === option.toLowerCase()) {
+        if (addFashionSelectedSizes.length > 1) return;
+        setAddFashionSelectedSizes([]);
+        setAddVariantDrafts([]);
+        setForm((current) => ({ ...current, unit: "" }));
+        return;
+      }
+      setAddFashionSelectedSizes((current) => current.filter((size) => size.toLowerCase() !== option.toLowerCase()));
+      setAddVariantDrafts((current) => current.filter((variant) => variant.unit.toLowerCase() !== option.toLowerCase()));
+      return;
+    }
+    setAddFashionSelectedSizes((current) => [...current, option]);
+    if (addFashionSelectedSizes.length === 0) {
+      setForm((current) => ({ ...current, unit: option }));
+      return;
+    }
+    setAddVariantDrafts((current) => [
+      ...current,
+      createFashionVariantDraft(option, {
+        price: form.price,
+        mrp: form.mrp || form.price,
+        stock: form.stock || "10",
+      }, form.colors),
+    ]);
+  };
+
+  const toggleEditFashionSize = (option: string) => {
+    const exists = editFashionSelectedSizes.some((size) => size.toLowerCase() === option.toLowerCase());
+    if (exists) {
+      if (String(editProductForm.unit || "").toLowerCase() === option.toLowerCase()) return;
+      setEditFashionSelectedSizes((current) => current.filter((size) => size.toLowerCase() !== option.toLowerCase()));
+      setEditVariantDrafts((current) => current.filter((variant) => variant.unit.toLowerCase() !== option.toLowerCase()));
+      return;
+    }
+    setEditFashionSelectedSizes((current) => [...current, option]);
+    setEditVariantDrafts((current) => [
+      ...current,
+      createFashionVariantDraft(option, {
+        price: editProductForm.price,
+        mrp: editProductForm.mrp || editProductForm.price,
+        stock: "0",
+      }, editProductForm.colors),
+    ]);
+  };
 
   const load = useCallback(async () => {
     try {
@@ -665,6 +741,7 @@ export default function VendorStoreDetail() {
       item_category_id: "",
     });
     setAddVariantDrafts([]);
+    setAddFashionSelectedSizes([]);
     setAddValidationError(null);
     addFieldPositions.current = {};
   };
@@ -719,6 +796,14 @@ export default function VendorStoreDetail() {
       guideAddFormToField("photos", "Add exactly two product photos before creating this food item.");
       return;
     }
+    if (isFashionCategory && !(form.images || []).some((image) => typeof image === "string" && image.trim())) {
+      guideAddFormToField("photos", "Upload at least one product photo. The same gallery will be used for every selected size.");
+      return;
+    }
+    if (isFashionCategory && addFashionSelectedSizes.length === 0) {
+      guideAddFormToField("baseSize", "Select one or more clothing sizes before creating this product.");
+      return;
+    }
 
     if (
       categoryConfig.variantLabel === "RAM / Storage" &&
@@ -734,8 +819,15 @@ export default function VendorStoreDetail() {
       return;
     }
 
+    const addDraftsForSave = isFashionCategory
+      ? addVariantDrafts.map((variant) => ({
+          ...variant,
+          price: String(variant.price || form.price),
+          mrp: String(variant.mrp || form.mrp || form.price),
+        }))
+      : addVariantDrafts;
     const variants = categoryConfig.showVariants
-      ? buildVariantPayload(form, addVariantDrafts, "", form.colors)
+      ? buildVariantPayload(form, addDraftsForSave, "", form.colors)
       : undefined;
     if (variants) {
       const invalidIndex = variants.findIndex((variant) =>
@@ -749,14 +841,14 @@ export default function VendorStoreDetail() {
         guideAddFormToField(target, `Fill the size, price, MRP and stock for option ${invalidIndex + 1}.`);
         return;
       }
-      const emptyDescriptionIndex = isFoodCategory ? -1 : variants.findIndex((variant, index) =>
+      const emptyDescriptionIndex = (isFoodCategory || isFashionCategory) ? -1 : variants.findIndex((variant, index) =>
         index > 0 && variants.length > 1 && !String(variant.description || "").trim()
       );
       if (emptyDescriptionIndex >= 0) {
         guideAddFormToField(`variant-${emptyDescriptionIndex - 1}`, `Add a description for size option ${emptyDescriptionIndex + 1}.`);
         return;
       }
-      const emptyColorIndex = showColorOptions
+      const emptyColorIndex = categoryConfig.requiresColor
         ? variants.findIndex((variant) => !Array.isArray(variant.colors) || variant.colors.length === 0)
         : -1;
       if (emptyColorIndex >= 0) {
@@ -809,7 +901,17 @@ export default function VendorStoreDetail() {
     const primaryVariant = savedVariants[0];
     const savedProductImages = Array.from(new Set([...(Array.isArray(prod.images) ? prod.images : []), prod.image]
       .filter((url: any) => typeof url === "string" && url.trim())));
-    const editProductImages = isFoodCategory ? savedProductImages.slice(0, 2) : savedProductImages;
+    const selectedCategoryConfig = getProductCategoryConfig(
+      categories.find((item: any) => String(item.id) === String(store?.category_id)),
+      `${prod.name || ""} ${prod.item_category || ""}`
+    );
+    const productIsFood = selectedCategoryConfig.variantLabel === "Portion / Serving" ||
+      /(restaurant|food|cafe|bakery|sweet|snack|meal|fast food)/i.test(storeCategoryName);
+    const productIsFashion = /(clothing|fashion|apparel|garment|wear|shirt|jeans|textile|kurta|dress)/i.test(storeCategoryName);
+    const editProductImages = productIsFood ? savedProductImages.slice(0, 2) : savedProductImages;
+    const savedFashionSizes = (savedVariants.length ? savedVariants : [primaryVariant || { unit: prod.unit }])
+      .map((variant: any) => String(variant?.unit || "").trim()).filter(Boolean);
+    setEditFashionSelectedSizes(productIsFashion ? savedFashionSizes : []);
     setEditBaseVariantId(primaryVariant?.id || "");
     setEditVariantDrafts(savedVariants.slice(1).map((variant: any) => ({
       id: String(variant.id || ""),
@@ -856,26 +958,51 @@ export default function VendorStoreDetail() {
       Alert.alert("Error", "Name and Price are required.");
       return;
     }
-    if (isFoodCategory && (editProductForm.images || []).filter((image) => typeof image === "string" && image.trim()).length !== 2) {
+    if (isEditFoodCategory && (editProductForm.images || []).filter((image) => typeof image === "string" && image.trim()).length !== 2) {
       const message = "Add exactly two product photos before saving this food item.";
       if (Platform.OS === "web" && typeof window !== "undefined") window.alert(message);
       else Alert.alert("Product photos required", message);
       return;
     }
+    if (isEditFashionCategory && !(editProductForm.images || []).some((image) => typeof image === "string" && image.trim())) {
+      const message = "Upload at least one product photo. The same gallery will be used for every selected size.";
+      if (Platform.OS === "web" && typeof window !== "undefined") window.alert(message);
+      else Alert.alert("Product photo required", message);
+      return;
+    }
+    if (isEditFashionCategory && editFashionSelectedSizes.length === 0) {
+      const message = "Keep at least one clothing size selected.";
+      if (Platform.OS === "web" && typeof window !== "undefined") window.alert(message);
+      else Alert.alert("Product size required", message);
+      return;
+    }
     const unchangedColorSetup = Boolean(existingProduct) &&
       JSON.stringify(editProductForm.colors || []) === JSON.stringify(existingProduct.colors || []) &&
       JSON.stringify(editProductForm.color_images || {}) === JSON.stringify(existingProduct.color_images || {});
-    const colorError = unchangedColorSetup || !showColorOptions
+    const colorError = unchangedColorSetup || !showEditColorOptions
       ? ""
-      : validateRequiredColors(categoryConfig, editProductForm.colors, editProductForm.color_images);
+      : validateRequiredColors(editCategoryConfig, editProductForm.colors, editProductForm.color_images);
     if (colorError) {
       Alert.alert("Select product colour", colorError);
       return;
     }
-    const variants = categoryConfig.showVariants
-      ? buildVariantPayload(editProductForm, editVariantDrafts, editBaseVariantId, editProductForm.colors)
+    const editDraftsForSave = isEditFashionCategory
+      ? editVariantDrafts.map((variant) => ({
+          ...variant,
+          price: String(variant.price || editProductForm.price),
+          mrp: String(variant.mrp || editProductForm.mrp || editProductForm.price),
+        }))
+      : editVariantDrafts;
+    const variants = editCategoryConfig.showVariants
+      ? buildVariantPayload(editProductForm, editDraftsForSave, editBaseVariantId, editProductForm.colors)
       : undefined;
-    const variantError = variants ? validateVariantDrafts(variants, variants.length > 1 && !isFoodCategory, showColorOptions) : "";
+    const variantError = variants
+      ? validateVariantDrafts(
+          variants,
+          variants.length > 1 && !isEditFoodCategory && !isEditFashionCategory,
+          editCategoryConfig.requiresColor
+        )
+      : "";
     if (variantError) {
       Alert.alert("Check product sizes", variantError);
       return;
@@ -886,8 +1013,8 @@ export default function VendorStoreDetail() {
         ...editProductForm,
         ...(variants ? { variants } : {}),
         attributes: editProductForm.attributes || {},
-        colors: showColorOptions ? editProductForm.colors : [],
-        color_images: showColorOptions ? editProductForm.color_images : {},
+        colors: showEditColorOptions ? editProductForm.colors : [],
+        color_images: showEditColorOptions ? editProductForm.color_images : {},
         category_id: store?.category_id || editProductForm.category_id,
         store_id: id,
         price: parseFloat(editProductForm.price),
@@ -1227,6 +1354,26 @@ export default function VendorStoreDetail() {
                 </View>
               ) : null}
 
+              {isFashionCategory ? (
+                <View
+                  onLayout={(event) => rememberAddFieldPosition("photos", event.nativeEvent.layout.y)}
+                  testID="vendor-store-add-product-fashion-photo-section"
+                >
+                  <ProductImagesUploader
+                    value={form.images}
+                    onChange={(images) => {
+                      setForm((current) => ({ ...current, images, image: images[0] || "" }));
+                      clearAddValidationError("photos");
+                    }}
+                    label="Fashion product photos"
+                    minCount={1}
+                    maxCount={6}
+                    allowMultipleSelection
+                    testID="vendor-store-add-product-fashion-photos"
+                  />
+                </View>
+              ) : null}
+
               {categoryConfig.showVariants && categoryConfig.variantOptions.length > 0 ? (
                 <View
                   style={[s.unitPickerPanel, addValidationError?.field === "baseSize" && s.fieldPanelError]}
@@ -1234,10 +1381,12 @@ export default function VendorStoreDetail() {
                   onLayout={(event) => rememberAddFieldPosition("baseSize", event.nativeEvent.layout.y)}
                 >
                   <Text style={s.sectionLabel}>Choose {categoryConfig.variantLabel}</Text>
-                  <Text style={s.unitPickerHint}>Only options configured for this category are shown.</Text>
+                  <Text style={s.unitPickerHint}>Select every size available for this product. You can choose several sizes together.</Text>
                   <View style={s.unitChipContainer}>
                     {categoryConfig.variantOptions.map((option) => {
-                      const active = form.unit.trim().toLowerCase() === option.toLowerCase();
+                      const active = isFashionCategory
+                        ? addFashionSelectedSizes.some((size) => size.toLowerCase() === option.toLowerCase())
+                        : form.unit.trim().toLowerCase() === option.toLowerCase();
                       return (
                         <Pressable key={option} accessibilityRole="button"
                           accessibilityLabel={"Select " + categoryConfig.variantLabel + " " + option}
@@ -1245,7 +1394,8 @@ export default function VendorStoreDetail() {
                           testID={"vendor-store-add-product-unit-" + option.toLowerCase().replace(/\s+/g, "-")}
                           style={[s.catChip, s.unitChip, active && s.catChipActive]}
                           onPress={() => {
-                            setForm((current) => ({ ...current, unit: option }));
+                            if (isFashionCategory) toggleAddFashionSize(option);
+                            else setForm((current) => ({ ...current, unit: option }));
                             clearAddValidationError("baseSize");
                           }}>
                           <Text style={[s.catChipText, active && s.catChipTextActive]}>{option}</Text>
@@ -1269,6 +1419,7 @@ export default function VendorStoreDetail() {
                       }}
                       imagesByColor={form.color_images}
                       onImagesChange={(color_images) => setForm((current) => ({ ...current, color_images }))}
+                      showImageUploads={!isFashionCategory}
                       testID="vendor-store-add-product-colours" />
                   </View>
                 ) : null
@@ -1327,7 +1478,7 @@ export default function VendorStoreDetail() {
                   style={[s.inputCompact, s.flex1, addValidationError?.field === "stock" && s.inputError]}
                   keyboardType="numeric"
                 />
-                {!isFoodCategory ? (
+                {!isFoodCategory && !isFashionCategory ? (
                   <TextInput placeholder={categoryConfig.showVariants ? categoryConfig.variantLabel : "Unit (e.g. 1 pc)"} placeholderTextColor="#9CA3AF"
                     value={form.unit} onChangeText={(t) => setForm({ ...form, unit: t })}
                     style={[s.inputCompact, s.flex1]} />
@@ -1345,12 +1496,16 @@ export default function VendorStoreDetail() {
                                   <Text style={s.variantManagerTitle}>Sell in more sizes</Text>
                                   <Text style={s.variantManagerHint}>Add each size/pack with its own label, price, MRP and stock.</Text>
                                 </View>
-                                <Pressable testID="vendor-store-add-variant" accessibilityRole="button"
-                                  onPress={() => setAddVariantDrafts((current) => [...current, { id: "", unit: "", price: "", mrp: "", stock: "10", description: "", colors: [...form.colors], color_images: {} }])}
-                                  style={s.addVariantButton}>
-                                  <MaterialCommunityIcons name="plus" size={17} color="#FFFFFF" />
-                                  <Text style={s.addVariantButtonText}>Add size</Text>
-                                </Pressable>
+                                {!isFashionCategory ? (
+                                  <Pressable testID="vendor-store-add-variant" accessibilityRole="button"
+                                    onPress={() => setAddVariantDrafts((current) => [...current, { id: "", unit: "", price: "", mrp: "", stock: "10", description: "", colors: [...form.colors], color_images: {} }])}
+                                    style={s.addVariantButton}>
+                                    <MaterialCommunityIcons name="plus" size={17} color="#FFFFFF" />
+                                    <Text style={s.addVariantButtonText}>Add size</Text>
+                                  </Pressable>
+                                ) : (
+                                  <Text style={s.variantManagerHint}>{addFashionSelectedSizes.length} sizes selected</Text>
+                                )}
                               </View>
                               {addVariantDrafts.map((variant, index) => (
                                 <View
@@ -1359,33 +1514,43 @@ export default function VendorStoreDetail() {
                                   onLayout={(event) => rememberAddFieldPosition(`variant-${index}`, (addFieldPositions.current.variants || 0) + event.nativeEvent.layout.y)}
                                 >
                                   <View style={s.variantDraftTopRow}>
-                                    <Text style={s.variantDraftLabel}>Option {index + 2}</Text>
+                                    <Text style={s.variantDraftLabel}>{isFashionCategory ? variant.unit : "Option " + (index + 2)}</Text>
                                     <Pressable accessibilityRole="button" accessibilityLabel={`Remove size option ${index + 2}`}
-                                      onPress={() => setAddVariantDrafts((current) => current.filter((_, itemIndex) => itemIndex !== index))}
+                                      onPress={() => {
+                                        const removedUnit = addVariantDrafts[index]?.unit || "";
+                                        setAddVariantDrafts((current) => current.filter((_, itemIndex) => itemIndex !== index));
+                                        if (isFashionCategory) setAddFashionSelectedSizes((current) => current.filter((size) => size.toLowerCase() !== removedUnit.toLowerCase()));
+                                      }}
                                       style={s.removeVariantButton}>
                                       <MaterialCommunityIcons name="trash-can-outline" size={17} color="#B91C1C" />
                                     </Pressable>
                                   </View>
-                                  <Text style={s.variantManagerHint}>Choose {categoryConfig.variantLabel}</Text>
-                                  <View style={s.unitChipContainer}>
-                                    {categoryConfig.variantOptions.map((option) => {
-                                      const active = String(variant.unit || "").trim().toLowerCase() === option.toLowerCase();
-                                      return (
-                                        <Pressable key={option} accessibilityRole="button"
-                                          accessibilityLabel={`Select ${categoryConfig.variantLabel} ${option} for option ${index + 2}`}
-                                          accessibilityState={{ selected: active }}
-                                          testID={`vendor-store-add-variant-size-${index + 2}-${option.toLowerCase().replace(/\s+/g, "-")}`}
-                                          style={[s.catChip, s.unitChip, active && s.catChipActive]}
-                                          onPress={() => {
-                                            setAddVariantDrafts((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, unit: option } : item));
-                                            clearAddValidationError(`variant-${index}`);
-                                          }}>
-                                          <Text style={[s.catChipText, active && s.catChipTextActive]}>{option}</Text>
-                                        </Pressable>
-                                      );
-                                    })}
-                                  </View>
-{!isFoodCategory ? (
+                                  {!isFashionCategory ? (
+                                    <>
+                                      <Text style={s.variantManagerHint}>Choose {categoryConfig.variantLabel}</Text>
+                                      <View style={s.unitChipContainer}>
+                                        {categoryConfig.variantOptions.map((option) => {
+                                          const active = String(variant.unit || "").trim().toLowerCase() === option.toLowerCase();
+                                          return (
+                                            <Pressable key={option} accessibilityRole="button"
+                                              accessibilityLabel={`Select ${categoryConfig.variantLabel} ${option} for option ${index + 2}`}
+                                              accessibilityState={{ selected: active }}
+                                              testID={`vendor-store-add-variant-size-${index + 2}-${option.toLowerCase().replace(/\s+/g, "-")}`}
+                                              style={[s.catChip, s.unitChip, active && s.catChipActive]}
+                                              onPress={() => {
+                                                setAddVariantDrafts((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, unit: option } : item));
+                                                clearAddValidationError(`variant-${index}`);
+                                              }}>
+                                              <Text style={[s.catChipText, active && s.catChipTextActive]}>{option}</Text>
+                                            </Pressable>
+                                          );
+                                        })}
+                                      </View>
+                                    </>
+                                  ) : (
+                                    <Text style={s.variantManagerHint}>Shared product photos and colour selection apply to this size.</Text>
+                                  )}
+{!isFoodCategory && !isFashionCategory ? (
                                   <TextInput placeholder={`Or enter custom ${categoryConfig.variantLabel}`} placeholderTextColor="#64748B"
                                     value={variant.unit}
                                     onChangeText={(value) => {
@@ -1404,9 +1569,11 @@ export default function VendorStoreDetail() {
                                       onImagesChange={(color_images) => {
                                         setAddVariantDrafts((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, color_images } : item));
                                       }}
+                                      showImageUploads={!isFashionCategory}
+                                      colorsRequired={categoryConfig.requiresColor}
                                       testID={`vendor-store-add-variant-colours-${index + 2}`} />
                                   ) : null}
-                                  {!isFoodCategory ? (
+                                  {!isFoodCategory && !isFashionCategory ? (
                                     <>
                                   <Text style={s.variantManagerHint}>Description for this option</Text>
                                   <TextInput placeholder="Describe the differences for this option" placeholderTextColor="#64748B"
@@ -1513,20 +1680,25 @@ export default function VendorStoreDetail() {
                 textAlignVertical="top"
               />
 
-              {categoryConfig.showVariants && categoryConfig.variantOptions.length > 0 ? (
+              {editCategoryConfig.showVariants && editCategoryConfig.variantOptions.length > 0 ? (
                 <View style={s.unitPickerPanel} testID="vendor-store-edit-product-size-pack-picker">
-                  <Text style={s.sectionLabel}>Choose {categoryConfig.variantLabel}</Text>
-                  <Text style={s.unitPickerHint}>Only options configured for this category are shown.</Text>
+                  <Text style={s.sectionLabel}>Choose {editCategoryConfig.variantLabel}</Text>
+                  <Text style={s.unitPickerHint}>Select every size available for this product. The shared photo gallery applies to all selected sizes.</Text>
                   <View style={s.unitChipContainer}>
-                    {categoryConfig.variantOptions.map((option) => {
-                      const active = editProductForm.unit.trim().toLowerCase() === option.toLowerCase();
+                    {editCategoryConfig.variantOptions.map((option) => {
+                      const active = isEditFashionCategory
+                        ? editFashionSelectedSizes.some((size) => size.toLowerCase() === option.toLowerCase())
+                        : editProductForm.unit.trim().toLowerCase() === option.toLowerCase();
                       return (
                         <Pressable key={option} accessibilityRole="button"
-                          accessibilityLabel={"Select " + categoryConfig.variantLabel + " " + option}
+                          accessibilityLabel={"Select " + editCategoryConfig.variantLabel + " " + option}
                           accessibilityState={{ selected: active }}
                           testID={"vendor-store-edit-product-unit-" + option.toLowerCase().replace(/\s+/g, "-")}
                           style={[s.catChip, s.unitChip, active && s.catChipActive]}
-                          onPress={() => setEditProductForm((current) => ({ ...current, unit: option }))}>
+                          onPress={() => {
+                            if (isEditFashionCategory) toggleEditFashionSize(option);
+                            else setEditProductForm((current) => ({ ...current, unit: option }));
+                          }}>
                           <Text style={[s.catChipText, active && s.catChipTextActive]}>{option}</Text>
                         </Pressable>
                       );
@@ -1535,21 +1707,22 @@ export default function VendorStoreDetail() {
                 </View>
               ) : null}
 
-              {categoryConfig.showColors ? (
-                showColorOptions ? (
-                  <ProductColorPicker value={editProductForm.colors} colorLabel={categoryConfig.colorLabel}
+              {editCategoryConfig.showColors ? (
+                showEditColorOptions ? (
+                  <ProductColorPicker value={editProductForm.colors} colorLabel={editCategoryConfig.colorLabel}
                     onChange={(colors) => setEditProductForm((current) => ({ ...current, colors }))}
                     imagesByColor={editProductForm.color_images}
                     onImagesChange={(color_images) => setEditProductForm((current) => ({ ...current, color_images }))}
+                    showImageUploads={!isEditFashionCategory}
                     testID="vendor-store-edit-product-colours" />
                 ) : null
               ) : null}
 
               {/* Product description is available for every store category. */}
               <View style={s.productDescriptionPanel} testID="vendor-store-edit-product-description">
-                <Text style={s.sectionLabel}>{categoryConfig.descriptionLabel || "Product description"}</Text>
+                <Text style={s.sectionLabel}>{editCategoryConfig.descriptionLabel || "Product description"}</Text>
                 <TextInput testID="vendor-store-edit-product-description-input"
-                  placeholder={categoryConfig.descriptionPlaceholder || "Add clear details about this product"}
+                  placeholder={editCategoryConfig.descriptionPlaceholder || "Add clear details about this product"}
                   placeholderTextColor="#9CA3AF"
                   value={editProductForm.description} onChangeText={(t) => setEditProductForm({ ...editProductForm, description: t })}
                   style={[s.inputCompact, { height: 70, textAlignVertical: "top" }]} multiline />
@@ -1616,7 +1789,7 @@ export default function VendorStoreDetail() {
                   </View>
                 </View>
 
-              {isFoodCategory ? (
+              {isEditFoodCategory ? (
                 <View testID="vendor-store-edit-product-food-photo-section">
                   <ProductImagesUploader
                     value={editProductForm.images}
@@ -1626,6 +1799,20 @@ export default function VendorStoreDetail() {
                     maxCount={2}
                     allowMultipleSelection
                     testID="vendor-store-edit-product-food-photos"
+                  />
+                </View>
+              ) : null}
+
+              {isEditFashionCategory ? (
+                <View testID="vendor-store-edit-product-fashion-photo-section">
+                  <ProductImagesUploader
+                    value={editProductForm.images}
+                    onChange={(images) => setEditProductForm((current) => ({ ...current, images, image: images[0] || "" }))}
+                    label="Fashion product photos"
+                    minCount={1}
+                    maxCount={6}
+                    allowMultipleSelection
+                    testID="vendor-store-edit-product-fashion-photos"
                   />
                 </View>
               ) : null}
@@ -1660,61 +1847,75 @@ export default function VendorStoreDetail() {
                   style={[s.inputCompact, s.flex1]}
                   keyboardType="numeric"
                 />
-                {!isFoodCategory ? (
-                  <TextInput placeholder={categoryConfig.showVariants ? categoryConfig.variantLabel : "Unit (e.g. 1 pc)"} placeholderTextColor="#9CA3AF"
+                {!isEditFoodCategory && !isEditFashionCategory ? (
+                  <TextInput placeholder={editCategoryConfig.showVariants ? editCategoryConfig.variantLabel : "Unit (e.g. 1 pc)"} placeholderTextColor="#9CA3AF"
                     value={editProductForm.unit} onChangeText={(t) => setEditProductForm({ ...editProductForm, unit: t })}
                     style={[s.inputCompact, s.flex1]} />
                 ) : null}
               </View>
 
-              {categoryConfig.showVariants ? (
+              {editCategoryConfig.showVariants ? (
               <View style={s.variantManagerPanel} testID="vendor-store-edit-product-variants">
                               <View style={s.variantManagerHeader}>
                                 <View style={{ flex: 1 }}>
                                   <Text style={s.variantManagerTitle}>Sell in more sizes</Text>
                                   <Text style={s.variantManagerHint}>Add each size/pack with its own label, price, MRP and stock.</Text>
                                 </View>
-                                <Pressable testID="vendor-store-edit-variant" accessibilityRole="button"
-                                  onPress={() => setEditVariantDrafts((current) => [...current, { id: "", unit: "", price: "", mrp: "", stock: "10", description: "", colors: [...editProductForm.colors], color_images: {} }])}
-                                  style={s.addVariantButton}>
-                                  <MaterialCommunityIcons name="plus" size={17} color="#FFFFFF" />
-                                  <Text style={s.addVariantButtonText}>Add size</Text>
-                                </Pressable>
+                                {!isEditFashionCategory ? (
+                                  <Pressable testID="vendor-store-edit-variant" accessibilityRole="button"
+                                    onPress={() => setEditVariantDrafts((current) => [...current, { id: "", unit: "", price: "", mrp: "", stock: "10", description: "", colors: [...editProductForm.colors], color_images: {} }])}
+                                    style={s.addVariantButton}>
+                                    <MaterialCommunityIcons name="plus" size={17} color="#FFFFFF" />
+                                    <Text style={s.addVariantButtonText}>Add size</Text>
+                                  </Pressable>
+                                ) : (
+                                  <Text style={s.variantManagerHint}>{editFashionSelectedSizes.length} sizes selected</Text>
+                                )}
                               </View>
                               {editVariantDrafts.map((variant, index) => (
                                 <View key={`${variant.id || "new"}-${index}`} style={s.variantDraftCard}>
                                   <View style={s.variantDraftTopRow}>
-                                    <Text style={s.variantDraftLabel}>Option {index + 2}</Text>
+                                    <Text style={s.variantDraftLabel}>{isEditFashionCategory ? variant.unit : "Option " + (index + 2)}</Text>
                                     <Pressable accessibilityRole="button" accessibilityLabel={`Remove size option ${index + 2}`}
-                                      onPress={() => setEditVariantDrafts((current) => current.filter((_, itemIndex) => itemIndex !== index))}
+                                      onPress={() => {
+                                        const removedUnit = editVariantDrafts[index]?.unit || "";
+                                        setEditVariantDrafts((current) => current.filter((_, itemIndex) => itemIndex !== index));
+                                        if (isEditFashionCategory) setEditFashionSelectedSizes((current) => current.filter((size) => size.toLowerCase() !== removedUnit.toLowerCase()));
+                                      }}
                                       style={s.removeVariantButton}>
                                       <MaterialCommunityIcons name="trash-can-outline" size={17} color="#B91C1C" />
                                     </Pressable>
                                   </View>
-                                  <Text style={s.variantManagerHint}>Choose {categoryConfig.variantLabel}</Text>
-                                  <View style={s.unitChipContainer}>
-                                    {categoryConfig.variantOptions.map((option) => {
-                                      const active = String(variant.unit || "").trim().toLowerCase() === option.toLowerCase();
-                                      return (
-                                        <Pressable key={option} accessibilityRole="button"
-                                          accessibilityLabel={`Select ${categoryConfig.variantLabel} ${option} for option ${index + 2}`}
-                                          accessibilityState={{ selected: active }}
-                                          testID={`vendor-store-edit-variant-size-${index + 2}-${option.toLowerCase().replace(/\s+/g, "-")}`}
-                                          style={[s.catChip, s.unitChip, active && s.catChipActive]}
-                                          onPress={() => setEditVariantDrafts((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, unit: option } : item))}>
-                                          <Text style={[s.catChipText, active && s.catChipTextActive]}>{option}</Text>
-                                        </Pressable>
-                                      );
-                                    })}
-                                  </View>
-{!isFoodCategory ? (
-                                  <TextInput placeholder={`Or enter custom ${categoryConfig.variantLabel}`} placeholderTextColor="#64748B"
+                                  {!isEditFashionCategory ? (
+                                    <>
+                                      <Text style={s.variantManagerHint}>Choose {editCategoryConfig.variantLabel}</Text>
+                                      <View style={s.unitChipContainer}>
+                                        {editCategoryConfig.variantOptions.map((option) => {
+                                          const active = String(variant.unit || "").trim().toLowerCase() === option.toLowerCase();
+                                          return (
+                                            <Pressable key={option} accessibilityRole="button"
+                                              accessibilityLabel={`Select ${editCategoryConfig.variantLabel} ${option} for option ${index + 2}`}
+                                              accessibilityState={{ selected: active }}
+                                              testID={`vendor-store-edit-variant-size-${index + 2}-${option.toLowerCase().replace(/\s+/g, "-")}`}
+                                              style={[s.catChip, s.unitChip, active && s.catChipActive]}
+                                              onPress={() => setEditVariantDrafts((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, unit: option } : item))}>
+                                              <Text style={[s.catChipText, active && s.catChipTextActive]}>{option}</Text>
+                                            </Pressable>
+                                          );
+                                        })}
+                                      </View>
+                                    </>
+                                  ) : (
+                                    <Text style={s.variantManagerHint}>Shared product photos and colour selection apply to this size.</Text>
+                                  )}
+{!isEditFoodCategory && !isEditFashionCategory ? (
+                                  <TextInput placeholder={`Or enter custom ${editCategoryConfig.variantLabel}`} placeholderTextColor="#64748B"
                                     value={variant.unit}
                                     onChangeText={(value) => setEditVariantDrafts((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, unit: value } : item))}
                                     style={s.inputCompact} />
                                   ) : null}
-                                  {showColorOptions ? (
-                                    <VariantColorChoices value={variant.colors ?? editProductForm.colors} availableColors={editProductForm.colors} variantLabel={categoryConfig.variantLabel}
+                                  {showEditColorOptions ? (
+                                    <VariantColorChoices value={variant.colors ?? editProductForm.colors} availableColors={editProductForm.colors} variantLabel={editCategoryConfig.variantLabel}
                                       onChange={(colors) => {
                                         setEditVariantDrafts((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, colors } : item));
                                       }}
@@ -1722,9 +1923,11 @@ export default function VendorStoreDetail() {
                                       onImagesChange={(color_images) => {
                                         setEditVariantDrafts((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, color_images } : item));
                                       }}
+                                      showImageUploads={!isEditFashionCategory}
+                                      colorsRequired={editCategoryConfig.requiresColor}
                                       testID={`vendor-store-edit-variant-colours-${index + 2}`} />
                                   ) : null}
-                                  {!isFoodCategory ? (
+                                  {!isEditFoodCategory && !isEditFashionCategory ? (
                                     <>
                                   <Text style={s.variantManagerHint}>Description for this option</Text>
                                   <TextInput placeholder="Describe the differences for this option" placeholderTextColor="#64748B"
