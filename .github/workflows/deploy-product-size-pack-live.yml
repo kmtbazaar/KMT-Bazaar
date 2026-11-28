@@ -268,6 +268,16 @@ jobs:
           assert.ok(backend.includes("colors: Optional[List[str]] = None") && backend.includes("_normalize_product_colors") && backend.includes("_resolve_product_color"), "Backend must store and validate product colour choices.");
           assert.ok(cartScreen.includes("it.color") && cartScreen.includes("onQty(it.product_id, it.quantity + 1, it.variant, it.color)") && cartContext.includes("pending?.color") && api.includes("...(color ? { color } : {})"), "Selected colour must persist through guest login, cart edits and cart display.");
           assert.ok(vendor.includes("vendor-store-add-product-item-category-picker"), "Add Product must render a separate item category panel");
+          const fashionAddOrder = [
+            'testID="vendor-store-add-product-name"',
+            'testID="vendor-store-add-product-item-category-picker"',
+            'testID="vendor-store-add-product-size-pack-picker"',
+            'testID="vendor-store-add-product-colours"',
+            'testID="vendor-store-add-product-price-panel"',
+            'testID="vendor-store-add-product-description"',
+          ].map((marker) => vendor.indexOf(marker));
+          assert.ok(fashionAddOrder.every((index) => index >= 0) && fashionAddOrder.every((index, position) => position === 0 || fashionAddOrder[position - 1] < index), "Fashion Add Product must follow Name, Item Category, Sizes, Colours, Price and Fabric/Fit Details.");
+          assert.ok(vendor.includes('backgroundColor: "#F0FDF4"') && vendor.includes('borderColor: "#A7F3D0"') && vendor.includes("fashionDetailsPanel"), "Fashion Price and Fabric/Fit panels must use the soft green Item Category palette.");
           assert.ok(vendor.includes("vendor-store-edit-product-item-category-picker"), "Edit Product must render a separate item category panel");
           assert.ok(!vendor.includes("vendor-store-add-new-item-category-name") && !vendor.includes("vendor-store-add-new-item-category"), "Add Product must only select existing dashboard-managed item categories, with no inline create row.");
           assert.ok(vendor.includes("saveStoreItemCategory") && vendor.includes("await load();") && vendor.includes("vendor-store-add-product-item-category-picker"), "Dashboard-managed categories must refresh and appear in the Add Product picker.");
@@ -320,7 +330,16 @@ jobs:
           );
           assert.ok(vendor.indexOf('testID="vendor-store-add-product-colours"') < vendor.indexOf('testID="vendor-store-add-product-description"') && vendor.indexOf('testID="vendor-store-edit-product-colours"') < vendor.indexOf('testID="vendor-store-edit-product-description"'), "Vendor descriptions must appear below their colour pickers.");
                     assert.ok(vendor.includes("toggleEditFashionSize(option)") && vendor.includes("setEditProductForm((current) => ({ ...current, unit: option }))"), "Edit size choices must update either Fashion multi-select variants or the non-Fashion unit.");
-                    assert.ok(vendor.includes('testID="vendor-store-add-product-fashion-photos"') && vendor.includes('testID="vendor-store-edit-product-fashion-photos"') && vendor.includes("addFashionSelectedSizes") && vendor.includes("editFashionSelectedSizes"), "Fashion Add/Edit must upload photos once and select multiple sizes together.");
+                    assert.ok(
+                      vendor.includes('testID="vendor-store-edit-product-fashion-photos"') &&
+                      !vendor.includes('testID="vendor-store-add-product-fashion-photos"') &&
+                      vendor.includes("addFashionSelectedSizes") &&
+                      vendor.includes("editFashionSelectedSizes") &&
+                      vendor.includes("showImageUploads={true}") &&
+                      vendor.includes("imagesByColor[activeColor]") &&
+                      vendor.includes("missingFashionColorPhotos"),
+                      "Fashion Add must upload separate photos for each selected colour while Edit retains its existing gallery."
+                    );
           assert.ok(vendor.includes("...form,"), "Product request must spread saved form fields");
           assert.ok(customer.includes("selectedUnit"), "Customer detail must display the saved or selected unit.");
           assert.ok(customer.includes("testID=\"product-size-pack-selector\""), "Customer detail must show selectable size/pack options.");
