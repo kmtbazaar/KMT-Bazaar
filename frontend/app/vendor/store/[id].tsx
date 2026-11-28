@@ -775,7 +775,7 @@ export default function VendorStoreDetail() {
         ...(variants ? { variants } : {}),
         attributes: form.attributes || {},
         colors: showColorOptions ? form.colors : [],
-        color_images: showColorOptions ? form.color_images : {},
+        color_images: categoryConfig.showColors ? form.color_images : {},
         category_id: store.category_id,
         store_id: id,
         price: parseFloat(form.price),
