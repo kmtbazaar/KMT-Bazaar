@@ -3512,9 +3512,10 @@ def _validate_product_category_color_requirements(category, raw_colors, raw_colo
     category = category or {}
     fields = category.get("product_fields") if isinstance(category.get("product_fields"), dict) else {}
     category_name = str(category.get("name") or "").strip().lower()
+    food_category = bool(re.search(r"(restaurant|food|cafe|bakery|sweet|snack|meal|fast food|restaurant food)", category_name))
     mobile_category = bool(re.search(r"(mobile|mobiles|smartphone|smart phone|cell phone|mobile phone|android|iphone)", category_name))
-    requires_color = bool(fields.get("requires_color", mobile_category))
-    requires_color_images = bool(fields.get("requires_color_images", mobile_category))
+    requires_color = False if food_category else bool(fields.get("requires_color", mobile_category))
+    requires_color_images = False if food_category else bool(fields.get("requires_color_images", mobile_category))
     colors = [str(item).strip() for item in (raw_colors or []) if str(item).strip()]
     if requires_color and not colors:
         raise HTTPException(status_code=400, detail="Select at least one colour for this product category")
