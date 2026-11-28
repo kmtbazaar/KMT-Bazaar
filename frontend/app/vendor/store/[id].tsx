@@ -1494,7 +1494,15 @@ export default function VendorStoreDetail() {
                               <View style={s.variantManagerHeader}>
                                 <View style={{ flex: 1 }}>
                                   <Text style={s.variantManagerTitle}>Sell in more sizes</Text>
-                                  <Text style={s.variantManagerHint}>Add each size/pack with its own label, price, MRP and stock.</Text>
+                                  {isFashionCategory ? (
+                                    <Text style={s.variantManagerHint}>Selected sizes share these product photos. Set price, MRP and stock for each size.</Text>
+                                  ) : (
+                                    {isEditFashionCategory ? (
+                                    <Text style={s.variantManagerHint}>Selected sizes share these product photos. Set price, MRP and stock for each size.</Text>
+                                  ) : (
+                                    <Text style={s.variantManagerHint}>Add each size/pack with its own label, price, MRP and stock.</Text>
+                                  )}
+                                  )}
                                 </View>
                                 {!isFashionCategory ? (
                                   <Pressable testID="vendor-store-add-variant" accessibilityRole="button"
