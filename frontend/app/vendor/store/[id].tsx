@@ -1585,7 +1585,7 @@ export default function VendorStoreDetail() {
                                     }}
                                     style={s.inputCompact} />
                                   ) : null}
-                                  {showColorOptions ? (
+                                  {showColorOptions && !isFashionCategory ? (
                                     <VariantColorChoices value={variant.colors ?? form.colors} availableColors={form.colors} variantLabel={categoryConfig.variantLabel}
                                       onChange={(colors) => {
                                         setAddVariantDrafts((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, colors } : item));
