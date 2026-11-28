@@ -382,6 +382,13 @@ export default function VendorStoreDetail() {
     });
   }, [categoryConfig]);
 
+  const storeCategoryName = String(
+    categories.find((item: any) => String(item.id) === String(store?.category_id))?.name || store?.category_id || ""
+  );
+  const isFoodCategory = categoryConfig.variantLabel === "Portion / Serving" ||
+    /(restaurant|food|cafe|bakery|sweet|snack|meal|fast food)/i.test(storeCategoryName);
+  const showColorOptions = !isFoodCategory && categoryConfig.showColors;
+
   const [showEditProductModal, setShowEditProductModal] = useState(false);
   const [selectedProductId, setSelectedProductId] = useState<string>("");
   const [editProductForm, setEditProductForm] = useState({
@@ -717,7 +724,7 @@ export default function VendorStoreDetail() {
       return;
     }
 
-    const colorError = validateRequiredColors(categoryConfig, form.colors, form.color_images);
+    const colorError = showColorOptions ? validateRequiredColors(categoryConfig, form.colors, form.color_images) : "";
     if (colorError) {
       guideAddFormToField("colors", colorError);
       return;
@@ -745,7 +752,7 @@ export default function VendorStoreDetail() {
         guideAddFormToField(`variant-${emptyDescriptionIndex - 1}`, `Add a description for size option ${emptyDescriptionIndex + 1}.`);
         return;
       }
-      const emptyColorIndex = categoryConfig.showColors
+      const emptyColorIndex = showColorOptions
         ? variants.findIndex((variant) => !Array.isArray(variant.colors) || variant.colors.length === 0)
         : -1;
       if (emptyColorIndex >= 0) {
@@ -767,8 +774,8 @@ export default function VendorStoreDetail() {
         ...form,
         ...(variants ? { variants } : {}),
         attributes: form.attributes || {},
-        colors: categoryConfig.showColors ? form.colors : [],
-        color_images: categoryConfig.showColors ? form.color_images : {},
+        colors: showColorOptions ? form.colors : [],
+        color_images: showColorOptions ? form.color_images : {},
         category_id: store.category_id,
         store_id: id,
         price: parseFloat(form.price),
@@ -845,7 +852,7 @@ export default function VendorStoreDetail() {
     const unchangedColorSetup = Boolean(existingProduct) &&
       JSON.stringify(editProductForm.colors || []) === JSON.stringify(existingProduct.colors || []) &&
       JSON.stringify(editProductForm.color_images || {}) === JSON.stringify(existingProduct.color_images || {});
-    const colorError = unchangedColorSetup
+    const colorError = unchangedColorSetup || !showColorOptions
       ? ""
       : validateRequiredColors(categoryConfig, editProductForm.colors, editProductForm.color_images);
     if (colorError) {
@@ -855,7 +862,7 @@ export default function VendorStoreDetail() {
     const variants = categoryConfig.showVariants
       ? buildVariantPayload(editProductForm, editVariantDrafts, editBaseVariantId, editProductForm.colors)
       : undefined;
-    const variantError = variants ? validateVariantDrafts(variants, variants.length > 1, categoryConfig.showColors) : "";
+    const variantError = variants ? validateVariantDrafts(variants, variants.length > 1, showColorOptions) : "";
     if (variantError) {
       Alert.alert("Check product sizes", variantError);
       return;
@@ -866,8 +873,8 @@ export default function VendorStoreDetail() {
         ...editProductForm,
         ...(variants ? { variants } : {}),
         attributes: editProductForm.attributes || {},
-        colors: categoryConfig.showColors ? editProductForm.colors : [],
-        color_images: categoryConfig.showColors ? editProductForm.color_images : {},
+        colors: showColorOptions ? editProductForm.colors : [],
+        color_images: showColorOptions ? editProductForm.color_images : {},
         category_id: store?.category_id || editProductForm.category_id,
         store_id: id,
         price: parseFloat(editProductForm.price),
@@ -1215,7 +1222,7 @@ export default function VendorStoreDetail() {
                 </View>
               ) : null}
 
-              {categoryConfig.showColors ? (
+              {showColorOptions ? (
               <View
                 onLayout={(event) => rememberAddFieldPosition("colors", event.nativeEvent.layout.y)}
                 style={addValidationError?.field === "colors" ? s.fieldErrorWrap : undefined}
@@ -1284,9 +1291,11 @@ export default function VendorStoreDetail() {
                   style={[s.inputCompact, s.flex1, addValidationError?.field === "stock" && s.inputError]}
                   keyboardType="numeric"
                 />
-                <TextInput placeholder={categoryConfig.showVariants ? categoryConfig.variantLabel : "Unit (e.g. 1 pc)"} placeholderTextColor="#9CA3AF"
-                  value={form.unit} onChangeText={(t) => setForm({ ...form, unit: t })}
-                  style={[s.inputCompact, s.flex1]} />
+                {!isFoodCategory ? (
+                  <TextInput placeholder={categoryConfig.showVariants ? categoryConfig.variantLabel : "Unit (e.g. 1 pc)"} placeholderTextColor="#9CA3AF"
+                    value={form.unit} onChangeText={(t) => setForm({ ...form, unit: t })}
+                    style={[s.inputCompact, s.flex1]} />
+                ) : null}
               </View>
 
               {categoryConfig.showVariants ? (
@@ -1340,6 +1349,7 @@ export default function VendorStoreDetail() {
                                       );
                                     })}
                                   </View>
+{!isFoodCategory ? (
                                   <TextInput placeholder={`Or enter custom ${categoryConfig.variantLabel}`} placeholderTextColor="#64748B"
                                     value={variant.unit}
                                     onChangeText={(value) => {
@@ -1347,7 +1357,8 @@ export default function VendorStoreDetail() {
                                       clearAddValidationError(`variant-${index}`);
                                     }}
                                     style={s.inputCompact} />
-                                  {categoryConfig.showColors ? (
+                                  ) : null}
+                                  {showColorOptions ? (
                                     <VariantColorChoices value={variant.colors ?? form.colors} availableColors={form.colors} variantLabel={categoryConfig.variantLabel}
                                       onChange={(colors) => {
                                         setAddVariantDrafts((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, colors } : item));
@@ -1484,7 +1495,7 @@ export default function VendorStoreDetail() {
                 </View>
               ) : null}
 
-              {categoryConfig.showColors ? (
+              {showColorOptions ? (
               <ProductColorPicker value={editProductForm.colors} colorLabel={categoryConfig.colorLabel}
                 onChange={(colors) => setEditProductForm((current) => ({ ...current, colors }))}
                 imagesByColor={editProductForm.color_images}
@@ -1593,9 +1604,11 @@ export default function VendorStoreDetail() {
                   style={[s.inputCompact, s.flex1]}
                   keyboardType="numeric"
                 />
-                <TextInput placeholder={categoryConfig.showVariants ? categoryConfig.variantLabel : "Unit (e.g. 1 pc)"} placeholderTextColor="#9CA3AF"
-                  value={editProductForm.unit} onChangeText={(t) => setEditProductForm({ ...editProductForm, unit: t })}
-                  style={[s.inputCompact, s.flex1]} />
+                {!isFoodCategory ? (
+                  <TextInput placeholder={categoryConfig.showVariants ? categoryConfig.variantLabel : "Unit (e.g. 1 pc)"} placeholderTextColor="#9CA3AF"
+                    value={editProductForm.unit} onChangeText={(t) => setEditProductForm({ ...editProductForm, unit: t })}
+                    style={[s.inputCompact, s.flex1]} />
+                ) : null}
               </View>
 
               {categoryConfig.showVariants ? (
@@ -1638,11 +1651,13 @@ export default function VendorStoreDetail() {
                                       );
                                     })}
                                   </View>
+{!isFoodCategory ? (
                                   <TextInput placeholder={`Or enter custom ${categoryConfig.variantLabel}`} placeholderTextColor="#64748B"
                                     value={variant.unit}
                                     onChangeText={(value) => setEditVariantDrafts((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, unit: value } : item))}
                                     style={s.inputCompact} />
-                                  {categoryConfig.showColors ? (
+                                  ) : null}
+                                  {showColorOptions ? (
                                     <VariantColorChoices value={variant.colors ?? editProductForm.colors} availableColors={editProductForm.colors} variantLabel={categoryConfig.variantLabel}
                                       onChange={(colors) => {
                                         setEditVariantDrafts((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, colors } : item));
