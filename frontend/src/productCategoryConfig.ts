@@ -138,11 +138,11 @@ export function getDefaultProductFieldSchema(categoryName: string, productContex
       show_variants: true, show_colors: false, show_description: true,
       requires_color: false, requires_color_images: false,
       variant_label: "Portion / Serving",
-      variant_options: ["1 kg", "500 gm", "1 Plate", "Half", "Full", "Regular", "Large", "Single", "Combo"],
+      variant_options: ["1 kg", "500 gm", "200 gm", "100 gm", "Full", "Half", "1 pc", "Single", "Double", "1 Plate", "Half Plate"],
       color_label: "Colour",
-      description_label: "Ingredients & food details",
-      description_placeholder: "Describe ingredients, preparation style and serving information.",
-      product_attributes: [field("Cuisine / Type"), field("Main ingredients"), field("Vegetarian / Non-vegetarian"), field("Allergen information"), field("Serving details")],
+      description_label: "Product description",
+      description_placeholder: "Optional details about this food item.",
+      product_attributes: [],
     };
   }
   if (/(beauty|cosmetic|personal care|skin care|skincare|makeup|perfume)/.test(name)) {
@@ -210,23 +210,22 @@ export function getProductCategoryConfig(category: any, productContext = ""): Pr
   const isJeansProduct = isClothingCategory && /(jeans|denim|trousers?|pants?)/.test(`${name} ${String(productContext || "").toLowerCase()}`);
   const defaults = getDefaultProductFieldSchema(name, productContext);
   const saved = category?.product_fields && typeof category.product_fields === "object" ? category.product_fields : {};
-  const requiresColor = typeof saved.requires_color === "boolean" ? saved.requires_color : defaults.requires_color;
-  const showColors = isClothingCategory || requiresColor || (typeof saved.show_colors === "boolean" ? saved.show_colors : defaults.show_colors);
-  const variantOptions = isJeansProduct
+  const requiresColor = isFoodCategory
+    ? false
+    : typeof saved.requires_color === "boolean" ? saved.requires_color : defaults.requires_color;
+  const showColors = isFoodCategory
+    ? false
+    : isClothingCategory || requiresColor || (typeof saved.show_colors === "boolean" ? saved.show_colors : defaults.show_colors);
+  const variantOptions = isFoodCategory || isJeansProduct
     ? defaults.variant_options
-    : isFoodCategory
-      ? Array.from(new Set([
-          ...defaults.variant_options,
-          ...(Array.isArray(saved.variant_options)
-            ? saved.variant_options.map((value: any) => String(value || "").trim()).filter(Boolean)
-            : []),
-        ])).filter(Boolean).slice(0, 60)
-      : Array.isArray(saved.variant_options)
-        ? saved.variant_options.map((value: any) => String(value || "").trim()).filter(Boolean).slice(0, 60)
-        : defaults.variant_options;
-  const productAttributes = saved.product_attributes !== undefined
-    ? normalizeProductAttributeFields(saved.product_attributes)
-    : defaults.product_attributes;
+    : Array.isArray(saved.variant_options)
+      ? saved.variant_options.map((value: any) => String(value || "").trim()).filter(Boolean).slice(0, 60)
+      : defaults.variant_options;
+  const productAttributes = isFoodCategory
+    ? []
+    : saved.product_attributes !== undefined
+      ? normalizeProductAttributeFields(saved.product_attributes)
+      : defaults.product_attributes;
   const schema: ProductCategorySchema = {
     ...defaults,
     ...saved,
@@ -234,7 +233,9 @@ export function getProductCategoryConfig(category: any, productContext = ""): Pr
     show_colors: showColors,
     show_description: typeof saved.show_description === "boolean" ? saved.show_description : defaults.show_description,
     requires_color: requiresColor,
-    requires_color_images: typeof saved.requires_color_images === "boolean" ? saved.requires_color_images : defaults.requires_color_images,
+    requires_color_images: isFoodCategory
+      ? false
+      : typeof saved.requires_color_images === "boolean" ? saved.requires_color_images : defaults.requires_color_images,
     variant_label: isJeansProduct ? defaults.variant_label : String(saved.variant_label || defaults.variant_label),
     variant_options: variantOptions,
     color_label: String(saved.color_label || defaults.color_label),
