@@ -169,17 +169,20 @@ function ProductColorPicker({ value, onChange, testID, colorLabel = "Colour", im
   const [customColor,setCustomColor]=useState("");
   const [activeColor,setActiveColor]=useState(value[0]||"");
   React.useEffect(()=>{if(!value.some(item=>item.toLowerCase()===activeColor.toLowerCase()))setActiveColor(value[0]||"");},[value,activeColor]);
+  const removeColor=(color:string)=>{
+    const next=value.filter(item=>item.toLowerCase()!==color.toLowerCase());
+    const nextImages={...imagesByColor};
+    const imageKey=Object.keys(nextImages).find(key=>key.toLowerCase()===color.toLowerCase());
+    if(imageKey)delete nextImages[imageKey];
+    onChange(next);
+    onImagesChange(nextImages);
+    if(activeColor.toLowerCase()===color.toLowerCase())setActiveColor(next[0]||"");
+  };
   const toggleColor=(color:string)=>{
     const exists=value.some(item=>item.toLowerCase()===color.toLowerCase());
-    if(exists){
-      const next=value.filter(item=>item.toLowerCase()!==color.toLowerCase());
-      const nextImages={...imagesByColor};
-      const imageKey=Object.keys(nextImages).find(key=>key.toLowerCase()===color.toLowerCase());
-      if(imageKey)delete nextImages[imageKey];
-      onChange(next);
-      onImagesChange(nextImages);
-      if(activeColor.toLowerCase()===color.toLowerCase())setActiveColor(next[0]||"");
-    }else{onChange([...value,color]);setActiveColor(color);}
+    if(exists){setActiveColor(color);return;}
+    onChange([...value,color]);
+    setActiveColor(color);
   };
   const addCustomColor=()=>{
     const color=customColor.trim().replace(/\s+/g," ");
@@ -215,13 +218,24 @@ function ProductColorPicker({ value, onChange, testID, colorLabel = "Colour", im
       {value.length>0 && showImageUploads?(
         <View style={s.productColorImagePanel}>
           <Text style={s.productColorTitle}>Attach photos to each colour</Text>
-          <Text style={s.productColorHint}>Choose a colour, then upload its matching product photos.</Text>
+          <Text style={s.productColorHint}>Tap a selected colour to open its own photo upload box. Each colour keeps a separate photo gallery.</Text>
           <View style={s.productColorOptions}>
             {value.map(color=><Pressable key={color} accessibilityRole="button" accessibilityLabel={"Manage photos for "+color}
               accessibilityState={{selected:activeColor===color}} onPress={()=>setActiveColor(color)}
               style={[s.productColorOption,activeColor===color&&s.productColorOptionActive]}>
               <Text style={[s.productColorOptionText,activeColor===color&&s.productColorOptionTextActive]}>{color}</Text>
             </Pressable>)}
+            {activeColor ? (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={"Remove " + activeColor + " colour"}
+                testID={testID+"-remove-active-colour"}
+                onPress={() => removeColor(activeColor)}
+                style={{ minHeight: 34, justifyContent: "center", paddingHorizontal: 8 }}
+              >
+                <Text style={{ color: "#B91C1C", fontSize: 11, fontWeight: "800" }}>Remove {activeColor}</Text>
+              </Pressable>
+            ) : null}
           </View>
           {activeColor?<ProductImagesUploader value={imagesByColor[activeColor]||[]}
             onChange={images=>onImagesChange({...imagesByColor,[activeColor]:images})}
@@ -796,9 +810,20 @@ export default function VendorStoreDetail() {
       guideAddFormToField("photos", "Add exactly two product photos before creating this food item.");
       return;
     }
-    if (isFashionCategory && !(form.images || []).some((image) => typeof image === "string" && image.trim())) {
-      guideAddFormToField("photos", "Upload at least one product photo. The same gallery will be used for every selected size.");
+    if (isFashionCategory && form.colors.length === 0) {
+      guideAddFormToField("colors", "Select at least one available colour for this fashion product.");
       return;
+    }
+    if (isFashionCategory) {
+      const missingFashionColorPhotos = form.colors.filter((color) => {
+        const imageKey = Object.keys(form.color_images || {}).find((key) => key.toLowerCase() === color.toLowerCase());
+        return !imageKey || !Array.isArray(form.color_images[imageKey]) ||
+          !form.color_images[imageKey].some((image) => typeof image === "string" && image.trim());
+      });
+      if (missingFashionColorPhotos.length) {
+        guideAddFormToField("colors", "Upload at least one matching product photo for each selected colour: " + missingFashionColorPhotos.join(", "));
+        return;
+      }
     }
     if (isFashionCategory && addFashionSelectedSizes.length === 0) {
       guideAddFormToField("baseSize", "Select one or more clothing sizes before creating this product.");
@@ -822,6 +847,7 @@ export default function VendorStoreDetail() {
     const addDraftsForSave = isFashionCategory
       ? addVariantDrafts.map((variant) => ({
           ...variant,
+          colors: [...form.colors],
           price: String(variant.price || form.price),
           mrp: String(variant.mrp || form.mrp || form.price),
         }))
@@ -1354,25 +1380,7 @@ export default function VendorStoreDetail() {
                 </View>
               ) : null}
 
-              {isFashionCategory ? (
-                <View
-                  onLayout={(event) => rememberAddFieldPosition("photos", event.nativeEvent.layout.y)}
-                  testID="vendor-store-add-product-fashion-photo-section"
-                >
-                  <ProductImagesUploader
-                    value={form.images}
-                    onChange={(images) => {
-                      setForm((current) => ({ ...current, images, image: images[0] || "" }));
-                      clearAddValidationError("photos");
-                    }}
-                    label="Fashion product photos"
-                    minCount={1}
-                    maxCount={6}
-                    allowMultipleSelection
-                    testID="vendor-store-add-product-fashion-photos"
-                  />
-                </View>
-              ) : null}
+
 
               {categoryConfig.showVariants && categoryConfig.variantOptions.length > 0 ? (
                 <View
@@ -1418,26 +1426,27 @@ export default function VendorStoreDetail() {
                         clearAddValidationError("colors");
                       }}
                       imagesByColor={form.color_images}
-                      onImagesChange={(color_images) => setForm((current) => ({ ...current, color_images }))}
-                      showImageUploads={!isFashionCategory}
+                      onImagesChange={(color_images) => {
+                        setForm((current) => ({ ...current, color_images }));
+                        clearAddValidationError("colors");
+                      }}
+                      showImageUploads={true}
                       testID="vendor-store-add-product-colours" />
                   </View>
                 ) : null
               ) : null}
 
-              {/* Product description is available for every store category. */}
-              <View style={s.productDescriptionPanel} testID="vendor-store-add-product-description">
-                <Text style={s.sectionLabel}>{categoryConfig.descriptionLabel || "Product description"}</Text>
-                <TextInput testID="vendor-store-add-product-description-input"
-                  placeholder={categoryConfig.descriptionPlaceholder || "Add clear details about this product"}
-                  placeholderTextColor="#9CA3AF"
-                  value={form.description} onChangeText={(t) => setForm({ ...form, description: t })}
-                  style={[s.inputCompact, { height: 70, textAlignVertical: "top" }]} multiline />
-              </View>
-
-
               {/* Price & MRP Row */}
-              <View style={s.rowCompact} onLayout={(event) => rememberAddFieldPosition("pricing", event.nativeEvent.layout.y)}>
+              <View
+                style={isFashionCategory ? s.fashionDetailsPanel : undefined}
+                testID="vendor-store-add-product-price-panel"
+                onLayout={(event) => rememberAddFieldPosition("pricePanel", event.nativeEvent.layout.y)}
+              >
+                <Text style={isFashionCategory ? s.fashionDetailsTitle : s.sectionLabel}>Price & MRP</Text>
+                <View
+                  style={s.rowCompact}
+                  onLayout={(event) => rememberAddFieldPosition("pricing", (addFieldPositions.current.pricePanel || 0) + event.nativeEvent.layout.y)}
+                >
                 <TextInput
                   placeholder="Price"
                   placeholderTextColor="#9CA3AF"
@@ -1463,6 +1472,19 @@ export default function VendorStoreDetail() {
                   keyboardType="numeric"
                 />
               </View>
+              </View>
+
+
+              {/* Product description is available for every store category. */}
+              <View style={[s.productDescriptionPanel, isFashionCategory && s.fashionDetailsPanel]} testID="vendor-store-add-product-description">
+                <Text style={[s.sectionLabel, isFashionCategory && s.fashionDetailsTitle]}>{isFashionCategory ? "Fabric & Fit Details" : (categoryConfig.descriptionLabel || "Product description")}</Text>
+                <TextInput testID="vendor-store-add-product-description-input"
+                  placeholder={categoryConfig.descriptionPlaceholder || "Add clear details about this product"}
+                  placeholderTextColor="#9CA3AF"
+                  value={form.description} onChangeText={(t) => setForm({ ...form, description: t })}
+                  style={[s.inputCompact, { height: 70, textAlignVertical: "top" }]} multiline />
+              </View>
+
 
               {/* Stock & Unit Row */}
               <View style={s.rowCompact} onLayout={(event) => rememberAddFieldPosition("stockRow", event.nativeEvent.layout.y)}>
@@ -1495,7 +1517,7 @@ export default function VendorStoreDetail() {
                                 <View style={{ flex: 1 }}>
                                   <Text style={s.variantManagerTitle}>Sell in more sizes</Text>
                                   {isFashionCategory ? (
-                                    <Text style={s.variantManagerHint}>Selected sizes share these product photos. Set price, MRP and stock for each size.</Text>
+                                    <Text style={s.variantManagerHint}>Upload matching photos for each selected colour above. Set price, MRP and stock for every selected size.</Text>
                                   ) : (
                                     <Text style={s.variantManagerHint}>Add each size/pack with its own label, price, MRP and stock.</Text>
                                   )}
@@ -2383,6 +2405,8 @@ const s = StyleSheet.create({
   addCustomColorButton: { width: 40, height: 38, borderRadius: 10, alignItems: "center", justifyContent: "center", backgroundColor: "#0284C7" },
   productColorSelectedCount: { color: "#0369A1", fontSize: 10, fontWeight: "700", marginTop: 5 },
   productColorImagePanel: { backgroundColor: "#FFFFFF", borderWidth: 1, borderColor: "#BAE6FD", borderRadius: 12, padding: 9, marginTop: 10, gap: 7 },
+  fashionDetailsPanel: { backgroundColor: "#F0FDF4", borderWidth: 1, borderColor: "#A7F3D0", borderRadius: 14, padding: 10, marginBottom: 10, gap: 7 },
+  fashionDetailsTitle: { color: "#065F46", fontSize: 13, fontWeight: "900", marginBottom: 4 },
   productDescriptionPanel: { backgroundColor: "#F8FAFC", borderWidth: 1, borderColor: "#CBD5E1", borderRadius: 12, padding: 10, marginTop: 8, gap: 7 },
   unitPickerHint: { fontSize: 11, lineHeight: 15, color: "#7C2D12", marginTop: -3, marginBottom: 8 },
   unitChipContainer: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
