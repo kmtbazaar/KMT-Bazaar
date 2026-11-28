@@ -1,6 +1,6 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Stack, useRouter, useSegments } from "expo-router";
-import { Platform } from "react-native";
+import { ActivityIndicator, PanResponder, Platform, View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
@@ -9,6 +9,87 @@ import { AuthProvider, useAuth } from "@/src/AuthContext";
 import { CartProvider } from "@/src/CartContext";
 import { LanguageProvider } from "@/src/LanguageContext";
 import { WishlistProvider } from "@/src/WishlistContext";
+
+ 
+function GlobalPullToRefresh({ children }: { children: React.ReactNode }) {
+  const [refreshing, setRefreshing] = useState(false);
+  const startCanRefreshRef = useRef(false);
+
+  const isAtTopOfScrollArea = (target: any) => {
+    if (Platform.OS !== "web" || typeof window === "undefined") return false;
+    let node = target;
+    while (node && node !== document.body && node.nodeType === 1) {
+      const element = node as HTMLElement;
+      const overflowY = window.getComputedStyle(element).overflowY;
+      const isVerticalScroller = (overflowY === "auto" || overflowY === "scroll") &&
+        element.scrollHeight > element.clientHeight + 2;
+      if (isVerticalScroller) return element.scrollTop <= 1;
+      node = element.parentElement;
+    }
+    return true;
+  };
+
+  const onTouchStart = (event: any) => {
+    if (Platform.OS !== "web" || refreshing) {
+      startCanRefreshRef.current = false;
+      return;
+    }
+    const touch = event?.nativeEvent?.touches?.[0];
+    const startY = Number(event?.nativeEvent?.pageY ?? touch?.pageY ?? event?.nativeEvent?.clientY ?? 0);
+    const viewportHeight = typeof window !== "undefined" ? window.innerHeight : 800;
+    const topEdge = Math.min(180, Math.max(110, viewportHeight * 0.2));
+    startCanRefreshRef.current = startY <= topEdge && isAtTopOfScrollArea(event?.target);
+  };
+
+  const panResponder = useMemo(() => PanResponder.create({
+    onStartShouldSetPanResponder: () => false,
+    onStartShouldSetPanResponderCapture: () => false,
+    onMoveShouldSetPanResponderCapture: (_event, gesture) =>
+      Platform.OS === "web" &&
+      !refreshing &&
+      startCanRefreshRef.current &&
+      gesture.dy > 72 &&
+      gesture.dy > Math.abs(gesture.dx) * 1.25,
+    onPanResponderTerminationRequest: () => false,
+    onPanResponderRelease: (_event, gesture) => {
+      const shouldRefresh = Platform.OS === "web" &&
+        startCanRefreshRef.current &&
+        gesture.dy >= 92 &&
+        gesture.dy > Math.abs(gesture.dx) * 1.25;
+      startCanRefreshRef.current = false;
+      if (!shouldRefresh || typeof window === "undefined") return;
+      setRefreshing(true);
+      window.setTimeout(() => window.location.reload(), 100);
+    },
+    onPanResponderTerminate: () => {
+      startCanRefreshRef.current = false;
+    },
+  }), [refreshing]);
+
+  return (
+    <View style={{ flex: 1 }} onTouchStart={onTouchStart} {...panResponder.panHandlers}>
+      {children}
+      {refreshing ? (
+        <View pointerEvents="none" style={{
+          position: "absolute",
+          top: 12,
+          alignSelf: "center",
+          zIndex: 9999,
+          elevation: 20,
+          padding: 9,
+          borderRadius: 22,
+          backgroundColor: "#FFFFFF",
+          shadowColor: "#0F172A",
+          shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: 0.16,
+          shadowRadius: 6,
+        }}>
+          <ActivityIndicator size="small" color="#0284C7" />
+        </View>
+      ) : null}
+    </View>
+  );
+}
 
 function vendorHomeRoute(user: any) {
   if (user?.role !== "vendor") return `/${user?.role || "auth/login"}`;
@@ -112,18 +193,20 @@ export default function RootLayout() {
           <AuthProvider>
           <WishlistProvider>
             <CartProvider>
-              <RoleRouteGuard>
-                <Stack screenOptions={{ headerShown: false }}>
-                  <Stack.Screen
-                    name="assistant"
-                    options={{
-                      presentation: "transparentModal",
-                      animation: Platform.OS === "web" ? "none" : "fade",
-                      contentStyle: { backgroundColor: "transparent" },
-                    }}
-                  />
-                </Stack>
-              </RoleRouteGuard>
+              <GlobalPullToRefresh>
+                <RoleRouteGuard>
+                  <Stack screenOptions={{ headerShown: false }}>
+                    <Stack.Screen
+                      name="assistant"
+                      options={{
+                        presentation: "transparentModal",
+                        animation: Platform.OS === "web" ? "none" : "fade",
+                        contentStyle: { backgroundColor: "transparent" },
+                      }}
+                    />
+                  </Stack>
+                </RoleRouteGuard>
+              </GlobalPullToRefresh>
             </CartProvider>
           </WishlistProvider>
         </AuthProvider>
