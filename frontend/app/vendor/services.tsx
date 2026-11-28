@@ -1,3 +1,4 @@
+import { safeGoBack } from "@/src/navigation";
 import { LocalizedText as Text, LocalizedTextInput as TextInput } from "@/src/LocalizedText";
 import React, { useCallback, useState } from "react";
 import { View, StyleSheet, FlatList, Pressable, Modal, KeyboardAvoidingView, Platform, Alert, ScrollView } from "react-native";
@@ -166,7 +167,7 @@ export default function VendorServices() {
   return (
     <SafeAreaView style={s.root} edges={["top"]}>
       <View style={s.header}>
-        <Pressable onPress={() => router.back()} hitSlop={10}>
+        <Pressable onPress={() => safeGoBack(router, "/vendor")} hitSlop={10}>
           <MaterialCommunityIcons name="arrow-left" size={24} color={COLORS.text} />
         </Pressable>
         <View style={{ alignItems: "center", flex: 1 }}>

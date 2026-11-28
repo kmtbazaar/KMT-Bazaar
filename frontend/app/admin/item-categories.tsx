@@ -1,3 +1,4 @@
+import { safeGoBack } from "@/src/navigation";
 import { LocalizedText as Text, LocalizedTextInput as TextInput } from "@/src/LocalizedText";
 import React, { useCallback, useState } from "react";
 import { View, StyleSheet, FlatList, Pressable, Modal, Alert, ScrollView } from "react-native";
@@ -114,7 +115,7 @@ export default function AdminItemCategories() {
   return (
     <SafeAreaView style={s.root} edges={["top"]}>
       <View style={s.header}>
-        <Pressable onPress={() => router.back()} hitSlop={10}>
+        <Pressable onPress={() => safeGoBack(router, "/admin")} hitSlop={10}>
           <MaterialCommunityIcons name="arrow-left" size={22} color={COLORS.text} />
         </Pressable>
         <Text style={s.title}>Item Categories ({items.length})</Text>

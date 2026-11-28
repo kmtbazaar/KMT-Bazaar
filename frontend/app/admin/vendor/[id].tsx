@@ -1,3 +1,4 @@
+import { safeGoBack } from "@/src/navigation";
 import { LocalizedText as Text, LocalizedTextInput as TextInput } from "@/src/LocalizedText";
 import React, { useCallback, useMemo, useState } from "react";
 import { View, StyleSheet, FlatList, Pressable, Modal, Alert, ActivityIndicator, ScrollView, Platform } from "react-native";
@@ -118,7 +119,7 @@ export default function AdminVendorManage() {
 
   return <SafeAreaView style={s.root} edges={["top","bottom"]}>
     <View style={s.header}>
-      <Pressable onPress={() => router.back()}><MaterialCommunityIcons name="arrow-left" size={24} color={COLORS.text}/></Pressable>
+      <Pressable onPress={() => safeGoBack(router, "/admin")}><MaterialCommunityIcons name="arrow-left" size={24} color={COLORS.text}/></Pressable>
       <View style={{ flex: 1, marginLeft: 12 }}>
         <Text style={s.title}>{vendor?.name || "Vendor Manage"}</Text>
         <Text style={s.muted}>{vendor?.email || vendor?.phone || ""}</Text>

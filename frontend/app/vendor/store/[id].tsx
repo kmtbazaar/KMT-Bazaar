@@ -1,3 +1,4 @@
+import { safeGoBack } from "@/src/navigation";
 import { LocalizedText as Text, LocalizedTextInput as TextInput } from "@/src/LocalizedText";
 import React, { useCallback, useMemo, useRef, useState } from "react";
 import {
@@ -1103,7 +1104,7 @@ export default function VendorStoreDetail() {
             <View style={s.bannerWrap}>
               <Image source={{ uri: editForm.image }} style={s.bannerImg} contentFit="cover" />
 
-              <Pressable onPress={() => router.back()} style={[s.bannerCircleBtn, s.bannerBackBtn]} hitSlop={8}>
+              <Pressable onPress={() => safeGoBack(router, "/vendor")} style={[s.bannerCircleBtn, s.bannerBackBtn]} hitSlop={8}>
                 <MaterialCommunityIcons name="arrow-left" size={20} color="#fff" />
               </Pressable>
 

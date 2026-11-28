@@ -1,3 +1,4 @@
+import { safeGoBack } from "@/src/navigation";
 import { LocalizedText as Text, LocalizedTextInput as TextInput } from "@/src/LocalizedText";
 import React, { useState, useEffect, useCallback } from "react";
 import { View, StyleSheet, FlatList, Pressable, ActivityIndicator, Platform } from "react-native";
@@ -157,7 +158,7 @@ export default function SearchScreen() {
         style={s.header}
       >
         <Animated.View entering={FadeIn.duration(260)} style={s.headerRow}>
-          <Pressable onPress={() => router.back()} hitSlop={8} style={s.backBtn}>
+          <Pressable onPress={() => safeGoBack(router, "/(tabs)/home")} hitSlop={8} style={s.backBtn}>
             <MaterialCommunityIcons name="arrow-left" size={22} color={COLORS.text} />
           </Pressable>
 

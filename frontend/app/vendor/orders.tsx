@@ -1,3 +1,4 @@
+import { safeGoBack } from "@/src/navigation";
 import { LocalizedText as Text, LocalizedTextInput as TextInput } from "@/src/LocalizedText";
 import React, { useCallback, useState } from "react";
 import { View, StyleSheet, FlatList, Pressable, Modal, ScrollView, Alert } from "react-native";
@@ -61,7 +62,7 @@ export default function VendorOrders() {
   return (
     <SafeAreaView style={s.root} edges={["top"]} testID="vendor-orders-screen">
       <View style={s.header}>
-        <Pressable onPress={() => router.back()} hitSlop={10}><MaterialCommunityIcons name="arrow-left" size={22} color={COLORS.text} /></Pressable>
+        <Pressable onPress={() => safeGoBack(router, "/vendor")} hitSlop={10}><MaterialCommunityIcons name="arrow-left" size={22} color={COLORS.text} /></Pressable>
         <Text style={s.title}>Orders Received ({orders.length})</Text>
         <View style={{ width: 22 }} />
       </View>

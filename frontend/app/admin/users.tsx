@@ -1,3 +1,4 @@
+import { safeGoBack } from "@/src/navigation";
 import { LocalizedText as Text, LocalizedTextInput as TextInput } from "@/src/LocalizedText";
 import React, { useCallback, useState } from "react";
 import {
@@ -277,7 +278,7 @@ export default function AdminUsers() {
     >
       <View style={s.header}>
         <Pressable
-          onPress={() => router.back()}
+          onPress={() => safeGoBack(router, "/admin")}
           hitSlop={15}
           style={s.backButton}
         >

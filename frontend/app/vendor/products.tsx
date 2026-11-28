@@ -1,3 +1,4 @@
+import { safeGoBack } from "@/src/navigation";
 import { LocalizedText as Text, LocalizedTextInput as TextInput } from "@/src/LocalizedText";
 import React, { useCallback, useState } from "react";
 import {
@@ -169,7 +170,7 @@ export default function VendorProducts() {
     <SafeAreaView style={s.root} edges={["top"]} testID="vendor-products-screen">
       {/* Header with Top-Right Add (+) Button */}
       <View style={s.header}>
-        <Pressable onPress={() => router.back()} hitSlop={10}>
+        <Pressable onPress={() => safeGoBack(router, "/vendor")} hitSlop={10}>
           <MaterialCommunityIcons name="arrow-left" size={24} color="#000" />
         </Pressable>
         <Text style={s.headerTitle}>Products ({products.length})</Text>

@@ -1,3 +1,4 @@
+import { safeGoBack } from "@/src/navigation";
 import { LocalizedText as Text, LocalizedTextInput as TextInput } from "@/src/LocalizedText";
 import React, { useCallback, useState } from "react";
 import { View, StyleSheet, FlatList, Pressable, Modal, ScrollView, Alert, Platform, Switch } from "react-native";
@@ -60,7 +61,7 @@ export default function AdminServiceVendors() {
   const payout=Math.round(revenue*(1-(Number((selected as any)?.commission_percent)||10)/100));
 
   return <SafeAreaView style={s.root} edges={["top"]}>
-    <View style={s.header}><Pressable onPress={()=>router.back()}><MaterialCommunityIcons name="arrow-left" size={24} color={COLORS.text}/></Pressable><Text style={s.title}>Service Vendors</Text><View style={{width:24}}/></View>
+    <View style={s.header}><Pressable onPress={()=>safeGoBack(router, "/admin")}><MaterialCommunityIcons name="arrow-left" size={24} color={COLORS.text}/></Pressable><Text style={s.title}>Service Vendors</Text><View style={{width:24}}/></View>
     <FlatList data={vendors} keyExtractor={(x)=>x.id} contentContainerStyle={{padding:SPACING.lg,paddingBottom:60}} ItemSeparatorComponent={()=> <View style={{height:10}}/>}
       renderItem={({item})=><Pressable style={s.card} onPress={()=>open(item)}>
         <View style={[s.avatar,{backgroundColor:item.service_type==="holiday"?"#DBEAFE":item.service_type==="car_rental"?"#E0F2FE":"#FCE7F3"}]}><MaterialCommunityIcons name={item.service_type==="holiday"?"airplane-takeoff":item.service_type==="car_rental"?"car":item.service_type==="premium_decorator"?"party-popper":"camera-outline"} size={25} color={item.service_type==="holiday"?"#2563EB":item.service_type==="car_rental"?"#0EA5E9":"#BE185D"}/></View>

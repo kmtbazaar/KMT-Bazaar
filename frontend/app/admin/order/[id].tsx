@@ -1,3 +1,4 @@
+import { safeGoBack } from "@/src/navigation";
 import { LocalizedText as Text, LocalizedTextInput as TextInput } from "@/src/LocalizedText";
 import React, { useEffect, useState } from "react";
 import {
@@ -85,7 +86,7 @@ export default function AdminOrderDetail() {
         </Text>
 
         <Pressable
-          onPress={() => router.back()}
+          onPress={() => safeGoBack(router, "/admin")}
           style={s.backButton}
         >
           <Text style={s.backButtonText}>
@@ -103,7 +104,7 @@ export default function AdminOrderDetail() {
     >
       <View style={s.header}>
         <Pressable
-          onPress={() => router.back()}
+          onPress={() => safeGoBack(router, "/admin")}
           hitSlop={10}
         >
           <MaterialCommunityIcons

@@ -1,3 +1,4 @@
+import { safeGoBack } from "@/src/navigation";
 import { LocalizedText as Text, LocalizedTextInput as TextInput } from "@/src/LocalizedText";
 import React, { useCallback, useState } from "react";
 import {
@@ -471,7 +472,7 @@ vendorProductIds.forEach((pId) =>
       >
         <View style={s.header}>
           <Pressable
-            onPress={() => router.back()}
+            onPress={() => safeGoBack(router, "/admin")}
             style={s.backButton}
           >
             <MaterialCommunityIcons
@@ -507,7 +508,7 @@ vendorProductIds.forEach((pId) =>
       >
         <View style={s.header}>
           <Pressable
-            onPress={() => router.back()}
+            onPress={() => safeGoBack(router, "/admin")}
             style={s.backButton}
           >
             <MaterialCommunityIcons
@@ -550,7 +551,7 @@ vendorProductIds.forEach((pId) =>
     >
       <View style={s.header}>
         <Pressable
-          onPress={() => router.back()}
+          onPress={() => safeGoBack(router, "/admin")}
           hitSlop={10}
           style={s.backButton}
         >

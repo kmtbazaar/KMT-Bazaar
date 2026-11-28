@@ -1,3 +1,4 @@
+import { safeGoBack } from "@/src/navigation";
 import { LocalizedText as Text } from "@/src/LocalizedText";
 import React, { useEffect, useMemo, useState } from "react";
 import {
@@ -106,7 +107,7 @@ export default function OrderSupportReturns() {
   return (
     <SafeAreaView style={s.root} edges={["top"]} testID="order-support-screen">
       <View style={s.header}>
-        <Pressable onPress={() => router.back()} hitSlop={10} style={s.backButton}>
+        <Pressable onPress={() => safeGoBack(router, "/(tabs)/home")} hitSlop={10} style={s.backButton}>
           <MaterialCommunityIcons name="arrow-left" size={22} color={COLORS.text} />
         </Pressable>
         <Text style={s.title}>Help & Support</Text>

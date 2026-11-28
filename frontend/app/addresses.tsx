@@ -1,3 +1,4 @@
+import { safeGoBack } from "@/src/navigation";
 import { LocalizedText as Text, LocalizedTextInput as TextInput } from "@/src/LocalizedText";
 import React, { useEffect, useState } from "react";
 import { View, StyleSheet, Pressable, FlatList, ActivityIndicator, Modal, Alert, ScrollView, TouchableOpacity, Keyboard, Platform } from "react-native";
@@ -198,7 +199,7 @@ export default function Addresses() {
       });
     }
 
-    router.back();
+    safeGoBack(router, "/(tabs)/home");
   };
 
 
@@ -521,7 +522,7 @@ export default function Addresses() {
   return (
     <SafeAreaView style={s.root} edges={["top"]}>
       <View style={s.header}>
-        <TouchableOpacity onPress={() => router.back()} hitSlop={10} style={s.backBtn}>
+        <TouchableOpacity onPress={() => safeGoBack(router, "/(tabs)/home")} hitSlop={10} style={s.backBtn}>
           <MaterialCommunityIcons name="arrow-left" size={24} color={COLORS.text} />
         </TouchableOpacity>
         <Text style={s.headerTitle}>Select Delivery Address</Text>

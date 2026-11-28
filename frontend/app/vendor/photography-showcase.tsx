@@ -1,3 +1,4 @@
+import { safeGoBack } from "@/src/navigation";
 import { LocalizedText as Text, LocalizedTextInput as TextInput } from "@/src/LocalizedText";
 import React, { useCallback, useState } from "react";
 import { View, StyleSheet, ScrollView, Pressable, Switch, Alert, Platform } from "react-native";
@@ -77,7 +78,7 @@ export default function PhotographyShowcaseManager() {
   return (
     <SafeAreaView style={s.root} edges={["top"]}>
       <View style={s.header}>
-        <Pressable onPress={() => router.back()} hitSlop={10} style={s.back}><MaterialCommunityIcons name="arrow-left" size={23} color="#F7E8C1" /></Pressable>
+        <Pressable onPress={() => safeGoBack(router, "/vendor")} hitSlop={10} style={s.back}><MaterialCommunityIcons name="arrow-left" size={23} color="#F7E8C1" /></Pressable>
         <View style={{ flex: 1 }}>
           <Text style={s.eyebrow}>KMT BAZAAR WEDDINGS</Text>
           <Text style={s.headerTitle}>Wedding Portfolio</Text>

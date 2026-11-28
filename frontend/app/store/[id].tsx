@@ -1,3 +1,4 @@
+import { safeGoBack } from "@/src/navigation";
 import { LocalizedText as Text, LocalizedTextInput as TextInput } from "@/src/LocalizedText";
 import React, { useEffect, useMemo, useState } from "react";
 import {
@@ -330,7 +331,7 @@ export default function StoreProducts() {
   return (
     <View style={s.root}>
       <View style={s.header}>
-        <Pressable onPress={() => router.back()} hitSlop={8} style={s.backBtn}>
+        <Pressable onPress={() => safeGoBack(router, "/(tabs)/home")} hitSlop={8} style={s.backBtn}>
           <MaterialCommunityIcons name="arrow-left" size={24} color={COLORS.text} />
         </Pressable>
         <View style={s.headerTextWrap}>

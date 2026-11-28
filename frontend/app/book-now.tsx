@@ -1,3 +1,4 @@
+import { safeGoBack } from "@/src/navigation";
 import { LocalizedText as Text } from "@/src/LocalizedText";
 import React from "react";
 import { View, ScrollView, StyleSheet, Pressable } from "react-native";
@@ -57,7 +58,7 @@ export default function BookNowPage() {
       </Head>
       <ScrollView contentContainerStyle={s.page} showsVerticalScrollIndicator={false}>
         <View style={s.header}>
-          <Pressable onPress={() => router.back()} style={s.back} accessibilityRole="button" accessibilityLabel="Go back">
+          <Pressable onPress={() => safeGoBack(router, "/(tabs)/home")} style={s.back} accessibilityRole="button" accessibilityLabel="Go back">
             <MaterialCommunityIcons name="arrow-left" size={22} color="#FFF7E9" />
           </Pressable>
           <Text style={s.brand}>KMT BAZAAR · BOOKING DESK</Text>

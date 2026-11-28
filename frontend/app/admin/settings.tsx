@@ -1,3 +1,4 @@
+import { safeGoBack } from "@/src/navigation";
 import { LocalizedText as Text, LocalizedTextInput as TextInput } from "@/src/LocalizedText";
 import React, { useCallback, useEffect, useState } from "react";
 import { View, StyleSheet, Pressable, ScrollView, Alert, Platform } from "react-native";
@@ -114,7 +115,7 @@ export default function AdminSettingsScreen() {
           style={s.header}
         >
           <Animated.View entering={FadeInDown.duration(450)} style={s.headerRow}>
-            <Pressable onPress={() => router.back()} style={s.backButton}>
+            <Pressable onPress={() => safeGoBack(router, "/admin")} style={s.backButton}>
               <MaterialCommunityIcons name="arrow-left" size={21} color={THEME.white} />
             </Pressable>
             <View style={s.headerText}>

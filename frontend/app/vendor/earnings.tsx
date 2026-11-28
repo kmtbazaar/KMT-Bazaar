@@ -1,3 +1,4 @@
+import { safeGoBack } from "@/src/navigation";
 import { LocalizedText as Text, LocalizedTextInput as TextInput } from "@/src/LocalizedText";
 import React, { useCallback, useState } from "react";
 import { View, StyleSheet, Pressable, ScrollView } from "react-native";
@@ -18,7 +19,7 @@ export default function VendorEarnings() {
   return (
     <SafeAreaView style={s.root} edges={["top"]} testID="vendor-earnings-screen">
       <View style={s.header}>
-        <Pressable onPress={() => router.back()} hitSlop={10}><MaterialCommunityIcons name="arrow-left" size={22} color={COLORS.text} /></Pressable>
+        <Pressable onPress={() => safeGoBack(router, "/vendor")} hitSlop={10}><MaterialCommunityIcons name="arrow-left" size={22} color={COLORS.text} /></Pressable>
         <Text style={s.title}>Earnings</Text>
         <View style={{ width: 22 }} />
       </View>

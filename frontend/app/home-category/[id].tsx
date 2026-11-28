@@ -1,3 +1,4 @@
+import { safeGoBack } from "@/src/navigation";
 import { LocalizedText as Text } from "@/src/LocalizedText";
 import React, { useEffect, useMemo, useState } from "react";
 import {
@@ -257,7 +258,7 @@ export default function HomeCategoryBrowser() {
         <Pressable
           style={s.backButton}
           onPress={() => {
-            if (router.canGoBack()) router.back();
+            if (router.canGoBack()) safeGoBack(router, "/(tabs)/home");
             else router.replace("/(tabs)/home" as any);
           }}
           accessibilityRole="button"

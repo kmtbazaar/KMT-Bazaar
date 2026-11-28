@@ -1,3 +1,4 @@
+import { safeGoBack } from "@/src/navigation";
 import { LocalizedText as Text, LocalizedTextInput as TextInput } from "@/src/LocalizedText";
 import React, { useState } from "react";
 import {
@@ -182,7 +183,7 @@ return (
 <SafeAreaView style={s.root} edges={["top"]} testID="register-screen">
 <View style={s.header}>
 <Pressable
-onPress={() => router.back()}
+onPress={() => safeGoBack(router, "/auth/login")}
 testID="register-back-button"
 hitSlop={12}
 >

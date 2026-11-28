@@ -1,3 +1,4 @@
+import { safeGoBack } from "@/src/navigation";
 import { LocalizedText as Text, LocalizedTextInput as TextInput } from "@/src/LocalizedText";
 import React, {
   useCallback,
@@ -140,7 +141,7 @@ export default function RoojgarApplications() {
 
       <View style={s.header}>
         <Pressable
-          onPress={() => router.back()}
+          onPress={() => safeGoBack(router, "/admin")}
           style={s.backButton}
           hitSlop={10}
         >

@@ -1,3 +1,4 @@
+import { safeGoBack } from "@/src/navigation";
 import { LocalizedText as Text, LocalizedTextInput as TextInput } from "@/src/LocalizedText";
 import React, { useState } from "react";
 import {
@@ -154,7 +155,7 @@ export default function ForgotPassword() {
       return;
     }
 
-    router.back();
+    safeGoBack(router, "/auth/login");
   };
 
   const renderEmailStep = () => (

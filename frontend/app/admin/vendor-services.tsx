@@ -1,3 +1,4 @@
+import { safeGoBack } from "@/src/navigation";
 import { LocalizedText as Text, LocalizedTextInput as TextInput } from "@/src/LocalizedText";
 import React, { useCallback, useState } from "react";
 import { View, StyleSheet, FlatList, Pressable, Modal, KeyboardAvoidingView, Platform, Alert, ScrollView } from "react-native";
@@ -154,7 +155,7 @@ export default function AdminVendorServices() {
 
   return <SafeAreaView style={s.root} edges={["top"]}>
     <View style={s.header}>
-      <Pressable onPress={()=>router.back()} hitSlop={12}><MaterialCommunityIcons name="arrow-left" size={23} color={COLORS.text}/></Pressable>
+      <Pressable onPress={()=>safeGoBack(router, "/admin")} hitSlop={12}><MaterialCommunityIcons name="arrow-left" size={23} color={COLORS.text}/></Pressable>
       <View style={{alignItems:"center",flex:1}}>
         <Text style={s.title}>{isVendorMode?(isCar?"Rental Fleet":isEventService?serviceLabel+" Packages":"Holiday Packages"):`Vendor Service (${items.length})`}</Text>
         {isVendorMode?<Text style={{fontSize:10,fontWeight:"900",color:isCar?"#0EA5E9":isEventService?"#BE185D":"#2563EB",marginTop:2}}>{isCar?"CAR RENTAL ADMIN":isEventService?serviceLabel.toUpperCase()+" ADMIN":"HOLIDAY ADMIN"}</Text>:null}

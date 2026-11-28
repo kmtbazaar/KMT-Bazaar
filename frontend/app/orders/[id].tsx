@@ -1,3 +1,4 @@
+import { safeGoBack } from "@/src/navigation";
 import { LocalizedText as Text, LocalizedTextInput as TextInput } from "@/src/LocalizedText";
 import React, { useEffect, useRef, useState } from "react";
 import {
@@ -120,7 +121,7 @@ export default function OrderDetail() {
       testID="order-detail-screen"
     >
       <View style={s.header}>
-        <Pressable onPress={() => router.back()} hitSlop={10}>
+        <Pressable onPress={() => safeGoBack(router, "/(tabs)/home")} hitSlop={10}>
           <MaterialCommunityIcons
             name="arrow-left"
             size={22}

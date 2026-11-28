@@ -1,3 +1,4 @@
+import { safeGoBack } from "@/src/navigation";
 import { LocalizedText as Text, LocalizedTextInput as TextInput } from "@/src/LocalizedText";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
@@ -463,7 +464,7 @@ export default function HolidayPage() {
           </Animated.View>
 
           <View style={s.heroNav}>
-            <Pressable onPress={() => router.back()} style={s.navCircle}>
+            <Pressable onPress={() => safeGoBack(router, "/(tabs)/home")} style={s.navCircle}>
               <MaterialCommunityIcons name="arrow-left" size={22} color="#fff" />
             </Pressable>
             <View style={s.brandPill}>

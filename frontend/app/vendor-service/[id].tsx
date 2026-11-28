@@ -1,3 +1,4 @@
+import { safeGoBack } from "@/src/navigation";
 import { LocalizedText as Text, LocalizedTextInput as TextInput } from "@/src/LocalizedText";
 import React, { useEffect, useState } from "react";
 import { View, StyleSheet, Pressable, ScrollView, Linking } from "react-native";
@@ -26,7 +27,7 @@ export default function VendorServiceDetail() {
   return (
     <SafeAreaView style={s.root} edges={["top"]}>
       <View style={s.header}>
-        <Pressable onPress={() => router.back()} hitSlop={10}><MaterialCommunityIcons name="arrow-left" size={24} color={COLORS.text} /></Pressable>
+        <Pressable onPress={() => safeGoBack(router, "/(tabs)/home")} hitSlop={10}><MaterialCommunityIcons name="arrow-left" size={24} color={COLORS.text} /></Pressable>
         <Text style={s.headerTitle}>Service</Text>
         <View style={{width:24}} />
       </View>

@@ -1,3 +1,4 @@
+import { safeGoBack } from "@/src/navigation";
 import { LocalizedText as Text } from "@/src/LocalizedText";
 import React from "react";
 import { View, ScrollView, StyleSheet, Pressable } from "react-native";
@@ -15,7 +16,7 @@ export default function WishlistScreen() {
   return (
     <SafeAreaView style={s.root} edges={["top"]} testID="wishlist-screen">
       <View style={s.header}>
-        <Pressable onPress={() => router.back()} style={s.back} accessibilityLabel="Go back">
+        <Pressable onPress={() => safeGoBack(router, "/(tabs)/home")} style={s.back} accessibilityLabel="Go back">
           <MaterialCommunityIcons name="arrow-left" size={22} color={COLORS.text} />
         </Pressable>
         <View style={s.heading}>

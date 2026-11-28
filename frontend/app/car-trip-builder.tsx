@@ -1,3 +1,4 @@
+import { safeGoBack } from "@/src/navigation";
 import { LocalizedText as Text, LocalizedTextInput as TextInput } from "@/src/LocalizedText";
 import React,{useEffect,useMemo,useState}from"react";
 import{View,StyleSheet,ScrollView,Pressable,ActivityIndicator,Platform,Alert}from"react-native";
@@ -31,7 +32,7 @@ export default function CarTripBuilder(){
  };
  if(loading||!car)return <SafeAreaView style={s.root}><View style={s.center}><ActivityIndicator color={RED} size="large"/></View></SafeAreaView>;
  return <SafeAreaView style={s.root}><ScrollView contentContainerStyle={s.page} showsVerticalScrollIndicator={false}>
- <LinearGradient colors={["#050608","#17090d","#08090b"]} style={s.hero}><View style={s.back}><Pressable onPress={()=>r.back()} style={s.backBtn}><MaterialCommunityIcons name="arrow-left" size={21} color={WHITE}/></Pressable><View><Text style={s.eyebrow}>KMT BAZAAR · CAR RENTAL</Text><Text style={s.heroTitle}>Trip Builder</Text></View></View><View style={s.heroLine}/><Text style={s.heroSub}>Plan your route, choose your travel details and continue directly to booking contact.</Text></LinearGradient>
+ <LinearGradient colors={["#050608","#17090d","#08090b"]} style={s.hero}><View style={s.back}><Pressable onPress={()=>safeGoBack(r, "/(tabs)/home")} style={s.backBtn}><MaterialCommunityIcons name="arrow-left" size={21} color={WHITE}/></Pressable><View><Text style={s.eyebrow}>KMT BAZAAR · CAR RENTAL</Text><Text style={s.heroTitle}>Trip Builder</Text></View></View><View style={s.heroLine}/><Text style={s.heroSub}>Plan your route, choose your travel details and continue directly to booking contact.</Text></LinearGradient>
  <View style={s.wrap}>
  <View style={s.carCard}><Image source={{uri:car.image}} style={s.carImg} contentFit="cover"/><View style={{flex:1,padding:13}}><Text style={s.carName}>{car.name}</Text><Text style={s.carMeta}>{car.location} · {car.category}</Text><Text style={s.vendor}>{car.vendor_name}</Text><Text style={s.carPrice}>₹{Number(car.price||0).toLocaleString("en-IN")} <Text style={s.per}>/ day</Text></Text>{Number(car.hourly_price||0)>0&&<Text style={s.hourlyRate}>₹{Number(car.hourly_price).toLocaleString("en-IN")} / hour</Text>}</View></View>
 

@@ -1,3 +1,4 @@
+import { safeGoBack } from "@/src/navigation";
 import { LocalizedText as Text, LocalizedTextInput as TextInput } from "@/src/LocalizedText";
 import React, { useEffect, useState } from "react";
 import { View, ScrollView, StyleSheet, Pressable, ActivityIndicator, Alert, Platform } from "react-native";
@@ -41,7 +42,7 @@ export default function TravelPage() {
       <View style={s.hero}>
         <Image source={{uri:page.cover_image}} style={s.heroImg} contentFit="cover"/>
         <View style={s.overlay}/>
-        <Pressable onPress={()=>router.back()} style={s.back}><MaterialCommunityIcons name="arrow-left" size={24} color="#fff"/></Pressable>
+        <Pressable onPress={()=>safeGoBack(router, "/(tabs)/home")} style={s.back}><MaterialCommunityIcons name="arrow-left" size={24} color="#fff"/></Pressable>
         <View style={s.heroText}><Text style={s.title}>{page.name}</Text><Text style={s.subtitle}>{page.subtitle}</Text></View>
       </View>
       {!!page.description && <Text style={s.description}>{page.description}</Text>}

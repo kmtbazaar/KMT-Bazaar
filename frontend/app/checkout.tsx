@@ -1,3 +1,4 @@
+import { safeGoBack } from "@/src/navigation";
 import { LocalizedText as Text, LocalizedTextInput as TextInput } from "@/src/LocalizedText";
 import React, { useEffect, useState } from "react";
 import { View, StyleSheet, Pressable, ScrollView, ActivityIndicator, KeyboardAvoidingView, Platform, Alert, TouchableOpacity } from "react-native";
@@ -347,7 +348,7 @@ export default function Checkout() {
   return (
     <SafeAreaView style={s.root} edges={["top"]} testID="checkout-screen">
       <View style={s.header}>
-        <Pressable onPress={() => router.back()} hitSlop={10}><MaterialCommunityIcons name="arrow-left" size={22} color={COLORS.text} /></Pressable>
+        <Pressable onPress={() => safeGoBack(router, "/(tabs)/home")} hitSlop={10}><MaterialCommunityIcons name="arrow-left" size={22} color={COLORS.text} /></Pressable>
         <Text style={s.title}>Checkout</Text>
         <View style={{ width: 22 }} />
       </View>

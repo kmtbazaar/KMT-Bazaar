@@ -1,3 +1,4 @@
+import { safeGoBack } from "@/src/navigation";
 import { LocalizedText as Text, LocalizedTextInput as TextInput } from "@/src/LocalizedText";
 import React, { useCallback, useState } from "react";
 import { View, StyleSheet, FlatList, Pressable, Modal, KeyboardAvoidingView, Platform, Switch, ScrollView } from "react-native";
@@ -44,7 +45,7 @@ export default function AdminCategories() {
   return (
     <SafeAreaView style={s.root} edges={["top"]} testID="admin-categories-screen">
       <View style={s.header}>
-        <Pressable onPress={() => router.back()} hitSlop={10}><MaterialCommunityIcons name="arrow-left" size={22} color={COLORS.text} /></Pressable>
+        <Pressable onPress={() => safeGoBack(router, "/admin")} hitSlop={10}><MaterialCommunityIcons name="arrow-left" size={22} color={COLORS.text} /></Pressable>
         <Text style={s.title}>Categories ({cats.length})</Text>
         <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
           <Pressable testID="add-cat-btn" onPress={() => { setEditingId(null); setF({ name: "", icon: "tag", color: "#2563EB", image: "", product_fields: getDefaultProductFieldSchema("") }); setModal(true); }} hitSlop={10}>

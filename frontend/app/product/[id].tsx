@@ -1,3 +1,4 @@
+import { safeGoBack } from "@/src/navigation";
 import { LocalizedText as Text, LocalizedTextInput as TextInput } from "@/src/LocalizedText";
 import React, { useEffect, useState, useMemo, useRef } from "react";
 import { View, StyleSheet, Pressable, ScrollView, ActivityIndicator, Share, Platform, useWindowDimensions, Modal } from "react-native";
@@ -500,7 +501,7 @@ export default function Product() {
   return (
     <View style={s.root} testID="product-screen">
       <SafeAreaView edges={["top"]} style={s.header}>
-        <Pressable onPress={() => router.back()} style={s.hbtn} hitSlop={8}>
+        <Pressable onPress={() => safeGoBack(router, "/(tabs)/home")} style={s.hbtn} hitSlop={8}>
           <MaterialCommunityIcons name="arrow-left" size={22} color={COLORS.text} />
         </Pressable>
         <View style={s.headerActions}>
