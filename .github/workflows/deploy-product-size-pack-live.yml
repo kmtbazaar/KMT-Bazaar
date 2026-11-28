@@ -340,7 +340,7 @@ jobs:
             assert.ok(config.includes(label), `Missing category-specific option label: ${label}`);
           }
           assert.ok(vendor.includes("getProductCategoryConfig"), "Vendor Add/Edit must load the selected Shop Category configuration.");
-          assert.ok(vendor.split("categoryConfig.variantOptions.map((option) =>").length - 1 === 4 && vendor.includes("vendor-store-add-product-size-pack-picker") && vendor.includes("vendor-store-edit-product-size-pack-picker") && !vendor.includes("PRODUCT_UNIT_OPTIONS"), "Store Vendor Add/Edit must derive only category-specific options.");
+          assert.ok(vendor.split("categoryConfig.variantOptions.map((option) =>").length - 1 === 2 && vendor.split("editCategoryConfig.variantOptions.map((option) =>").length - 1 === 2 && vendor.includes("vendor-store-add-product-size-pack-picker") && vendor.includes("vendor-store-edit-product-size-pack-picker") && !vendor.includes("PRODUCT_UNIT_OPTIONS"), "Store Vendor Add/Edit must derive only category-specific options using each form's product context.");
           assert.ok(vendor.includes("{categoryConfig.showColors ? ("), "Colour/Shade fields must be conditional on category settings.");
           assert.ok(!vendor.includes("{categoryConfig.showDescription ? (") && vendor.includes('testID="vendor-store-add-product-description-input"') && vendor.includes('testID="vendor-store-edit-product-description-input"'), "Store Vendor Add/Edit must always expose the product description field for every category.");
           assert.ok(vendor.includes("imagesByColor={form.color_images}") && vendor.includes("imagesByColor={editProductForm.color_images}"), "Vendor must upload separate colour-specific photo galleries in Add and Edit.");
