@@ -56,7 +56,7 @@ const buildVariantPayload = (base: any, extras: ProductVariantDraft[], baseVaria
       mrp: base.mrp ? Number.parseFloat(String(base.mrp)) : Number.parseFloat(String(base.price)),
       stock: Number.parseInt(String(base.stock), 10),
       description: "",
-      colors: availableColors,
+      ...(availableColors.length ? { colors: availableColors } : {}),
     },
     ...extras.map((variant) => {
       const optionColors = Array.isArray(variant.colors) ? variant.colors : availableColors;
@@ -78,8 +78,8 @@ const buildVariantPayload = (base: any, extras: ProductVariantDraft[], baseVaria
         mrp: variant.mrp ? Number.parseFloat(String(variant.mrp)) : Number.parseFloat(String(variant.price)),
         stock: Number.parseInt(String(variant.stock), 10),
         description: String(variant.description || "").trim(),
-        colors: selectedOptionColors,
-        color_images: optionColorImages,
+        ...(selectedOptionColors.length ? { colors: selectedOptionColors } : {}),
+        ...(Object.keys(optionColorImages).length ? { color_images: optionColorImages } : {}),
       };
     }),
   ];
@@ -715,6 +715,10 @@ export default function VendorStoreDetail() {
       guideAddFormToField("stock", "Enter a valid stock quantity.");
       return;
     }
+    if (isFoodCategory && (form.images || []).filter((image) => typeof image === "string" && image.trim()).length !== 2) {
+      guideAddFormToField("photos", "Add exactly two product photos before creating this food item.");
+      return;
+    }
 
     if (
       categoryConfig.variantLabel === "RAM / Storage" &&
@@ -745,7 +749,7 @@ export default function VendorStoreDetail() {
         guideAddFormToField(target, `Fill the size, price, MRP and stock for option ${invalidIndex + 1}.`);
         return;
       }
-      const emptyDescriptionIndex = variants.findIndex((variant, index) =>
+      const emptyDescriptionIndex = isFoodCategory ? -1 : variants.findIndex((variant, index) =>
         index > 0 && variants.length > 1 && !String(variant.description || "").trim()
       );
       if (emptyDescriptionIndex >= 0) {
@@ -803,6 +807,9 @@ export default function VendorStoreDetail() {
     setSelectedProductId(prod.id);
     const savedVariants = Array.isArray(prod.variants) ? prod.variants : [];
     const primaryVariant = savedVariants[0];
+    const savedProductImages = Array.from(new Set([...(Array.isArray(prod.images) ? prod.images : []), prod.image]
+      .filter((url: any) => typeof url === "string" && url.trim())));
+    const editProductImages = isFoodCategory ? savedProductImages.slice(0, 2) : savedProductImages;
     setEditBaseVariantId(primaryVariant?.id || "");
     setEditVariantDrafts(savedVariants.slice(1).map((variant: any) => ({
       id: String(variant.id || ""),
@@ -821,8 +828,8 @@ export default function VendorStoreDetail() {
       mrp: String(primaryVariant?.mrp ?? prod.mrp ?? prod.price),
       unit: primaryVariant?.unit || prod.unit || "1 pc",
       stock: String(primaryVariant?.stock ?? prod.stock ?? 0),
-      image: prod.image || "",
-      images: Array.from(new Set([...(Array.isArray(prod.images) ? prod.images : []), prod.image].filter((url: any) => typeof url === "string" && url.trim()))),
+      image: editProductImages[0] || prod.image || "",
+      images: editProductImages,
       colors: Array.isArray(prod.colors) ? prod.colors.map((color: any) => String(color)) : [],
       color_images: prod.color_images && typeof prod.color_images === "object" ? prod.color_images : {},
       attributes: prod.attributes && typeof prod.attributes === "object" ? { ...prod.attributes } : {},
@@ -849,6 +856,12 @@ export default function VendorStoreDetail() {
       Alert.alert("Error", "Name and Price are required.");
       return;
     }
+    if (isFoodCategory && (editProductForm.images || []).filter((image) => typeof image === "string" && image.trim()).length !== 2) {
+      const message = "Add exactly two product photos before saving this food item.";
+      if (Platform.OS === "web" && typeof window !== "undefined") window.alert(message);
+      else Alert.alert("Product photos required", message);
+      return;
+    }
     const unchangedColorSetup = Boolean(existingProduct) &&
       JSON.stringify(editProductForm.colors || []) === JSON.stringify(existingProduct.colors || []) &&
       JSON.stringify(editProductForm.color_images || {}) === JSON.stringify(existingProduct.color_images || {});
@@ -862,7 +875,7 @@ export default function VendorStoreDetail() {
     const variants = categoryConfig.showVariants
       ? buildVariantPayload(editProductForm, editVariantDrafts, editBaseVariantId, editProductForm.colors)
       : undefined;
-    const variantError = variants ? validateVariantDrafts(variants, variants.length > 1, showColorOptions) : "";
+    const variantError = variants ? validateVariantDrafts(variants, variants.length > 1 && !isFoodCategory, showColorOptions) : "";
     if (variantError) {
       Alert.alert("Check product sizes", variantError);
       return;
@@ -887,7 +900,9 @@ export default function VendorStoreDetail() {
       setShowEditProductModal(false);
       load();
     } catch (e: any) {
-      Alert.alert("Error", e?.message || "Failed to update product.");
+      const message = e?.message || "Failed to update product.";
+      if (Platform.OS === "web" && typeof window !== "undefined") window.alert("Could not update product: " + message);
+      else Alert.alert("Could not update product", message);
     } finally {
       setLoading(false);
     }
@@ -1192,6 +1207,25 @@ export default function VendorStoreDetail() {
                   )}
                 </View>
 
+              {isFoodCategory ? (
+                <View
+                  onLayout={(event) => rememberAddFieldPosition("photos", event.nativeEvent.layout.y)}
+                  testID="vendor-store-add-product-food-photo-section"
+                >
+                  <ProductImagesUploader
+                    value={form.images}
+                    onChange={(images) => {
+                      setForm((current) => ({ ...current, images, image: images[0] || "" }));
+                      clearAddValidationError("photos");
+                    }}
+                    label="Food photos"
+                    minCount={2}
+                    maxCount={2}
+                    allowMultipleSelection
+                    testID="vendor-store-add-product-food-photos"
+                  />
+                </View>
+              ) : null}
 
               {categoryConfig.showVariants && categoryConfig.variantOptions.length > 0 ? (
                 <View
@@ -1372,6 +1406,8 @@ export default function VendorStoreDetail() {
                                       }}
                                       testID={`vendor-store-add-variant-colours-${index + 2}`} />
                                   ) : null}
+                                  {!isFoodCategory ? (
+                                    <>
                                   <Text style={s.variantManagerHint}>Description for this option</Text>
                                   <TextInput placeholder="Describe the differences for this option" placeholderTextColor="#64748B"
                                     value={variant.description}
@@ -1380,6 +1416,8 @@ export default function VendorStoreDetail() {
                                       clearAddValidationError(`variant-${index}`);
                                     }}
                                     style={[s.inputCompact, { minHeight: 64, textAlignVertical: "top" }]} multiline />
+                                    </>
+                                  ) : null}
                                   <View style={s.rowCompact}>
                                     <TextInput placeholder="Price" placeholderTextColor="#64748B" value={variant.price}
                                       onChangeText={(value) => {
@@ -1578,6 +1616,20 @@ export default function VendorStoreDetail() {
                   </View>
                 </View>
 
+              {isFoodCategory ? (
+                <View testID="vendor-store-edit-product-food-photo-section">
+                  <ProductImagesUploader
+                    value={editProductForm.images}
+                    onChange={(images) => setEditProductForm((current) => ({ ...current, images, image: images[0] || "" }))}
+                    label="Food photos"
+                    minCount={2}
+                    maxCount={2}
+                    allowMultipleSelection
+                    testID="vendor-store-edit-product-food-photos"
+                  />
+                </View>
+              ) : null}
+
               {/* Price & MRP Row */}
               <View style={s.rowCompact}>
                 <TextInput
@@ -1672,11 +1724,15 @@ export default function VendorStoreDetail() {
                                       }}
                                       testID={`vendor-store-edit-variant-colours-${index + 2}`} />
                                   ) : null}
+                                  {!isFoodCategory ? (
+                                    <>
                                   <Text style={s.variantManagerHint}>Description for this option</Text>
                                   <TextInput placeholder="Describe the differences for this option" placeholderTextColor="#64748B"
                                     value={variant.description}
                                     onChangeText={(value) => setEditVariantDrafts((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, description: value } : item))}
                                     style={[s.inputCompact, { minHeight: 64, textAlignVertical: "top" }]} multiline />
+                                    </>
+                                  ) : null}
                                   <View style={s.rowCompact}>
                                     <TextInput placeholder="Price" placeholderTextColor="#64748B" value={variant.price}
                                       onChangeText={(value) => setEditVariantDrafts((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, price: value } : item))}
