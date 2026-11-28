@@ -7096,7 +7096,7 @@ async def seed_db():
     )
     if food_category and food_category.get("id"):
         food_store_name = {
-            "$regex": r"^(Naya\\s+Adda?\\s+Fast\\s*Food|Jharkhandi\\s+Hotel)$",
+            "$regex": r"^(Naya\s+Adda?\s+Fast\s*Food|Jharkhandi\s+Hotel)$",
             "$options": "i",
         }
         food_stores = await db.stores.find(
