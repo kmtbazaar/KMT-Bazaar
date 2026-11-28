@@ -34,11 +34,9 @@ function GlobalPullToRefresh({ children }: { children: React.ReactNode }) {
       startCanRefreshRef.current = false;
       return;
     }
-    const touch = event?.nativeEvent?.touches?.[0];
-    const startY = Number(event?.nativeEvent?.pageY ?? touch?.pageY ?? event?.nativeEvent?.clientY ?? 0);
-    const viewportHeight = typeof window !== "undefined" ? window.innerHeight : 800;
-    const topEdge = Math.min(180, Math.max(110, viewportHeight * 0.2));
-    startCanRefreshRef.current = startY <= topEdge && isAtTopOfScrollArea(event?.target);
+    // Allow the pull to start anywhere inside the page's scroll area, but
+    // only when that scroll area is already at its top edge.
+    startCanRefreshRef.current = isAtTopOfScrollArea(event?.target);
   };
 
   const panResponder = useMemo(() => PanResponder.create({
