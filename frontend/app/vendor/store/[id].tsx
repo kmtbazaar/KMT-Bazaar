@@ -1497,11 +1497,7 @@ export default function VendorStoreDetail() {
                                   {isFashionCategory ? (
                                     <Text style={s.variantManagerHint}>Selected sizes share these product photos. Set price, MRP and stock for each size.</Text>
                                   ) : (
-                                    {isEditFashionCategory ? (
-                                    <Text style={s.variantManagerHint}>Selected sizes share these product photos. Set price, MRP and stock for each size.</Text>
-                                  ) : (
                                     <Text style={s.variantManagerHint}>Add each size/pack with its own label, price, MRP and stock.</Text>
-                                  )}
                                   )}
                                 </View>
                                 {!isFashionCategory ? (
@@ -1867,7 +1863,11 @@ export default function VendorStoreDetail() {
                               <View style={s.variantManagerHeader}>
                                 <View style={{ flex: 1 }}>
                                   <Text style={s.variantManagerTitle}>Sell in more sizes</Text>
-                                  <Text style={s.variantManagerHint}>Add each size/pack with its own label, price, MRP and stock.</Text>
+                                  {isEditFashionCategory ? (
+                                    <Text style={s.variantManagerHint}>Selected sizes share these product photos. Set price, MRP and stock for each size.</Text>
+                                  ) : (
+                                    <Text style={s.variantManagerHint}>Add each size/pack with its own label, price, MRP and stock.</Text>
+                                  )}
                                 </View>
                                 {!isEditFashionCategory ? (
                                   <Pressable testID="vendor-store-edit-variant" accessibilityRole="button"
