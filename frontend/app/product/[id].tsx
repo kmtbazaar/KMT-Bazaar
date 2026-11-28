@@ -62,9 +62,18 @@ export default function Product() {
     ? p.variants.filter((variant: any) => variant && String(variant.unit || "").trim())
     : [];
   const hasSavedProductVariants = savedProductVariants.length > 0;
+  const hasFashionSizeVariants = savedProductVariants.some((variant: any) =>
+    /^(XS|S|M|L|XL|XXL|XXXL)$/i.test(String(variant.unit || "").trim())
+  );
   const shouldShowVariantSelector = categoryConfig.showVariants || hasSavedProductVariants;
-  const productCategoryIdentity = String(productCategory?.name || p?.category_name || "");
-  const isFashionSizeSelector = /(clothing|fashion|apparel|garment|wear|shirt|jeans|textile|kurta|dress)/i.test(productCategoryIdentity);
+  const productCategoryIdentity = [
+    productCategory?.name,
+    p?.category_name,
+    p?.item_category,
+  ].filter(Boolean).join(" ");
+  const isFashionSizeSelector =
+    /(clothing|fashion|apparel|garment|wear|shirt|jeans|textile|kurta|dress)/i.test(productCategoryIdentity) ||
+    hasFashionSizeVariants;
   const selectedVariant = Array.isArray(p?.variants)
     ? p.variants.find((variant: any) => String(variant.id) === String(selectedVariantId)) || p.variants[0] || null
     : null;
